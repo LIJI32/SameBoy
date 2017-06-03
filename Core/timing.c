@@ -49,7 +49,10 @@ bool GB_timing_sync_turbo(GB_gameboy_t *gb)
 
 void GB_timing_sync(GB_gameboy_t *gb)
 {
-    if (gb->turbo) return;
+    if (gb->turbo) {
+        gb->cycles_since_last_sync = 0;
+        return;
+    }
     /* Prevent syncing if not enough time has passed.*/
     if (gb->cycles_since_last_sync < LCDC_PERIOD / 4) return;
 
