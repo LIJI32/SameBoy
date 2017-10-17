@@ -113,7 +113,7 @@ else
    SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
 endif
 
-TARGET := $(CORE_DIR)/build/bin/$(TARGET)
+TARGET := $(CORE_DIR)/$(TARGET)
 
 # To force use of the Unix version instead of the Windows version
 MKDIR := $(shell which mkdir)
@@ -135,7 +135,7 @@ CXXFLAGS += -Wall -D__LIBRETRO__ $(fpic)
 
 all: $(TARGET)
 
-$(CORE_DIR)/libretro/%_boot.c: $(CORE_DIR)/build/bin/BootROMs/%_boot.bin
+$(CORE_DIR)/libretro/%_boot.c: $(CORE_DIR)/BootROMs/prebuilt/%_boot.bin
 	echo "/* AUTO-GENERATED */" > $@
 	echo "const unsigned char $(notdir $(@:%.c=%))[] = {" >> $@
 	hexdump -v -e '/1 "0x%02x, "' $< >> $@

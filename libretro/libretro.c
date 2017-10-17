@@ -77,6 +77,8 @@ static void replace_extension(const char *src, size_t length, char *dest, const 
     strcat(dest, ext);
 }
 
+static struct retro_rumble_interface rumble;
+
 static void GB_update_keys_status(GB_gameboy_t *gb)
 {
 
@@ -89,7 +91,13 @@ static void GB_update_keys_status(GB_gameboy_t *gb)
 	GB_set_key_state(gb, GB_KEY_A,input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A) );
 	GB_set_key_state(gb, GB_KEY_B,input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B) );
 	GB_set_key_state(gb, GB_KEY_SELECT,input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT));
-	GB_set_key_state(gb, GB_KEY_START,input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START) );
+   GB_set_key_state(gb, GB_KEY_START,input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START) );
+   
+   if (gb->rumble_state)
+      rumble.set_rumble_state(0, RETRO_RUMBLE_STRONG, 65535);
+   else
+      rumble.set_rumble_state(0, RETRO_RUMBLE_STRONG, 0);
+
 }
 
 
@@ -176,8 +184,6 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 }
 
-static struct retro_rumble_interface rumble;
-
 void retro_set_environment(retro_environment_t cb)
 {
    environ_cb = cb;
@@ -195,7 +201,6 @@ void retro_set_environment(retro_environment_t cb)
       { controllers, 1 },
       { NULL, 0 },
    };
-
    cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
 }
 
@@ -225,12 +230,38 @@ void retro_set_video_refresh(retro_video_refresh_t cb)
 
 void retro_reset(void)
 {
-
+   GB_reset(&gb);
 }
 
 static void check_variables(void)
 {
+   struct retro_variable var = {0};
 
+   var.key = "sameboy_color_correction_mode";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && GB_is_cgb(&gb))
+   {
+      if (strcmp(var.value, "off") == 0)
+         GB_set_color_correction_mode(&gb, GB_COLOR_CORRECTION_DISABLED);
+      else if (strcmp(var.value, "correct curves") == 0)
+         GB_set_color_correction_mode(&gb, GB_COLOR_CORRECTION_CORRECT_CURVES);
+      else if (strcmp(var.value, "emulate hardware") == 0)
+         GB_set_color_correction_mode(&gb, GB_COLOR_CORRECTION_EMULATE_HARDWARE);
+      else if (strcmp(var.value, "preserve brightness") == 0)
+         GB_set_color_correction_mode(&gb, GB_COLOR_CORRECTION_PRESERVE_BRIGHTNESS);
+   }
+
+   var.key = "sameboy_high_pass_filter_mode";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (strcmp(var.value, "off") == 0)
+         GB_set_highpass_filter_mode(&gb, GB_HIGHPASS_OFF);
+      else if (strcmp(var.value, "accurate") == 0)
+         GB_set_highpass_filter_mode(&gb, GB_HIGHPASS_ACCURATE);
+      else if (strcmp(var.value, "remove dc offset") == 0)
+         GB_set_highpass_filter_mode(&gb, GB_HIGHPASS_REMOVE_DC_OFFSET);
+   }
 }
 
 void retro_run(void)
@@ -277,8 +308,6 @@ bool retro_load_game(const struct retro_game_info *info)
    }
 
    snprintf(retro_game_path, sizeof(retro_game_path), "%s", info->path);
-
-   check_variables();
 
    char buf[256];
    int err = 0;
@@ -337,13 +366,78 @@ bool retro_load_game(const struct retro_game_info *info)
 #endif
 
    GB_set_sample_rate(&gb, AUDIO_FREQUENCY);
-   /* GB_set_highpass_filter_mode(&gb, GB_HIGHPASS_REMOVE_DC_OFFSET); */ 
+
+   struct retro_memory_descriptor descs[7];
+   size_t size;
+   uint16_t bank;
+
+   memset(descs, 0, sizeof(descs));
+
+   descs[0].ptr   = GB_get_direct_access(&gb, GB_DIRECT_ACCESS_IE, &size, &bank);
+   descs[0].start = 0xFFFF;
+   descs[0].len   = 1;
+
+   descs[1].ptr   = GB_get_direct_access(&gb, GB_DIRECT_ACCESS_HRAM, &size, &bank);
+   descs[1].start = 0xFF80;
+   descs[1].len   = 0x0080;
+   
+   descs[2].ptr   = GB_get_direct_access(&gb, GB_DIRECT_ACCESS_RAM, &size, &bank);
+   descs[2].start = 0xC000;
+   descs[2].len   = 0x2000;
+      
+   descs[3].ptr   = GB_get_direct_access(&gb, GB_DIRECT_ACCESS_CART_RAM, &size, &bank);
+   descs[3].start = 0xA000;
+   descs[3].len   = 0x2000;
+      
+   descs[4].ptr   = GB_get_direct_access(&gb, GB_DIRECT_ACCESS_VRAM, &size, &bank);
+   descs[4].start = 0x8000;
+   descs[4].len   = 0x2000;
+      
+   descs[5].ptr   = GB_get_direct_access(&gb, GB_DIRECT_ACCESS_ROM, &size, &bank);
+   descs[5].start = 0x0000;
+   descs[5].len   = 0x4000;
+   descs[5].flags = RETRO_MEMDESC_CONST;
+
+   descs[6].ptr   = GB_get_direct_access(&gb, GB_DIRECT_ACCESS_OAM, &size, &bank);
+   descs[6].start = 0xFE00;
+   descs[6].len   = 0x00A0;
+      
+   struct retro_memory_map mmaps;
+   mmaps.descriptors = descs;
+   mmaps.num_descriptors = sizeof(descs) / sizeof(descs[0]);
+   environ_cb(RETRO_ENVIRONMENT_SET_MEMORY_MAPS, &mmaps);
+
+   bool yes = true;
+   environ_cb(RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS, &yes);
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble))
+      log_cb(RETRO_LOG_INFO, "Rumble environment supported.\n");
+   else
+      log_cb(RETRO_LOG_INFO, "Rumble environment not supported.\n");
+
+   static struct retro_variable vars_cgb[] = {
+      { "sameboy_color_correction_mode", "Color Correction; off|correct curves|emulate hardware|preserve brightness" },
+      { "sameboy_high_pass_filter_mode", "High Pass Filter; off|accurate|remove dc offset" },
+      { NULL }
+   };
+
+   static struct retro_variable vars_dmg[] = {
+      { "sameboy_high_pass_filter_mode", "High Pass Filter; off|accurate|remove dc offset" },
+      { NULL }
+   };
+
+   if (GB_is_cgb(&gb))
+      environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, vars_cgb);
+   else
+      environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, vars_dmg);
+   check_variables();
+
    return true;
 }
 
 void retro_unload_game(void)
 {
-
+   GB_free(&gb);
 }
 
 unsigned retro_get_region(void)
