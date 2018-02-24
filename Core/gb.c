@@ -144,7 +144,9 @@ void GB_free(GB_gameboy_t *gb)
     if (gb->breakpoints) {
         free(gb->breakpoints);
     }
+#ifndef __LIBRETRO__ 
     GB_debugger_clear_symbols(gb);
+#endif
     GB_rewind_free(gb);
     memset(gb, 0, sizeof(*gb));
 }
