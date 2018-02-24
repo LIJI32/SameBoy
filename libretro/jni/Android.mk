@@ -8,6 +8,7 @@ include $(CORE_DIR)/libretro/Makefile.common
 
 GENERATED_SOURCES := $(filter %_boot.c,$(SOURCES_C))
 
+VERSION   := 0.10.1
 COREFLAGS := -DINLINE=inline -D__LIBRETRO__ -DGB_INTERNAL $(INCFLAGS) -DSAMEBOY_CORE_VERSION=\"$(VERSION)\" -Wno-multichar
 
 GIT_VERSION := " $(shell git rev-parse --short HEAD || echo unknown)"
@@ -22,7 +23,7 @@ LOCAL_CFLAGS    := -std=c99 $(COREFLAGS) $(CFLAGS)
 LOCAL_LDFLAGS   := -Wl,-version-script=$(CORE_DIR)/libretro/link.T
 include $(BUILD_SHARED_LIBRARY)
 
-$(CORE_DIR)/libretro/%_boot.c: $(CORE_DIR)/build/bin/BootROMs/%_boot.bin
+$(CORE_DIR)/libretro/%_boot.c: $(CORE_DIR)/BootROMs/prebuilt/%_boot.bin
 	echo "/* AUTO-GENERATED */" > $@
 	echo "const unsigned char $(notdir $(@:%.c=%))[] = {" >> $@
 	hexdump -v -e '/1 "0x%02x, "' $< >> $@

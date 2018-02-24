@@ -6,6 +6,7 @@ ifneq ($(GIT_VERSION)," unknown")
    CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 endif
 
+VERSION := 0.10.1
 CFLAGS += -DSAMEBOY_CORE_VERSION=\"$(VERSION)\"
 
 ifeq ($(platform),)
@@ -40,7 +41,7 @@ ifeq ($(platform), win)
 	INCFLAGS += -I Windows
 endif
 
-CORE_DIR     += ..
+CORE_DIR     = ../
 
 TARGET_NAME  = sameboy
 LIBM		    = -lm
@@ -140,7 +141,8 @@ else
    SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
 endif
 
-TARGET := $(CORE_DIR)/build/bin/$(TARGET)
+#TARGET := $(CORE_DIR)/build/bin/$(TARGET)
+TARGET := $(TARGET)
 
 # To force use of the Unix version instead of the Windows version
 MKDIR := $(shell which mkdir)
@@ -161,7 +163,7 @@ CFLAGS   += -Wall -D__LIBRETRO__ $(fpic) $(INCFLAGS) -std=gnu11 -D_GNU_SOURCE -D
 
 all: $(TARGET)
 
-$(CORE_DIR)/libretro/%_boot.c: $(CORE_DIR)/build/bin/BootROMs/%_boot.bin
+$(CORE_DIR)/libretro/%_boot.c: $(CORE_DIR)/BootROMs/prebuilt/%_boot.bin
 	echo "/* AUTO-GENERATED */" > $@
 	echo "const unsigned char $(notdir $(@:%.c=%))[] = {" >> $@
 ifneq ($(findstring Haiku,$(shell uname -s)),)
@@ -174,7 +176,8 @@ endif
 	echo "};" >> $@
 	echo "const unsigned $(notdir $(@:%.c=%))_length = sizeof($(notdir $(@:%.c=%)));" >> $@
 
-$(CORE_DIR)/build/bin/BootROMs/%_boot.bin:
+#$(CORE_DIR)/build/bin/BootROMs/%_boot.bin:
+$(CORE_DIR)/BootROMs/prebuilt/%_boot.bin:
 	$(MAKE) -C $(CORE_DIR) $(patsubst $(CORE_DIR)/%,%,$@)
 
 $(TARGET): $(OBJECTS)
