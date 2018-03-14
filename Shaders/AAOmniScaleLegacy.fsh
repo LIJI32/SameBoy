@@ -8,10 +8,10 @@ vec4 omniScale(sampler2D image, vec2 texCoord)
 {
     vec2 pixel = texCoord * textureDimensions - vec2(0.5, 0.5);
 
-    vec4 q11 = texture(image, vec2(floor(pixel.x) / textureDimensions.x, floor(pixel.y) / textureDimensions.y));
-    vec4 q12 = texture(image, vec2(floor(pixel.x) / textureDimensions.x, ceil(pixel.y) / textureDimensions.y));
-    vec4 q21 = texture(image, vec2(ceil(pixel.x) / textureDimensions.x, floor(pixel.y) / textureDimensions.y));
-    vec4 q22 = texture(image, vec2(ceil(pixel.x) / textureDimensions.x, ceil(pixel.y) / textureDimensions.y));
+    vec4 q11 = texture(image, (floor(pixel) + 0.5) / textureDimensions);
+    vec4 q12 = texture(image, (vec2(floor(pixel.x), ceil(pixel.y)) + 0.5) / textureDimensions);
+    vec4 q21 = texture(image, (vec2(ceil(pixel.x), floor(pixel.y)) + 0.5) / textureDimensions);
+    vec4 q22 = texture(image, (ceil(pixel) + 0.5) / textureDimensions);
 
     vec2 pos = fract(pixel);
 
