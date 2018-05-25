@@ -691,8 +691,13 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.wave_channel.enable) {
                     unsigned offset = ((gb->apu.wave_channel.current_sample_index + 1) >> 1) & 0xF;
                     
-                    /* On SGB2 (and probably SGB1 and MGB as well) this behavior is not accurate,
-                       however these systems are not currently emulated. */
+                    /* This glitch varies between models and even specific instances:
+                       DMG-B:     Most of them behave as emulated. A few behave differently.
+                       SGB:       As far as I know, all tested instances behave as emulated.
+                       MGB, SGB2: Most instances behave non-deterministically, a few behave as emulated.
+                     
+                      Additionally, I believe DMGs, including those we behave differently than emulated,
+                      are all deterministic. */
                     if (offset < 4) {
                         gb->io_registers[GB_IO_WAV_START] = gb->io_registers[GB_IO_WAV_START + offset];
                         gb->apu.wave_channel.wave_form[0] = gb->apu.wave_channel.wave_form[offset / 2];

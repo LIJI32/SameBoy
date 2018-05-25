@@ -269,6 +269,7 @@ struct GB_gameboy_internal_s {
         bool boot_rom_finished;
         bool ime_toggle; /* ei has delayed a effect.*/
         bool halt_bug;
+        bool just_halted;
 
         /* Misc state */
         bool infrared_input;
@@ -280,7 +281,7 @@ struct GB_gameboy_internal_s {
         bool hdma_on;
         bool hdma_on_hblank;
         uint8_t hdma_steps_left;
-        uint16_t hdma_cycles; // in 8MHz units
+        int16_t hdma_cycles; // in 8MHz units
         uint16_t hdma_current_src, hdma_current_dest;
 
         uint8_t dma_steps_left;
@@ -423,6 +424,7 @@ struct GB_gameboy_internal_s {
         uint8_t extra_penalty_for_sprite_at_0;
         bool is_first_line_mode2;
         bool oam_interrupt_line;
+        bool lyc_interrupt_line;
     );
 
     /* Unsaved data. This includes all pointers, as well as everything that shouldn't be on a save state */
@@ -437,6 +439,8 @@ struct GB_gameboy_internal_s {
             GB_MBC1M_WIRING,
         } mbc1_wiring;
 
+        unsigned pending_cycles;
+               
         /* Various RAMs */
         uint8_t *ram;
         uint8_t *vram;

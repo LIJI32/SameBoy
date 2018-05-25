@@ -929,16 +929,32 @@ static bool delete(GB_gameboy_t *gb, char *arguments, char *modifiers, const deb
 
     if (error) return true;
 
-    uint16_t index = find_breakpoint(gb, result);
-    if (index >= gb->n_breakpoints || gb->breakpoints[index].key != key) {
+    uint16_t index = 0;
+    for (unsigned i = 0; i < gb->n_breakpoints; i++) {
+        if (gb->breakpoints[i].key == key) {
+            /* Full match */
+            index = i;
+            break;
+        }
+        if (gb->breakpoints[i].addr == result.value && result.has_bank != (gb->breakpoints[i].bank != (uint16_t) -1)) {
+            /* Partial match */
+            index = i;
+        }
+    }
+    
+    if (index >= gb->n_breakpoints) {
         GB_log(gb, "No breakpoint set at %s\n", debugger_value_to_string(gb, result, true));
         return true;
     }
 
+    result.bank = gb->breakpoints[index].bank;
+    result.has_bank = gb->breakpoints[index].bank != (uint16_t) -1;
+    
     if (gb->breakpoints[index].condition) {
         free(gb->breakpoints[index].condition);
     }
 
+    
     memmove(&gb->breakpoints[index], &gb->breakpoints[index + 1], (gb->n_breakpoints - index - 1) * sizeof(gb->breakpoints[0]));
     gb->n_breakpoints--;
     gb->breakpoints = realloc(gb->breakpoints, gb->n_breakpoints * sizeof(gb->breakpoints[0]));
@@ -1086,11 +1102,26 @@ static bool unwatch(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
 
     if (error) return true;
 
-    uint16_t index = find_watchpoint(gb, result);
-    if (index >= gb->n_watchpoints || gb->watchpoints[index].key != key) {
+    uint16_t index = 0;
+    for (unsigned i = 0; i < gb->n_watchpoints; i++) {
+        if (gb->watchpoints[i].key == key) {
+            /* Full match */
+            index = i;
+            break;
+        }
+        if (gb->watchpoints[i].addr == result.value && result.has_bank != (gb->watchpoints[i].bank != (uint16_t) -1)) {
+            /* Partial match */
+            index = i;
+        }
+    }
+    
+    if (index >= gb->n_watchpoints) {
         GB_log(gb, "No watchpoint set at %s\n", debugger_value_to_string(gb, result, true));
         return true;
     }
+    
+    result.bank = gb->watchpoints[index].bank;
+    result.has_bank = gb->watchpoints[index].bank != (uint16_t) -1;
 
     if (gb->watchpoints[index].condition) {
         free(gb->watchpoints[index].condition);

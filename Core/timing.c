@@ -155,14 +155,7 @@ static void GB_timers_run(GB_gameboy_t *gb, uint8_t cycles)
 }
 
 void GB_advance_cycles(GB_gameboy_t *gb, uint8_t cycles)
-{
-    /* It appears that on the CGB, write timing is a bit different then on the DMG, effectively
-       making writes 1 T-cycle late when compared to the DMG. */
-    if (gb->is_cgb) {
-        cycles = (cycles + 1) & ~3;
-        if (cycles == 0) return;
-    }
-    
+{   
     // Affected by speed boost
     gb->dma_cycles += cycles;
 

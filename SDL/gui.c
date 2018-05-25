@@ -76,6 +76,7 @@ static const char *help[] ={
 " Pause:             " MODIFIER_NAME "+P\n"
 " Save state:    " MODIFIER_NAME "+(0-9)\n"
 " Load state:  " MODIFIER_NAME "+" SHIFT_STRING "+(0-9)\n"
+" Toggle Fullscreen  " MODIFIER_NAME "+F\n"
 #ifdef __APPLE__
 " Mute/Unmute:     " MODIFIER_NAME "+" SHIFT_STRING "+M\n"
 #else
