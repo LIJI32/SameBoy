@@ -3,7 +3,9 @@
 
 #include <SDL2/SDL.h>
 #include <Core/gb.h>
+#include <stdbool.h> 
 #include "shader.h"
+
 
 extern SDL_Window *window;
 extern SDL_Renderer *renderer;

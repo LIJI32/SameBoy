@@ -54,10 +54,10 @@
                         <rect key="frame" x="0.0" y="0.0" width="160" height="144"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <openGLView colorSize="5bit_RGB_8bit_Alpha" useAuxiliaryDepthBufferStencil="NO" allowOffline="YES" wantsBestResolutionOpenGLSurface="YES" id="uqf-pe-VAF" customClass="GBView">
+                            <view id="uqf-pe-VAF" customClass="GBView">
                                 <rect key="frame" x="0.0" y="0.0" width="160" height="144"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                            </openGLView>
+                            </view>
                         </subviews>
                     </customView>
                 </subviews>

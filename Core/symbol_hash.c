@@ -1,4 +1,8 @@
 #include "gb.h"
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 
 static size_t GB_map_find_symbol_index(GB_symbol_map_t *map, uint16_t addr)
 {

@@ -1,6 +1,7 @@
 #ifndef MBC_h
 #define MBC_h
 #include "gb_struct_def.h"
+#include <stdbool.h>
 
 typedef struct {
     enum {

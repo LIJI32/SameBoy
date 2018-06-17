@@ -90,11 +90,18 @@ static char *default_async_input_callback(GB_gameboy_t *gb)
 }
 #endif
 
-void GB_init(GB_gameboy_t *gb)
+void GB_init(GB_gameboy_t *gb, GB_model_t model)
 {
     memset(gb, 0, sizeof(*gb));
-    gb->ram = malloc(gb->ram_size = 0x2000);
-    gb->vram = malloc(gb->vram_size = 0x2000);
+    gb->model = model;
+    if (GB_is_cgb(gb)) {
+        gb->ram = malloc(gb->ram_size = 0x2000 * 8);
+        gb->vram = malloc(gb->vram_size = 0x2000 * 2);
+    }
+    else {
+        gb->ram = malloc(gb->ram_size = 0x2000);
+        gb->vram = malloc(gb->vram_size = 0x2000);
+    }
 
 #ifndef DISABLE_DEBUGGER
     gb->input_callback = default_input_callback;
@@ -106,21 +113,9 @@ void GB_init(GB_gameboy_t *gb)
     GB_reset(gb);
 }
 
-void GB_init_cgb(GB_gameboy_t *gb)
+GB_model_t GB_get_model(GB_gameboy_t *gb)
 {
-    memset(gb, 0, sizeof(*gb));
-    gb->ram = malloc(gb->ram_size = 0x2000 * 8);
-    gb->vram = malloc(gb->vram_size = 0x2000 * 2);
-    gb->is_cgb = true;
-
-#ifndef DISABLE_DEBUGGER
-    gb->input_callback = default_input_callback;
-    gb->async_input_callback = default_async_input_callback;
-#endif
-    gb->cartridge_type = &GB_cart_defs[0]; // Default cartridge type
-    gb->clock_multiplier = 1.0;
-    
-    GB_reset(gb);
+    return gb->model;
 }
 
 void GB_free(GB_gameboy_t *gb)
@@ -340,7 +335,7 @@ void GB_set_async_input_callback(GB_gameboy_t *gb, GB_input_callback_t callback)
 
 void GB_set_rgb_encode_callback(GB_gameboy_t *gb, GB_rgb_encode_callback_t callback)
 {
-    if (!gb->rgb_encode_callback && !gb->is_cgb) {
+    if (!gb->rgb_encode_callback && !GB_is_cgb(gb)) {
         gb->sprite_palettes_rgb[4] = gb->sprite_palettes_rgb[0] = gb->background_palettes_rgb[0] =
         callback(gb, 0xFF, 0xFF, 0xFF);
         gb->sprite_palettes_rgb[5] = gb->sprite_palettes_rgb[1] = gb->background_palettes_rgb[1] =
@@ -425,7 +420,7 @@ bool GB_is_inited(GB_gameboy_t *gb)
 
 bool GB_is_cgb(GB_gameboy_t *gb)
 {
-    return gb->is_cgb;
+    return ((gb->model) & GB_MODEL_FAMILY_MASK) == GB_MODEL_CGB_FAMILY;
 }
 
 void GB_set_turbo_mode(GB_gameboy_t *gb, bool on, bool no_frame_skip)
@@ -452,7 +447,7 @@ void GB_set_user_data(GB_gameboy_t *gb, void *data)
 void GB_reset(GB_gameboy_t *gb)
 {
     uint32_t mbc_ram_size = gb->mbc_ram_size;
-    bool cgb = gb->is_cgb;
+    bool cgb = GB_is_cgb(gb);
     memset(gb, 0, (size_t)GB_GET_SECTION((GB_gameboy_t *) 0, unsaved));
     gb->version = GB_STRUCT_VERSION;
     
@@ -467,7 +462,7 @@ void GB_reset(GB_gameboy_t *gb)
         gb->vram_size = 0x2000 * 2;
         memset(gb->vram, 0, gb->vram_size);
         
-        gb->is_cgb = true;
+        gb->model = GB_MODEL_CGB_E;
         gb->cgb_mode = true;
     }
     else {
@@ -492,16 +487,17 @@ void GB_reset(GB_gameboy_t *gb)
     gb->io_registers[GB_IO_SC] = 0x7E;
     
     /* These are not deterministic, but 00 (CGB) and FF (DMG) are the most common initial values by far */
-    gb->io_registers[GB_IO_DMA] = gb->io_registers[GB_IO_OBP0] = gb->io_registers[GB_IO_OBP1] = gb->is_cgb? 0x00 : 0xFF;
+    gb->io_registers[GB_IO_DMA] = gb->io_registers[GB_IO_OBP0] = gb->io_registers[GB_IO_OBP1] = GB_is_cgb(gb)? 0x00 : 0xFF;
     
     gb->accessed_oam_row = -1;
 
     gb->magic = (uintptr_t)'SAME';
 }
 
-void GB_switch_model_and_reset(GB_gameboy_t *gb, bool is_cgb)
+void GB_switch_model_and_reset(GB_gameboy_t *gb, GB_model_t model)
 {
-    if (is_cgb) {
+    gb->model = model;
+    if (GB_is_cgb(gb)) {
         gb->ram = realloc(gb->ram, gb->ram_size = 0x2000 * 8);
         gb->vram = realloc(gb->vram, gb->vram_size = 0x2000 * 2);
     }
@@ -509,7 +505,6 @@ void GB_switch_model_and_reset(GB_gameboy_t *gb, bool is_cgb)
         gb->ram = realloc(gb->ram, gb->ram_size = 0x2000);
         gb->vram = realloc(gb->vram, gb->vram_size = 0x2000);
     }
-    gb->is_cgb = is_cgb;
     GB_rewind_free(gb);
     GB_reset(gb);
 }
@@ -554,7 +549,7 @@ void *GB_get_direct_access(GB_gameboy_t *gb, GB_direct_access_t access, size_t *
             *bank = 0;
             return &gb->io_registers;
         case GB_DIRECT_ACCESS_BOOTROM:
-            *size = gb->is_cgb? sizeof(gb->boot_rom) : 0x100;
+            *size = GB_is_cgb(gb)? sizeof(gb->boot_rom) : 0x100;
             *bank = 0;
             return &gb->boot_rom;
         case GB_DIRECT_ACCESS_OAM:

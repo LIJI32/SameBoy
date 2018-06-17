@@ -1,27 +1,32 @@
 #version 150
 uniform sampler2D image;
-uniform sampler2D previousImage;
-uniform bool uMixPrevious;
+uniform sampler2D previous_image;
+uniform bool mix_previous;
 
-uniform vec2 uResolution;
-uniform vec2 uOrigin;
-const vec2 textureDimensions = vec2(160, 144);
+uniform vec2 output_resolution;
+uniform vec2 origin;
+const vec2 input_resolution = vec2(160, 144);
+
+#define equal(x, y) ((x) == (y))
+#define inequal(x, y) ((x) != (y))
+#define STATIC
 
 out vec4 frag_color;
 
-vec4 modified_frag_cord;
-#define gl_FragCoord modified_frag_cord
 #line 1
 {filter}
-#undef gl_FragCoord
 
-void main() {
-    modified_frag_cord = gl_FragCoord - vec4(uOrigin.x, uOrigin.y, 0, 0);
+void main()
+{
+    vec2 position = gl_FragCoord.xy - origin;
+    position /= output_resolution;
+    position.y = 1 - position.y;
     
-    if (uMixPrevious) {
-        frag_color = mix(scale(image), scale(previousImage), 0.5);
+    if (mix_previous) {
+        frag_color = mix(scale(image, position, input_resolution, output_resolution),
+                         scale(previous_image, position, input_resolution, output_resolution), 0.5);
     }
     else {
-        frag_color = scale(image);
+        frag_color = scale(image, position, input_resolution, output_resolution);
     }
 }

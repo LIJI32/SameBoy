@@ -20,7 +20,34 @@
 #include "z80_cpu.h"
 #include "symbol_hash.h"
 
-#define GB_STRUCT_VERSION 12
+#define GB_STRUCT_VERSION 13
+
+typedef enum {
+#ifdef GB_INTERNAL
+    GB_MODEL_FAMILY_MASK = 0xF00,
+    GB_MODEL_DMG_FAMILY = 0x000,
+#endif
+    // GB_MODEL_DMG_0 = 0x000,
+    // GB_MODEL_DMG_A = 0x001,
+    GB_MODEL_DMG_B = 0x002,
+    // GB_MODEL_DMG_C = 0x003,
+    // GB_MODEL_SGB = 0x004,
+#ifdef GB_INTERNAL
+    GB_MODEL_MGB_FAMILY = 0x100,
+#endif
+    // GB_MODEL_MGB = 0x100,
+    // GB_MODEL_SGB2 = 0x101,
+#ifdef GB_INTERNAL
+    GB_MODEL_CGB_FAMILY = 0x200,
+#endif
+    // GB_MODEL_CGB_0 = 0x200,
+    // GB_MODEL_CGB_A = 0x201,
+    // GB_MODEL_CGB_B = 0x202,
+    // GB_MODEL_CGB_C = 0x203,
+    // GB_MODEL_CGB_D = 0x204,
+    GB_MODEL_CGB_E = 0x205,
+    GB_MODEL_AGB = 0x206,
+} GB_model_t;
 
 enum {
     GB_REGISTER_AF,
@@ -261,8 +288,8 @@ struct GB_gameboy_internal_s {
         uint8_t cgb_ram_bank;
 
         /* CPU and General Hardware Flags*/
+        GB_model_t model;
         bool cgb_mode;
-        bool is_cgb;
         bool cgb_double_speed;
         bool halted;
         bool stopped;
@@ -350,7 +377,7 @@ struct GB_gameboy_internal_s {
     GB_SECTION(timing,
         GB_UNIT(display);
         GB_UNIT(div);
-        uint32_t div_counter;
+        uint16_t div_counter;
         uint8_t tima_reload_state; /* After TIMA overflows, it becomes 0 for 4 cycles before actually reloading. */
         uint16_t serial_cycles;
         uint16_t serial_length;
@@ -422,8 +449,7 @@ struct GB_gameboy_internal_s {
         uint8_t oam_search_index;
         uint8_t accessed_oam_row;
         uint8_t extra_penalty_for_sprite_at_0;
-        bool is_first_line_mode2;
-        bool oam_interrupt_line;
+        uint8_t mode_for_interrupt;
         bool lyc_interrupt_line;
     );
 
@@ -548,13 +574,13 @@ struct GB_gameboy_s {
 __attribute__((__format__ (__printf__, fmtarg, firstvararg)))
 #endif
 
-void GB_init(GB_gameboy_t *gb);
-void GB_init_cgb(GB_gameboy_t *gb);
+void GB_init(GB_gameboy_t *gb, GB_model_t model);
 bool GB_is_inited(GB_gameboy_t *gb);
 bool GB_is_cgb(GB_gameboy_t *gb);
+GB_model_t GB_get_model(GB_gameboy_t *gb);
 void GB_free(GB_gameboy_t *gb);
 void GB_reset(GB_gameboy_t *gb);
-void GB_switch_model_and_reset(GB_gameboy_t *gb, bool is_cgb);
+void GB_switch_model_and_reset(GB_gameboy_t *gb, GB_model_t model);
 
 /* Returns the time passed, in 4MHz ticks. */
 uint8_t GB_run(GB_gameboy_t *gb);

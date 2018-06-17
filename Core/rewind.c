@@ -1,4 +1,7 @@
-#include "rewind.h"
+#include "gb.h"
+#include <stdint.h>
+#include <stddef.h>
+#include <stdlib.h>
 #include <math.h>
 
 static uint8_t *state_compress(const uint8_t *prev, const uint8_t *data, size_t uncompressed_size)

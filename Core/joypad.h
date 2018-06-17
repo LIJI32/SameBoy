@@ -1,6 +1,7 @@
 #ifndef joypad_h
 #define joypad_h
 #include "gb_struct_def.h"
+#include <stdbool.h>
 
 typedef enum {
     GB_KEY_RIGHT,

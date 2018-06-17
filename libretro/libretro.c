@@ -52,6 +52,13 @@ enum model {
     MODEL_AUTO
 };
 
+static const GB_model_t libretro_to_internal_model[] =
+{
+    [MODEL_DMG] = GB_MODEL_DMG_B,
+    [MODEL_CGB] = GB_MODEL_CGB_E,
+    [MODEL_AGB] = GB_MODEL_AGB
+};
+
 enum screen_layout {
     LAYOUT_TOP_DOWN,
     LAYOUT_LEFT_RIGHT
@@ -226,7 +233,7 @@ static const struct retro_variable vars_single[] = {
     { "sameboy_dual", "Single cart dual mode (reload); disabled|enabled" },
     { "sameboy_color_correction_mode", "Color correction; off|correct curves|emulate hardware|preserve brightness" },
     { "sameboy_high_pass_filter_mode", "High-pass filter; off|accurate|remove dc offset" },
-    { "sameboy_model", "Emulated model (reload); Game Boy Color|Game Boy Advance|Auto|Game Boy" },
+    { "sameboy_model", "Emulated model; Game Boy Color|Game Boy Advance|Auto|Game Boy" },
     { NULL }
 };
 
@@ -237,8 +244,8 @@ static const struct retro_variable vars_single_dual[] = {
     /*{ "sameboy_ir",   "Infrared Sensor Emulation; disabled|enabled" },*/
     { "sameboy_screen_layout", "Screen layout; top-down|left-right" },
     { "sameboy_audio_output", "Audio output; Game Boy #1|Game Boy #2" },
-    { "sameboy_model_1", "Emulated model for Game Boy #1 (reload); Game Boy Color|Game Boy Advance|Auto|Game Boy" },
-    { "sameboy_model_2", "Emulated model for Game Boy #2 (reload); Game Boy Color|Game Boy Advance|Auto|Game Boy" },
+    { "sameboy_model_1", "Emulated model for Game Boy #1; Game Boy Color|Game Boy Advance|Auto|Game Boy" },
+    { "sameboy_model_2", "Emulated model for Game Boy #2; Game Boy Color|Game Boy Advance|Auto|Game Boy" },
     { "sameboy_color_correction_mode_1", "Color correction for Game Boy #1; off|correct curves|emulate hardware|preserve brightness" },
     { "sameboy_color_correction_mode_2", "Color correction for Game Boy #2; off|correct curves|emulate hardware|preserve brightness" },
     { "sameboy_high_pass_filter_mode_1", "High-pass filter for Game Boy #1; off|accurate|remove dc offset" },
@@ -252,8 +259,8 @@ static const struct retro_variable vars_dual[] = {
     /*{ "sameboy_ir",   "Infrared Sensor Emulation; disabled|enabled" },*/
     { "sameboy_screen_layout", "Screen layout; top-down|left-right" },
     { "sameboy_audio_output", "Audio output; Game Boy #1|Game Boy #2" },
-    { "sameboy_model_1", "Emulated model for Game Boy #1 (reload); Game Boy Color|Game Boy Advance|Auto|Game Boy" },
-    { "sameboy_model_2", "Emulated model for Game Boy #2 (reload); Game Boy Color|Game Boy Advance|Auto|Game Boy" },
+    { "sameboy_model_1", "Emulated model for Game Boy #1; Game Boy Color|Game Boy Advance|Auto|Game Boy" },
+    { "sameboy_model_2", "Emulated model for Game Boy #2; Game Boy Color|Game Boy Advance|Auto|Game Boy" },
     { "sameboy_color_correction_mode_1", "Color correction for Game Boy #1; off|correct curves|emulate hardware|preserve brightness" },
     { "sameboy_color_correction_mode_2", "Color correction for Game Boy #2; off|correct curves|emulate hardware|preserve brightness" },
     { "sameboy_high_pass_filter_mode_1", "High-pass filter for Game Boy #1; off|accurate|remove dc offset" },
@@ -303,44 +310,37 @@ static void set_link_cable_state(bool state)
     }
 }
 
-static void init_for_current_model(void)
+static void init_for_current_model(unsigned id)
 {
-    unsigned i = 0;
-    enum model effective_model[2];
-    for (i=0; i < emulated_devices; i++)
-    {
-        effective_model[i] = model[i];
-        if (effective_model[i] == MODEL_AUTO) {
-            effective_model[i] = auto_model;
-        }
+    unsigned i = id;
+    enum model effective_model;
+
+    effective_model = model[i];
+    if (effective_model == MODEL_AUTO) {
+        effective_model = auto_model;
     }
 
-    for (i = 0; i < emulated_devices; i++)
-    {
-        if (GB_is_inited(&gameboy[i]))
-            GB_switch_model_and_reset(&gameboy[i], effective_model[i] != MODEL_DMG);
 
-        else
-        {
-            if (effective_model[i] == MODEL_DMG)
-                GB_init(&gameboy[i]);
-            else
-                GB_init_cgb(&gameboy[i]);
-        }
-        const char *model_name = (const char *[]){"dmg", "cgb", "agb"}[effective_model[i]];
-        const unsigned char *boot_code = (const unsigned char *[]){dmg_boot, cgb_boot, agb_boot}[effective_model[i]];
-        unsigned boot_length = (unsigned []){dmg_boot_length, cgb_boot_length, agb_boot_length}[effective_model[i]];
-
-        char buf[256];
-        snprintf(buf, sizeof(buf), "%s%c%s_boot.bin", retro_system_directory, slash, model_name);
-        log_cb(RETRO_LOG_INFO, "Loading boot image: %s\n", buf);
-        if (GB_load_boot_rom(&gameboy[i], buf))
-            GB_load_boot_rom_from_buffer(&gameboy[i], boot_code, boot_length);
-        GB_set_user_data(&gameboy[i], (void*)NULL);
-        GB_set_pixels_output(&gameboy[i],(unsigned int*)(frame_buf + i * VIDEO_PIXELS));
-        GB_set_rgb_encode_callback(&gameboy[i], rgb_encode);
-        GB_set_sample_rate(&gameboy[i], AUDIO_FREQUENCY);
+    if (GB_is_inited(&gameboy[i])) {
+        GB_switch_model_and_reset(&gameboy[i], libretro_to_internal_model[effective_model]);
     }
+    else {
+        GB_init(&gameboy[i], libretro_to_internal_model[effective_model]);
+    }
+    const char *model_name = (const char *[]){"dmg", "cgb", "agb"}[effective_model];
+    const unsigned char *boot_code = (const unsigned char *[]){dmg_boot, cgb_boot, agb_boot}[effective_model];
+    unsigned boot_length = (unsigned []){dmg_boot_length, cgb_boot_length, agb_boot_length}[effective_model];
+
+    char buf[256];
+    snprintf(buf, sizeof(buf), "%s%c%s_boot.bin", retro_system_directory, slash, model_name);
+    log_cb(RETRO_LOG_INFO, "Initializing as model: %s\n", model_name);
+    log_cb(RETRO_LOG_INFO, "Loading boot image: %s\n", buf);
+    if (GB_load_boot_rom(&gameboy[i], buf))
+        GB_load_boot_rom_from_buffer(&gameboy[i], boot_code, boot_length);
+    GB_set_user_data(&gameboy[i], (void*)NULL);
+    GB_set_pixels_output(&gameboy[i],(unsigned int*)(frame_buf + i * VIDEO_PIXELS));
+    GB_set_rgb_encode_callback(&gameboy[i], rgb_encode);
+    GB_set_sample_rate(&gameboy[i], AUDIO_FREQUENCY);
 
     /* todo: attempt to make these more generic */
     GB_set_vblank_callback(&gameboy[0], (GB_vblank_callback_t) vblank1);
@@ -398,7 +398,6 @@ static void init_for_current_model(void)
 static void check_variables(bool link)
 {
     struct retro_variable var = {0};
-
     if (!link)
     {
         var.key = "sameboy_color_correction_mode";
@@ -442,6 +441,7 @@ static void check_variables(bool link)
                 new_model = MODEL_AUTO;
 
             model[0] = new_model;
+            init_for_current_model(0);
         }
     }
     else
@@ -512,7 +512,11 @@ static void check_variables(bool link)
             else
                 new_model = MODEL_AUTO;
 
-            model[0] = new_model;
+            if (model[0] != new_model)
+            {
+                model[0] = new_model;
+                init_for_current_model(0);
+            }
         }
 
         var.key = "sameboy_model_2";
@@ -529,7 +533,11 @@ static void check_variables(bool link)
             else
                 new_model = MODEL_AUTO;
 
-            model[1] = new_model;
+            if (model[1] != new_model)
+            {
+                model[1] = new_model;
+                init_for_current_model(1);
+            }
         }
 
     }
@@ -787,6 +795,7 @@ bool retro_load_game(const struct retro_game_info *info)
 {
     environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, (void *)vars_single);
     check_variables(false);
+
     if (sameboy_dual)
     {
         emulated_devices = 2;
@@ -813,10 +822,9 @@ bool retro_load_game(const struct retro_game_info *info)
     auto_model = (info->path[strlen(info->path) - 1] & ~0x20) == 'C' ? MODEL_CGB : MODEL_DMG;
     snprintf(retro_game_path, sizeof(retro_game_path), "%s", info->path);
 
-    init_for_current_model();
-
     for (int i = 0; i < emulated_devices; i++)
     {
+        init_for_current_model(i);
         if (GB_load_rom(&gameboy[i],info->path))
         {
             log_cb(RETRO_LOG_INFO, "Failed to load ROM at %s\n", info->path);
@@ -902,9 +910,9 @@ bool retro_load_game_special(unsigned type, const struct retro_game_info *info, 
     auto_model = (info->path[strlen(info->path) - 1] & ~0x20) == 'C' ? MODEL_CGB : MODEL_DMG;
     snprintf(retro_game_path, sizeof(retro_game_path), "%s", info->path);
 
-    init_for_current_model();
     for (int i = 0; i < emulated_devices; i++)
     {
+        init_for_current_model(i);
         if (GB_load_rom(&gameboy[i], info[i].path))
         {
             log_cb(RETRO_LOG_INFO, "Failed to load ROM\n");

@@ -24,7 +24,7 @@ static GB_bus_t bus_for_addr(GB_gameboy_t *gb, uint16_t addr)
         return GB_BUS_MAIN;
     }
     if (addr < 0xFE00) {
-        return gb->is_cgb? GB_BUS_RAM : GB_BUS_MAIN;
+        return GB_is_cgb(gb)? GB_BUS_RAM : GB_BUS_MAIN;
     }
     return GB_BUS_INTERNAL;
 }
@@ -46,7 +46,7 @@ static uint8_t bitwise_glitch_read_increase(uint8_t a, uint8_t b, uint8_t c, uin
 
 void GB_trigger_oam_bug(GB_gameboy_t *gb, uint16_t address)
 {
-    if (gb->is_cgb) return;
+    if (GB_is_cgb(gb)) return;
     
     if (address >= 0xFE00 && address < 0xFF00) {
         if (gb->accessed_oam_row != 0xff && gb->accessed_oam_row >= 8) {
@@ -65,7 +65,7 @@ void GB_trigger_oam_bug(GB_gameboy_t *gb, uint16_t address)
 
 void GB_trigger_oam_bug_read(GB_gameboy_t *gb, uint16_t address)
 {
-    if (gb->is_cgb) return;
+    if (GB_is_cgb(gb)) return;
     
     if (address >= 0xFE00 && address < 0xFF00) {
         if (gb->accessed_oam_row != 0xff && gb->accessed_oam_row >= 8) {
@@ -86,7 +86,7 @@ void GB_trigger_oam_bug_read(GB_gameboy_t *gb, uint16_t address)
 
 void GB_trigger_oam_bug_read_increase(GB_gameboy_t *gb, uint16_t address)
 {
-    if (gb->is_cgb) return;
+    if (GB_is_cgb(gb)) return;
     
     if (address >= 0xFE00 && address < 0xFF00) {
         if (gb->accessed_oam_row != 0xff && gb->accessed_oam_row >= 0x20 && gb->accessed_oam_row < 0x98) {            
@@ -119,7 +119,7 @@ static uint8_t read_rom(GB_gameboy_t *gb, uint16_t addr)
         return gb->boot_rom[addr];
     }
 
-    if (addr >= 0x200 && addr < 0x900 && gb->is_cgb && !gb->boot_rom_finished) {
+    if (addr >= 0x200 && addr < 0x900 && GB_is_cgb(gb) && !gb->boot_rom_finished) {
         return gb->boot_rom[addr];
     }
 
@@ -208,7 +208,7 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
         }
         
         if (gb->oam_read_blocked) {
-            if (!gb->is_cgb) {
+            if (!GB_is_cgb(gb)) {
                 if (addr < 0xFEA0) {
                     if (gb->accessed_oam_row == 0) {
                         gb->oam[(addr & 0xf8)] =
@@ -249,7 +249,7 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
         if ((gb->io_registers[GB_IO_STAT] & 0x3) >= 2) { /* Seems to be disabled in Modes 2 and 3 */
             return 0xFF;
         }
-        if (gb->is_cgb) {
+        if (GB_is_cgb(gb)) {
             return (addr & 0xF0) | ((addr >> 4) & 0xF);
         }
     }
@@ -275,11 +275,11 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
                 return gb->io_registers[GB_IO_DMG_EMULATION_INDICATION] | 0xFE;
 
             case GB_IO_PCM_12:
-                if (!gb->is_cgb) return 0xFF;
+                if (!GB_is_cgb(gb)) return 0xFF;
                 return (gb->apu.is_active[GB_SQUARE_2] ? (gb->apu.samples[GB_SQUARE_2] << 4) : 0) |
                         (gb->apu.is_active[GB_SQUARE_1] ? (gb->apu.samples[GB_SQUARE_1]) : 0);
             case GB_IO_PCM_34:
-                if (!gb->is_cgb) return 0xFF;
+                if (!GB_is_cgb(gb)) return 0xFF;
                 return (gb->apu.is_active[GB_NOISE] ? (gb->apu.samples[GB_NOISE] << 4) : 0) |
                        (gb->apu.is_active[GB_WAVE] ? (gb->apu.samples[GB_WAVE]) : 0);
             case GB_IO_JOYP:
@@ -314,7 +314,7 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
                 }
                 return gb->cgb_ram_bank | ~0x7;
             case GB_IO_VBK:
-                if (!gb->is_cgb) {
+                if (!GB_is_cgb(gb)) {
                     return 0xFF;
                 }
                 return gb->cgb_vram_bank | ~0x1;
@@ -322,7 +322,7 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
             /* Todo: It seems that a CGB in DMG mode can access BGPI and OBPI, but not BGPD and OBPD? */
             case GB_IO_BGPI:
             case GB_IO_OBPI:
-                if (!gb->is_cgb) {
+                if (!GB_is_cgb(gb)) {
                     return 0xFF;
                 }
                 return gb->io_registers[addr & 0xFF] | 0x40;
@@ -357,11 +357,11 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
             }
             case GB_IO_UNKNOWN2:
             case GB_IO_UNKNOWN3:
-                return gb->is_cgb? gb->io_registers[addr & 0xFF] : 0xFF;
+                return GB_is_cgb(gb)? gb->io_registers[addr & 0xFF] : 0xFF;
             case GB_IO_UNKNOWN4:
                 return gb->cgb_mode? gb->io_registers[addr & 0xFF] : 0xFF;
             case GB_IO_UNKNOWN5:
-                return gb->is_cgb? gb->io_registers[addr & 0xFF] | 0x8F : 0xFF;
+                return GB_is_cgb(gb)? gb->io_registers[addr & 0xFF] | 0x8F : 0xFF;
             default:
                 if ((addr & 0xFF) >= GB_IO_NR10 && (addr & 0xFF) <= GB_IO_WAV_END) {
                     return GB_apu_read(gb, addr & 0xFF);
@@ -531,7 +531,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
             return;
         }
         
-        if (gb->is_cgb) {
+        if (GB_is_cgb(gb)) {
             if (addr < 0xFEA0) {
                 gb->oam[addr & 0xFF] = value;
             }
@@ -599,7 +599,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 /* TODO: Probably completely wrong in double speed mode */
                 
                 /* TODO: This hack is disgusting */
-                if (gb->display_state == 29 && gb->is_cgb) {
+                if (gb->display_state == 29 && GB_is_cgb(gb)) {
                     gb->ly_for_comparison = 153;
                     GB_STAT_update(gb);
                     gb->ly_for_comparison = 0;
@@ -609,14 +609,14 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 
                 /* These are the states when LY changes, let the display routine call GB_STAT_update for use
                    so it correctly handles T-cycle accurate LYC writes */
-                if (!gb->is_cgb  || (
+                if (!GB_is_cgb(gb)  || (
                     gb->display_state != 6 &&
                     gb->display_state != 26 &&
                     gb->display_state != 15 &&
                     gb->display_state != 16)) {
                     
                     /* More hacks to make LYC write conflicts work */
-                    if (gb->display_state == 14 && gb->is_cgb) {
+                    if (gb->display_state == 14 && GB_is_cgb(gb)) {
                         gb->ly_for_comparison = 153;
                         GB_STAT_update(gb);
                         gb->ly_for_comparison = -1;
@@ -664,11 +664,6 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 return;
 
             case GB_IO_STAT:
-                /* A DMG bug: http://www.devrs.com/gb/files/faqs.html#GBBugs */
-                if (!gb->is_cgb && !gb->stat_interrupt_line && !gb->is_first_line_mode2 &&
-                    (gb->io_registers[GB_IO_STAT] & 0x3) < 2 && (gb->io_registers[GB_IO_LCDC] & 0x80)) {
-                    gb->io_registers[GB_IO_IF] |= 2;
-                }
                 /* Delete previous R/W bits */
                 gb->io_registers[GB_IO_STAT] &= 7;
                 /* Set them by value */
@@ -696,7 +691,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 return;
 
             case GB_IO_DMG_EMULATION:
-                if (gb->is_cgb && !gb->boot_rom_finished) {
+                if (GB_is_cgb(gb) && !gb->boot_rom_finished) {
                     gb->cgb_mode = value != 4; /* The real "contents" of this register aren't quite known yet. */
                 }
                 return;
@@ -733,7 +728,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 
             case GB_IO_BGPI:
             case GB_IO_OBPI:
-                if (!gb->is_cgb) {
+                if (!GB_is_cgb(gb)) {
                     return;
                 }
                 gb->io_registers[addr & 0xFF] = value;
@@ -828,7 +823,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 return;
 
             case GB_IO_RP: {
-                if (!gb->is_cgb) {
+                if (!GB_is_cgb(gb)) {
                     return;
                 }
                 if ((value & 1) != (gb->io_registers[GB_IO_RP] & 1)) {

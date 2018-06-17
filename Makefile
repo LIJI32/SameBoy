@@ -61,7 +61,7 @@ ifeq ($(PLATFORM),Darwin)
 SYSROOT := $(shell xcodebuild -sdk macosx -version Path 2> /dev/null)
 CFLAGS += -F/Library/Frameworks
 OCFLAGS += -x objective-c -fobjc-arc -Wno-deprecated-declarations -isysroot $(SYSROOT) -mmacosx-version-min=10.9
-LDFLAGS += -framework AppKit -framework PreferencePanes -framework Carbon -framework QuartzCore
+LDFLAGS += -framework AppKit -framework PreferencePanes -framework Carbon -framework QuartzCore -weak_framework Metal -weak_framework MetalKit
 SDL_LDFLAGS := -F/Library/Frameworks -framework SDL2 -framework OpenGL
 endif
 CFLAGS += -Wno-deprecated-declarations
@@ -160,8 +160,6 @@ $(OBJ)/%.m.o: %.m
 
 # Cocoa Port
 
-Shaders:$(shell ls Shaders/*.fsh)
-
 $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
                     $(shell ls Cocoa/*.icns) \
                     Cocoa/License.html \
@@ -178,7 +176,7 @@ $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
 	sed s/@VERSION/$(VERSION)/ < Cocoa/Info.plist > $(BIN)/SameBoy.app/Contents/Info.plist
 	cp Cocoa/License.html $(BIN)/SameBoy.app/Contents/Resources/Credits.html
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Resources/Shaders
-	cp Shaders/*.fsh $(BIN)/SameBoy.app/Contents/Resources/Shaders
+	cp Shaders/*.fsh Shaders/*.metal $(BIN)/SameBoy.app/Contents/Resources/Shaders
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Library/QuickLook/
 	cp -rf $(BIN)/SameBoy.qlgenerator $(BIN)/SameBoy.app/Contents/Library/QuickLook/
 
@@ -288,8 +286,8 @@ $(BIN)/SDL/background.bmp: SDL/background.bmp
 	cp -f $^ $@
 
 $(BIN)/SDL/Shaders: Shaders
-	-@$(MKDIR) -p $(dir $@)
-	cp -rf $^ $@
+	-@$(MKDIR) -p $@
+	cp -rf Shaders/*.fsh $@
 
 # Boot ROMs
 

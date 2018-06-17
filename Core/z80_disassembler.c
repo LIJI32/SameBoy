@@ -662,7 +662,7 @@ static void srl_r(GB_gameboy_t *gb, uint8_t opcode, uint16_t *pc)
 static void swap_r(GB_gameboy_t *gb, uint8_t opcode, uint16_t *pc)
 {
     (*pc)++;
-    GB_log(gb, "RLC %s\n",  get_src_name(opcode));
+    GB_log(gb, "SWAP %s\n",  get_src_name(opcode));
 }
 
 static void bit_r(GB_gameboy_t *gb, uint8_t opcode, uint16_t *pc)

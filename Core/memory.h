@@ -1,6 +1,7 @@
 #ifndef memory_h
 #define memory_h
-#include "gb.h"
+#include "gb_struct_def.h"
+#include <stdint.h>
 
 uint8_t GB_read_memory(GB_gameboy_t *gb, uint16_t addr);
 void GB_write_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value);

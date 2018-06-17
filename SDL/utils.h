@@ -1,5 +1,6 @@
 #ifndef utils_h
 #define utils_h
+#include <stddef.h>
 
 const char *executable_folder(void);
 char *executable_relative_path(const char *filename);

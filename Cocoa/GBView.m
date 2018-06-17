@@ -1,6 +1,7 @@
-#import <OpenGL/gl.h>
 #import <Carbon/Carbon.h>
 #import "GBView.h"
+#import "GBViewGL.h"
+#import "GBViewMetal.h"
 #import "GBButtons.h"
 #import "NSString+StringForKey.h"
 
@@ -17,29 +18,26 @@
     NSEventModifierFlags previousModifiers;
 }
 
-- (void) awakeFromNib
++ (instancetype)alloc
 {
-    NSOpenGLPixelFormatAttribute attrs[] =
-    {
-        NSOpenGLPFAOpenGLProfile,
-        NSOpenGLProfileVersion3_2Core,
-        0
-    };
-
-    NSOpenGLPixelFormat *pf = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs] ;
-
-    if (!pf)
-    {
-        NSLog(@"No OpenGL pixel format");
-    }
-
-    NSOpenGLContext* context = [[NSOpenGLContext alloc] initWithFormat:pf shareContext:nil] ;
-
-    [self setPixelFormat:pf];
-
-    [self setOpenGLContext:context];
+    return [self allocWithZone:NULL];
 }
 
++ (instancetype)allocWithZone:(struct _NSZone *)zone
+{
+    if (self == [GBView class]) {
+        if ([GBViewMetal isSupported]) {
+            return [GBViewMetal allocWithZone: zone];
+        }
+        return [GBViewGL allocWithZone: zone];
+    }
+    return [super allocWithZone:zone];
+}
+
+- (void) createInternalView
+{
+    assert(false && "createInternalView must not be inherited");
+}
 
 - (void) _init
 {
@@ -47,7 +45,6 @@
     image_buffers[1] = malloc(160 * 144 * 4);
     image_buffers[2] = malloc(160 * 144 * 4);
     _shouldBlendFrameWithPrevious = 1;
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(filterChanged) name:@"GBFilterChanged" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ratioKeepingChanged) name:@"GBAspectChanged" object:nil];
     tracking_area = [ [NSTrackingArea alloc] initWithRect:(NSRect){}
                                                   options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect
@@ -55,12 +52,9 @@
                                                  userInfo:nil];
     [self addTrackingArea:tracking_area];
     clockMultiplier = 1.0;
-}
-
-- (void) filterChanged
-{
-    [self setNeedsDisplay:YES];
-    self.shader = nil;
+    [self createInternalView];
+    [self addSubview:self.internalView];
+    self.internalView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 }
 
 - (void) ratioKeepingChanged
@@ -130,29 +124,6 @@
     }
 
     [super setFrame:frame];
-}
-
-- (void)drawRect:(NSRect)dirtyRect {
-    if (!self.shader) {
-        self.shader = [[GBShader alloc] initWithName:[[NSUserDefaults standardUserDefaults] objectForKey:@"GBFilter"]];
-    }
-
-    double scale = self.window.backingScaleFactor;
-    glViewport(0, 0, self.bounds.size.width * scale, self.bounds.size.height * scale);
-
-    if (_shouldBlendFrameWithPrevious) {
-        [self.shader renderBitmap:image_buffers[current_buffer]
-                         previous:image_buffers[(current_buffer + 2) % self.numberOfBuffers]
-                           inSize:self.bounds.size
-                            scale:scale];
-    }
-    else {
-        [self.shader renderBitmap:image_buffers[current_buffer]
-                         previous:NULL
-                           inSize:self.bounds.size
-                            scale:scale];
-    }
-    glFlush();
 }
 
 - (void) flip
@@ -360,6 +331,16 @@
     }
     
     previousModifiers = event.modifierFlags;
+}
+
+- (uint32_t *)currentBuffer
+{
+    return image_buffers[current_buffer];
+}
+
+- (uint32_t *)previousBuffer
+{
+    return image_buffers[(current_buffer + 2) % self.numberOfBuffers];
 }
 
 @end

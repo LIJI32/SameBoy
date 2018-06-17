@@ -1,6 +1,7 @@
 #ifndef z80_cpu_h
 #define z80_cpu_h
-#include "gb.h"
+#include "gb_struct_def.h"
+#include <stdint.h>
 
 void GB_cpu_disassemble(GB_gameboy_t *gb, uint16_t pc, uint16_t count);
 #ifdef GB_INTERNAL

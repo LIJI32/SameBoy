@@ -2,6 +2,7 @@
 #define apu_h
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 #include "gb_struct_def.h"
 
 
@@ -106,6 +107,8 @@ typedef struct
                            // 1MHz. This variable keeps track of the alignment.
         
     } noise_channel;
+    
+    bool skip_div_event;
     
 } GB_apu_t;
 

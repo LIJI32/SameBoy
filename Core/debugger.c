@@ -112,7 +112,7 @@ static inline void switch_banking_state(GB_gameboy_t *gb, uint16_t bank)
     gb->mbc_rom_bank = bank;
     gb->mbc_ram_bank = bank;
     gb->mbc_ram_enable = true;
-    if (gb->is_cgb) {
+    if (GB_is_cgb(gb)) {
         gb->cgb_ram_bank = bank & 7;
         gb->cgb_vram_bank = bank & 1;
         if (gb->cgb_ram_bank == 0) {
@@ -1462,7 +1462,7 @@ static bool palettes(GB_gameboy_t *gb, char *arguments, char *modifiers, const d
         return true;
     }
 
-    if (!gb->is_cgb) {
+    if (!GB_is_cgb(gb)) {
         GB_log(gb, "Not available on a DMG.\n");
         return true;
     }
@@ -1495,7 +1495,7 @@ static bool lcd(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugg
     }
     GB_log(gb, "LCDC:\n");
     GB_log(gb, "    LCD enabled: %s\n",(gb->io_registers[GB_IO_LCDC] & 128)? "Enabled" : "Disabled");
-    GB_log(gb, "    %s: %s\n", gb->is_cgb? (gb->cgb_mode? "Sprite priority flags" : "Background and Window") : "Background",
+    GB_log(gb, "    %s: %s\n", GB_is_cgb(gb)? (gb->cgb_mode? "Sprite priority flags" : "Background and Window") : "Background",
                                (gb->io_registers[GB_IO_LCDC] & 1)? "Enabled" : "Disabled");
     GB_log(gb, "    Objects: %s\n", (gb->io_registers[GB_IO_LCDC] & 2)? "Enabled" : "Disabled");
     GB_log(gb, "    Object size: %s\n", (gb->io_registers[GB_IO_LCDC] & 4)? "8x16" : "8x8");

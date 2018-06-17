@@ -1,7 +1,8 @@
 #ifndef rewind_h
 #define rewind_h
 
-#include "gb.h"
+#include <stdbool.h>
+#include "gb_struct_def.h"
 
 #ifdef GB_INTERNAL
 void GB_rewind_push(GB_gameboy_t *gb);

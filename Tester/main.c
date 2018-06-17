@@ -295,14 +295,14 @@ int main(int argc, char **argv)
         fprintf(stderr, "Testing ROM %s\n", filename);
         
         if (dmg) {
-            GB_init(&gb);
+            GB_init(&gb, GB_MODEL_DMG_B);
             if (GB_load_boot_rom(&gb, boot_rom_path? boot_rom_path : executable_relative_path("dmg_boot.bin"))) {
                 perror("Failed to load boot ROM");
                 exit(1);
             }
         }
         else {
-            GB_init_cgb(&gb);
+            GB_init(&gb, GB_MODEL_CGB_E);
             if (GB_load_boot_rom(&gb, boot_rom_path? boot_rom_path : executable_relative_path("cgb_boot.bin"))) {
                 perror("Failed to load boot ROM");
                 exit(1);

@@ -1,6 +1,6 @@
 #ifndef timing_h
 #define timing_h
-#include "gb.h"
+#include "gb_struct_def.h"
 
 #ifdef GB_INTERNAL
 void GB_advance_cycles(GB_gameboy_t *gb, uint8_t cycles);

@@ -1,13 +1,11 @@
-vec4 scale(sampler2D image)
+STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 output_resolution)
 {
-    vec2 texCoord = vec2(gl_FragCoord.x, uResolution.y - gl_FragCoord.y) / uResolution;
+    vec2 pixel = position * input_resolution - vec2(0.5, 0.5);
 
-    vec2 pixel = texCoord * textureDimensions - vec2(0.5, 0.5);
-
-    vec4 q11 = texture(image, (floor(pixel) + 0.5) / textureDimensions);
-    vec4 q12 = texture(image, (vec2(floor(pixel.x), ceil(pixel.y)) + 0.5) / textureDimensions);
-    vec4 q21 = texture(image, (vec2(ceil(pixel.x), floor(pixel.y)) + 0.5) / textureDimensions);
-    vec4 q22 = texture(image, (ceil(pixel) + 0.5) / textureDimensions);
+    vec4 q11 = texture(image, (floor(pixel) + 0.5) / input_resolution);
+    vec4 q12 = texture(image, (vec2(floor(pixel.x), ceil(pixel.y)) + 0.5) / input_resolution);
+    vec4 q21 = texture(image, (vec2(ceil(pixel.x), floor(pixel.y)) + 0.5) / input_resolution);
+    vec4 q22 = texture(image, (ceil(pixel) + 0.5) / input_resolution);
 
     vec2 s = smoothstep(0., 1., fract(pixel));
 

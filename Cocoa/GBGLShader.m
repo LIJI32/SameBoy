@@ -1,4 +1,4 @@
-#import "GBShader.h"
+#import "GBGLShader.h"
 #import <OpenGL/gl3.h>
 
 /*
@@ -16,7 +16,7 @@ void main(void) {\n\
 }\n\
 ";
 
-@implementation GBShader
+@implementation GBGLShader
 {
     GLuint resolution_uniform;
     GLuint texture_uniform;
@@ -50,7 +50,7 @@ void main(void) {\n\
         // Attributes
         position_attribute = glGetAttribLocation(program, "aPosition");
         // Uniforms
-        resolution_uniform = glGetUniformLocation(program, "uResolution");
+        resolution_uniform = glGetUniformLocation(program, "output_resolution");
 
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D, texture);
@@ -68,9 +68,9 @@ void main(void) {\n\
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glBindTexture(GL_TEXTURE_2D, 0);
-        previous_texture_uniform = glGetUniformLocation(program, "previousImage");
+        previous_texture_uniform = glGetUniformLocation(program, "previous_image");
 
-        mix_previous_uniform = glGetUniformLocation(program, "uMixPrevious");
+        mix_previous_uniform = glGetUniformLocation(program, "mix_previous");
 
         // Configure OpenGL
         [self configureOpenGL];

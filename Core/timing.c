@@ -130,6 +130,8 @@ static void GB_set_internal_div_counter(GB_gameboy_t *gb, uint32_t value)
         counter_overflow_check(gb->div_counter, value, GB_TAC_RATIOS[gb->io_registers[GB_IO_TAC] & 3])) {
         increase_tima(gb);
     }
+    
+    /* TODO: Can switching to double speed mode trigger an event? */
     if (counter_overflow_check(gb->div_counter, value, gb->cgb_double_speed? 0x4000 : 0x2000)) {
         GB_apu_run(gb);
         GB_apu_div_event(gb);

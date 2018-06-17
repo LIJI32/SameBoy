@@ -109,8 +109,8 @@ bool init_shader_with_name(shader_t *shader, const char *name)
     // Attributes
     shader->position_attribute = glGetAttribLocation(shader->program, "aPosition");
     // Uniforms
-    shader->resolution_uniform = glGetUniformLocation(shader->program, "uResolution");
-    shader->origin_uniform = glGetUniformLocation(shader->program, "uOrigin");
+    shader->resolution_uniform = glGetUniformLocation(shader->program, "output_resolution");
+    shader->origin_uniform = glGetUniformLocation(shader->program, "origin");
 
     glGenTextures(1, &shader->texture);
     glBindTexture(GL_TEXTURE_2D, shader->texture);
@@ -128,9 +128,9 @@ bool init_shader_with_name(shader_t *shader, const char *name)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
-    shader->previous_texture_uniform = glGetUniformLocation(shader->program, "previousImage");
+    shader->previous_texture_uniform = glGetUniformLocation(shader->program, "previous_image");
     
-    shader->mix_previous_uniform = glGetUniformLocation(shader->program, "uMixPrevious");
+    shader->mix_previous_uniform = glGetUniformLocation(shader->program, "mix_previous");
     
     // Program
     

@@ -47,7 +47,7 @@ static uint32_t rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
 int get_image_for_rom(const char *filename, const char *boot_path, uint32_t *output, uint8_t *cgb_flag)
 {
     GB_gameboy_t gb;
-    GB_init_cgb(&gb);
+    GB_init(&gb, GB_MODEL_CGB_E);
     if (GB_load_boot_rom(&gb, boot_path)) {
         GB_free(&gb);
         return 1;

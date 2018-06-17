@@ -54,7 +54,7 @@
                     break;
                 case GBMemoryVRAM:
                     bank_backup = gb->cgb_vram_bank;
-                    if (gb->is_cgb) {
+                    if (GB_is_cgb(gb)) {
                         gb->cgb_vram_bank = self.selectedBank;
                     }
                     addr += 0x8000;
@@ -66,7 +66,7 @@
                     break;
                 case GBMemoryRAM:
                     bank_backup = gb->cgb_ram_bank;
-                    if (gb->is_cgb) {
+                    if (GB_is_cgb(gb)) {
                         gb->cgb_ram_bank = self.selectedBank;
                     }
                     addr += 0xC000;
@@ -127,7 +127,7 @@
                 break;
             case GBMemoryVRAM:
                 bank_backup = gb->cgb_vram_bank;
-                if (gb->is_cgb) {
+                if (GB_is_cgb(gb)) {
                     gb->cgb_vram_bank = self.selectedBank;
                 }
                 addr += 0x8000;
@@ -139,7 +139,7 @@
                 break;
             case GBMemoryRAM:
                 bank_backup = gb->cgb_ram_bank;
-                if (gb->is_cgb) {
+                if (GB_is_cgb(gb)) {
                     gb->cgb_ram_bank = self.selectedBank;
                 }
                 addr += 0xC000;

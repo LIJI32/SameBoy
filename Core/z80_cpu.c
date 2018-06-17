@@ -11,16 +11,24 @@ typedef enum {
     GB_CONFLICT_READ_OLD,
     /* If the CPU writes while another component reads, it reads the new value */
     GB_CONFLICT_READ_NEW,
-    /* If the CPU writes while another component reads, it reads a bitwise OR between the new and old values */
-    GB_CONFLICT_READ_OR,
     /* If the CPU and another component write at the same time, the CPU's value "wins" */
     GB_CONFLICT_WRITE_CPU,
+    /* Register specific values */
+    GB_CONFLICT_STAT_CGB,
+    GB_CONFLICT_STAT_DMG,
+    GB_CONFLICT_PALETTE_DMG,
+    GB_CONFLICT_PALETTE_CGB,
 } GB_conflict_t;
 
 /* Todo: How does double speed mode affect these? */
 static const GB_conflict_t cgb_conflict_map[0x80] = {
     [GB_IO_IF] = GB_CONFLICT_WRITE_CPU,
     [GB_IO_LYC] = GB_CONFLICT_WRITE_CPU,
+    [GB_IO_STAT] = GB_CONFLICT_STAT_CGB,
+    [GB_IO_BGP] = GB_CONFLICT_PALETTE_CGB,
+    [GB_IO_OBP0] = GB_CONFLICT_PALETTE_CGB,
+    [GB_IO_OBP1] = GB_CONFLICT_PALETTE_CGB,
+    
 
     /* Todo: most values not verified, and probably differ between revisions */
 };
@@ -30,12 +38,12 @@ static const GB_conflict_t dmg_conflict_map[0x80] = {
     [GB_IO_LYC] = GB_CONFLICT_READ_OLD,
     [GB_IO_LCDC] = GB_CONFLICT_READ_NEW,
     [GB_IO_SCY] = GB_CONFLICT_READ_NEW,
-    [GB_IO_STAT] = GB_CONFLICT_READ_NEW,
+    [GB_IO_STAT] = GB_CONFLICT_STAT_DMG,
  
     /* Todo: these are GB_CONFLICT_READ_NEW on MGB/SGB2 */
-    [GB_IO_BGP] = GB_CONFLICT_READ_OR,
-    [GB_IO_OBP0] = GB_CONFLICT_READ_OR,
-    [GB_IO_OBP1] = GB_CONFLICT_READ_OR,
+    [GB_IO_BGP] = GB_CONFLICT_PALETTE_DMG,
+    [GB_IO_OBP0] = GB_CONFLICT_PALETTE_DMG,
+    [GB_IO_OBP1] = GB_CONFLICT_PALETTE_DMG,
     
     /* Todo: these were not verified at all */
     [GB_IO_WY] = GB_CONFLICT_READ_NEW,
@@ -69,7 +77,7 @@ static void cycle_write(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
     assert(gb->pending_cycles);
     GB_conflict_t conflict = GB_CONFLICT_READ_OLD;
     if ((addr & 0xFF80) == 0xFF00) {
-        conflict = (gb->is_cgb? cgb_conflict_map : dmg_conflict_map)[addr & 0x7F];
+        conflict = (GB_is_cgb(gb)? cgb_conflict_map : dmg_conflict_map)[addr & 0x7F];
     }
     switch (conflict) {
         case GB_CONFLICT_READ_OLD:
@@ -84,7 +92,47 @@ static void cycle_write(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
             gb->pending_cycles = 5;
             return;
             
-        case GB_CONFLICT_READ_OR: {
+        case GB_CONFLICT_WRITE_CPU:
+            GB_advance_cycles(gb, gb->pending_cycles + 1);
+            GB_write_memory(gb, addr, value);
+            gb->pending_cycles = 3;
+            return;
+        
+        /* The DMG STAT-write bug is basically the STAT register being read as FF for a single T-cycle */
+        case GB_CONFLICT_STAT_DMG:
+            GB_advance_cycles(gb, gb->pending_cycles);
+            /* State 7 is the edge between HBlank and OAM mode, and it behaves a bit weird.
+             The OAM interrupt seems to be blocked by HBlank interrupts in that case, despite
+             the timing not making much sense for that.
+             This is a hack to simulate this effect */
+            if (gb->display_state == 7 && (gb->io_registers[GB_IO_STAT] & 0x28) == 0x08) {
+                GB_write_memory(gb, addr, ~0x20);
+            }
+            else {
+                GB_write_memory(gb, addr, 0xFF);
+            }
+            GB_advance_cycles(gb, 1);
+            GB_write_memory(gb, addr, value);
+            gb->pending_cycles = 3;
+            return;
+        
+        case GB_CONFLICT_STAT_CGB: {
+            /* The LYC bit behaves differently */
+            uint8_t old_value = GB_read_memory(gb, addr);
+            GB_advance_cycles(gb, gb->pending_cycles);
+            GB_write_memory(gb, addr, (old_value & 0x40) | (value & ~0x40));
+            GB_advance_cycles(gb, 1);
+            GB_write_memory(gb, addr, value);
+            gb->pending_cycles = 3;
+            return;
+        }
+        
+        /* There is some "time travel" going on with these two values, as it appears
+           that there's some off-by-1-T-cycle timing issue in the PPU implementation.
+         
+           This is should be accurate for every measureable scenario, though. */
+            
+        case GB_CONFLICT_PALETTE_DMG: {
             GB_advance_cycles(gb, gb->pending_cycles - 2);
             uint8_t old_value = GB_read_memory(gb, addr);
             GB_write_memory(gb, addr, value | old_value);
@@ -92,14 +140,14 @@ static void cycle_write(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
             GB_write_memory(gb, addr, value);
             gb->pending_cycles = 5;
             return;
+        }
             
-        case GB_CONFLICT_WRITE_CPU:
-            GB_advance_cycles(gb, gb->pending_cycles + 1);
+        case GB_CONFLICT_PALETTE_CGB: {
+            GB_advance_cycles(gb, gb->pending_cycles - 2);
             GB_write_memory(gb, addr, value);
-            gb->pending_cycles = 3;
+            gb->pending_cycles = 6;
             return;
         }
-        
     }
 }
 
@@ -110,7 +158,7 @@ static void cycle_no_access(GB_gameboy_t *gb)
 
 static void cycle_oam_bug(GB_gameboy_t *gb, uint8_t register_id)
 {
-    if (gb->is_cgb) {
+    if (GB_is_cgb(gb)) {
         /* Slight optimization */
         gb->pending_cycles += 4;
         return;
@@ -1333,14 +1381,14 @@ void GB_cpu_run(GB_gameboy_t *gb)
         return;
     }
     
-    if (gb->halted && !gb->is_cgb && !gb->just_halted) {
+    if (gb->halted && !GB_is_cgb(gb) && !gb->just_halted) {
         GB_advance_cycles(gb, 2);
     }
     
     uint8_t interrupt_queue = gb->interrupt_enable & gb->io_registers[GB_IO_IF] & 0x1F;
     
     if (gb->halted) {
-        GB_advance_cycles(gb, (gb->is_cgb || gb->just_halted) ? 4 : 2);
+        GB_advance_cycles(gb, (GB_is_cgb(gb) || gb->just_halted) ? 4 : 2);
     }
     gb->just_halted = false;
 

@@ -181,6 +181,10 @@ static void nrx2_glitch(uint8_t *volume, uint8_t value, uint8_t old_value)
 void GB_apu_div_event(GB_gameboy_t *gb)
 {
     if (!gb->apu.global_enable) return;
+    if (gb->apu.skip_div_event) {
+        gb->apu.skip_div_event = false;
+        return;
+    }
     gb->apu.div_divider++;
 
     if ((gb->apu.div_divider & 7) == 0) {
@@ -426,6 +430,11 @@ void GB_apu_init(GB_gameboy_t *gb)
 {
     memset(&gb->apu, 0, sizeof(gb->apu));
     gb->apu.lf_div = 1;
+    /* APU glitch: When turning the APU on while DIV's bit 4 (or 5 in double speed mode) is on,
+       the first DIV/APU event is skipped. */
+    if (gb->div_counter & (gb->cgb_double_speed? 0x2000 : 0x1000)) {
+        gb->apu.skip_div_event = true;
+    }
 }
 
 uint8_t GB_apu_read(GB_gameboy_t *gb, uint8_t reg)
@@ -459,7 +468,7 @@ uint8_t GB_apu_read(GB_gameboy_t *gb, uint8_t reg)
     };
 
     if (reg >= GB_IO_WAV_START && reg <= GB_IO_WAV_END && gb->apu.is_active[GB_WAVE]) {
-        if (!gb->is_cgb && !gb->apu.wave_channel.wave_form_just_read) {
+        if (!GB_is_cgb(gb) && !gb->apu.wave_channel.wave_form_just_read) {
             return 0xFF;
         }
         reg = GB_IO_WAV_START + gb->apu.wave_channel.current_sample_index / 2;
@@ -470,7 +479,7 @@ uint8_t GB_apu_read(GB_gameboy_t *gb, uint8_t reg)
 
 void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
 {
-    if (!gb->apu.global_enable && reg != GB_IO_NR52 && (gb->is_cgb ||
+    if (!gb->apu.global_enable && reg != GB_IO_NR52 && (GB_is_cgb(gb) ||
                                                         (
                                                         reg != GB_IO_NR11 &&
                                                         reg != GB_IO_NR21 &&
@@ -482,7 +491,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
     }
 
     if (reg >= GB_IO_WAV_START && reg <= GB_IO_WAV_END && gb->apu.is_active[GB_WAVE]) {
-        if (!gb->is_cgb && !gb->apu.wave_channel.wave_form_just_read) {
+        if (!GB_is_cgb(gb) && !gb->apu.wave_channel.wave_form_just_read) {
             return;
         }
         reg = GB_IO_WAV_START + gb->apu.wave_channel.current_sample_index / 2;
@@ -524,7 +533,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 gb->apu.global_enable = false;
             }
             
-            if (!gb->is_cgb && (value & 0x80)) {
+            if (!GB_is_cgb(gb) && (value & 0x80)) {
                 GB_apu_write(gb, GB_IO_NR11, old_nrx1[0]);
                 GB_apu_write(gb, GB_IO_NR21, old_nrx1[1]);
                 GB_apu_write(gb, GB_IO_NR31, old_nrx1[2]);
@@ -685,7 +694,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
             if ((value & 0x80)) {
                 /* DMG bug: wave RAM gets corrupted if the channel is retriggerred 1 cycle before the APU
                             reads from it. */
-                if (!gb->is_cgb &&
+                if (!GB_is_cgb(gb) &&
                     gb->apu.is_active[GB_WAVE] &&
                     gb->apu.wave_channel.sample_countdown == 0 &&
                     gb->apu.wave_channel.enable) {

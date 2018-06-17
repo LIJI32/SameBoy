@@ -1,6 +1,9 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include "utils.h"
 #include "gui.h"
 #include "font.h"
@@ -48,7 +51,8 @@ void render_texture(void *pixels,  void *previous)
 
 configuration_t configuration =
 {
-    .keys = {   SDL_SCANCODE_RIGHT,
+    .keys = {
+        SDL_SCANCODE_RIGHT,
         SDL_SCANCODE_LEFT,
         SDL_SCANCODE_UP,
         SDL_SCANCODE_DOWN,
@@ -725,6 +729,23 @@ void run_gui(bool is_running)
                     else if (event.jbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) event.key.keysym.scancode = SDL_SCANCODE_LEFT;
                     else if (event.jbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) event.key.keysym.scancode = SDL_SCANCODE_RIGHT;
                     break;
+
+                case SDL_JOYHATMOTION: {
+                    uint8_t value = event.jhat.value;
+                    if (value != 0) {
+                        uint32_t scancode =
+                            value == SDL_HAT_UP ? SDL_SCANCODE_UP
+                            : value == SDL_HAT_DOWN ? SDL_SCANCODE_DOWN
+                            : value == SDL_HAT_LEFT ? SDL_SCANCODE_LEFT
+                            : value == SDL_HAT_RIGHT ? SDL_SCANCODE_RIGHT
+                            : 0;
+
+                        if (scancode != 0) {
+                            event.type = SDL_KEYDOWN;
+                            event.key.keysym.scancode = scancode;
+                        }
+                    }
+               }
                     
                 case SDL_JOYAXISMOTION: {
                     static bool axis_active[2] = {false, false};

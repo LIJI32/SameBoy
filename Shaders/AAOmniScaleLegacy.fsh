@@ -1,33 +1,33 @@
 
-float quickDistance(vec4 a, vec4 b)
+STATIC float quickDistance(vec4 a, vec4 b)
 {
     return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);
 }
 
-vec4 omniScale(sampler2D image, vec2 texCoord)
+STATIC vec4 omniScale(sampler2D image, vec2 position, vec2 input_resolution, vec2 output_resolution)
 {
-    vec2 pixel = texCoord * textureDimensions - vec2(0.5, 0.5);
+    vec2 pixel = position * input_resolution - vec2(0.5, 0.5);
 
-    vec4 q11 = texture(image, (floor(pixel) + 0.5) / textureDimensions);
-    vec4 q12 = texture(image, (vec2(floor(pixel.x), ceil(pixel.y)) + 0.5) / textureDimensions);
-    vec4 q21 = texture(image, (vec2(ceil(pixel.x), floor(pixel.y)) + 0.5) / textureDimensions);
-    vec4 q22 = texture(image, (ceil(pixel) + 0.5) / textureDimensions);
+    vec4 q11 = texture(image, (floor(pixel) + 0.5) / input_resolution);
+    vec4 q12 = texture(image, (vec2(floor(pixel.x), ceil(pixel.y)) + 0.5) / input_resolution);
+    vec4 q21 = texture(image, (vec2(ceil(pixel.x), floor(pixel.y)) + 0.5) / input_resolution);
+    vec4 q22 = texture(image, (ceil(pixel) + 0.5) / input_resolution);
 
     vec2 pos = fract(pixel);
 
     /* Special handling for diaonals */
     bool hasDownDiagonal = false;
     bool hasUpDiagonal = false;
-    if (q12 == q21 && q11 != q22) hasUpDiagonal = true;
-    else if (q12 != q21 && q11 == q22) hasDownDiagonal = true;
-    else if (q12 == q21 && q11 == q22) {
-        if (q11 == q12) return q11;
+    if (equal(q12, q21) && inequal(q11, q22)) hasUpDiagonal = true;
+    else if (inequal(q12, q21) && equal(q11, q22)) hasDownDiagonal = true;
+    else if (equal(q12, q21) && equal(q11, q22)) {
+        if (equal(q11, q12)) return q11;
         int diagonalBias = 0;
         for (float y = -1.0; y < 3.0; y++) {
             for (float x = -1.0; x < 3.0; x++) {
-                vec4 color = texture(image, (pixel + vec2(x, y)) / textureDimensions);
-                if (color == q11) diagonalBias++;
-                if (color == q12) diagonalBias--;
+                vec4 color = texture(image, (pixel + vec2(x, y)) / input_resolution);
+                if (equal(color, q11)) diagonalBias++;
+                if (equal(color, q12)) diagonalBias--;
             }
         }
         if (diagonalBias <= 0) {
@@ -89,31 +89,30 @@ vec4 omniScale(sampler2D image, vec2 texCoord)
                          min(q12d,
                              q22d)));
 
-    if (q11d == best) {
+    if (equal(q11d, best)) {
         return q11;
     }
 
-    if (q21d == best) {
+    if (equal(q21d, best)) {
         return q21;
     }
     
-    if (q12d == best) {
+    if (equal(q12d, best)) {
         return q12;
     }
     
     return q22;
 }
 
-vec4 scale(sampler2D image)
+STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 output_resolution)
 {
-    vec2 texCoord = vec2(gl_FragCoord.x, uResolution.y - gl_FragCoord.y) / uResolution;
-    vec2 pixel = vec2(1.0, 1.0) / uResolution;
+    vec2 pixel = vec2(1.0, 1.0) / output_resolution;
     // 4-pixel super sampling
 
-    vec4 q11 = omniScale(image, texCoord + pixel * vec2(-0.25, -0.25));
-    vec4 q21 = omniScale(image, texCoord + pixel * vec2(+0.25, -0.25));
-    vec4 q12 = omniScale(image, texCoord + pixel * vec2(-0.25, +0.25));
-    vec4 q22 = omniScale(image, texCoord + pixel * vec2(+0.25, +0.25));
+    vec4 q11 = omniScale(image, position + pixel * vec2(-0.25, -0.25), input_resolution, output_resolution);
+    vec4 q21 = omniScale(image, position + pixel * vec2(+0.25, -0.25), input_resolution, output_resolution);
+    vec4 q12 = omniScale(image, position + pixel * vec2(-0.25, +0.25), input_resolution, output_resolution);
+    vec4 q22 = omniScale(image, position + pixel * vec2(+0.25, +0.25), input_resolution, output_resolution);
 
     return (q11 + q21 + q12 + q22) / 4.0;
 }

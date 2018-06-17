@@ -2,29 +2,27 @@
 #define COLOR_HIGH 1.0
 #define SCANLINE_DEPTH 0.1
 
-vec4 scale(sampler2D image)
+STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 output_resolution)
 {
-    vec2 texCoord = vec2(gl_FragCoord.x, uResolution.y - gl_FragCoord.y) / uResolution;
+    vec2 pos = fract(position * input_resolution);
+    vec2 sub_pos = fract(position * input_resolution * 6);
     
-    vec2 pos = fract(texCoord * textureDimensions);
-    vec2 sub_pos = fract(texCoord * textureDimensions * 6);
-    
-    vec4 center = texture(image, texCoord);
-    vec4 left = texture(image, texCoord - vec2(1.0 / textureDimensions.x, 0));
-    vec4 right = texture(image, texCoord + vec2(1.0 / textureDimensions.x, 0));
+    vec4 center = texture(image, position);
+    vec4 left = texture(image, position - vec2(1.0 / input_resolution.x, 0));
+    vec4 right = texture(image, position + vec2(1.0 / input_resolution.x, 0));
     
     if (pos.y < 1.0 / 6.0) {
-        center = mix(center, texture(image, texCoord + vec2(0, -1.0 / textureDimensions.y)), 0.5 - sub_pos.y / 2.0);
-        left =   mix(left,   texture(image, texCoord + vec2(-1.0 / textureDimensions.x, -1.0 / textureDimensions.y)), 0.5 - sub_pos.y / 2.0);
-        right =  mix(right,  texture(image, texCoord + vec2( 1.0 / textureDimensions.x, -1.0 / textureDimensions.y)), 0.5 - sub_pos.y / 2.0);
+        center = mix(center, texture(image, position + vec2(0, -1.0 / input_resolution.y)), 0.5 - sub_pos.y / 2.0);
+        left =   mix(left,   texture(image, position + vec2(-1.0 / input_resolution.x, -1.0 / input_resolution.y)), 0.5 - sub_pos.y / 2.0);
+        right =  mix(right,  texture(image, position + vec2( 1.0 / input_resolution.x, -1.0 / input_resolution.y)), 0.5 - sub_pos.y / 2.0);
         center *= sub_pos.y * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
         left *= sub_pos.y * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
         right *= sub_pos.y * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
     }
     else if (pos.y > 5.0 / 6.0) {
-        center = mix(center, texture(image, texCoord + vec2(0, 1.0 / textureDimensions.y)), sub_pos.y / 2.0);
-        left =   mix(left,   texture(image, texCoord + vec2(-1.0 / textureDimensions.x, 1.0 / textureDimensions.y)), sub_pos.y / 2.0);
-        right =  mix(right,  texture(image, texCoord + vec2( 1.0 / textureDimensions.x, 1.0 / textureDimensions.y)), sub_pos.y / 2.0);
+        center = mix(center, texture(image, position + vec2(0, 1.0 / input_resolution.y)), sub_pos.y / 2.0);
+        left =   mix(left,   texture(image, position + vec2(-1.0 / input_resolution.x, 1.0 / input_resolution.y)), sub_pos.y / 2.0);
+        right =  mix(right,  texture(image, position + vec2( 1.0 / input_resolution.x, 1.0 / input_resolution.y)), sub_pos.y / 2.0);
         center *= (1.0 - sub_pos.y) * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
         left *= (1.0 - sub_pos.y) * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
         right *= (1.0 - sub_pos.y) * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
