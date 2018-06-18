@@ -139,7 +139,8 @@ void GB_free(GB_gameboy_t *gb)
     if (gb->breakpoints) {
         free(gb->breakpoints);
     }
-#ifndef DISABLE_DEBUGGER
+
+  #ifndef DISABLE_DEBUGGER
     GB_debugger_clear_symbols(gb);
 #endif
     GB_rewind_free(gb);
