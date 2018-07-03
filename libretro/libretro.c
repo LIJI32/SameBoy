@@ -31,6 +31,30 @@ static const char slash = '\\';
 static const char slash = '/';
 #endif
 
+#ifndef vasprintf
+int vasprintf(char ** __restrict__ ret, const char * __restrict__ format, va_list ap)
+{
+    int len;
+
+    /* Get Length */
+    len = _vsnprintf(NULL,0,format,ap);
+    if (len < 0) return -1;
+
+    /* +1 for \0 terminator. */
+    *ret = malloc(len + 1);
+
+    /* Check malloc fail*/
+    if (!*ret) return -1;
+
+    /* Write String */
+    _vsnprintf(*ret,len+1,format,ap);
+
+    /* Terminate explicitly */
+    (*ret)[len] = '\0';
+    return len;
+}
+#endif
+
 #define VIDEO_WIDTH 160
 #define VIDEO_HEIGHT 144
 #define VIDEO_PIXELS (VIDEO_WIDTH * VIDEO_HEIGHT)
