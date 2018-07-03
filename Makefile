@@ -23,7 +23,8 @@ endif
 
 VERSION := 0.11
 export VERSION
-CONF ?= release
+#CONF ?= release
+CONF ?= debug
 
 BIN := build/bin
 OBJ := build/obj
