@@ -23,7 +23,7 @@ endif
 
 VERSION := 0.11
 export VERSION
-CONF ?= debug
+CONF ?= release
 
 BIN := build/bin
 OBJ := build/obj
@@ -293,10 +293,10 @@ $(BIN)/SDL/Shaders: Shaders
 
 $(BIN)/BootROMs/%.bin: BootROMs/%.asm
 	-@$(MKDIR) -p $(dir $@)
-	cd BootROMs && rgbasm -o ../$@.tmp ../$<
-	rgblink -o $@.tmp2 $@.tmp
-	head -c $(if $(findstring dmg,$@), 256, 2304) $@.tmp2 > $@
-	@rm $@.tmp $@.tmp2
+	#cd BootROMs && rgbasm.exe -o ../$@.tmp ../$<
+	#rgblink.exe -o $@.tmp2 $@.tmp
+	#head -c $(if $(findstring dmg,$@), 256, 2304) $@.tmp2 > $@
+	#@rm $@.tmp $@.tmp2
 
 # Libretro Core (uses its own build system)
 libretro:
