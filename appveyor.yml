@@ -1,0 +1,24 @@
+shallow_clone: true
+
+image: Visual Studio 2017
+
+environment:
+  makefile_location: libretro
+  makefile_name: makefile
+  target_name: sameboy
+
+configuration:
+  - release
+  
+platform:
+  - libretro
+  
+init:
+  - set Path=C:\MinGW\msys\1.0\bin;C:\MinGW\bin;%Path%
+  #- set Path=C:\msys64\usr\bin;%Path%
+
+build_script:
+  - make libretro
+
+artifacts:
+  - path: '**\*.dll'
