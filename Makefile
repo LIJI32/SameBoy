@@ -294,8 +294,8 @@ $(BIN)/SDL/Shaders: Shaders
 
 $(BIN)/BootROMs/%.bin: BootROMs/%.asm
 	-@$(MKDIR) -p $(dir $@)
-	#cd BootROMs && rgbasm.exe -o ../$@.tmp ../$<
-	#rgblink.exe -o $@.tmp2 $@.tmp
+	#cd BootROMs && rgbasm -o ../$@.tmp ../$<
+	#rgblink -o $@.tmp2 $@.tmp
 	#head -c $(if $(findstring dmg,$@), 256, 2304) $@.tmp2 > $@
 	#@rm $@.tmp $@.tmp2
 
