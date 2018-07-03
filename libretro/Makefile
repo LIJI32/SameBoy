@@ -138,6 +138,9 @@ else
    CC = gcc
    TARGET := $(TARGET_NAME)_libretro.dll
    SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
+   ifneq ($(findstring MINGW,$(shell uname -a)),)
+       CFLAGS += -Dsrandom=srand -Drandom=rand
+   endif
 endif
 
 TARGET := $(CORE_DIR)/build/bin/$(TARGET)
