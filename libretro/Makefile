@@ -9,7 +9,7 @@ endif
 CFLAGS += -DSAMEBOY_CORE_VERSION=\"$(VERSION)\"
 
 ifeq ($(platform),)
-platform = unix
+platform = win
 ifeq ($(shell uname -a),)
    platform = win
 else ifneq ($(findstring MINGW,$(shell uname -a)),)
@@ -22,7 +22,7 @@ endif
 endif
 
 # system platform
-system_platform = unix
+system_platform = win
 ifeq ($(shell uname -a),)
 	EXE_EXT = .exe
 	system_platform = win
@@ -138,6 +138,9 @@ else
    CC = gcc
    TARGET := $(TARGET_NAME)_libretro.dll
    SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
+   ifneq ($(findstring MINGW,$(shell uname -a)),)
+       CFLAGS += -Dsrandom=srand -Drandom=rand
+   endif
 endif
 
 TARGET := $(CORE_DIR)/build/bin/$(TARGET)
@@ -150,7 +153,8 @@ LDFLAGS += $(LIBM)
 ifeq ($(DEBUG), 1)
    CFLAGS += -O0 -g
 else
-   CFLAGS += -O2 -DNDEBUG
+   #CFLAGS += -O3 -DNDEBUG
+   CFLAGS += -O3 -DNDEBUG -mtune=core2 -march=core2
 endif
 
 include Makefile.common
@@ -161,18 +165,19 @@ CFLAGS   += -Wall -D__LIBRETRO__ $(fpic) $(INCFLAGS) -std=gnu11 -D_GNU_SOURCE -D
 
 all: $(TARGET)
 
-$(CORE_DIR)/libretro/%_boot.c: $(CORE_DIR)/build/bin/BootROMs/%_boot.bin
-	echo "/* AUTO-GENERATED */" > $@
-	echo "const unsigned char $(notdir $(@:%.c=%))[] = {" >> $@
+$(CORE_DIR)/libretro/%_boot.c: $(CORE_DIR)/BootROMs/%_boot.bin
+	#echo "/* AUTO-GENERATED */" > $@
+	#echo "const unsigned char $(notdir $(@:%.c=%))[] = {" >> $@
 ifneq ($(findstring Haiku,$(shell uname -s)),)
 	# turns out od is posix, hexdump is not hence is less portable
 	# this is still rather ugly and could be done better I guess
-	od -A none -t x1 -v $< | sed -e 's/^\ /0x/' -e 's/\ /,\ 0x/g' -e 's/$$/,/g' | tr '\n' ' ' >> $@
+	#od -A none -t x1 -v $< | sed -e 's/^\ /0x/' -e 's/\ /,\ 0x/g' -e 's/$$/,/g' | tr '\n' ' ' >> $@
 else
-	hexdump -v -e '/1 "0x%02x, "' $< >> $@
+	#hexdump -v -e '/1 "0x%02x, "' $< >> $@
 endif
-	echo "};" >> $@
-	echo "const unsigned $(notdir $(@:%.c=%))_length = sizeof($(notdir $(@:%.c=%)));" >> $@
+	#echo "};" >> $@
+	#echo "const unsigned $(notdir $(@:%.c=%))_length = sizeof($(notdir $(@:%.c=%)));" >> $@
+	#cp $@ $@.bak
 
 $(CORE_DIR)/build/bin/BootROMs/%_boot.bin:
 	$(MAKE) -C $(CORE_DIR) $(patsubst $(CORE_DIR)/%,%,$@)
@@ -190,7 +195,7 @@ $(CORE_DIR)/build/obj/%_libretro.c.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS) $(fpic) -DGB_INTERNAL
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(fpic) -c -o $@ $<
+	$(CC) $(CFLAGS) $(fpic) -c -o -D_GNU_SOURCE $@ $<
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
