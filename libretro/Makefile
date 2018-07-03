@@ -9,7 +9,7 @@ endif
 CFLAGS += -DSAMEBOY_CORE_VERSION=\"$(VERSION)\"
 
 ifeq ($(platform),)
-platform = win
+platform = unix
 ifeq ($(shell uname -a),)
    platform = win
 else ifneq ($(findstring MINGW,$(shell uname -a)),)
@@ -22,7 +22,7 @@ endif
 endif
 
 # system platform
-system_platform = win
+system_platform = unix
 ifeq ($(shell uname -a),)
 	EXE_EXT = .exe
 	system_platform = win
@@ -195,7 +195,7 @@ $(CORE_DIR)/build/obj/%_libretro.c.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS) $(fpic) -DGB_INTERNAL
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(fpic) -c -o -D_GNU_SOURCE $@ $<
+	$(CC) $(CFLAGS) $(fpic) -c -o $@ $<
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
