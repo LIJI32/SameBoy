@@ -28,7 +28,6 @@ static void update_sample(GB_gameboy_t *gb, unsigned index, int8_t value, unsign
     }
     else {
         gb->apu.samples[index] = value;
-        gb->apu_output.dac_discharge[index] = 1.0;
     }
     
     if (gb->apu_output.sample_rate) {
@@ -874,6 +873,11 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
             }
     }
     gb->io_registers[reg] = value;
+    for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
+        if (gb->apu.is_active[i]) {
+            gb->apu_output.dac_discharge[i] = 1.0;
+        }
+    }
 }
 
 size_t GB_apu_get_current_buffer_length(GB_gameboy_t *gb)
