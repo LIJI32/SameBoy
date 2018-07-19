@@ -31,13 +31,13 @@ static void update_sample(GB_gameboy_t *gb, unsigned index, int8_t value, unsign
     }
     
     if (gb->apu_output.sample_rate) {
-        unsigned left_volume = 0;
-        if (gb->io_registers[GB_IO_NR51] & (1 << index)) {
-            left_volume = (gb->io_registers[GB_IO_NR50] & 7) + 1;
-        }
         unsigned right_volume = 0;
+        if (gb->io_registers[GB_IO_NR51] & (1 << index)) {
+            right_volume = (gb->io_registers[GB_IO_NR50] & 7) + 1;
+        }
+        unsigned left_volume = 0;
         if (gb->io_registers[GB_IO_NR51] & (0x10 << index)) {
-            right_volume = ((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1;
+            left_volume = ((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1;
         }
         GB_sample_t output = {(0xf - value * 2) * left_volume, (0xf - value * 2) * right_volume};
         if (*(uint32_t *)&(gb->apu_output.current_sample[index]) != *(uint32_t *)&output) {
