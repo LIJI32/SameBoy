@@ -813,8 +813,8 @@ void GB_display_run(GB_gameboy_t *gb, uint8_t cycles)
 
             /* Todo: Measure this value */
             
-            gb->cycles_for_line += 16;
-            GB_SLEEP(gb, display, 25, 16);
+            gb->cycles_for_line += 12;
+            GB_SLEEP(gb, display, 25, 12);
             
             if (gb->hdma_on_hblank) {
                 gb->hdma_starting = true;
