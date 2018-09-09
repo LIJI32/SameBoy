@@ -632,7 +632,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 
                 if ((gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] & 0xF8) != 0 && !gb->apu.is_active[index]) {
                     gb->apu.is_active[index] = true;
-                    update_square_sample(gb, index);
+                    update_sample(gb, index, 0, 0);
                 }
                 if (gb->apu.square_channels[index].pulse_length == 0) {
                     gb->apu.square_channels[index].pulse_length = 0x40;
