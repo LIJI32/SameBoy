@@ -177,6 +177,55 @@ static void nrx2_glitch(uint8_t *volume, uint8_t value, uint8_t old_value)
     (*volume) &= 0xF;
 }
 
+static void tick_square_envelope(GB_gameboy_t *gb, enum GB_CHANNELS index)
+{
+    uint8_t nrx2 = gb->io_registers[index == GB_SQUARE_1? GB_IO_NR12 : GB_IO_NR22];
+    
+    if (gb->apu.square_channels[index].volume_countdown || (nrx2 & 7)) {
+        if (!gb->apu.square_channels[index].volume_countdown || !--gb->apu.square_channels[index].volume_countdown) {
+            if ((nrx2 & 8) && gb->apu.square_channels[index].current_volume < 0xF) {
+                gb->apu.square_channels[index].current_volume++;
+            }
+            
+            else if (!(nrx2 & 8) && gb->apu.square_channels[index].current_volume > 0) {
+                gb->apu.square_channels[index].current_volume--;
+            }
+            
+            gb->apu.square_channels[index].volume_countdown = nrx2 & 7;
+            
+            if (gb->apu.is_active[index]) {
+                update_square_sample(gb, index);
+            }
+        }
+    }
+}
+
+static void tick_noise_envelope(GB_gameboy_t *gb)
+{
+    uint8_t nr42 = gb->io_registers[GB_IO_NR42];
+    
+    if (gb->apu.noise_channel.volume_countdown || (nr42 & 7)) {
+        if (!--gb->apu.noise_channel.volume_countdown) {
+            if ((nr42 & 8) && gb->apu.noise_channel.current_volume < 0xF) {
+                gb->apu.noise_channel.current_volume++;
+            }
+            
+            else if (!(nr42 & 8) && gb->apu.noise_channel.current_volume > 0) {
+                gb->apu.noise_channel.current_volume--;
+            }
+            
+            gb->apu.noise_channel.volume_countdown = nr42 & 7;
+            
+            if (gb->apu.is_active[GB_NOISE]) {
+                update_sample(gb, GB_NOISE,
+                              (gb->apu.noise_channel.lfsr & 1) ?
+                              gb->apu.noise_channel.current_volume : 0,
+                              0);
+            }
+        }
+    }
+}
+
 void GB_apu_div_event(GB_gameboy_t *gb)
 {
     if (!gb->apu.global_enable) return;
@@ -186,51 +235,25 @@ void GB_apu_div_event(GB_gameboy_t *gb)
     }
     gb->apu.div_divider++;
 
-    if ((gb->apu.div_divider & 7) == 0) {
+    if ((gb->apu.div_divider & 1) == 0) {
         for (unsigned i = GB_SQUARE_2 + 1; i--;) {
             uint8_t nrx2 = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR12 : GB_IO_NR22];
-            
-            if (gb->apu.square_channels[i].volume_countdown) {
-                if (!--gb->apu.square_channels[i].volume_countdown) {
-                    if ((nrx2 & 8) && gb->apu.square_channels[i].current_volume < 0xF) {
-                        gb->apu.square_channels[i].current_volume++;
-                    }
-                    
-                    else if (!(nrx2 & 8) && gb->apu.square_channels[i].current_volume > 0) {
-                        gb->apu.square_channels[i].current_volume--;
-                    }
-                    
-                    gb->apu.square_channels[i].volume_countdown = nrx2 & 7;
-                    
-                    if (gb->apu.is_active[i]) {
-                        update_square_sample(gb, i);
-                    }
-                }
+            if (gb->apu.is_active[i] && gb->apu.square_channels[i].volume_countdown == 0 && (nrx2 & 7)) {
+                tick_square_envelope(gb, i);
             }
         }
         
-        uint8_t nr42 = gb->io_registers[GB_IO_NR42];
-        
-        if (gb->apu.noise_channel.volume_countdown) {
-            if (!--gb->apu.noise_channel.volume_countdown) {
-                if ((nr42 & 8) && gb->apu.noise_channel.current_volume < 0xF) {
-                    gb->apu.noise_channel.current_volume++;
-                }
-                
-                else if (!(nr42 & 8) && gb->apu.noise_channel.current_volume > 0) {
-                    gb->apu.noise_channel.current_volume--;
-                }
-                
-                gb->apu.noise_channel.volume_countdown = nr42 & 7;
-                
-                if (gb->apu.is_active[GB_NOISE]) {
-                    update_sample(gb, GB_NOISE,
-                                  (gb->apu.noise_channel.lfsr & 1) ?
-                                  gb->apu.noise_channel.current_volume : 0,
-                                  0);
-                }
-            }
+        if (gb->apu.is_active[GB_NOISE] && gb->apu.noise_channel.volume_countdown && (gb->io_registers[GB_IO_NR42] & 7)) {
+            tick_noise_envelope(gb);
         }
+    }
+    
+    if ((gb->apu.div_divider & 7) == 0) {
+        for (unsigned i = GB_SQUARE_2 + 1; i--;) {
+            tick_square_envelope(gb, i);
+        }
+        
+        tick_noise_envelope(gb);
     }
     
     if ((gb->apu.div_divider & 1) == 1) {
@@ -577,6 +600,10 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         case GB_IO_NR12:
         case GB_IO_NR22: {
             unsigned index = reg == GB_IO_NR22? GB_SQUARE_2: GB_SQUARE_1;
+            if (((value & 0x7) == 0) && ((gb->io_registers[reg] & 0x7) != 0)) {
+                /* Envelope disabled */
+                gb->apu.square_channels[index].volume_countdown = 0;
+            }
             if ((value & 0xF8) == 0) {
                 /* According to Blargg's test ROM this should disable the channel instantly
                  TODO: verify how "instant" the change is using PCM12 */
@@ -773,7 +800,10 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         }
             
         case GB_IO_NR42: {
-
+            if (((value & 0x7) == 0) && ((gb->io_registers[reg] & 0x7) != 0)) {
+                /* Envelope disabled */
+                gb->apu.noise_channel.volume_countdown = 0;
+            }
             if ((value & 0xF8) == 0) {
                 /* According to Blargg's test ROM this should disable the channel instantly
                  TODO: verify how "instant" the change is using PCM12 */
