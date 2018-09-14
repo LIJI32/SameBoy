@@ -489,6 +489,9 @@ void GB_reset(GB_gameboy_t *gb)
     gb->io_registers[GB_IO_DMA] = gb->io_registers[GB_IO_OBP0] = gb->io_registers[GB_IO_OBP1] = GB_is_cgb(gb)? 0x00 : 0xFF;
     
     gb->accessed_oam_row = -1;
+    
+    /* Todo: Ugly, fixme, see comment in the timer state machine */
+    gb->div_state = 3;
 
     gb->magic = (uintptr_t)'SAME';
 }

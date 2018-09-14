@@ -144,15 +144,25 @@ static void GB_timers_run(GB_gameboy_t *gb, uint8_t cycles)
     GB_STATE_MACHINE(gb, div, cycles, 1) {
         GB_STATE(gb, div, 1);
         GB_STATE(gb, div, 2);
+        GB_STATE(gb, div, 3);
     }
     
     GB_set_internal_div_counter(gb, 0);
+main:
     GB_SLEEP(gb, div, 1, 3);
     while (true) {
         advance_tima_state_machine(gb);
         GB_set_internal_div_counter(gb, gb->div_counter + 4);
         gb->apu.apu_cycles += 4 << !gb->cgb_double_speed;
         GB_SLEEP(gb, div, 2, 4);
+    }
+    
+    /* Todo: This is ugly to allow compatibility with 0.11 save states. Fix me when breaking save compatibility */
+    {
+        div3:
+        /* Compensate for lack of prefetch emulation, as well as DIV's internal initial value */
+        GB_set_internal_div_counter(gb, 8);
+        goto main;
     }
 }
 
