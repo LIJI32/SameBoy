@@ -356,6 +356,9 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
     
     
     [self.feedSaveButton removeFromSuperview];
+    
+    self.consoleWindow.title = [NSString stringWithFormat:@"Debug Console – %@", [[self.fileURL path] lastPathComponent]];
+    
     /* contentView.superview.subviews.lastObject is the titlebar view */
     NSView *titleView = self.printerFeedWindow.contentView.superview.subviews.lastObject;
     [titleView addSubview: self.feedSaveButton];
@@ -587,7 +590,7 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
         [textView.textStorage appendAttributedString:pending_console_output];
         [textView scrollToEndOfDocument:nil];
         if ([[NSUserDefaults standardUserDefaults] boolForKey:@"DeveloperMode"]) {
-            [self.consoleWindow orderBack:nil];
+            [self.consoleWindow orderFront:nil];
         }
         pending_console_output = nil;
 }
@@ -631,7 +634,7 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
         [pending_console_output appendAttributedString:attributed];
     }
     
-    if ([console_output_timer isValid]) {
+    if (![console_output_timer isValid]) {
         console_output_timer = [NSTimer timerWithTimeInterval:(NSTimeInterval)0.05 repeats:NO block:^(NSTimer * _Nonnull timer) {
             [self appendPendingOutput];
         }];
@@ -1414,6 +1417,13 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
             GB_set_rewind_length(&gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBRewindLength"]);
         }
     }];
+}
+
+- (void)setFileURL:(NSURL *)fileURL
+{
+    [super setFileURL:fileURL];
+    self.consoleWindow.title = [NSString stringWithFormat:@"Debug Console – %@", [[fileURL path] lastPathComponent]];
+    
 }
 
 @end
