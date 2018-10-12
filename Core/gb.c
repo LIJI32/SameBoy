@@ -16,6 +16,8 @@
 #define GB_rewind_push(...)
 #endif
 
+#define GB_SAME 1396788549
+
 void GB_attributed_logv(GB_gameboy_t *gb, GB_log_attributes attributes, const char *fmt, va_list args)
 {
     char *string = NULL;
@@ -420,7 +422,7 @@ void GB_disconnect_serial(GB_gameboy_t *gb)
 
 bool GB_is_inited(GB_gameboy_t *gb)
 {
-    return gb->magic == 'SAME';
+    return gb->magic == GB_SAME;
 }
 
 bool GB_is_cgb(GB_gameboy_t *gb)
@@ -557,7 +559,7 @@ void GB_reset(GB_gameboy_t *gb)
     /* Todo: Ugly, fixme, see comment in the timer state machine */
     gb->div_state = 3;
 
-    gb->magic = (uintptr_t)'SAME';
+    gb->magic = GB_SAME;
 }
 
 void GB_switch_model_and_reset(GB_gameboy_t *gb, GB_model_t model)
