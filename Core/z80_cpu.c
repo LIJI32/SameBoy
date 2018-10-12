@@ -1142,7 +1142,7 @@ static void rlc_r(GB_gameboy_t *gb, uint8_t opcode)
     if (carry) {
         gb->registers[GB_REGISTER_AF] |= GB_CARRY_FLAG;
     }
-    if (!(value << 1)) {
+    if ((value << 1) != 0) {
         gb->registers[GB_REGISTER_AF] |= GB_ZERO_FLAG;
     }
 }
