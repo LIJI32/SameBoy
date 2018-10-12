@@ -175,7 +175,7 @@ endif
 	echo "const unsigned $(notdir $(@:%.c=%))_length = sizeof($(notdir $(@:%.c=%)));" >> $@
 
 $(CORE_DIR)/build/bin/BootROMs/%_boot.bin: $(CORE_DIR)/libretro/rgbds/rgbasm $(CORE_DIR)/libretro/rgbds/rgblink
-	RGBASM="libretro/rgbds/rgbasm" RGBLINK="libretro/rgbds/rgblink" $(MAKE) -C $(CORE_DIR) $(patsubst $(CORE_DIR)/%,%,$@)
+	RGBASM="../libretro/rgbds/rgbasm" RGBLINK="libretro/rgbds/rgblink" $(MAKE) -C $(CORE_DIR) $(patsubst $(CORE_DIR)/%,%,$@)
 
 $(CORE_DIR)/libretro/rgbds:
 	git clone https://github.com/rednex/rgbds.git $(CORE_DIR)/libretro/rgbds
