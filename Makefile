@@ -32,10 +32,11 @@ CONF ?= debug
 BIN := build/bin
 OBJ := build/obj
 BOOTROMS_DIR ?= $(BIN)/BootROMs
+RGBASM ?= rgbasm
+RGBLINK ?= rgblink
 
 # Set tools
 
-CC := clang
 ifeq ($(PLATFORM),windows32)
 # To force use of the Unix version instead of the Windows version
 MKDIR := $(shell which mkdir)
@@ -297,8 +298,8 @@ $(BIN)/SDL/Shaders: Shaders
 
 $(BIN)/BootROMs/%.bin: BootROMs/%.asm
 	-@$(MKDIR) -p $(dir $@)
-	cd BootROMs && rgbasm -o ../$@.tmp ../$<
-	rgblink -o $@.tmp2 $@.tmp
+	cd BootROMs && $(RGBASM) -o ../$@.tmp ../$<
+	$(RGBLINK) -o $@.tmp2 $@.tmp
 	head -c $(if $(findstring dmg,$@), 256, 2304) $@.tmp2 > $@
 	@rm $@.tmp $@.tmp2
 

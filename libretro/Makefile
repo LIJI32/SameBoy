@@ -3,7 +3,7 @@ AR             := ar
 
 GIT_VERSION ?= " $(shell git rev-parse --short HEAD || echo unknown)"
 ifneq ($(GIT_VERSION)," unknown")
-   CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
+	CFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 endif
 
 CFLAGS += -DSAMEBOY_CORE_VERSION=\"$(VERSION)\"
@@ -11,13 +11,13 @@ CFLAGS += -DSAMEBOY_CORE_VERSION=\"$(VERSION)\"
 ifeq ($(platform),)
 platform = unix
 ifeq ($(shell uname -a),)
-   platform = win
+	platform = win
 else ifneq ($(findstring MINGW,$(shell uname -a)),)
-   platform = win
+	platform = win
 else ifneq ($(findstring Darwin,$(shell uname -a)),)
-   platform = osx
+	platform = osx
 else ifneq ($(findstring win,$(shell uname -a)),)
-   platform = win
+	platform = win
 endif
 endif
 
@@ -47,22 +47,22 @@ LIBM		    = -lm
 
 ifeq ($(ARCHFLAGS),)
 ifeq ($(archs),ppc)
-   ARCHFLAGS = -arch ppc -arch ppc64
+	ARCHFLAGS = -arch ppc -arch ppc64
 else
-   ARCHFLAGS = -arch i386 -arch x86_64
+	ARCHFLAGS = -arch i386 -arch x86_64
 endif
 endif
 
 ifneq ($(SANITIZER),)
-   CFLAGS   := -fsanitize=$(SANITIZER) $(CFLAGS)
-   CXXFLAGS := -fsanitize=$(SANITIZER) $(CXXFLAGS)
-   LDFLAGS  := -fsanitize=$(SANITIZER) $(LDFLAGS) -lasan
+	CFLAGS   := -fsanitize=$(SANITIZER) $(CFLAGS)
+	CXXFLAGS := -fsanitize=$(SANITIZER) $(CXXFLAGS)
+	LDFLAGS  := -fsanitize=$(SANITIZER) $(LDFLAGS) -lasan
 endif
 
 ifeq ($(platform), osx)
 ifndef ($(NOUNIVERSAL))
-   CFLAGS += $(ARCHFLAGS)
-   LFLAGS += $(ARCHFLAGS)
+	CFLAGS += $(ARCHFLAGS)
+	LFLAGS += $(ARCHFLAGS)
 endif
 endif
 
@@ -71,45 +71,45 @@ EXT := a
 endif
 
 ifeq ($(platform), unix)
-   EXT ?= so
-   TARGET := $(TARGET_NAME)_libretro.$(EXT)
-   fpic := -fPIC
-   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
+	EXT ?= so
+	TARGET := $(TARGET_NAME)_libretro.$(EXT)
+	fpic := -fPIC
+	SHARED := -shared -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
 else ifeq ($(platform), linux-portable)
-   TARGET := $(TARGET_NAME)_libretro.$(EXT)
-   fpic := -fPIC -nostdlib
-   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/libretro/link.T
+	TARGET := $(TARGET_NAME)_libretro.$(EXT)
+	fpic := -fPIC -nostdlib
+	SHARED := -shared -Wl,--version-script=$(CORE_DIR)/libretro/link.T
 	LIBM :=
 # Nintendo Switch (libtransistor)
 else ifeq ($(platform), switch)
-   TARGET := $(TARGET_NAME)_libretro_$(platform).a
-   include $(LIBTRANSISTOR_HOME)/libtransistor.mk
-   CFLAGS += -Wl,-q -Wall -O3 -fno-short-enums -fno-optimize-sibling-calls
-   STATIC_LINKING=1
+	TARGET := $(TARGET_NAME)_libretro_$(platform).a
+	include $(LIBTRANSISTOR_HOME)/libtransistor.mk
+	CFLAGS += -Wl,-q -Wall -O3 -fno-short-enums -fno-optimize-sibling-calls
+	STATIC_LINKING=1
 # Nintendo WiiU
 else ifeq ($(platform), wiiu)
-   TARGET := $(TARGET_NAME)_libretro_$(platform).a
-   CC = $(DEVKITPPC)/bin/powerpc-eabi-gcc$(EXE_EXT)
-   AR = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
-   CFLAGS += -DGEKKO -DHW_RVL -DWIIU -mwup -mcpu=750 -meabi -mhard-float -D__ppc__ -DMSB_FIRST -I$(DEVKITPRO)/libogc/include
-   CFLAGS += -U__INT32_TYPE__ -U __UINT32_TYPE__ -D__INT32_TYPE__=int
-   STATIC_LINKING = 1
+	TARGET := $(TARGET_NAME)_libretro_$(platform).a
+	CC = $(DEVKITPPC)/bin/powerpc-eabi-gcc$(EXE_EXT)
+	AR = $(DEVKITPPC)/bin/powerpc-eabi-ar$(EXE_EXT)
+	CFLAGS += -DGEKKO -DHW_RVL -DWIIU -mwup -mcpu=750 -meabi -mhard-float -D__ppc__ -DMSB_FIRST -I$(DEVKITPRO)/libogc/include
+	CFLAGS += -U__INT32_TYPE__ -U __UINT32_TYPE__ -D__INT32_TYPE__=int
+	STATIC_LINKING = 1
 else ifneq (,$(findstring osx,$(platform)))
-   TARGET := $(TARGET_NAME)_libretro.dylib
-   fpic := -fPIC
-   SHARED := -dynamiclib
+	TARGET := $(TARGET_NAME)_libretro.dylib
+	fpic := -fPIC
+	SHARED := -dynamiclib
 else ifneq (,$(findstring ios,$(platform)))
-   TARGET := $(TARGET_NAME)_libretro_ios.dylib
+	TARGET := $(TARGET_NAME)_libretro_ios.dylib
 	fpic := -fPIC
 	SHARED := -dynamiclib
 
 ifeq ($(IOSSDK),)
-   IOSSDK := $(shell xcodebuild -version -sdk iphoneos Path)
+	IOSSDK := $(shell xcodebuild -version -sdk iphoneos Path)
 endif
 
 	DEFINES := -DIOS
 ifeq ($(platform),ios-arm64)
-   CC = cc -arch armv64 -isysroot $(IOSSDK)
+	CC = cc -arch armv64 -isysroot $(IOSSDK)
 else
 	CC = cc -arch armv7 -isysroot $(IOSSDK)
 endif
@@ -122,22 +122,22 @@ CFLAGS += -miphoneos-version-min=5.0
 endif
 else ifneq (,$(findstring qnx,$(platform)))
 	TARGET := $(TARGET_NAME)_libretro_qnx.so
-   fpic := -fPIC
-   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
+	fpic := -fPIC
+	SHARED := -shared -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
 else ifeq ($(platform), emscripten)
-   TARGET := $(TARGET_NAME)_libretro_emscripten.bc
-   fpic := -fPIC
-   SHARED := -shared -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
+	TARGET := $(TARGET_NAME)_libretro_emscripten.bc
+	fpic := -fPIC
+	SHARED := -shared -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
 else ifeq ($(platform), vita)
-   TARGET := $(TARGET_NAME)_vita.a
-   CC = arm-vita-eabi-gcc
-   AR = arm-vita-eabi-ar
-   CFLAGS += -Wl,-q -Wall -O3 -fno-short-enums -fno-optimize-sibling-calls
+	TARGET := $(TARGET_NAME)_vita.a
+	CC = arm-vita-eabi-gcc
+	AR = arm-vita-eabi-ar
+	CFLAGS += -Wl,-q -Wall -O3 -fno-short-enums -fno-optimize-sibling-calls
 	STATIC_LINKING = 1
 else
-   CC = gcc
-   TARGET := $(TARGET_NAME)_libretro.dll
-   SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
+	CC = gcc
+	TARGET := $(TARGET_NAME)_libretro.dll
+	SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
 endif
 
 TARGET := $(CORE_DIR)/build/bin/$(TARGET)
@@ -148,9 +148,9 @@ MKDIR := $(shell which mkdir)
 LDFLAGS += $(LIBM)
 
 ifeq ($(DEBUG), 1)
-   CFLAGS += -O0 -g
+	CFLAGS += -O0 -g
 else
-   CFLAGS += -O2 -DNDEBUG
+	CFLAGS += -O2 -DNDEBUG
 endif
 
 include Makefile.common
@@ -174,8 +174,17 @@ endif
 	echo "};" >> $@
 	echo "const unsigned $(notdir $(@:%.c=%))_length = sizeof($(notdir $(@:%.c=%)));" >> $@
 
-$(CORE_DIR)/build/bin/BootROMs/%_boot.bin:
-	$(MAKE) -C $(CORE_DIR) $(patsubst $(CORE_DIR)/%,%,$@)
+$(CORE_DIR)/build/bin/BootROMs/%_boot.bin: $(CORE_DIR)/libretro/rgbds/rgbasm $(CORE_DIR)/libretro/rgbds/rgblink
+	RGBASM="libretro/rgbds/rgbasm" RGBLINK="libretro/rgbds/rgblink" $(MAKE) -C $(CORE_DIR) $(patsubst $(CORE_DIR)/%,%,$@)
+
+$(CORE_DIR)/libretro/rgbds:
+	git clone https://github.com/rednex/rgbds.git $(CORE_DIR)/libretro/rgbds
+
+$(CORE_DIR)/libretro/rgbds/rgbasm: $(CORE_DIR)/libretro/rgbds
+	make -C $(CORE_DIR)/libretro/rgbds rgbasm
+
+$(CORE_DIR)/libretro/rgbds/rgblink: $(CORE_DIR)/libretro/rgbds
+	make -C $(CORE_DIR)/libretro/rgbds rgblink
 
 $(TARGET): $(OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
