@@ -8,7 +8,8 @@
 
 #ifdef GB_INTERNAL
 /* Speed = 1 / Length (in seconds) */
-#define DAC_DECAY_SPEED 500.0
+/* Todo: Measure this and find the actual curve shape*/
+#define DAC_DECAY_SPEED 50
 
 /* Divides nicely and never overflows with 4 channels and 8 (1-8) volume levels */
 #ifdef WIIU

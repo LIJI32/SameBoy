@@ -21,9 +21,28 @@ static void refresh_channel(GB_gameboy_t *gb, unsigned index, unsigned cycles_of
     gb->apu_output.last_update[index] = gb->apu_output.cycles_since_render + cycles_offset;
 }
 
+static bool is_DAC_enabled(GB_gameboy_t *gb, unsigned index)
+{
+    switch (index) {
+        case GB_SQUARE_1:
+            return gb->io_registers[GB_IO_NR12] & 0xF8;
+            
+        case GB_SQUARE_2:
+            return gb->io_registers[GB_IO_NR22] & 0xF8;
+            
+        case GB_WAVE:
+            return gb->apu.wave_channel.enable;
+            
+        case GB_NOISE:
+            return gb->io_registers[GB_IO_NR42] & 0xF8;
+    }
+    
+    return 0;
+}
+
 static void update_sample(GB_gameboy_t *gb, unsigned index, int8_t value, unsigned cycles_offset)
 {
-    if (!gb->apu.is_active[index]) {
+    if (!is_DAC_enabled(gb, index)) {
         value = gb->apu.samples[index];
     }
     else {
@@ -52,7 +71,7 @@ static void render(GB_gameboy_t *gb, bool no_downsampling, GB_sample_t *dest)
     GB_sample_t output = {0,0};
     for (unsigned i = GB_N_CHANNELS; i--;) {
         double multiplier = CH_STEP;
-        if (!gb->apu.is_active[i]) {
+        if (!is_DAC_enabled(gb, i)) {
             gb->apu_output.dac_discharge[i] -= ((double) DAC_DECAY_SPEED) / gb->apu_output.sample_rate;
             if (gb->apu_output.dac_discharge[i] < 0) {
                 multiplier = 0;
@@ -605,8 +624,8 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 gb->apu.square_channels[index].volume_countdown = 0;
             }
             if ((value & 0xF8) == 0) {
-                /* According to Blargg's test ROM this should disable the channel instantly
-                 TODO: verify how "instant" the change is using PCM12 */
+                /* This disables the DAC */
+                gb->io_registers[reg] = value;
                 gb->apu.is_active[index] = false;
                 update_sample(gb, index, 0, 0);
             }
@@ -805,8 +824,8 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 gb->apu.noise_channel.volume_countdown = 0;
             }
             if ((value & 0xF8) == 0) {
-                /* According to Blargg's test ROM this should disable the channel instantly
-                 TODO: verify how "instant" the change is using PCM12 */
+                /* This disables the DAC */
+                gb->io_registers[reg] = value;
                 gb->apu.is_active[GB_NOISE] = false;
                 update_sample(gb, GB_NOISE, 0, 0);
             }
@@ -904,7 +923,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
     }
     gb->io_registers[reg] = value;
     for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
-        if (gb->apu.is_active[i]) {
+        if (is_DAC_enabled(gb, i)) {
             gb->apu_output.dac_discharge[i] = 1.0;
         }
     }
