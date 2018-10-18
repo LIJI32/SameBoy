@@ -785,6 +785,10 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.wave_channel.length_enabled = false;
                 }
                 /* Note that we don't change the sample just yet! This was verified on hardware. */
+                /* Todo: The first sample *is not* skipped on the DMG, this is a bug introduced
+                   on the CGB. It appears that the bug was fixed on the AGB, but it's not reflected
+                   by PCM434. */
+                /* Todo: Similar issues may apply to the other channels on the DMG/AGB, test, verify and fix if needed */
             }
             
             /* APU glitch - if length is enabled while the DIV-divider's LSB is 1, tick the length once. */
