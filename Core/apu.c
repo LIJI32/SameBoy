@@ -75,9 +75,19 @@ static void render(GB_gameboy_t *gb, bool no_downsampling, GB_sample_t *dest)
             gb->apu_output.dac_discharge[i] -= ((double) DAC_DECAY_SPEED) / gb->apu_output.sample_rate;
             if (gb->apu_output.dac_discharge[i] < 0) {
                 multiplier = 0;
+                gb->apu_output.dac_discharge[i] = 0;
             }
             else {
-                multiplier *= pow(0.05, 1 - gb->apu_output.dac_discharge[i]) * (gb->apu_output.dac_discharge[i]);
+                multiplier *= gb->apu_output.dac_discharge[i];
+            }
+        }
+        else {
+            gb->apu_output.dac_discharge[i] += ((double) DAC_ATTACK_SPEED) / gb->apu_output.sample_rate;
+            if (gb->apu_output.dac_discharge[i] > 1) {
+                gb->apu_output.dac_discharge[i] = 1;
+            }
+            else {
+                multiplier *= gb->apu_output.dac_discharge[i];
             }
         }
 
@@ -785,9 +795,10 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.wave_channel.length_enabled = false;
                 }
                 /* Note that we don't change the sample just yet! This was verified on hardware. */
-                /* Todo: The first sample *is not* skipped on the DMG, this is a bug introduced
-                   on the CGB. It appears that the bug was fixed on the AGB, but it's not reflected
-                   by PCM434. */
+                /* Todo: The first sample might *not* beskipped on the DMG, this could be a bug
+                   introduced on the CGB. It appears that the bug was fixed on the AGB, but it's
+                   not reflected by PCM34. This should be probably verified as this could just
+                   mean differences in the DACs. */
                 /* Todo: Similar issues may apply to the other channels on the DMG/AGB, test, verify and fix if needed */
             }
             
@@ -926,11 +937,6 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
             }
     }
     gb->io_registers[reg] = value;
-    for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
-        if (is_DAC_enabled(gb, i)) {
-            gb->apu_output.dac_discharge[i] = 1.0;
-        }
-    }
 }
 
 size_t GB_apu_get_current_buffer_length(GB_gameboy_t *gb)
