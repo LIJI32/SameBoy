@@ -75,7 +75,9 @@ typedef struct
         uint16_t pulse_length; // Reloaded from NRX1 (xorred), in 256Hz DIV ticks
         uint8_t current_volume; // Reloaded from NRX2
         uint8_t volume_countdown; // Reloaded from NRX2
-        uint8_t current_sample_index;
+        uint8_t current_sample_index; /* For save state compatibility,
+                                         highest bit is reused (See NR14/NR24's
+                                         write code)*/
         
         uint16_t sample_countdown; // in APU ticks (Reloaded from sample_length, xorred $7FF)
         uint16_t sample_length; // From NRX3, NRX4, in APU ticks

@@ -172,6 +172,8 @@ static uint16_t new_sweep_sample_legnth(GB_gameboy_t *gb)
 
 static void update_square_sample(GB_gameboy_t *gb, unsigned index)
 {
+    if (gb->apu.square_channels[index].current_sample_index & 0x80) return;
+    
     uint8_t duty = gb->io_registers[index == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
     update_sample(gb, index,
                   duties[gb->apu.square_channels[index].current_sample_index + duty * 8]?
@@ -689,6 +691,8 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 if ((gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] & 0xF8) != 0 && !gb->apu.is_active[index]) {
                     gb->apu.is_active[index] = true;
                     update_sample(gb, index, 0, 0);
+                    /* We use the highest bit in current_sample_index to mark this sample is not actually playing yet, */
+                    gb->apu.square_channels[index].current_sample_index |= 0x80;
                 }
                 if (gb->apu.square_channels[index].pulse_length == 0) {
                     gb->apu.square_channels[index].pulse_length = 0x40;
