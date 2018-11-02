@@ -22,6 +22,25 @@
 
 #define GB_STRUCT_VERSION 13
 
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define GB_BIG_ENDIAN
+#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define GB_LITTLE_ENDIAN
+#else
+#error Unable to detect endianess
+#endif
+
+typedef union {
+    struct {
+        uint8_t seconds;
+        uint8_t minutes;
+        uint8_t hours;
+        uint8_t days;
+        uint8_t high;
+    };
+    uint8_t data[5];
+} GB_rtc_time_t;
+
 typedef enum {
 #ifdef GB_INTERNAL
     GB_MODEL_FAMILY_MASK = 0xF00,
@@ -267,18 +286,16 @@ struct GB_gameboy_internal_s {
                             sp;
                };
                struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#ifdef GB_BIG_ENDIAN
                    uint8_t a, f,
                            b, c,
                            d, e,
                            h, l;
-#elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#else
                    uint8_t f, a,
                            c, b,
                            e, d,
                            l, h;
-#else
-#error Unable to detect endianess
 #endif
                };
                
@@ -390,17 +407,8 @@ struct GB_gameboy_internal_s {
 
     /* RTC */
     GB_SECTION(rtc,
-        union {
-            struct {
-                uint8_t seconds;
-                uint8_t minutes;
-                uint8_t hours;
-                uint8_t days;
-                uint8_t high;
-            };
-            uint8_t data[5];
-        } rtc_real, rtc_latched;
-        time_t last_rtc_second;
+        GB_rtc_time_t rtc_real, rtc_latched;
+        uint64_t last_rtc_second;
         bool rtc_latch;
     );
 

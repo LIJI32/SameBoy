@@ -195,6 +195,36 @@ int GB_load_rom(GB_gameboy_t *gb, const char *path)
     return 0;
 }
 
+typedef struct {
+    uint8_t seconds;
+    uint8_t padding1[3];
+    uint8_t minutes;
+    uint8_t padding2[3];
+    uint8_t hours;
+    uint8_t padding3[3];
+    uint8_t days;
+    uint8_t padding4[3];
+    uint8_t high;
+    uint8_t padding5[3];
+} GB_vba_rtc_time_t;
+
+typedef union {
+    struct __attribute__((packed)) {
+        GB_rtc_time_t rtc_real;
+        time_t last_rtc_second; /* Platform specific endianess and size */
+    } sameboy_legacy;
+    struct {
+        /* Used by VBA versions with 32-bit timestamp*/
+        GB_vba_rtc_time_t rtc_real, rtc_latched;
+        uint32_t last_rtc_second; /* Always little endian */
+    } vba32;
+    struct {
+        /* Used by BGB and VBA versions with 64-bit timestamp*/
+        GB_vba_rtc_time_t rtc_real, rtc_latched;
+        uint64_t last_rtc_second; /* Always little endian */
+    } vba64;
+} GB_rtc_save_t;
+
 int GB_save_battery(GB_gameboy_t *gb, const char *path)
 {
     if (!gb->cartridge_type->has_battery) return 0; // Nothing to save.
@@ -210,15 +240,27 @@ int GB_save_battery(GB_gameboy_t *gb, const char *path)
         return EIO;
     }
     if (gb->cartridge_type->has_rtc) {
-        if (fwrite(&gb->rtc_real, 1, sizeof(gb->rtc_real), f) != sizeof(gb->rtc_real)) {
+        GB_rtc_save_t rtc_save = {{{{0,}},},};
+        rtc_save.vba64.rtc_real.seconds = gb->rtc_real.seconds;
+        rtc_save.vba64.rtc_real.minutes = gb->rtc_real.minutes;
+        rtc_save.vba64.rtc_real.hours = gb->rtc_real.hours;
+        rtc_save.vba64.rtc_real.days = gb->rtc_real.days;
+        rtc_save.vba64.rtc_real.high = gb->rtc_real.high;
+        rtc_save.vba64.rtc_latched.seconds = gb->rtc_latched.seconds;
+        rtc_save.vba64.rtc_latched.minutes = gb->rtc_latched.minutes;
+        rtc_save.vba64.rtc_latched.hours = gb->rtc_latched.hours;
+        rtc_save.vba64.rtc_latched.days = gb->rtc_latched.days;
+        rtc_save.vba64.rtc_latched.high = gb->rtc_latched.high;
+#ifdef GB_BIG_ENDIAN
+        rtc_save.vba64.last_rtc_second = __builtin_bswap64(gb->last_rtc_second);
+#else
+        rtc_save.vba64.last_rtc_second = gb->last_rtc_second;
+#endif
+        if (fwrite(&rtc_save.vba64, 1, sizeof(rtc_save.vba64), f) != sizeof(rtc_save.vba64)) {
             fclose(f);
             return EIO;
         }
 
-        if (fwrite(&gb->last_rtc_second, 1, sizeof(gb->last_rtc_second), f) != sizeof(gb->last_rtc_second)) {
-            fclose(f);
-            return EIO;
-        }
     }
 
     errno = 0;
@@ -238,14 +280,53 @@ void GB_load_battery(GB_gameboy_t *gb, const char *path)
         goto reset_rtc;
     }
 
-    if (fread(&gb->rtc_real, 1, sizeof(gb->rtc_real), f) != sizeof(gb->rtc_real)) {
-        goto reset_rtc;
+    GB_rtc_save_t rtc_save;
+    switch (fread(&rtc_save, 1, sizeof(rtc_save), f)) {
+        case sizeof(rtc_save.sameboy_legacy):
+            memcpy(&gb->rtc_real, &rtc_save.sameboy_legacy.rtc_real, sizeof(gb->rtc_real));
+            memcpy(&gb->rtc_latched, &rtc_save.sameboy_legacy.rtc_real, sizeof(gb->rtc_real));
+            gb->last_rtc_second = rtc_save.sameboy_legacy.last_rtc_second;
+            break;
+            
+        case sizeof(rtc_save.vba32):
+            gb->rtc_real.seconds = rtc_save.vba32.rtc_real.seconds;
+            gb->rtc_real.minutes = rtc_save.vba32.rtc_real.minutes;
+            gb->rtc_real.hours = rtc_save.vba32.rtc_real.hours;
+            gb->rtc_real.days = rtc_save.vba32.rtc_real.days;
+            gb->rtc_real.high = rtc_save.vba32.rtc_real.high;
+            gb->rtc_latched.seconds = rtc_save.vba32.rtc_latched.seconds;
+            gb->rtc_latched.minutes = rtc_save.vba32.rtc_latched.minutes;
+            gb->rtc_latched.hours = rtc_save.vba32.rtc_latched.hours;
+            gb->rtc_latched.days = rtc_save.vba32.rtc_latched.days;
+            gb->rtc_latched.high = rtc_save.vba32.rtc_latched.high;
+#ifdef GB_BIG_ENDIAN
+            gb->last_rtc_second = __builtin_bswap32(rtc_save.vba32.last_rtc_second);
+#else
+            gb->last_rtc_second = rtc_save.vba32.last_rtc_second;
+#endif
+            break;
+            
+        case sizeof(rtc_save.vba64):
+            gb->rtc_real.seconds = rtc_save.vba64.rtc_real.seconds;
+            gb->rtc_real.minutes = rtc_save.vba64.rtc_real.minutes;
+            gb->rtc_real.hours = rtc_save.vba64.rtc_real.hours;
+            gb->rtc_real.days = rtc_save.vba64.rtc_real.days;
+            gb->rtc_real.high = rtc_save.vba64.rtc_real.high;
+            gb->rtc_latched.seconds = rtc_save.vba64.rtc_latched.seconds;
+            gb->rtc_latched.minutes = rtc_save.vba64.rtc_latched.minutes;
+            gb->rtc_latched.hours = rtc_save.vba64.rtc_latched.hours;
+            gb->rtc_latched.days = rtc_save.vba64.rtc_latched.days;
+            gb->rtc_latched.high = rtc_save.vba64.rtc_latched.high;
+#ifdef GB_BIG_ENDIAN
+            gb->last_rtc_second = __builtin_bswap64(rtc_save.vba64.last_rtc_second);
+#else
+            gb->last_rtc_second = rtc_save.vba64.last_rtc_second;
+#endif
+            break;
+            
+        default:
+            goto reset_rtc;
     }
-
-    if (fread(&gb->last_rtc_second, 1, sizeof(gb->last_rtc_second), f) != sizeof(gb->last_rtc_second)) {
-        goto reset_rtc;
-    }
-
     if (gb->last_rtc_second > time(NULL)) {
         /* We must reset RTC here, or it will not advance. */
         goto reset_rtc;
