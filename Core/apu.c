@@ -274,7 +274,7 @@ void GB_apu_div_event(GB_gameboy_t *gb)
             }
         }
         
-        if (gb->apu.is_active[GB_NOISE] && gb->apu.noise_channel.volume_countdown && (gb->io_registers[GB_IO_NR42] & 7)) {
+        if (gb->apu.is_active[GB_NOISE] && gb->apu.noise_channel.volume_countdown == 0 && (gb->io_registers[GB_IO_NR42] & 7)) {
             tick_noise_envelope(gb);
         }
     }
