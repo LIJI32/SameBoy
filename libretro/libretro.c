@@ -990,7 +990,7 @@ bool retro_unserialize(const void *data, size_t size)
 
 void *retro_get_memory_data(unsigned type)
 {
-    void* data = NULL;
+    void *data = NULL;
     switch(mode)
     {
         case MODE_SINGLE_GAME:
@@ -1012,7 +1012,7 @@ void *retro_get_memory_data(unsigned type)
                         break;
                     case RETRO_MEMORY_RTC:
                         if(gameboy[0].cartridge_type->has_battery)
-                            data = &gameboy[0].rtc_real;
+                            data = GB_GET_SECTION(&gameboy[0], rtc);
                         else
                             data = NULL;
                         break;
@@ -1039,13 +1039,13 @@ void *retro_get_memory_data(unsigned type)
                         break;
                     case RETRO_MEMORY_GAMEBOY_1_RTC:
                         if(gameboy[0].cartridge_type->has_battery)
-                            data = &gameboy[0].rtc_real;
+                            data = GB_GET_SECTION(&gameboy[0], rtc);
                         else
                             data = NULL;
                         break;
                     case RETRO_MEMORY_GAMEBOY_2_RTC:
                         if(gameboy[1].cartridge_type->has_battery)
-                            data = &gameboy[1].rtc_real;
+                            data = GB_GET_SECTION(&gameboy[1], rtc);
                         else
                             data = NULL;
                         break;
@@ -1084,7 +1084,7 @@ size_t retro_get_memory_size(unsigned type)
                         break;
                     case RETRO_MEMORY_RTC:
                         if(gameboy[0].cartridge_type->has_battery)
-                            size = sizeof (gameboy[0].rtc_real);
+                            size = GB_SECTION_SIZE(rtc);
                         else
                             size =  0;
                         break;
@@ -1111,11 +1111,11 @@ size_t retro_get_memory_size(unsigned type)
                         break;
                     case RETRO_MEMORY_GAMEBOY_1_RTC:
                         if(gameboy[0].cartridge_type->has_battery)
-                            size = sizeof (gameboy[0].rtc_real);
+                            size = GB_SECTION_SIZE(rtc);
                         break;
                     case RETRO_MEMORY_GAMEBOY_2_RTC:
                         if(gameboy[1].cartridge_type->has_battery)
-                            size = sizeof (gameboy[1].rtc_real);
+                            size = GB_SECTION_SIZE(rtc);
                         break;
                     default:
                         break;
