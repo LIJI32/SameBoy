@@ -21,7 +21,7 @@ ifeq ($(MAKECMDGOALS),)
 MAKECMDGOALS := $(DEFAULT)
 endif
 
-VERSION := 0.11.1
+VERSION := 0.11.2
 export VERSION
 CONF ?= debug
 
