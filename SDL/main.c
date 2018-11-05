@@ -494,13 +494,20 @@ int main(int argc, char **argv)
 #define xstr(x) str(x)
     fprintf(stderr, "SameBoy v" xstr(VERSION) "\n");
 
-    if (argc > 2) {
+    if (argc > 3) {
         fprintf(stderr, "Usage: %s [rom]\n", argv[0]);
         exit(1);
     }
     
-    if (argc == 2) {
+    if (argc >= 2) {
         filename = argv[1];
+    }
+    
+    bool start_in_fullscreen = false;
+    if (argc == 3) {
+        if (strcmp(argv[2], "--fullscreen") == 0) {
+            start_in_fullscreen = true;
+        }
     }
 
     signal(SIGINT, debugger_interrupt);
@@ -511,8 +518,14 @@ int main(int argc, char **argv)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-    window = SDL_CreateWindow("SameBoy v" xstr(VERSION), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+    if (start_in_fullscreen) {
+        window = SDL_CreateWindow("SameBoy v" xstr(VERSION), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                              160 * 2, 144 * 2, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    }
+    else {
+        window = SDL_CreateWindow("SameBoy v" xstr(VERSION), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                               160 * 2, 144 * 2, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    }                       
     SDL_SetWindowMinimumSize(window, 160, 144);
     
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
