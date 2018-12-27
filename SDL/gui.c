@@ -25,7 +25,7 @@ unsigned command_parameter;
 #endif
 
 shader_t shader;
-SDL_Rect rect;
+SDL_Rect viewport;
 
 void render_texture(void *pixels,  void *previous)
 {
@@ -45,7 +45,7 @@ void render_texture(void *pixels,  void *previous)
         }
         glClearColor(0, 0, 0, 1);
         glClear(GL_COLOR_BUFFER_BIT);
-        render_bitmap_with_shader(&shader, _pixels, previous, rect.x, rect.y, rect.w, rect.h);
+        render_bitmap_with_shader(&shader, _pixels, previous, viewport.x, viewport.y, viewport.w, viewport.h);
         SDL_GL_SwapWindow(window);
     }
 }
@@ -136,15 +136,15 @@ void update_viewport(void)
     
     unsigned new_width = x_factor * 160;
     unsigned new_height = y_factor * 144;
-    
-    rect = (SDL_Rect){(win_width  - new_width) / 2, (win_height - new_height) /2,
+
+    viewport = (SDL_Rect){(win_width  - new_width) / 2, (win_height - new_height) /2,
         new_width, new_height};
     
     if (renderer) {
-        SDL_RenderSetClipRect(renderer, &rect);
+        SDL_RenderSetClipRect(renderer, &viewport);
     }
     else {
-        glViewport(rect.x, rect.y, rect.w, rect.h);
+        glViewport(viewport.x, viewport.y, viewport.w, viewport.h);
     }
 }
 
