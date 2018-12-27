@@ -26,6 +26,10 @@ unsigned command_parameter;
 
 shader_t shader;
 SDL_Rect viewport;
+struct scale {
+    double x;
+    double y;
+};
 
 void render_texture(void *pixels,  void *previous)
 {
@@ -113,29 +117,40 @@ static const char *help[] ={
 " Break Debugger:    " CTRL_STRING "+C"
 };
 
+struct scale viewport_scale(void)
+{
+    struct scale scale;
+
+    int win_width, win_height;
+    SDL_GL_GetDrawableSize(window, &win_width, &win_height);
+    scale.x = win_width / 160.0;
+    scale.y = win_height / 144.0;
+
+    if (configuration.scaling_mode == GB_SDL_SCALING_INTEGER_FACTOR) {
+        scale.x = (int)(scale.x);
+        scale.y = (int)(scale.y);
+    }
+    
+    if (configuration.scaling_mode != GB_SDL_SCALING_ENTIRE_WINDOW) {
+        if (scale.x > scale.y) {
+            scale.x = scale.y;
+        }
+        else {
+            scale.y = scale.x;
+        }
+    }
+
+    return scale;
+}
+
 void update_viewport(void)
 {
     int win_width, win_height;
     SDL_GL_GetDrawableSize(window, &win_width, &win_height);
-    double x_factor = win_width / 160.0;
-    double y_factor = win_height / 144.0;
-    
-    if (configuration.scaling_mode == GB_SDL_SCALING_INTEGER_FACTOR) {
-        x_factor = (int)(x_factor);
-        y_factor = (int)(y_factor);
-    }
-    
-    if (configuration.scaling_mode != GB_SDL_SCALING_ENTIRE_WINDOW) {
-        if (x_factor > y_factor) {
-            x_factor = y_factor;
-        }
-        else {
-            y_factor = x_factor;
-        }
-    }
-    
-    unsigned new_width = x_factor * 160;
-    unsigned new_height = y_factor * 144;
+
+    struct scale scale = viewport_scale();
+    unsigned new_width = 160 * scale.x;
+    unsigned new_height = 144 * scale.y;
 
     viewport = (SDL_Rect){(win_width  - new_width) / 2, (win_height - new_height) /2,
         new_width, new_height};
