@@ -24,7 +24,7 @@
 
 GB_gameboy_t gb;
 static bool paused = false;
-static uint32_t pixel_buffer_1[160*144], pixel_buffer_2[160*144];
+static uint32_t pixel_buffer_1[160*144], pixel_buffer_2[160*144], bg_pixel_buffer[160*144];
 static uint32_t *active_pixel_buffer = pixel_buffer_1, *previous_pixel_buffer = pixel_buffer_2;
 static bool underclock_down = false, rewind_down = false, do_rewind = false, rewind_paused = false, turbo_down = false;
 static double clock_mutliplier = 1.0;
@@ -316,6 +316,7 @@ static void handle_events(GB_gameboy_t *gb)
 
 static void vblank(GB_gameboy_t *gb)
 {
+    // Adjust clock speed
     if (underclock_down && clock_mutliplier > 0.5) {
         clock_mutliplier -= 0.1;
         GB_set_clock_multiplier(gb, clock_mutliplier);
@@ -324,16 +325,25 @@ static void vblank(GB_gameboy_t *gb)
         clock_mutliplier += 0.1;
         GB_set_clock_multiplier(gb, clock_mutliplier);
     }
+
+    // Propagate updates of the hardware scroll registers
+    int scrollX = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCX];
+    int scrollY = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCY];
+    wgb_update_hardware_scroll(&wgb, scrollX, scrollY);
+
+    // Present frame
     if (configuration.blend_frames) {
-        render_texture(active_pixel_buffer, previous_pixel_buffer);
+        render_texture(active_pixel_buffer, previous_pixel_buffer, bg_pixel_buffer);
+        // swap active and previous frame
         uint32_t *temp = active_pixel_buffer;
         active_pixel_buffer = previous_pixel_buffer;
         previous_pixel_buffer = temp;
         GB_set_pixels_output(gb, active_pixel_buffer);
     }
     else {
-        render_texture(active_pixel_buffer, NULL);
+        render_texture(active_pixel_buffer, NULL, bg_pixel_buffer);
     }
+
     do_rewind = rewind_down;
     handle_events(gb);
 }
@@ -416,6 +426,7 @@ restart:
         
         GB_set_vblank_callback(&gb, (GB_vblank_callback_t) vblank);
         GB_set_pixels_output(&gb, active_pixel_buffer);
+        GB_set_bg_pixels_output(&gb, bg_pixel_buffer);
         GB_set_rgb_encode_callback(&gb, rgb_encode);
         GB_set_sample_rate(&gb, have_aspec.freq);
         GB_set_color_correction_mode(&gb, configuration.color_correction_mode);
@@ -538,8 +549,9 @@ int main(int argc, char **argv)
     GLint major = 0, minor = 0;
     glGetIntegerv(GL_MAJOR_VERSION, &major);
     glGetIntegerv(GL_MINOR_VERSION, &minor);
-    
-    if (major * 0x100 + minor < 0x302) {
+
+    bool forceSDLRenderer = true;
+    if (major * 0x100 + minor < 0x302 || forceSDLRenderer) {
         SDL_GL_DeleteContext(gl_context);
         gl_context = NULL;
     }
@@ -552,8 +564,9 @@ int main(int argc, char **argv)
     else {
         pixel_format = SDL_AllocFormat(SDL_PIXELFORMAT_ABGR8888);
     }
-    
-    
+
+    wgb = wgb_init();
+
     /* Configure Audio */
     memset(&want_aspec, 0, sizeof(want_aspec));
     want_aspec.freq = AUDIO_FREQUENCY;

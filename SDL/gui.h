@@ -5,6 +5,7 @@
 #include <Core/gb.h>
 #include <stdbool.h> 
 #include "shader.h"
+#include "wide_gb.h"
 
 #define JOYSTICK_HIGH 0x4000
 #define JOYSTICK_LOW 0x3800
@@ -15,6 +16,7 @@ extern SDL_Window *window;
 extern SDL_Renderer *renderer;
 extern SDL_Texture *screen_texture;
 extern SDL_PixelFormat *pixel_format;
+extern wide_gb wgb;
 extern shader_t shader;
 
 enum scaling_mode {
@@ -91,7 +93,7 @@ extern configuration_t configuration;
 
 void update_viewport(void);
 void run_gui(bool is_running);
-void render_texture(void *pixels, void *previous);
+void render_texture(void *pixels, void *previous, void *background_pixels);
 void connect_joypad(void);
 
 joypad_button_t get_joypad_button(uint8_t physical_button);

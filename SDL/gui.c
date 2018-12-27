@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "gui.h"
 #include "font.h"
+#include "wide_gb.h"
 
 static const SDL_Color gui_palette[4] = {{8, 24, 16,}, {57, 97, 57,}, {132, 165, 99}, {198, 222, 140}};
 static uint32_t gui_palette_native[4];
@@ -26,23 +27,125 @@ unsigned command_parameter;
 
 shader_t shader;
 SDL_Rect viewport;
+wide_gb wgb;
+SDL_Texture *wgb_textures[WGB_MAX_TILES];
+
 struct scale {
     double x;
     double y;
 };
+struct scale viewport_scale(void);
 
-void render_texture(void *pixels,  void *previous)
+// TODO:
+// - Move maths to wgb_*
+// - Exclude window from saved background
+// - Scenes detection
+// - Save/restore backgrounds on the disk
+
+SDL_Texture* sdl_texture_for_wgb_tile(int tile_index)
 {
+    SDL_Texture *texture = wgb_textures[tile_index];
+    if (texture == NULL) {
+        fprintf(stderr, "Create SDL texture for tile %i\n", tile_index);
+        texture = SDL_CreateTexture(renderer, SDL_GetWindowPixelFormat(window), SDL_TEXTUREACCESS_STREAMING, 160, 144);
+        if (texture == NULL) {
+            fprintf(stderr, "Failed to create SDL texture for tile %i\n", tile_index);
+        }
+        wgb_textures[tile_index] = texture;
+    }
+    return texture;
+}
+
+void render_texture(void *pixels, void *previous, void *background_pixels)
+{
+    /*---------------------------- Update Tiles ------------------------------*/
+
+    // Update WideGB tiles with the pixels of the current visible viewport:
+    SDL_Point logical_scroll = wgb_get_logical_scroll(&wgb);
+    uint32_t *source_pixels = background_pixels ? background_pixels : pixels;
+    // for each pixel visible on the console screen…
+    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
+        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
+            // read the background pixel
+            uint32_t pixel = source_pixels[pixel_x + pixel_y * 160];
+            // compute the coordinates of the WideGB tile that contains this pixel
+            SDL_Point tile_position = {
+                .x = floorf((logical_scroll.x + pixel_x) / 160.0),
+                .y = floorf((logical_scroll.y + pixel_y) / 144.0)
+            };
+            SDL_Point pixel_position = { pixel_x, pixel_y };
+            // and write the pixel to the tile
+            wgb_write_tile_pixel(&wgb, tile_position, pixel_position, pixel);
+        }
+    }
+
+    /*---------------------------- Update Tiles Textures ---------------------*/
+
+    // For each of the 4 tiles that may have been touched…
+    SDL_Point corners[] = {
+        { logical_scroll.x,           logical_scroll.y },
+        { logical_scroll.x + 160 - 1, logical_scroll.y },
+        { logical_scroll.x,           logical_scroll.y + 144 - 1 },
+        { logical_scroll.x + 160 - 1, logical_scroll.y + 144 - 1 }
+    };
+    // fprintf(stderr, "Logical scroll: { %i, %i }\n", logical_scroll.x, logical_scroll.y);
+    for (int i = 0; i < 4; i++) {
+        // … update the tile SDL texture.
+        SDL_Point corner = corners[i];
+        wgb_tile *potentially_updated_tile = wgb_tile_at_point(&wgb, corner);
+        if (potentially_updated_tile) {
+            // fprintf(stderr, "Update texture of tile { %i, %i }\n",potentially_updated_tile->position.x, potentially_updated_tile->position.y);
+            int tile_index = wgb_index_of_tile(&wgb, potentially_updated_tile);
+            SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(tile_index);
+            SDL_UpdateTexture(tile_texture, NULL, potentially_updated_tile->pixel_buffer, 160 * sizeof (uint32_t));
+        }
+    }
+
+    /*----------------------------  Rendering --------------------------------*/
+
     if (renderer) {
+        // 1. Clear the surface
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xff);
+        SDL_RenderClear(renderer);
+
+        // 2. Display each WideGB tile
+        struct scale scale = viewport_scale();
+        int tiles_count = wgb_tiles_count(&wgb);
+        for (int i = 0; i < tiles_count; i++) {
+            wgb_tile *tile = wgb_tile_at_index(&wgb, i);
+            SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
+            SDL_Rect tile_rect = {
+                .x = viewport.x - (logical_scroll.x - tile->position.x * 160) * scale.x,
+                .y = viewport.y - (logical_scroll.y - tile->position.y * 144) * scale.y,
+                .w = 160 * scale.x,
+                .h = 144 * scale.y
+            };
+            SDL_RenderCopy(renderer, tile_texture, NULL, &tile_rect);
+#if WIDE_GB_DEBUG
+            SDL_SetRenderDrawColor(renderer, 0x60, 0x60, 0x60, 0xff);
+            SDL_RenderDrawRect(renderer, &tile_rect);
+#endif
+        }
+
+        // 3. Overlap the console screen at the center of the window
         if (pixels) {
             SDL_UpdateTexture(screen_texture, NULL, pixels, 160 * sizeof (uint32_t));
         }
-        SDL_RenderClear(renderer);
+#if WIDE_GB_DEBUG
+        SDL_SetTextureBlendMode(screen_texture, SDL_BLENDMODE_BLEND);
+        SDL_SetTextureAlphaMod(screen_texture, 128);
+#endif
+        SDL_RenderCopy(renderer, screen_texture, NULL, &viewport);
+#if WIDE_GB_DEBUG
+        SDL_SetRenderDrawColor(renderer, 0x255, 0x0, 0x0, 0x7f);
+        SDL_RenderDrawRect(renderer, &viewport);
+#endif
 
-        SDL_RenderCopy(renderer, screen_texture, NULL, &rect);
+        // 4. Finish rendering
         SDL_RenderPresent(renderer);
     }
     else {
+        // TODO: implement OpenGL rendering
         static void *_pixels = NULL;
         if (pixels) {
             _pixels = pixels;
@@ -156,7 +259,9 @@ void update_viewport(void)
         new_width, new_height};
     
     if (renderer) {
+        #if !WIDE_GB_ENABLED
         SDL_RenderSetClipRect(renderer, &viewport);
+        #endif
     }
     else {
         glViewport(viewport.x, viewport.y, viewport.w, viewport.h);
@@ -399,7 +504,7 @@ void cycle_scaling(unsigned index)
         configuration.scaling_mode = 0;
     }
     update_viewport();
-    render_texture(NULL, NULL);
+    render_texture(NULL, NULL, NULL);
 }
 
 void cycle_scaling_backwards(unsigned index)
@@ -411,7 +516,7 @@ void cycle_scaling_backwards(unsigned index)
         configuration.scaling_mode--;
     }
     update_viewport();
-    render_texture(NULL, NULL);
+    render_texture(NULL, NULL, NULL);
 }
 
 static void cycle_color_correction(unsigned index)
@@ -873,7 +978,7 @@ void run_gui(bool is_running)
             case SDL_WINDOWEVENT: {
                 if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
                     update_viewport();
-                    render_texture(NULL, NULL);
+                    render_texture(NULL, NULL, NULL);
                 }
                 break;
             }
@@ -1073,8 +1178,8 @@ void run_gui(bool is_running)
                     draw_text_centered(pixels, 104, "Press Enter to skip", gui_palette_native[3], gui_palette_native[0], DECORATION_NONE);
                     break;
             }
-            
-            render_texture(pixels, NULL);
+
+            render_texture(pixels, NULL, NULL);
         }
     } while (SDL_WaitEvent(&event));
 }
