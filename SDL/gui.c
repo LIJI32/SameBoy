@@ -34,7 +34,8 @@ void render_texture(void *pixels,  void *previous)
             SDL_UpdateTexture(texture, NULL, pixels, 160 * sizeof (uint32_t));
         }
         SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
+
+        SDL_RenderCopy(renderer, texture, NULL, &rect);
         SDL_RenderPresent(renderer);
     }
     else {
@@ -140,7 +141,7 @@ void update_viewport(void)
         new_width, new_height};
     
     if (renderer) {
-        SDL_RenderSetViewport(renderer, &rect);
+        SDL_RenderSetClipRect(renderer, &rect);
     }
     else {
         glViewport(rect.x, rect.y, rect.w, rect.h);
