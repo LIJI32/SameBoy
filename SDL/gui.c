@@ -13,7 +13,7 @@ static uint32_t gui_palette_native[4];
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
-SDL_Texture *texture = NULL;
+SDL_Texture *screen_texture = NULL;
 SDL_PixelFormat *pixel_format = NULL;
 enum pending_command pending_command;
 unsigned command_parameter;
@@ -35,11 +35,11 @@ void render_texture(void *pixels,  void *previous)
 {
     if (renderer) {
         if (pixels) {
-            SDL_UpdateTexture(texture, NULL, pixels, 160 * sizeof (uint32_t));
+            SDL_UpdateTexture(screen_texture, NULL, pixels, 160 * sizeof (uint32_t));
         }
         SDL_RenderClear(renderer);
 
-        SDL_RenderCopy(renderer, texture, NULL, &rect);
+        SDL_RenderCopy(renderer, screen_texture, NULL, &rect);
         SDL_RenderPresent(renderer);
     }
     else {
