@@ -10,10 +10,10 @@
 // A tile is a recorded framebuffer the size of the screen.
 typedef struct {
     SDL_Point position;
-    uint32_t pixel_buffer[160*144];
+    uint32_t *pixel_buffer;
 } wgb_tile;
 
-#define WGB_MAX_TILES 16
+#define WGB_MAX_TILES 512
 
 typedef struct {
     SDL_Point logical_pos;
@@ -45,7 +45,8 @@ wgb_tile* wgb_tile_at_index(wide_gb *wgb, int index);
 // Find a tile
 wgb_tile* wgb_tile_at_point(wide_gb *wgb, SDL_Point point);
 
-// Utils
-SDL_Rect wgb_scale_rect(SDL_Rect rect, SDL_Point scale);
+// Free tiles and memory used by the struct.
+// The struct cannot be used again after this.
+void wgb_destroy(wide_gb *wgb);
 
 #endif

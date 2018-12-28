@@ -1,8 +1,26 @@
 #include <SDL2/SDL.h>
+#include <stdlib.h>
 #include <math.h>
 #include "wide_gb.h"
 
 #define BACKGROUND_SIZE 256
+
+wgb_tile wgb_tile_init(SDL_Point position)
+{
+    wgb_tile new = {
+        .position = position,
+        .pixel_buffer = calloc(160 * 144, sizeof(uint32_t))
+    };
+    return new;
+}
+
+void wgb_tile_destroy(wgb_tile *tile)
+{
+    if (tile->pixel_buffer) {
+        free(tile->pixel_buffer);
+        tile->pixel_buffer = NULL;
+    }
+}
 
 wide_gb wgb_init()
 {
@@ -11,6 +29,13 @@ wide_gb wgb_init()
         .hardware_pos = { 0, 0 }
     };
     return new;
+}
+
+void wgb_destroy(wide_gb *wgb)
+{
+    for (int i = 0; i < wgb->tiles_count; i++) {
+        wgb_tile_destroy(&wgb->tiles[i]);
+    }
 }
 
 int wgb_tiles_count(wide_gb *wgb)
@@ -57,7 +82,7 @@ wgb_tile* wgb_tile_at_point(wide_gb *wgb, SDL_Point point)
 wgb_tile *wgb_create_tile(wide_gb *wgb, SDL_Point tile_pos)
 {
     fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %i)\n", tile_pos.x, tile_pos.y, wgb->tiles_count);
-    wgb->tiles[wgb->tiles_count] = (wgb_tile){ .position = tile_pos };
+    wgb->tiles[wgb->tiles_count] = wgb_tile_init(tile_pos);
     wgb->tiles_count += 1;
     return &(wgb->tiles[wgb->tiles_count - 1]);
 }
