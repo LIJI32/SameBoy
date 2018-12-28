@@ -501,6 +501,7 @@ struct GB_gameboy_internal_s {
 
         /* I/O */
         uint32_t *screen;
+        uint32_t *bg_screen;
         uint32_t background_palettes_rgb[0x20];
         uint32_t sprite_palettes_rgb[0x20];
         GB_color_correction_mode_t color_correction_mode;
@@ -662,6 +663,7 @@ void GB_log(GB_gameboy_t *gb, const char *fmt, ...) __printflike(2, 3);
 void GB_attributed_log(GB_gameboy_t *gb, GB_log_attributes attributes, const char *fmt, ...) __printflike(3, 4);
 
 void GB_set_pixels_output(GB_gameboy_t *gb, uint32_t *output);
+void GB_set_bg_pixels_output(GB_gameboy_t *gb, uint32_t *output);
 
 void GB_set_infrared_input(GB_gameboy_t *gb, bool state);
 void GB_queue_infrared_input(GB_gameboy_t *gb, bool state, long cycles_after_previous_change); /* In 8MHz units*/

@@ -405,6 +405,11 @@ void GB_set_pixels_output(GB_gameboy_t *gb, uint32_t *output)
     gb->screen = output;
 }
 
+void GB_set_bg_pixels_output(GB_gameboy_t *gb, uint32_t *output)
+{
+    gb->bg_screen = output;
+}
+
 void GB_set_vblank_callback(GB_gameboy_t *gb, GB_vblank_callback_t callback)
 {
     gb->vblank_callback = callback;
