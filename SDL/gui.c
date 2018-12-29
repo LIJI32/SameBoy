@@ -73,18 +73,9 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
 {
     /*---------------------------- Update Tiles ------------------------------*/
 
-    // Update WideGB tiles with the pixels of the current visible viewport:
+    // Update WideGB tiles with the pixels of the current visible viewport
     uint32_t *source_pixels = background_pixels ? background_pixels : pixels;
-    // for each pixel visible on the console screen…
-    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
-        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
-            // read the background pixel
-            uint32_t pixel = source_pixels[pixel_x + pixel_y * 160];
-            // and write the pixel to the tile
-            SDL_Point pixel_position = { pixel_x, pixel_y };
-            WGB_write_tile_pixel(&wgb, pixel_position, pixel);
-        }
-    }
+    WGB_write_screen(&wgb, source_pixels);
 
     /*---------------------------- Update Tiles Textures ---------------------*/
 

@@ -174,6 +174,20 @@ void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
     wide_gb->logical_pos.y += delta.y;
 }
 
+void WGB_write_screen(wide_gb *wgb, uint32_t *pixels)
+{
+    // for each pixel visible on the console screen…
+    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
+        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
+            // read the screen pixel
+            uint32_t pixel = pixels[pixel_x + pixel_y * 160];
+            // and write the pixel to the tile
+            SDL_Point pixel_position = { pixel_x, pixel_y };
+            WGB_write_tile_pixel(wgb, pixel_position, pixel);
+        }
+    }
+}
+
 void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
 {
     // if (pixel_pos.x % 50 == 0 && pixel_pos.y % 50 == 0) {
