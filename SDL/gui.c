@@ -28,7 +28,7 @@ unsigned command_parameter;
 shader_t shader;
 SDL_Rect viewport;
 wide_gb wgb;
-SDL_Texture *wgb_textures[WGB_MAX_TILES];
+SDL_Texture *wgb_textures[WIDE_GB_MAX_TILES];
 
 struct scale {
     double x;
@@ -37,7 +37,7 @@ struct scale {
 struct scale viewport_scale(void);
 
 // TODO:
-// - Move maths to wgb_*
+// - Move maths to WGB_*
 // - Exclude window from saved background
 // - Scenes detection
 // - Save/restore backgrounds on the disk
@@ -61,7 +61,7 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
     /*---------------------------- Update Tiles ------------------------------*/
 
     // Update WideGB tiles with the pixels of the current visible viewport:
-    SDL_Point logical_scroll = wgb_get_logical_scroll(&wgb);
+    SDL_Point logical_scroll = WGB_get_logical_scroll(&wgb);
     uint32_t *source_pixels = background_pixels ? background_pixels : pixels;
     // for each pixel visible on the console screen…
     for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
@@ -75,7 +75,7 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
             };
             SDL_Point pixel_position = { pixel_x, pixel_y };
             // and write the pixel to the tile
-            wgb_write_tile_pixel(&wgb, tile_position, pixel_position, pixel);
+            WGB_write_tile_pixel(&wgb, tile_position, pixel_position, pixel);
         }
     }
 
@@ -92,10 +92,10 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
     for (int i = 0; i < 4; i++) {
         // … update the tile SDL texture.
         SDL_Point corner = corners[i];
-        wgb_tile *potentially_updated_tile = wgb_tile_at_point(&wgb, corner);
+        WGB_tile *potentially_updated_tile = WGB_tile_at_point(&wgb, corner);
         if (potentially_updated_tile) {
             // fprintf(stderr, "Update texture of tile { %i, %i }\n",potentially_updated_tile->position.x, potentially_updated_tile->position.y);
-            int tile_index = wgb_index_of_tile(&wgb, potentially_updated_tile);
+            int tile_index = WGB_index_of_tile(&wgb, potentially_updated_tile);
             SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(tile_index);
             SDL_UpdateTexture(tile_texture, NULL, potentially_updated_tile->pixel_buffer, 160 * sizeof (uint32_t));
         }
@@ -110,9 +110,9 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
 
         // 2. Display each WideGB tile
         struct scale scale = viewport_scale();
-        int tiles_count = wgb_tiles_count(&wgb);
+        int tiles_count = WGB_tiles_count(&wgb);
         for (int i = 0; i < tiles_count; i++) {
-            wgb_tile *tile = wgb_tile_at_index(&wgb, i);
+            WGB_tile *tile = WGB_tile_at_index(&wgb, i);
             SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
             SDL_Rect tile_rect = {
                 .x = viewport.x - (logical_scroll.x - tile->position.x * 160) * scale.x,

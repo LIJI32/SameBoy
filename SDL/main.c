@@ -329,7 +329,7 @@ static void vblank(GB_gameboy_t *gb)
     // Propagate updates of the hardware scroll registers
     int scrollX = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCX];
     int scrollY = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCY];
-    wgb_update_hardware_scroll(&wgb, scrollX, scrollY);
+    WGB_update_hardware_scroll(&wgb, scrollX, scrollY);
 
     // Present frame
     if (configuration.blend_frames) {
@@ -565,7 +565,7 @@ int main(int argc, char **argv)
         pixel_format = SDL_AllocFormat(SDL_PIXELFORMAT_ABGR8888);
     }
 
-    wgb = wgb_init();
+    wgb = WGB_init();
 
     /* Configure Audio */
     memset(&want_aspec, 0, sizeof(want_aspec));

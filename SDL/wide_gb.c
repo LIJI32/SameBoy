@@ -5,16 +5,16 @@
 
 #define BACKGROUND_SIZE 256
 
-wgb_tile wgb_tile_init(SDL_Point position)
+WGB_tile WGB_tile_init(SDL_Point position)
 {
-    wgb_tile new = {
+    WGB_tile new = {
         .position = position,
         .pixel_buffer = calloc(160 * 144, sizeof(uint32_t))
     };
     return new;
 }
 
-void wgb_tile_destroy(wgb_tile *tile)
+void WGB_tile_destroy(WGB_tile *tile)
 {
     if (tile->pixel_buffer) {
         free(tile->pixel_buffer);
@@ -22,7 +22,7 @@ void wgb_tile_destroy(wgb_tile *tile)
     }
 }
 
-wide_gb wgb_init()
+wide_gb WGB_init()
 {
     wide_gb new = {
         .logical_pos  = { 0, 0 },
@@ -31,19 +31,19 @@ wide_gb wgb_init()
     return new;
 }
 
-void wgb_destroy(wide_gb *wgb)
+void WGB_destroy(wide_gb *wgb)
 {
     for (int i = 0; i < wgb->tiles_count; i++) {
-        wgb_tile_destroy(&wgb->tiles[i]);
+        WGB_tile_destroy(&wgb->tiles[i]);
     }
 }
 
-int wgb_tiles_count(wide_gb *wgb)
+int WGB_tiles_count(wide_gb *wgb)
 {
     return wgb->tiles_count;
 }
 
-int wgb_index_of_tile(wide_gb *wgb, wgb_tile *tile)
+int WGB_index_of_tile(wide_gb *wgb, WGB_tile *tile)
 {
     for (int i = 0; i < wgb->tiles_count; i++) {
         if (&(wgb->tiles[i]) == tile) {
@@ -53,10 +53,10 @@ int wgb_index_of_tile(wide_gb *wgb, wgb_tile *tile)
     return -1;
 }
 
-wgb_tile *wgb_tile_at_position(wide_gb *wgb, SDL_Point position_to_find)
+WGB_tile *WGB_tile_at_position(wide_gb *wgb, SDL_Point position_to_find)
 {
     for (int i = 0; i < wgb->tiles_count; i++) {
-        wgb_tile *tile = &(wgb->tiles[i]);
+        WGB_tile *tile = &(wgb->tiles[i]);
         if (tile->position.x == position_to_find.x && tile->position.y == position_to_find.y) {
             return tile;
         }
@@ -64,30 +64,30 @@ wgb_tile *wgb_tile_at_position(wide_gb *wgb, SDL_Point position_to_find)
     return NULL;
 }
 
-wgb_tile* wgb_tile_at_index(wide_gb *wgb, int index)
+WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index)
 {
     return &(wgb->tiles[index]);
 }
 
-wgb_tile* wgb_tile_at_point(wide_gb *wgb, SDL_Point point)
+WGB_tile* WGB_tile_at_point(wide_gb *wgb, SDL_Point point)
 {
     SDL_Point position_to_find = {
         floorf(point.x / 160.0),
         floorf(point.y / 144.0)
     };
     // fprintf(stderr, "wgb: search for tile at { %i, %i }\n", position_to_find.x, position_to_find.y);
-    return wgb_tile_at_position(wgb, position_to_find);
+    return WGB_tile_at_position(wgb, position_to_find);
 }
 
-wgb_tile *wgb_create_tile(wide_gb *wgb, SDL_Point tile_pos)
+WGB_tile *WGB_create_tile(wide_gb *wgb, SDL_Point tile_pos)
 {
     fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %i)\n", tile_pos.x, tile_pos.y, wgb->tiles_count);
-    wgb->tiles[wgb->tiles_count] = wgb_tile_init(tile_pos);
+    wgb->tiles[wgb->tiles_count] = WGB_tile_init(tile_pos);
     wgb->tiles_count += 1;
     return &(wgb->tiles[wgb->tiles_count - 1]);
 }
 
-void wgb_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
+void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
 {
     SDL_Point new_hardware_pos = { scx, scy };
 
@@ -118,15 +118,15 @@ void wgb_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
     wide_gb->logical_pos.y += delta.y;
 }
 
-void wgb_write_tile_pixel(wide_gb *wgb, SDL_Point tile_pos, SDL_Point pixel_pos, uint32_t pixel)
+void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point tile_pos, SDL_Point pixel_pos, uint32_t pixel)
 {
     // if (pixel_pos.x % 50 == 0 && pixel_pos.y % 50 == 0) {
     //     fprintf(stderr, "Write pixel { %i, %i } to tile at { %i, %i }\n", pixel_pos.x, pixel_pos.y, tile_pos.x, tile_pos.y);
     // }
 
-    wgb_tile *tile = wgb_tile_at_position(wgb, tile_pos);
+    WGB_tile *tile = WGB_tile_at_position(wgb, tile_pos);
     if (tile == NULL) {
-        tile = wgb_create_tile(wgb, tile_pos);
+        tile = WGB_create_tile(wgb, tile_pos);
     }
 
     // Convert the pixel position from screen-space to tile-space
@@ -141,7 +141,7 @@ void wgb_write_tile_pixel(wide_gb *wgb, SDL_Point tile_pos, SDL_Point pixel_pos,
 // Return the current logical scroll position, taking into account:
 // - screen wrapping
 // - padding (todo)
-SDL_Point wgb_get_logical_scroll(wide_gb *wide_gb)
+SDL_Point WGB_get_logical_scroll(wide_gb *wide_gb)
 {
     return wide_gb->logical_pos;
 }
