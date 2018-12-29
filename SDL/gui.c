@@ -46,7 +46,6 @@ SDL_Texture* sdl_texture_for_wgb_tile(int tile_index)
 {
     SDL_Texture *texture = wgb_textures[tile_index];
     if (texture == NULL) {
-        fprintf(stderr, "Create SDL texture for tile %i\n", tile_index);
         texture = SDL_CreateTexture(renderer, SDL_GetWindowPixelFormat(window), SDL_TEXTUREACCESS_STREAMING, 160, 144);
         if (texture == NULL) {
             fprintf(stderr, "Failed to create SDL texture for tile %i\n", tile_index);
@@ -84,7 +83,6 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
         { 0,   144 },
         { 160, 144 }
     };
-    // fprintf(stderr, "Logical scroll: { %i, %i }\n", logical_scroll.x, logical_scroll.y);
     for (int i = 0; i < 4; i++) {
         // … update the tile SDL texture.
         SDL_Point corner = corners[i];

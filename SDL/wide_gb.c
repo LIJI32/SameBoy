@@ -145,7 +145,9 @@ WGB_tile* WGB_tile_at_point(wide_gb *wgb, SDL_Point screen_point)
 
 WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
 {
+#if WIDE_GB_DEBUG
     fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %i)\n", position.horizontal, position.vertical, wgb->tiles_count);
+#endif
     wgb->tiles[wgb->tiles_count] = WGB_tile_init(position);
     wgb->tiles_count += 1;
     return &(wgb->tiles[wgb->tiles_count - 1]);
@@ -212,10 +214,6 @@ void WGB_write_screen(wide_gb *wgb, uint32_t *pixels)
 
 void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
 {
-    // if (pixel_pos.x % 50 == 0 && pixel_pos.y % 50 == 0) {
-    //     fprintf(stderr, "Write pixel { %i, %i } to tile at { %i, %i }\n", pixel_pos.x, pixel_pos.y, tile_pos.x, tile_pos.y);
-    // }
-
     // Retrieve the tile for this pixel
     WGB_tile_position tile_pos = WGB_tile_position_from_screen_point(wgb, pixel_pos);
     WGB_tile *tile = WGB_tile_at_position(wgb, tile_pos);
