@@ -30,6 +30,14 @@ SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy)
     return rect;
 }
 
+bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point)
+{
+    return (rect.x <= point.x
+        && point.x <= rect.x + rect.w
+        && rect.y <= point.y
+        && point.y <= rect.y + rect.h);
+}
+
 bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2)
 {
     return (position1.horizontal == position2.horizontal &&
@@ -174,16 +182,30 @@ void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
     wide_gb->logical_pos.y += delta.y;
 }
 
+void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy)
+{
+    wgb->window_enabled = is_window_enabled;
+    wgb->window_rect = (SDL_Rect) {
+        .x = wx,
+        .y = wy,
+        .w = 160 - wx,
+        .h = 144 - wy
+    };
+}
+
 void WGB_write_screen(wide_gb *wgb, uint32_t *pixels)
 {
     // for each pixel visible on the console screen…
     for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
         for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
+            SDL_Point pixel_pos = { pixel_x, pixel_y };
+            if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
+                continue; // pixel is in the window: skip it
+            }
             // read the screen pixel
             uint32_t pixel = pixels[pixel_x + pixel_y * 160];
             // and write the pixel to the tile
-            SDL_Point pixel_position = { pixel_x, pixel_y };
-            WGB_write_tile_pixel(wgb, pixel_position, pixel);
+            WGB_write_tile_pixel(wgb, pixel_pos, pixel);
         }
     }
 }
@@ -210,7 +232,12 @@ void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
 // Return the current logical scroll position, taking into account:
 // - screen wrapping
 // - padding (todo)
-SDL_Point WGB_get_logical_scroll(wide_gb *wide_gb)
+SDL_Point WGB_get_logical_scroll(wide_gb *wgb)
 {
-    return wide_gb->logical_pos;
+    return wgb->logical_pos;
+}
+
+SDL_Rect WGB_get_window_rect(wide_gb *wgb)
+{
+    return wgb->window_rect;
 }

@@ -29,6 +29,7 @@ WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point sc
 SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset);
 SDL_Rect WGB_offset_rect(SDL_Rect rect, SDL_Point offset);
 SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
+bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
 
 /*---------------- Data definitions --------------------------------------*/
 
@@ -43,6 +44,8 @@ struct WGB_tile {
 struct wide_gb {
     SDL_Point logical_pos;
     SDL_Point hardware_pos;
+    SDL_Rect window_rect;
+    bool window_enabled;
     WGB_tile tiles[WIDE_GB_MAX_TILES];
     int tiles_count;
 };
@@ -54,8 +57,16 @@ wide_gb WGB_init();
 
 /*---------------- Updating from hardware --------------------------------*/
 
-// Callback when the hardware scroll registers are updated
+// Notify WGB of the new hardware scroll registers values.
+// Typically called at vblank.
 void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy);
+
+// Notify WGB of the new Game Boy Window status and position.
+// Typically called at vblank.
+//
+// This is used to avoid writing the Window area to the tiles
+// (as the window area is most often overlapped UI).
+void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy);
 
 // Write the screen content to the tiles.
 // Internally it uses `WGB_write_tile_pixel`.
@@ -68,10 +79,10 @@ void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 
-// Return the current logical scroll position, taking into account:
-// - screen wrapping
-// - padding (todo)
+// Return the current logical scroll position
 SDL_Point WGB_get_logical_scroll(wide_gb *wgb);
+// Return the rectangle of the current window
+SDL_Rect WGB_get_window_rect(wide_gb *wgb);
 
 // Enumerate tiles
 int WGB_tiles_count(wide_gb *wgb);

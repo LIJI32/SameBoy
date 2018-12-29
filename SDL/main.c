@@ -326,10 +326,15 @@ static void vblank(GB_gameboy_t *gb)
         GB_set_clock_multiplier(gb, clock_mutliplier);
     }
 
-    // Propagate updates of the hardware scroll registers
+    // Propagate updates of the hardware values
     int scrollX = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCX];
     int scrollY = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCY];
     WGB_update_hardware_scroll(&wgb, scrollX, scrollY);
+
+    int wX = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_WX] - 7;
+    int wY = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_WY];
+    bool is_window_enabled = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_LCDC] & 0x20;
+    WGB_update_window_position(&wgb, is_window_enabled, wX, wY);
 
     // Present frame
     if (configuration.blend_frames) {

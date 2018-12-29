@@ -37,10 +37,8 @@ struct scale {
 struct scale compute_viewport_scale(void);
 
 // TODO:
-// - Move maths to WGB_* : OK
-// - Move copying pixels to WGB_*
 // - Move updated tiles to WGB_*
-// - Exclude window from saved background
+// - zoom in / out
 // - Scenes detection
 // - Save/restore backgrounds on the disk
 
@@ -121,21 +119,42 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
 #endif
         }
 
-        // 3. Overlap the console screen at the center of the window
+        // 3. Draw opaquely the background portions non-overlapped by the GB window
+        //
+        // +-----------------+
+        // |                 |
+        // |   part1         |
+        // |                 |
+        // |.......+---------|
+        // | part2 |  window |
+        // +-----------------+
+
         if (pixels) {
             SDL_UpdateTexture(screen_texture, NULL, pixels, 160 * sizeof (uint32_t));
         }
-#if WIDE_GB_DEBUG
-        SDL_SetTextureBlendMode(screen_texture, SDL_BLENDMODE_BLEND);
-        SDL_SetTextureAlphaMod(screen_texture, 128);
-#endif
-        SDL_RenderCopy(renderer, screen_texture, NULL, &viewport);
+
+        SDL_Rect window_rect = wgb.window_enabled ? WGB_get_window_rect(&wgb) : (SDL_Rect){ 160, 144, 0, 0 };
+        SDL_Rect part1_rect = { 0, 0, 160, window_rect.y };
+        SDL_Rect part2_rect = { 0, window_rect.y, window_rect.x, 144 - window_rect.y };
+        SDL_Rect part1_rect_in_window = screen_rect_to_window(part1_rect);
+        SDL_Rect part2_rect_in_window = screen_rect_to_window(part2_rect);
+        SDL_SetTextureBlendMode(screen_texture, SDL_BLENDMODE_NONE);
+        SDL_RenderCopy(renderer, screen_texture, &part1_rect, &part1_rect_in_window);
+        SDL_RenderCopy(renderer, screen_texture, &part2_rect, &part2_rect_in_window);
+
 #if WIDE_GB_DEBUG
         SDL_SetRenderDrawColor(renderer, 0xff, 0x0, 0x0, 0x7f);
         SDL_RenderDrawRect(renderer, &viewport);
 #endif
+        // 4. Draw the background part overlappy by the window with a transluscency effect
+        if (wgb.window_enabled) {
+            SDL_Rect window_rect_in_window = screen_rect_to_window(window_rect);
+            SDL_SetTextureBlendMode(screen_texture, SDL_BLENDMODE_BLEND);
+            SDL_SetTextureAlphaMod(screen_texture, 170);
+            SDL_RenderCopy(renderer, screen_texture, &window_rect, &window_rect_in_window);
+        }
 
-        // 4. Finish rendering
+        // 5. Finish rendering
         SDL_RenderPresent(renderer);
     }
     else {
