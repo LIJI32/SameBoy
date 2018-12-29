@@ -68,14 +68,9 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
         for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
             // read the background pixel
             uint32_t pixel = source_pixels[pixel_x + pixel_y * 160];
-            // compute the coordinates of the WideGB tile that contains this pixel
-            WGB_tile_position tile_position = {
-                .horizontal = floorf((logical_scroll.x + pixel_x) / 160.0),
-                .vertical   = floorf((logical_scroll.y + pixel_y) / 144.0)
-            };
-            SDL_Point pixel_position = { pixel_x, pixel_y };
             // and write the pixel to the tile
-            WGB_write_tile_pixel(&wgb, tile_position, pixel_position, pixel);
+            SDL_Point pixel_position = { pixel_x, pixel_y };
+            WGB_write_tile_pixel(&wgb, pixel_position, pixel);
         }
     }
 

@@ -7,10 +7,34 @@
 
 /*---------------- Utils -------------------------------------------------*/
 
+SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset)
+{
+    point.x += offset.x;
+    point.y += offset.y;
+    return point;
+}
+
 bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2)
 {
     return (position1.horizontal == position2.horizontal &&
             position1.vertical == position2.vertical);
+}
+
+WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point)
+{
+    return (WGB_tile_position){
+        .horizontal = floorf((wgb->logical_pos.x + screen_point.x) / 160.0),
+        .vertical   = floorf((wgb->logical_pos.y + screen_point.y) / 144.0)
+    };
+}
+
+SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile)
+{
+    SDL_Point tile_origin = {
+        .x = wgb->logical_pos.x - target_tile.horizontal * 160,
+        .y = wgb->logical_pos.y - target_tile.vertical   * 144
+    };
+    return WGB_offset_point(tile_origin, screen_point);
 }
 
 /*---------------- Initializers --------------------------------------*/
@@ -128,22 +152,21 @@ void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
     wide_gb->logical_pos.y += delta.y;
 }
 
-void WGB_write_tile_pixel(wide_gb *wgb, WGB_tile_position tile_pos, SDL_Point pixel_pos, uint32_t pixel)
+void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
 {
     // if (pixel_pos.x % 50 == 0 && pixel_pos.y % 50 == 0) {
     //     fprintf(stderr, "Write pixel { %i, %i } to tile at { %i, %i }\n", pixel_pos.x, pixel_pos.y, tile_pos.x, tile_pos.y);
     // }
 
+    // Retrieve the tile for this pixel
+    WGB_tile_position tile_pos = WGB_tile_position_from_screen_point(wgb, pixel_pos);
     WGB_tile *tile = WGB_tile_at_position(wgb, tile_pos);
     if (tile == NULL) {
         tile = WGB_create_tile(wgb, tile_pos);
     }
 
     // Convert the pixel position from screen-space to tile-space
-    SDL_Point pixel_destination = {
-        .x = (wgb->logical_pos.x - tile->position.horizontal * 160) + pixel_pos.x,
-        .y = (wgb->logical_pos.y - tile->position.vertical   * 144) + pixel_pos.y
-    };
+    SDL_Point pixel_destination = WGB_tile_point_from_screen_point(wgb, pixel_pos, tile_pos);
 
     tile->pixel_buffer[pixel_destination.x + pixel_destination.y * 160] = pixel;
 }
