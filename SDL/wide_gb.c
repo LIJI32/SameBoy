@@ -14,6 +14,22 @@ SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset)
     return point;
 }
 
+SDL_Rect WGB_offset_rect(SDL_Rect rect, SDL_Point offset)
+{
+    rect.x += offset.x;
+    rect.y += offset.y;
+    return rect;
+}
+
+SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy)
+{
+    rect.x *= dx;
+    rect.y *= dy;
+    rect.w *= dx;
+    rect.h *= dy;
+    return rect;
+}
+
 bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2)
 {
     return (position1.horizontal == position2.horizontal &&
@@ -35,6 +51,16 @@ SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point,
         .y = wgb->logical_pos.y - target_tile.vertical   * 144
     };
     return WGB_offset_point(tile_origin, screen_point);
+}
+
+SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
+{
+    return (SDL_Rect) {
+        .x = tile->position.horizontal * 160 - wgb->logical_pos.x,
+        .y = tile->position.vertical   * 144 - wgb->logical_pos.y,
+        .w = 160,
+        .h = 144
+    };
 }
 
 /*---------------- Initializers --------------------------------------*/
@@ -103,13 +129,9 @@ WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index)
     return &(wgb->tiles[index]);
 }
 
-WGB_tile* WGB_tile_at_point(wide_gb *wgb, SDL_Point point)
+WGB_tile* WGB_tile_at_point(wide_gb *wgb, SDL_Point screen_point)
 {
-    WGB_tile_position position_to_find = {
-        .horizontal = floorf(point.x / 160.0),
-        .vertical   = floorf(point.y / 144.0)
-    };
-    // fprintf(stderr, "wgb: search for tile at { %i, %i }\n", position_to_find.x, position_to_find.y);
+    WGB_tile_position position_to_find = WGB_tile_position_from_screen_point(wgb, screen_point);
     return WGB_tile_at_position(wgb, position_to_find);
 }
 

@@ -34,10 +34,12 @@ struct scale {
     double x;
     double y;
 };
-struct scale viewport_scale(void);
+struct scale compute_viewport_scale(void);
 
 // TODO:
-// - Move maths to WGB_*
+// - Move maths to WGB_* : OK
+// - Move copying pixels to WGB_*
+// - Move updated tiles to WGB_*
 // - Exclude window from saved background
 // - Scenes detection
 // - Save/restore backgrounds on the disk
@@ -56,12 +58,22 @@ SDL_Texture* sdl_texture_for_wgb_tile(int tile_index)
     return texture;
 }
 
+SDL_Rect screen_rect_to_window(SDL_Rect screen_rect)
+{
+    SDL_Point viewport_offset = { viewport.x, viewport.y };
+    struct scale viewport_scale = compute_viewport_scale();
+
+    SDL_Rect result = screen_rect;
+    result = WGB_scale_rect(result, viewport_scale.x, viewport_scale.y);
+    result = WGB_offset_rect(result, viewport_offset);
+    return result;
+}
+
 void render_texture(void *pixels, void *previous, void *background_pixels)
 {
     /*---------------------------- Update Tiles ------------------------------*/
 
     // Update WideGB tiles with the pixels of the current visible viewport:
-    SDL_Point logical_scroll = WGB_get_logical_scroll(&wgb);
     uint32_t *source_pixels = background_pixels ? background_pixels : pixels;
     // for each pixel visible on the console screen…
     for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
@@ -78,10 +90,10 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
 
     // For each of the 4 tiles that may have been touched…
     SDL_Point corners[] = {
-        { logical_scroll.x,           logical_scroll.y },
-        { logical_scroll.x + 160 - 1, logical_scroll.y },
-        { logical_scroll.x,           logical_scroll.y + 144 - 1 },
-        { logical_scroll.x + 160 - 1, logical_scroll.y + 144 - 1 }
+        { 0,   0   },
+        { 160, 0   },
+        { 0,   144 },
+        { 160, 144 }
     };
     // fprintf(stderr, "Logical scroll: { %i, %i }\n", logical_scroll.x, logical_scroll.y);
     for (int i = 0; i < 4; i++) {
@@ -104,21 +116,17 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
         SDL_RenderClear(renderer);
 
         // 2. Display each WideGB tile
-        struct scale scale = viewport_scale();
         int tiles_count = WGB_tiles_count(&wgb);
         for (int i = 0; i < tiles_count; i++) {
             WGB_tile *tile = WGB_tile_at_index(&wgb, i);
             SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
-            SDL_Rect tile_rect = {
-                .x = viewport.x - (logical_scroll.x - tile->position.horizontal * 160) * scale.x,
-                .y = viewport.y - (logical_scroll.y - tile->position.vertical   * 144) * scale.y,
-                .w = 160 * scale.x,
-                .h = 144 * scale.y
-            };
-            SDL_RenderCopy(renderer, tile_texture, NULL, &tile_rect);
+            SDL_Rect tile_rect = WGB_rect_for_tile(&wgb, tile);
+            SDL_Rect tile_rect_in_window = screen_rect_to_window(tile_rect);
+
+            SDL_RenderCopy(renderer, tile_texture, NULL, &tile_rect_in_window);
 #if WIDE_GB_DEBUG
             SDL_SetRenderDrawColor(renderer, 0x60, 0x60, 0x60, 0xff);
-            SDL_RenderDrawRect(renderer, &tile_rect);
+            SDL_RenderDrawRect(renderer, &tile_rect_in_window);
 #endif
         }
 
@@ -132,7 +140,7 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
 #endif
         SDL_RenderCopy(renderer, screen_texture, NULL, &viewport);
 #if WIDE_GB_DEBUG
-        SDL_SetRenderDrawColor(renderer, 0x255, 0x0, 0x0, 0x7f);
+        SDL_SetRenderDrawColor(renderer, 0xff, 0x0, 0x0, 0x7f);
         SDL_RenderDrawRect(renderer, &viewport);
 #endif
 
@@ -215,7 +223,7 @@ static const char *help[] ={
 " Break Debugger:    " CTRL_STRING "+C"
 };
 
-struct scale viewport_scale(void)
+struct scale compute_viewport_scale(void)
 {
     struct scale scale;
 
@@ -246,7 +254,7 @@ void update_viewport(void)
     int win_width, win_height;
     SDL_GL_GetDrawableSize(window, &win_width, &win_height);
 
-    struct scale scale = viewport_scale();
+    struct scale scale = compute_viewport_scale();
     unsigned new_width = 160 * scale.x;
     unsigned new_height = 144 * scale.y;
 

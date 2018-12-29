@@ -28,7 +28,7 @@ WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point sc
 
 SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset);
 SDL_Rect WGB_offset_rect(SDL_Rect rect, SDL_Point offset);
-SDL_Rect WGB_scale_rect(SDL_Rect, double dx, double dy);
+SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
 
 /*---------------- Data definitions --------------------------------------*/
 
@@ -57,6 +57,10 @@ wide_gb WGB_init();
 // Callback when the hardware scroll registers are updated
 void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy);
 
+// Write the screen content to the tiles.
+// Internally it uses `WGB_write_tile_pixel`.
+void WGB_write_screen(wide_gb *wgb, uint32_t *pixels);
+
 // Set a specific pixel on a given tile.
 // The tile is created if it doesn't exist yet.
 // The pixel position is specified in screen space.
@@ -73,9 +77,10 @@ SDL_Point WGB_get_logical_scroll(wide_gb *wgb);
 int WGB_tiles_count(wide_gb *wgb);
 int WGB_index_of_tile(wide_gb *wgb, WGB_tile *tile);
 WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index);
+SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
 
 // Find a tile
-WGB_tile* WGB_tile_at_point(wide_gb *wgb, SDL_Point point);
+WGB_tile* WGB_tile_at_point(wide_gb *wgb, SDL_Point screen_point);
 
 /*---------------- Cleanup ----------------------------------------------*/
 
