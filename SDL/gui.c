@@ -69,9 +69,9 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
             // read the background pixel
             uint32_t pixel = source_pixels[pixel_x + pixel_y * 160];
             // compute the coordinates of the WideGB tile that contains this pixel
-            SDL_Point tile_position = {
-                .x = floorf((logical_scroll.x + pixel_x) / 160.0),
-                .y = floorf((logical_scroll.y + pixel_y) / 144.0)
+            WGB_tile_position tile_position = {
+                .horizontal = floorf((logical_scroll.x + pixel_x) / 160.0),
+                .vertical   = floorf((logical_scroll.y + pixel_y) / 144.0)
             };
             SDL_Point pixel_position = { pixel_x, pixel_y };
             // and write the pixel to the tile
@@ -115,8 +115,8 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
             WGB_tile *tile = WGB_tile_at_index(&wgb, i);
             SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
             SDL_Rect tile_rect = {
-                .x = viewport.x - (logical_scroll.x - tile->position.x * 160) * scale.x,
-                .y = viewport.y - (logical_scroll.y - tile->position.y * 144) * scale.y,
+                .x = viewport.x - (logical_scroll.x - tile->position.horizontal * 160) * scale.x,
+                .y = viewport.y - (logical_scroll.y - tile->position.vertical   * 144) * scale.y,
                 .w = 160 * scale.x,
                 .h = 144 * scale.y
             };

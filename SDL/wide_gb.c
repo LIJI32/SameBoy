@@ -5,7 +5,17 @@
 
 #define BACKGROUND_SIZE 256
 
-WGB_tile WGB_tile_init(SDL_Point position)
+/*---------------- Utils -------------------------------------------------*/
+
+bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2)
+{
+    return (position1.horizontal == position2.horizontal &&
+            position1.vertical == position2.vertical);
+}
+
+/*---------------- Initializers --------------------------------------*/
+
+WGB_tile WGB_tile_init(WGB_tile_position position)
 {
     WGB_tile new = {
         .position = position,
@@ -53,11 +63,11 @@ int WGB_index_of_tile(wide_gb *wgb, WGB_tile *tile)
     return -1;
 }
 
-WGB_tile *WGB_tile_at_position(wide_gb *wgb, SDL_Point position_to_find)
+WGB_tile *WGB_tile_at_position(wide_gb *wgb, WGB_tile_position position_to_find)
 {
     for (int i = 0; i < wgb->tiles_count; i++) {
         WGB_tile *tile = &(wgb->tiles[i]);
-        if (tile->position.x == position_to_find.x && tile->position.y == position_to_find.y) {
+        if (WGB_tile_position_equal_to(tile->position, position_to_find)) {
             return tile;
         }
     }
@@ -71,18 +81,18 @@ WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index)
 
 WGB_tile* WGB_tile_at_point(wide_gb *wgb, SDL_Point point)
 {
-    SDL_Point position_to_find = {
-        floorf(point.x / 160.0),
-        floorf(point.y / 144.0)
+    WGB_tile_position position_to_find = {
+        .horizontal = floorf(point.x / 160.0),
+        .vertical   = floorf(point.y / 144.0)
     };
     // fprintf(stderr, "wgb: search for tile at { %i, %i }\n", position_to_find.x, position_to_find.y);
     return WGB_tile_at_position(wgb, position_to_find);
 }
 
-WGB_tile *WGB_create_tile(wide_gb *wgb, SDL_Point tile_pos)
+WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
 {
-    fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %i)\n", tile_pos.x, tile_pos.y, wgb->tiles_count);
-    wgb->tiles[wgb->tiles_count] = WGB_tile_init(tile_pos);
+    fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %i)\n", position.horizontal, position.vertical, wgb->tiles_count);
+    wgb->tiles[wgb->tiles_count] = WGB_tile_init(position);
     wgb->tiles_count += 1;
     return &(wgb->tiles[wgb->tiles_count - 1]);
 }
@@ -118,7 +128,7 @@ void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
     wide_gb->logical_pos.y += delta.y;
 }
 
-void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point tile_pos, SDL_Point pixel_pos, uint32_t pixel)
+void WGB_write_tile_pixel(wide_gb *wgb, WGB_tile_position tile_pos, SDL_Point pixel_pos, uint32_t pixel)
 {
     // if (pixel_pos.x % 50 == 0 && pixel_pos.y % 50 == 0) {
     //     fprintf(stderr, "Write pixel { %i, %i } to tile at { %i, %i }\n", pixel_pos.x, pixel_pos.y, tile_pos.x, tile_pos.y);
@@ -131,8 +141,8 @@ void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point tile_pos, SDL_Point pixel_pos,
 
     // Convert the pixel position from screen-space to tile-space
     SDL_Point pixel_destination = {
-        .x = (wgb->logical_pos.x - tile->position.x * 160) + pixel_pos.x,
-        .y = (wgb->logical_pos.y - tile->position.y * 144) + pixel_pos.y
+        .x = (wgb->logical_pos.x - tile->position.horizontal * 160) + pixel_pos.x,
+        .y = (wgb->logical_pos.y - tile->position.vertical   * 144) + pixel_pos.y
     };
 
     tile->pixel_buffer[pixel_destination.x + pixel_destination.y * 160] = pixel;
