@@ -204,7 +204,7 @@ WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel
     return tile;
 }
 
-void WGB_write_screen(wide_gb *wgb, uint32_t *pixels)
+void WGB_update_screen(wide_gb *wgb, uint32_t *pixels)
 {
     // Clear the dirty flag on all tiles
     for (size_t i = 0; i < wgb->tiles_count; i++) {

@@ -72,7 +72,7 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
 
     // Update WideGB tiles with the pixels currently visible on screen
     uint32_t *source_pixels = background_pixels ? background_pixels : pixels;
-    WGB_write_screen(&wgb, source_pixels);
+    WGB_update_screen(&wgb, source_pixels);
 
     /*---------------------------- Update Tiles textures ---------------------*/
 

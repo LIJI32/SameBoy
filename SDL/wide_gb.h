@@ -4,24 +4,45 @@
 #include <SDL2/SDL.h>
 #include  <stdbool.h>
 
+// This file implements an engine for recording and displaying
+// extended scenes on a canvas in a Game Boy emulator, in a
+// library-agnostic way (except for geometric SDL data-types).
+//
+// It provides:
+//  - basic data types
+//  - conversion of coordinates between screen-space and logical-scroll space
+//  - screen-updating logic
+//
+// How it works
+// ============
+//
+// When the Game Boy background scrolls or wraps around, the engine keeps track
+// of the logical scroll position.
+//
+// When the console screen is updated, pixels are recorded on screen-sized tiles,
+// which are then laid out continuousely using the logical scroll position.
+//
+// The engine exposes the tiles, which the UI client uses to display the recorded
+// screens to the user.
+//
+// How to use
+// ==========
+//
+// To implement WideGB in your own emulator, the basic steps are:
+//
+// 1. Create a global wide_gb struct using `WGB_init`
+// 2. On V-blank, notify WideGB of the updates
+//    using `WGB_update_hardware_scroll` and `WGB_update_screen`
+// 3. Render the tiles over the canvas
+//    using `WGB_tiles_count` and `WGB_tile_at_index` to enumerate the tiles
+// 4. Render the console screen over the tiles
+
 #define WIDE_GB_ENABLED true
 
 #define WIDE_GB_DEBUG false
 #define WIDE_GB_MAX_TILES 512
 
-typedef struct wide_gb wide_gb;
-typedef struct WGB_tile WGB_tile;
-
 /*---------------- Utils -------------------------------------------------*/
-
-// The position of a screen-wide tile, as a number of screens relative
-// to the origin.
-typedef struct {
-    int horizontal;
-    int vertical;
-} WGB_tile_position;
-
-bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2);
 
 SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset);
 SDL_Rect WGB_offset_rect(SDL_Rect rect, SDL_Point offset);
@@ -30,23 +51,30 @@ bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
 
 /*---------------- Data definitions --------------------------------------*/
 
+// The position of a screen-wide tile, as a number of screens relative
+// to the origin.
+typedef struct {
+    int horizontal;
+    int vertical;
+} WGB_tile_position;
+
 // A tile is a recorded framebuffer the size of the screen.
-struct WGB_tile {
+typedef struct {
     WGB_tile_position position;
     uint32_t *pixel_buffer;
     bool dirty;
-};
+} WGB_tile;
 
 // Main WideGB struct.
 // Initialize with WGB_init().
-struct wide_gb {
+typedef struct {
     SDL_Point logical_pos;
     SDL_Point hardware_pos;
     SDL_Rect window_rect;
     bool window_enabled;
     WGB_tile tiles[WIDE_GB_MAX_TILES];
     size_t tiles_count;
-};
+} wide_gb;
 
 /*---------------- Initializing ------------------------------------------*/
 
@@ -69,7 +97,7 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
 // Write the screen content to the relevant tiles.
 //
 // The updated tiles are marked as `dirty`.
-void WGB_write_screen(wide_gb *wgb, uint32_t *pixels);
+void WGB_update_screen(wide_gb *wgb, uint32_t *pixels);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 
