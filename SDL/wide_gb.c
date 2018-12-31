@@ -111,16 +111,6 @@ int WGB_tiles_count(wide_gb *wgb)
     return wgb->tiles_count;
 }
 
-int WGB_index_of_tile(wide_gb *wgb, WGB_tile *tile)
-{
-    for (int i = 0; i < wgb->tiles_count; i++) {
-        if (&(wgb->tiles[i]) == tile) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 WGB_tile *WGB_tile_at_position(wide_gb *wgb, WGB_tile_position position_to_find)
 {
     for (int i = 0; i < wgb->tiles_count; i++) {
@@ -135,12 +125,6 @@ WGB_tile *WGB_tile_at_position(wide_gb *wgb, WGB_tile_position position_to_find)
 WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index)
 {
     return &(wgb->tiles[index]);
-}
-
-WGB_tile* WGB_tile_at_point(wide_gb *wgb, SDL_Point screen_point)
-{
-    WGB_tile_position position_to_find = WGB_tile_position_from_screen_point(wgb, screen_point);
-    return WGB_tile_at_position(wgb, position_to_find);
 }
 
 WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)

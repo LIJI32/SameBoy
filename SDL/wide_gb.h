@@ -23,9 +23,6 @@ typedef struct {
 
 bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2);
 
-SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile);
-WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point);
-
 SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset);
 SDL_Rect WGB_offset_rect(SDL_Rect rect, SDL_Point offset);
 SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
@@ -76,19 +73,15 @@ void WGB_write_screen(wide_gb *wgb, uint32_t *pixels);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 
-// Return the current logical scroll position
-SDL_Point WGB_get_logical_scroll(wide_gb *wgb);
-// Return the rectangle of the current window
+// Return the rectangle of the current Game Boy window
 SDL_Rect WGB_get_window_rect(wide_gb *wgb);
 
 // Enumerate tiles
 int WGB_tiles_count(wide_gb *wgb);
-int WGB_index_of_tile(wide_gb *wgb, WGB_tile *tile);
 WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index);
-SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
 
-// Find a tile
-WGB_tile* WGB_tile_at_point(wide_gb *wgb, SDL_Point screen_point);
+// Layout tiles
+SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
 
 /*---------------- Cleanup ----------------------------------------------*/
 
