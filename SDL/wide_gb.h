@@ -95,8 +95,13 @@ void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy);
 void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy);
 
 // Write the screen content to the relevant tiles.
+// Typically called at vblank.
 //
-// The updated tiles are marked as `dirty`.
+// This function uses the logical scroll position and window position
+// to write pixels on the correct tiles – so `WGB_update_hardware_scroll`
+// must be called before to set the current scroll position.
+//
+// On return, the updated tiles are marked as `dirty`.
 void WGB_update_screen(wide_gb *wgb, uint32_t *pixels);
 
 /*---------------- Retrieving informations for rendering -----------------*/

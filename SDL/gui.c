@@ -66,14 +66,8 @@ SDL_Rect screen_rect_to_window(SDL_Rect screen_rect)
     return result;
 }
 
-void render_texture(void *pixels, void *previous, void *background_pixels)
+void render_texture(void *pixels, void *previous)
 {
-    /*---------------------------- Update Tiles ------------------------------*/
-
-    // Update WideGB tiles with the pixels currently visible on screen
-    uint32_t *source_pixels = background_pixels ? background_pixels : pixels;
-    WGB_update_screen(&wgb, source_pixels);
-
     /*---------------------------- Update Tiles textures ---------------------*/
 
     // For each tile…
@@ -508,7 +502,7 @@ void cycle_scaling(unsigned index)
         configuration.scaling_mode = 0;
     }
     update_viewport();
-    render_texture(NULL, NULL, NULL);
+    render_texture(NULL, NULL);
 }
 
 void cycle_scaling_backwards(unsigned index)
@@ -520,7 +514,7 @@ void cycle_scaling_backwards(unsigned index)
         configuration.scaling_mode--;
     }
     update_viewport();
-    render_texture(NULL, NULL, NULL);
+    render_texture(NULL, NULL);
 }
 
 static void cycle_color_correction(unsigned index)
@@ -982,7 +976,7 @@ void run_gui(bool is_running)
             case SDL_WINDOWEVENT: {
                 if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
                     update_viewport();
-                    render_texture(NULL, NULL, NULL);
+                    render_texture(NULL, NULL);
                 }
                 break;
             }
@@ -1183,7 +1177,7 @@ void run_gui(bool is_running)
                     break;
             }
 
-            render_texture(pixels, NULL, NULL);
+            render_texture(pixels, NULL);
         }
     } while (SDL_WaitEvent(&event));
 }

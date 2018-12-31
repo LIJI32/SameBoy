@@ -326,7 +326,7 @@ static void vblank(GB_gameboy_t *gb)
         GB_set_clock_multiplier(gb, clock_mutliplier);
     }
 
-    // Propagate updates of the hardware values
+    // Notify WideGB of hardware updates (scroll, window position, background pixels)
     int scrollX = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCX];
     int scrollY = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCY];
     WGB_update_hardware_scroll(&wgb, scrollX, scrollY);
@@ -336,9 +336,11 @@ static void vblank(GB_gameboy_t *gb)
     bool is_window_enabled = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_LCDC] & 0x20;
     WGB_update_window_position(&wgb, is_window_enabled, wX, wY);
 
+    WGB_update_screen(&wgb, bg_pixel_buffer);
+
     // Present frame
     if (configuration.blend_frames) {
-        render_texture(active_pixel_buffer, previous_pixel_buffer, bg_pixel_buffer);
+        render_texture(active_pixel_buffer, previous_pixel_buffer);
         // swap active and previous frame
         uint32_t *temp = active_pixel_buffer;
         active_pixel_buffer = previous_pixel_buffer;
@@ -346,7 +348,7 @@ static void vblank(GB_gameboy_t *gb)
         GB_set_pixels_output(gb, active_pixel_buffer);
     }
     else {
-        render_texture(active_pixel_buffer, NULL, bg_pixel_buffer);
+        render_texture(active_pixel_buffer, NULL);
     }
 
     do_rewind = rewind_down;

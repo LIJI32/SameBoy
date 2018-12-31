@@ -93,7 +93,7 @@ extern configuration_t configuration;
 
 void update_viewport(void);
 void run_gui(bool is_running);
-void render_texture(void *pixels, void *previous, void *background_pixels);
+void render_texture(void *pixels, void *previous);
 void connect_joypad(void);
 
 joypad_button_t get_joypad_button(uint8_t physical_button);
