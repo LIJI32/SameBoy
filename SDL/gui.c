@@ -70,28 +70,21 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
 {
     /*---------------------------- Update Tiles ------------------------------*/
 
-    // Update WideGB tiles with the pixels of the current visible viewport
+    // Update WideGB tiles with the pixels currently visible on screen
     uint32_t *source_pixels = background_pixels ? background_pixels : pixels;
     WGB_write_screen(&wgb, source_pixels);
 
-    /*---------------------------- Update Tiles Textures ---------------------*/
+    /*---------------------------- Update Tiles textures ---------------------*/
 
-    // For each of the 4 tiles that may have been touched…
-    SDL_Point corners[] = {
-        { 0,   0   },
-        { 160, 0   },
-        { 0,   144 },
-        { 160, 144 }
-    };
-    for (int i = 0; i < 4; i++) {
-        // … update the tile SDL texture.
-        SDL_Point corner = corners[i];
-        WGB_tile *potentially_updated_tile = WGB_tile_at_point(&wgb, corner);
-        if (potentially_updated_tile) {
-            // fprintf(stderr, "Update texture of tile { %i, %i }\n",potentially_updated_tile->position.x, potentially_updated_tile->position.y);
-            int tile_index = WGB_index_of_tile(&wgb, potentially_updated_tile);
-            SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(tile_index);
-            SDL_UpdateTexture(tile_texture, NULL, potentially_updated_tile->pixel_buffer, 160 * sizeof (uint32_t));
+    // For each tile…
+    size_t tiles_count = WGB_tiles_count(&wgb);
+    for (int i = 0; i < tiles_count; i++) {
+        // if the tile pixel buffer has been updated…
+        WGB_tile *tile = WGB_tile_at_index(&wgb, i);
+        if (tile->dirty) {
+            // update the associated SDL texture.
+            SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
+            SDL_UpdateTexture(tile_texture, NULL, tile->pixel_buffer, 160 * sizeof (uint32_t));
         }
     }
 
@@ -103,7 +96,7 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
         SDL_RenderClear(renderer);
 
         // 2. Display each WideGB tile
-        int tiles_count = WGB_tiles_count(&wgb);
+        size_t tiles_count = WGB_tiles_count(&wgb);
         for (int i = 0; i < tiles_count; i++) {
             WGB_tile *tile = WGB_tile_at_index(&wgb, i);
             SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
@@ -156,7 +149,7 @@ void render_texture(void *pixels, void *previous, void *background_pixels)
         SDL_RenderPresent(renderer);
     }
     else {
-        // TODO: implement OpenGL rendering
+        // TODO: implement WideGB OpenGL rendering
         static void *_pixels = NULL;
         if (pixels) {
             _pixels = pixels;

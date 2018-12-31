@@ -37,6 +37,7 @@ bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
 struct WGB_tile {
     WGB_tile_position position;
     uint32_t *pixel_buffer;
+    bool dirty;
 };
 
 // Main WideGB struct.
@@ -47,7 +48,7 @@ struct wide_gb {
     SDL_Rect window_rect;
     bool window_enabled;
     WGB_tile tiles[WIDE_GB_MAX_TILES];
-    int tiles_count;
+    size_t tiles_count;
 };
 
 /*---------------- Initializing ------------------------------------------*/
@@ -68,14 +69,10 @@ void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy);
 // (as the window area is most often overlapped UI).
 void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy);
 
-// Write the screen content to the tiles.
-// Internally it uses `WGB_write_tile_pixel`.
+// Write the screen content to the relevant tiles.
+//
+// The updated tiles are marked as `dirty`.
 void WGB_write_screen(wide_gb *wgb, uint32_t *pixels);
-
-// Set a specific pixel on a given tile.
-// The tile is created if it doesn't exist yet.
-// The pixel position is specified in screen space.
-void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 

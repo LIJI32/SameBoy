@@ -195,24 +195,15 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
     };
 }
 
-void WGB_write_screen(wide_gb *wgb, uint32_t *pixels)
-{
-    // for each pixel visible on the console screen…
-    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
-        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
-            SDL_Point pixel_pos = { pixel_x, pixel_y };
-            if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
-                continue; // pixel is in the window: skip it
-            }
-            // read the screen pixel
-            uint32_t pixel = pixels[pixel_x + pixel_y * 160];
-            // and write the pixel to the tile
-            WGB_write_tile_pixel(wgb, pixel_pos, pixel);
-        }
-    }
-}
-
-void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
+// Set a specific pixel on a given tile.
+// The tile is created if it doesn't exist yet.
+//
+// Inputs:
+//  - pixel_pos: the pixel position in screen space
+//  - pixel: the actual value of the pixel
+//
+// Returns the address of the tile the pixel was written to.
+WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
 {
     // Retrieve the tile for this pixel
     WGB_tile_position tile_pos = WGB_tile_position_from_screen_point(wgb, pixel_pos);
@@ -225,6 +216,31 @@ void WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
     SDL_Point pixel_destination = WGB_tile_point_from_screen_point(wgb, pixel_pos, tile_pos);
 
     tile->pixel_buffer[pixel_destination.x + pixel_destination.y * 160] = pixel;
+
+    return tile;
+}
+
+void WGB_write_screen(wide_gb *wgb, uint32_t *pixels)
+{
+    // Clear the dirty flag on all tiles
+    for (size_t i = 0; i < wgb->tiles_count; i++) {
+        wgb->tiles[i].dirty = false;
+    }
+
+    // For each pixel visible on the console screen…
+    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
+        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
+            SDL_Point pixel_pos = { pixel_x, pixel_y };
+            if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
+                continue; // pixel is in the window: skip it
+            }
+            // read the screen pixel
+            uint32_t pixel = pixels[pixel_x + pixel_y * 160];
+            // and write the pixel to the tile
+            WGB_tile *tile = WGB_write_tile_pixel(wgb, pixel_pos, pixel);
+            tile->dirty = true;
+        }
+    }
 }
 
 // Return the current logical scroll position, taking into account:
