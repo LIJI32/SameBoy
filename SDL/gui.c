@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "utils.h"
 #include "gui.h"
 #include "font.h"
@@ -72,22 +73,24 @@ void render_texture_sdl(void *pixels, void *previous)
     SDL_RenderClear(renderer);
 
     // 2. Display each WideGB tile
-    size_t tiles_count = WGB_tiles_count(&wgb);
-    for (int i = 0; i < tiles_count; i++) {
-        WGB_tile *tile = WGB_tile_at_index(&wgb, i);
-        SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
-        // If the tile pixel buffer has been updated, update the associated texture.
-        if (tile->dirty) {
-            SDL_UpdateTexture(tile_texture, NULL, tile->pixel_buffer, 160 * sizeof (uint32_t));
-        }
-        SDL_Rect tile_rect = WGB_rect_for_tile(&wgb, tile);
-        SDL_Rect tile_rect_in_window = screen_rect_to_window(tile_rect);
+    if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
+        size_t tiles_count = WGB_tiles_count(&wgb);
+        for (int i = 0; i < tiles_count; i++) {
+            WGB_tile *tile = WGB_tile_at_index(&wgb, i);
+            SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
+            // If the tile pixel buffer has been updated, update the associated texture.
+            if (tile->dirty) {
+                SDL_UpdateTexture(tile_texture, NULL, tile->pixel_buffer, 160 * sizeof (uint32_t));
+            }
+            SDL_Rect tile_rect = WGB_rect_for_tile(&wgb, tile);
+            SDL_Rect tile_rect_in_window = screen_rect_to_window(tile_rect);
 
-        SDL_RenderCopy(renderer, tile_texture, NULL, &tile_rect_in_window);
-#if WIDE_GB_DEBUG
-        SDL_SetRenderDrawColor(renderer, 0x60, 0x60, 0x60, 0xff);
-        SDL_RenderDrawRect(renderer, &tile_rect_in_window);
-#endif
+            SDL_RenderCopy(renderer, tile_texture, NULL, &tile_rect_in_window);
+    #if WIDE_GB_DEBUG
+            SDL_SetRenderDrawColor(renderer, 0x60, 0x60, 0x60, 0xff);
+            SDL_RenderDrawRect(renderer, &tile_rect_in_window);
+    #endif
+        }
     }
 
     // 3. Draw opaquely the background portions non-overlapped by the GB window
@@ -104,7 +107,9 @@ void render_texture_sdl(void *pixels, void *previous)
         SDL_UpdateTexture(screen_texture, NULL, pixels, 160 * sizeof (uint32_t));
     }
 
-    SDL_Rect window_rect = wgb.window_enabled ? WGB_get_window_rect(&wgb) : (SDL_Rect){ 160, 144, 0, 0 };
+    bool draw_transluscent_window = wgb.window_enabled && configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN;
+
+    SDL_Rect window_rect = draw_transluscent_window ? WGB_get_window_rect(&wgb) : (SDL_Rect){ 160, 144, 0, 0 };
     SDL_Rect part1_rect = { 0, 0, 160, window_rect.y };
     SDL_Rect part2_rect = { 0, window_rect.y, window_rect.x, 144 - window_rect.y };
     SDL_Rect part1_rect_in_window = screen_rect_to_window(part1_rect);
@@ -119,7 +124,7 @@ void render_texture_sdl(void *pixels, void *previous)
 #endif
 
     // 4. Draw the background part overlapped by the window with a transluscency effect
-    if (wgb.window_enabled) {
+    if (draw_transluscent_window) {
         SDL_Rect window_rect_in_window = screen_rect_to_window(window_rect);
         SDL_SetTextureBlendMode(screen_texture, SDL_BLENDMODE_BLEND);
         SDL_SetTextureAlphaMod(screen_texture, 170);
@@ -228,7 +233,11 @@ struct scale compute_viewport_scale(void)
         scale.x = (int)(scale.x);
         scale.y = (int)(scale.y);
     }
-    
+    else if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
+        scale.x = ceil(scale.x * 0.6);
+        scale.y = ceil(scale.y * 0.6);
+    }
+
     if (configuration.scaling_mode != GB_SDL_SCALING_ENTIRE_WINDOW) {
         if (scale.x > scale.y) {
             scale.x = scale.y;
@@ -482,7 +491,7 @@ static void enter_emulation_menu(unsigned index)
 
 const char *current_scaling_mode(unsigned index)
 {
-    return (const char *[]){"Fill Entire Window", "Retain Aspect Ratio", "Retain Integer Factor"}
+    return (const char *[]){"Fill Entire Window", "Retain Aspect Ratio", "Retain Integer Factor", "Wide Screen"}
         [configuration.scaling_mode];
 }
 
