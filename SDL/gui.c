@@ -118,17 +118,19 @@ void render_texture_sdl(void *pixels, void *previous)
     SDL_RenderCopy(renderer, screen_texture, &part1_rect, &part1_rect_in_window);
     SDL_RenderCopy(renderer, screen_texture, &part2_rect, &part2_rect_in_window);
 
-#if WIDE_GB_DEBUG
-    SDL_SetRenderDrawColor(renderer, 0xff, 0x0, 0x0, 0x7f);
-    SDL_RenderDrawRect(renderer, &viewport);
-#endif
-
     // 4. Draw the background part overlapped by the window with a transluscency effect
     if (draw_transluscent_window) {
         SDL_Rect window_rect_in_window = screen_rect_to_window(window_rect);
         SDL_SetTextureBlendMode(screen_texture, SDL_BLENDMODE_BLEND);
         SDL_SetTextureAlphaMod(screen_texture, 170);
         SDL_RenderCopy(renderer, screen_texture, &window_rect, &window_rect_in_window);
+    }
+
+    // 5. Draw a border around the screen
+    if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(renderer, 0x0, 0x00, 0x00, 0x60);
+        SDL_RenderDrawRect(renderer, &viewport);
     }
 
     // 5. Finish rendering
