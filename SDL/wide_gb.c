@@ -94,7 +94,12 @@ wide_gb WGB_init()
 {
     wide_gb new = {
         .logical_pos  = { 0, 0 },
-        .hardware_pos = { 0, 0 }
+        .hardware_pos = { 0, 0 },
+        .window_rect = { 0, 0, 0, 0 },
+        .window_enabled = false,
+        .tiles_count = 0,
+        .frame_perceptual_hash = 0,
+        .previous_perceptual_hash = 0,
     };
     return new;
 }
@@ -130,7 +135,7 @@ WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index)
 WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
 {
 #if WIDE_GB_DEBUG
-    fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %i)\n", position.horizontal, position.vertical, wgb->tiles_count);
+    fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %lu)\n", position.horizontal, position.vertical, wgb->tiles_count);
 #endif
     wgb->tiles[wgb->tiles_count] = WGB_tile_init(position);
     wgb->tiles_count += 1;
@@ -202,6 +207,41 @@ WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel
     tile->pixel_buffer[pixel_destination.x + pixel_destination.y * 160] = pixel;
 
     return tile;
+}
+
+int hamming_distance(uint64_t x, uint64_t y) {
+    uint64_t z  = x ^ y;
+    int d = 0;
+    for (; z > 0; z >>= 1) {
+        d += z & 1;
+    }
+    return d;
+}
+
+void WGB_update_frame_perceptual_hash(wide_gb *wgb, uint64_t perceptual_hash)
+{
+    wgb->previous_perceptual_hash = wgb->frame_perceptual_hash;
+    wgb->frame_perceptual_hash = perceptual_hash;
+
+    const int scene_change_threshold = 23;
+    int diff = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
+#if WIDE_GB_DEBUG
+    if (diff != 0) {
+        fprintf(stderr, "WideGB scene hash diff: %i\n", diff);
+    }
+#endif
+
+    if (diff >= scene_change_threshold) {
+#if WIDE_GB_DEBUG
+        fprintf(stderr, "\n\n\nWideGB scene changed (diff = %i)\n", diff);
+        fprintf(stderr, "Clearing %zu tiles…\n", wgb->tiles_count);
+#endif
+        for (size_t i = 0; i < wgb->tiles_count; i++) {
+            WGB_tile *tile = &wgb->tiles[i];
+            memset(tile->pixel_buffer, 0, sizeof (uint32_t) * 160 * 144);
+            tile->dirty = true;
+        }
+    }
 }
 
 void WGB_update_screen(wide_gb *wgb, uint32_t *pixels)

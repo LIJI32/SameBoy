@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <SDL2/SDL.h>
 #include <Core/gb.h>
+#include <inttypes.h>
 #include "utils.h"
 #include "gui.h"
 #include "shader.h"
@@ -314,6 +315,72 @@ static void handle_events(GB_gameboy_t *gb)
         }
     }
 
+// TODO:
+//  - use "difference hash"
+//  - move to WGB
+uint64_t frame_average_hash(uint32_t *pixels)
+{
+    const int block_length_h = 160 / 8;
+    const int block_length_v = 144 / 8;
+    const int block_size = block_length_h * block_length_v;
+
+    // 1. Downsample, grayscale, and get image average value
+
+    uint8_t grayscale[8*8];
+    float image_avg = 0;
+    uint8_t r, g, b;
+    // For each block
+    for (int block_y = 0; block_y < 8; block_y++) {
+        for (int block_x = 0; block_x < 8; block_x++) {
+            float block_avg = 0;
+            int block_top_x = block_x * block_length_h;
+            int block_top_y = block_y * block_length_v;
+            // For each pixel in the block
+            for (int pixel_y = 0; pixel_y < block_length_v; pixel_y++) {
+                for (int pixel_x = 0; pixel_x < block_length_h; pixel_x++) {
+                    // Extract pixel color
+                    uint32_t pixel = pixels[(block_top_x + pixel_x) + (block_top_y + pixel_y) * 160];
+                    SDL_GetRGB(pixel, pixel_format, &r, &g, &b);
+                    // Convert to grayscale
+                    float grayscaled = 0.212671f * r + 0.715160f * g + 0.072169f * b;
+                    // Add contribution to the block value
+                    block_avg += (grayscaled / block_size);
+                }
+            }
+            // Write final block value to the downsampled grayscale picture
+            if (block_avg > 255) { block_avg = 255.0; }
+            grayscale[block_x + block_y * 8] = (uint8_t)block_avg;
+            // Add contribution to the image average
+            image_avg += block_avg / 64.0;
+        }
+    }
+
+    /// DEBUG
+    // fprintf(stderr, "Grayscale pixel values\n");
+    // for (int block_y = 0; block_y < 8; block_y++) {
+    //     for (int block_x = 0; block_x < 8; block_x++) {
+    //         uint8_t pixel = grayscale[block_x + block_y * 8];
+    //         fprintf(stderr, "%u\t", pixel);
+    //     }
+    //     fprintf(stderr, "\n");
+    // }
+
+    // 2. Compare pixels to image average
+    uint64_t hash = 0;
+    // For each block
+    for (int block_y = 0; block_y < 8; block_y++) {
+        for (int block_x = 0; block_x < 8; block_x++) {
+            int bit_index = block_x + block_y * 8;
+            uint8_t pixel = grayscale[bit_index];
+            if (pixel > image_avg) {
+                hash |= 1ULL << bit_index;
+            }
+        }
+    }
+
+    return hash;
+}
+
 static void vblank(GB_gameboy_t *gb)
 {
     // Adjust clock speed
@@ -338,6 +405,9 @@ static void vblank(GB_gameboy_t *gb)
 
     WGB_update_screen(&wgb, bg_pixel_buffer);
 
+    uint64_t hash = frame_average_hash(bg_pixel_buffer);
+    WGB_update_frame_perceptual_hash(&wgb, hash);
+
     // Present frame
     if (configuration.blend_frames) {
         render_texture(active_pixel_buffer, previous_pixel_buffer);
@@ -354,7 +424,6 @@ static void vblank(GB_gameboy_t *gb)
     do_rewind = rewind_down;
     handle_events(gb);
 }
-
 
 static uint32_t rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
 {

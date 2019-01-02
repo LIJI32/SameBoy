@@ -38,8 +38,8 @@ struct scale {
 struct scale compute_viewport_scale(void);
 
 // TODO:
-// - zoom in / out
 // - Scenes detection
+// - zoom in / out
 // - Save/restore backgrounds on the disk
 
 SDL_Texture* sdl_texture_for_wgb_tile(int tile_index)
@@ -107,9 +107,15 @@ void render_texture_sdl(void *pixels, void *previous)
         SDL_UpdateTexture(screen_texture, NULL, pixels, 160 * sizeof (uint32_t));
     }
 
-    bool draw_transluscent_window = wgb.window_enabled && configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN;
+    SDL_Rect window_rect = WGB_get_window_rect(&wgb);
+    const int window_fuzz = 6;
+    bool is_window_covering_entire_screen = window_rect.x < window_fuzz || window_rect.y < window_fuzz;
+    bool draw_transluscent_window = (
+           configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN
+        && wgb.window_enabled
+        && !is_window_covering_entire_screen);
 
-    SDL_Rect window_rect = draw_transluscent_window ? WGB_get_window_rect(&wgb) : (SDL_Rect){ 160, 144, 0, 0 };
+    window_rect = draw_transluscent_window ? window_rect : (SDL_Rect){ 160, 144, 0, 0 };
     SDL_Rect part1_rect = { 0, 0, 160, window_rect.y };
     SDL_Rect part2_rect = { 0, window_rect.y, window_rect.x, 144 - window_rect.y };
     SDL_Rect part1_rect_in_window = screen_rect_to_window(part1_rect);

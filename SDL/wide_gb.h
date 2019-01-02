@@ -74,6 +74,8 @@ typedef struct {
     bool window_enabled;
     WGB_tile tiles[WIDE_GB_MAX_TILES];
     size_t tiles_count;
+    uint64_t frame_perceptual_hash;
+    uint64_t previous_perceptual_hash;
 } wide_gb;
 
 /*---------------- Initializing ------------------------------------------*/
@@ -103,6 +105,8 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
 //
 // On return, the updated tiles are marked as `dirty`.
 void WGB_update_screen(wide_gb *wgb, uint32_t *pixels);
+
+void WGB_update_frame_perceptual_hash(wide_gb *wgb, uint64_t perceptual_hash);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 
