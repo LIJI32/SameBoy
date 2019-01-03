@@ -38,6 +38,14 @@ bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point)
         && point.y <= rect.y + rect.h);
 }
 
+bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2)
+{
+  if (rect2.x < rect1.x + rect1.w && rect1.x < rect2.x + rect2.w && rect2.y < rect1.y + rect1.h)
+    return rect1.y < rect2.y + rect2.h;
+  else
+    return false;
+}
+
 bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2)
 {
     return (position1.horizontal == position2.horizontal &&

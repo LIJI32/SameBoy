@@ -33,7 +33,7 @@
 // 1. Create a global wide_gb struct using `WGB_init`
 // 2. On V-blank, notify WideGB of the updates
 //    using `WGB_update_hardware_scroll` and `WGB_update_screen`
-// 3. Render the tiles over the canvas
+// 3. Render the visible tiles over the canvas
 //    using `WGB_tiles_count` and `WGB_tile_at_index` to enumerate the tiles
 // 4. Render the console screen over the tiles
 
@@ -46,6 +46,7 @@ SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset);
 SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy);
 SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
 bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
+bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2);
 
 /*---------------- Data definitions --------------------------------------*/
 
@@ -116,6 +117,7 @@ int WGB_tiles_count(wide_gb *wgb);
 WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index);
 
 // Layout tiles
+// Returns the rect of the tile in screen-space
 SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
 
 /*---------------- Cleanup ----------------------------------------------*/

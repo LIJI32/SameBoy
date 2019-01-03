@@ -36,9 +36,10 @@ struct scale {
     double y;
 };
 struct scale compute_viewport_scale(void);
+SDL_Rect window_drawable_rect();
 
 // TODO:
-// - Scenes detection
+// - Scenes reloading
 // - zoom in / out
 // - Save/restore backgrounds on the disk
 
@@ -64,6 +65,16 @@ SDL_Rect screen_rect_to_window(SDL_Rect screen_rect)
     result = WGB_scale_rect(result, viewport_scale.x, viewport_scale.y);
     result = WGB_offset_rect(result, viewport.x, viewport.y);
     return result;
+}
+
+// Convert a rectangle from window-space to screen-space
+SDL_Rect window_to_screen_rect(SDL_Rect window_rect)
+{
+    struct scale viewport_scale = compute_viewport_scale();
+
+    SDL_Rect result = window_rect;
+    result = WGB_offset_rect(result, -viewport.x, -viewport.y);
+    result = WGB_scale_rect(result, 1.0 / viewport_scale.x, 1.0 / viewport_scale.y);
     return result;
 }
 
@@ -75,20 +86,28 @@ void render_texture_sdl(void *pixels, void *previous)
 
     // 2. Display each WideGB tile
     if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
+        SDL_Rect drawable_rect = window_drawable_rect();
+        SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
+        // For each tile…
         size_t tiles_count = WGB_tiles_count(&wgb);
         for (int i = 0; i < tiles_count; i++) {
             WGB_tile *tile = WGB_tile_at_index(&wgb, i);
-            SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
+            // Culling: skip non-visible tiles
+            SDL_Rect tile_rect = WGB_rect_for_tile(&wgb, tile);
+            if (!WGB_rect_intersects_rect(tile_rect, drawable_rect_in_screen)) {
+                continue;
+            }
             // If the tile pixel buffer has been updated, update the associated texture.
+            SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
             if (tile->dirty) {
                 SDL_UpdateTexture(tile_texture, NULL, tile->pixel_buffer, 160 * sizeof (uint32_t));
                 tile->dirty = false;
             }
-            SDL_Rect tile_rect = WGB_rect_for_tile(&wgb, tile);
+            // Draw the tile
             SDL_Rect tile_rect_in_window = screen_rect_to_window(tile_rect);
-
             SDL_RenderCopy(renderer, tile_texture, NULL, &tile_rect_in_window);
     #if WIDE_GB_DEBUG
+            // Draw a border around the tile
             SDL_SetRenderDrawColor(renderer, 0x60, 0x60, 0x60, 0xff);
             SDL_RenderDrawRect(renderer, &tile_rect_in_window);
     #endif
