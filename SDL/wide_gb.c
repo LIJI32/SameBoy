@@ -14,10 +14,10 @@ SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset)
     return point;
 }
 
-SDL_Rect WGB_offset_rect(SDL_Rect rect, SDL_Point offset)
+SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy)
 {
-    rect.x += offset.x;
-    rect.y += offset.y;
+    rect.x += dx;
+    rect.y += dy;
     return rect;
 }
 

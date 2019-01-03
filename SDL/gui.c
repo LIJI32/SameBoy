@@ -55,14 +55,15 @@ SDL_Texture* sdl_texture_for_wgb_tile(int tile_index)
     return texture;
 }
 
+// Convert a rectangle from screen-space to window-space
 SDL_Rect screen_rect_to_window(SDL_Rect screen_rect)
 {
-    SDL_Point viewport_offset = { viewport.x, viewport.y };
     struct scale viewport_scale = compute_viewport_scale();
 
     SDL_Rect result = screen_rect;
     result = WGB_scale_rect(result, viewport_scale.x, viewport_scale.y);
-    result = WGB_offset_rect(result, viewport_offset);
+    result = WGB_offset_rect(result, viewport.x, viewport.y);
+    return result;
     return result;
 }
 

@@ -43,7 +43,7 @@
 /*---------------- Utils -------------------------------------------------*/
 
 SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset);
-SDL_Rect WGB_offset_rect(SDL_Rect rect, SDL_Point offset);
+SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy);
 SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
 bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
 
