@@ -37,8 +37,6 @@
 //    using `WGB_tiles_count` and `WGB_tile_at_index` to enumerate the tiles
 // 4. Render the console screen over the tiles
 
-#define WIDE_GB_ENABLED true
-
 #define WIDE_GB_DEBUG false
 #define WIDE_GB_MAX_TILES 512
 

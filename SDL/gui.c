@@ -267,16 +267,20 @@ void update_viewport(void)
     unsigned new_width = 160 * scale.x;
     unsigned new_height = 144 * scale.y;
 
-    viewport = (SDL_Rect){(win_width  - new_width) / 2, (win_height - new_height) /2,
-        new_width, new_height};
-    
-    if (renderer) {
-        #if !WIDE_GB_ENABLED
-        SDL_RenderSetClipRect(renderer, &viewport);
-        #endif
-    }
-    else {
-        glViewport(viewport.x, viewport.y, viewport.w, viewport.h);
+    viewport = (SDL_Rect) {
+        .x = (drawable_rect.w  - new_width) / 2,
+        .y = (drawable_rect.h - new_height) /2,
+        .w = new_width,
+        .h = new_height
+    };
+
+    if (configuration.scaling_mode != GB_SDL_SCALING_WIDE_SCREEN) {
+        if (renderer) {
+            SDL_RenderSetClipRect(renderer, &viewport);
+        }
+        else {
+            glViewport(viewport.x, viewport.y, viewport.w, viewport.h);
+        }
     }
 }
 
