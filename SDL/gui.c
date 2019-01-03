@@ -230,14 +230,20 @@ static const char *help[] ={
 " Break Debugger:    " CTRL_STRING "+C"
 };
 
+SDL_Rect window_drawable_rect()
+{
+    int win_width, win_height;
+    SDL_GL_GetDrawableSize(window, &win_width, &win_height);
+    return (SDL_Rect) { 0, 0, win_width, win_height };
+}
+
 struct scale compute_viewport_scale(void)
 {
     struct scale scale;
 
-    int win_width, win_height;
-    SDL_GL_GetDrawableSize(window, &win_width, &win_height);
-    scale.x = win_width / 160.0;
-    scale.y = win_height / 144.0;
+    SDL_Rect drawable_rect = window_drawable_rect();
+    scale.x = drawable_rect.w / 160.0;
+    scale.y = drawable_rect.h / 144.0;
 
     if (configuration.scaling_mode == GB_SDL_SCALING_INTEGER_FACTOR) {
         scale.x = (int)(scale.x);
@@ -262,10 +268,9 @@ struct scale compute_viewport_scale(void)
 
 void update_viewport(void)
 {
-    int win_width, win_height;
-    SDL_GL_GetDrawableSize(window, &win_width, &win_height);
-
+    SDL_Rect drawable_rect = window_drawable_rect();
     struct scale scale = compute_viewport_scale();
+
     unsigned new_width = 160 * scale.x;
     unsigned new_height = 144 * scale.y;
 
