@@ -403,10 +403,10 @@ static void vblank(GB_gameboy_t *gb)
     bool is_window_enabled = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_LCDC] & 0x20;
     WGB_update_window_position(&wgb, is_window_enabled, wX, wY);
 
-    WGB_update_screen(&wgb, bg_pixel_buffer);
+    uint64_t perceptual_hash = frame_average_hash(bg_pixel_buffer);
+    WGB_update_frame_perceptual_hash(&wgb, perceptual_hash);
 
-    uint64_t hash = frame_average_hash(bg_pixel_buffer);
-    WGB_update_frame_perceptual_hash(&wgb, hash);
+    WGB_update_screen(&wgb, bg_pixel_buffer);
 
     // Present frame
     if (configuration.blend_frames) {

@@ -33,8 +33,11 @@
 // 1. Create a global wide_gb struct using `WGB_init`
 // 2. On V-blank, notify WideGB of the updates
 //    using `WGB_update_hardware_scroll` and `WGB_update_screen`
-// 3. Render the visible tiles over the canvas
-//    using `WGB_tiles_count` and `WGB_tile_at_index` to enumerate the tiles
+// 3. Render the visible tiles over the canvas, using:
+//    - `WGB_tiles_count` and `WGB_tile_at_index` to enumerate the tiles,
+//    - `WGB_rect_intersects_rect` to cull tiles not visible on screen,
+//    - `tile->is_dirty` to tell whether the tile pixel buffer has been updated,
+//    - your frontend drawing library to draw the tile ;
 // 4. Render the console screen over the tiles
 
 #define WIDE_GB_DEBUG false
@@ -95,6 +98,8 @@ void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy);
 // (as the window area is most often overlapped UI).
 void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy);
 
+void WGB_update_frame_perceptual_hash(wide_gb *wgb, uint64_t perceptual_hash);
+
 // Write the screen content to the relevant tiles.
 // Typically called at vblank.
 //
@@ -104,8 +109,6 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
 //
 // On return, the updated tiles are marked as `dirty`.
 void WGB_update_screen(wide_gb *wgb, uint32_t *pixels);
-
-void WGB_update_frame_perceptual_hash(wide_gb *wgb, uint64_t perceptual_hash);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 
