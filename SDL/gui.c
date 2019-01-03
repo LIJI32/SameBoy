@@ -82,6 +82,7 @@ void render_texture_sdl(void *pixels, void *previous)
             // If the tile pixel buffer has been updated, update the associated texture.
             if (tile->dirty) {
                 SDL_UpdateTexture(tile_texture, NULL, tile->pixel_buffer, 160 * sizeof (uint32_t));
+                tile->dirty = false;
             }
             SDL_Rect tile_rect = WGB_rect_for_tile(&wgb, tile);
             SDL_Rect tile_rect_in_window = screen_rect_to_window(tile_rect);

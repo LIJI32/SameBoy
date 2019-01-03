@@ -246,11 +246,6 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, uint64_t perceptual_hash)
 
 void WGB_update_screen(wide_gb *wgb, uint32_t *pixels)
 {
-    // Clear the dirty flag on all tiles
-    for (size_t i = 0; i < wgb->tiles_count; i++) {
-        wgb->tiles[i].dirty = false;
-    }
-
     // For each pixel visible on the console screen…
     for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
         for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
