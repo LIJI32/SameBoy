@@ -278,8 +278,6 @@ SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
     };
 }
 
-
-
 /*---------------------- Laying out screen -------------------------------*/
 
 void WGB_get_background_rects(wide_gb *wgb, SDL_Rect *rect1, SDL_Rect *rect2)

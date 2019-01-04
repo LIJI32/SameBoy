@@ -104,9 +104,6 @@ void WGB_update_screen(wide_gb *wgb, uint32_t *pixels);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 
-// Return the rectangle of the current Game Boy window
-SDL_Rect WGB_get_window_rect(wide_gb *wgb);
-
 // Enumerate tiles
 int WGB_tiles_count(wide_gb *wgb);
 WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index);
@@ -119,6 +116,35 @@ WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index);
 bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, SDL_Rect viewport);
 // Returns the rect of the tile in screen-space
 SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
+
+// Layout screen (optional)
+
+// These helpers can help you to draw the background-part and the window-part
+// of the screen separately.
+//
+// The Background may be partially overlapped by the Game Boy window.
+// If we want to draw the background and window separately, we potentially
+// need two rects for the background, and one for the window.
+//
+// +-----------------+
+// |                 |
+// |   part1         |
+// |                 |
+// |.......+---------|
+// | part2 |  window |
+// +-----------------+
+
+// Return the screen areas not overlapped by the Game Boy window.
+// Depending on how the window is positionned,
+// one or both of these areas may have a width or a height of 0.
+void WGB_get_background_rects(wide_gb *wgb, SDL_Rect *rect1, SDL_Rect *rect2);
+// Return the screen area overlapped by the Game Boy window.
+SDL_Rect WGB_get_window_rect(wide_gb *wgb);
+// Return true if the window is enabled and entirely covering the screen.
+// Some games slighly shake the window at times (e.g. Pokémon):
+// you can use `tolered_pixels` to return `true` even if the window is not
+// entirerly overlapping the screen.
+bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels);
 
 /*---------------- Geometry helpers --------------------------------------*/
 
