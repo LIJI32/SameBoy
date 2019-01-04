@@ -280,37 +280,24 @@ SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
 
 /*---------------------- Laying out screen -------------------------------*/
 
-void WGB_get_background_rects(wide_gb *wgb, SDL_Rect *rect1, SDL_Rect *rect2)
+void WGB_get_screen_layout(wide_gb *wgb, SDL_Rect *bg_rect1, SDL_Rect *bg_rect2, SDL_Rect *wnd_rect)
 {
-    if (wgb->window_enabled) {
-        SDL_Rect window_rect = wgb->window_rect;
+    SDL_Rect window_rect = wgb->window_enabled ? wgb->window_rect : (SDL_Rect){ 160, 144, 0, 0 };
 
-        rect1->x = 0;
-        rect1->y = 0;
-        rect1->w = 160;
-        rect1->h = window_rect.y;
+    bg_rect1->x = 0;
+    bg_rect1->y = 0;
+    bg_rect1->w = 160;
+    bg_rect1->h = window_rect.y;
 
-        rect2->x = 0;
-        rect2->y = window_rect.y;
-        rect2->w = window_rect.x;
-        rect2->h = 144 - window_rect.y;
+    bg_rect2->x = 0;
+    bg_rect2->y = window_rect.y;
+    bg_rect2->w = window_rect.x;
+    bg_rect2->h = 144 - window_rect.y;
 
-    } else {
-        rect1->x = 0;
-        rect1->y = 0;
-        rect1->w = 160;
-        rect1->h = 144;
-
-        rect2->x = 0;
-        rect2->y = 0;
-        rect2->w = 0;
-        rect2->h = 0;
-    }
-}
-
-SDL_Rect WGB_get_window_rect(wide_gb *wgb)
-{
-    return wgb->window_enabled ? wgb->window_rect : (SDL_Rect){ 0, 0, 0, 0 };
+    wnd_rect->x = window_rect.x;
+    wnd_rect->y = window_rect.y;
+    wnd_rect->w = window_rect.w;
+    wnd_rect->h = window_rect.h;
 }
 
 bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels)

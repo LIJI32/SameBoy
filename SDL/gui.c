@@ -117,40 +117,47 @@ void render_texture_sdl(void *pixels, void *previous)
         }
     }
 
-    // 3. Draw opaquely the screen areas non-overlapped by the GB window
+    // 3. Render the screen
 
     // Update the screen texture
     if (pixels) {
         SDL_UpdateTexture(screen_texture, NULL, pixels, 160 * sizeof (uint32_t));
     }
 
-    // For each screen area non overlapped by the window…
-    SDL_Rect bg_rects[2];
-    WGB_get_background_rects(&wgb, &bg_rects[0], &bg_rects[1]);
-    for (int i = 0; i < 2; i++) {
-      // if the area is not empty…
-      SDL_Rect bg_rect = bg_rects[i];
-      SDL_Rect bg_rect_in_window = screen_rect_to_window(bg_rect);
-      if (bg_rect.w >= 0 && bg_rect.h >= 0) {
-        // draw it to the screen.
-        SDL_RenderCopy(renderer, screen_texture, &bg_rect, &bg_rect_in_window);
+    bool draw_opaque_window = (
+        configuration.scaling_mode != GB_SDL_SCALING_WIDE_SCREEN ||
+        WGB_is_window_covering_screen(&wgb, 6));
+
+    if (draw_opaque_window) {
+      // Draw the entire screen in one pass
+      SDL_RenderCopy(renderer, screen_texture, NULL, &viewport);
+
+    } else {
+      // Draw the window separately from the rest of the screen (for transparency)
+
+      // Retrieve the screen layout
+      SDL_Rect bg_rects[2], wnd_rect;
+      WGB_get_screen_layout(&wgb, &bg_rects[0], &bg_rects[1], &wnd_rect);
+
+      // For each area of the screen not overlapped by the window…
+      for (int i = 0; i < 2; i++) {
+        // if the area is not empty…
+        SDL_Rect bg_rect = bg_rects[i];
+        SDL_Rect bg_rect_in_window = screen_rect_to_window(bg_rect);
+        if (bg_rect.w >= 0 && bg_rect.h >= 0) {
+          // draw it opaquely to the screen.
+          SDL_RenderCopy(renderer, screen_texture, &bg_rect, &bg_rect_in_window);
+        }
       }
-    }
 
-    // 4. Draw the screen area overlapped by the window (optionally with transparency)
-    SDL_Rect wd_rect = WGB_get_window_rect(&wgb);
-    SDL_Rect wd_rect_in_window = screen_rect_to_window(wd_rect);
-    bool draw_transluscent_window = (
-          configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN &&
-          !WGB_is_window_covering_screen(&wgb, 6));
-
-    if (draw_transluscent_window) {
+      // Draw transparently the screen area overlapped by the window
+      SDL_Rect wnd_rect_in_window = screen_rect_to_window(wnd_rect);
       SDL_SetTextureBlendMode(screen_texture, SDL_BLENDMODE_BLEND);
       SDL_SetTextureAlphaMod(screen_texture, 170);
+      SDL_RenderCopy(renderer, screen_texture, &wnd_rect, &wnd_rect_in_window);
     }
-    SDL_RenderCopy(renderer, screen_texture, &wd_rect, &wd_rect_in_window);
 
-    // 5. Draw a border around the screen
+    // 4. Draw a border around the screen
     if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 0x0, 0x00, 0x00, 0x60);

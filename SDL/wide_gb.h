@@ -134,12 +134,13 @@ SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
 // | part2 |  window |
 // +-----------------+
 
-// Return the screen areas not overlapped by the Game Boy window.
+// Return the different screen areas:
+//  - first part of the background area,
+//  - second part of the backgroud area,
+//  - area overlapped by window (if the Game Boy window is enabled)
 // Depending on how the window is positionned,
-// one or both of these areas may have a width or a height of 0.
-void WGB_get_background_rects(wide_gb *wgb, SDL_Rect *rect1, SDL_Rect *rect2);
-// Return the screen area overlapped by the Game Boy window.
-SDL_Rect WGB_get_window_rect(wide_gb *wgb);
+// some of these areas may have a width or a height of 0.
+void WGB_get_screen_layout(wide_gb *wgb, SDL_Rect *bg_rect1, SDL_Rect *bg_rect2, SDL_Rect *wnd_rect);
 // Return true if the window is enabled and entirely covering the screen.
 // Some games slighly shake the window at times (e.g. Pokémon):
 // you can use `tolered_pixels` to return `true` even if the window is not
