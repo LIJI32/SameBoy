@@ -69,16 +69,6 @@ SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point,
     return WGB_offset_point(tile_origin, screen_point);
 }
 
-SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
-{
-    return (SDL_Rect) {
-        .x = tile->position.horizontal * 160 - wgb->logical_pos.x,
-        .y = tile->position.vertical   * 144 - wgb->logical_pos.y,
-        .w = 160,
-        .h = 144
-    };
-}
-
 /*---------------- Initializers --------------------------------------*/
 
 WGB_tile WGB_tile_init(WGB_tile_position position)
@@ -270,15 +260,67 @@ void WGB_update_screen(wide_gb *wgb, uint32_t *pixels)
     }
 }
 
-// Return the current logical scroll position, taking into account:
-// - screen wrapping
-// - padding (todo)
-SDL_Point WGB_get_logical_scroll(wide_gb *wgb)
+/*---------------------- Laying out tiles --------------------------------*/
+
+bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, SDL_Rect viewport)
 {
-    return wgb->logical_pos;
+    SDL_Rect tile_rect = WGB_rect_for_tile(wgb, tile);
+    return WGB_rect_intersects_rect(tile_rect, viewport);
+}
+
+SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
+{
+    return (SDL_Rect) {
+        .x = tile->position.horizontal * 160 - wgb->logical_pos.x,
+        .y = tile->position.vertical   * 144 - wgb->logical_pos.y,
+        .w = 160,
+        .h = 144
+    };
+}
+
+
+
+/*---------------------- Laying out screen -------------------------------*/
+
+void WGB_get_background_rects(wide_gb *wgb, SDL_Rect *rect1, SDL_Rect *rect2)
+{
+    if (wgb->window_enabled) {
+        SDL_Rect window_rect = wgb->window_rect;
+
+        rect1->x = 0;
+        rect1->y = 0;
+        rect1->w = 160;
+        rect1->h = window_rect.y;
+
+        rect2->x = 0;
+        rect2->y = window_rect.y;
+        rect2->w = window_rect.x;
+        rect2->h = 144 - window_rect.y;
+
+    } else {
+        rect1->x = 0;
+        rect1->y = 0;
+        rect1->w = 160;
+        rect1->h = 144;
+
+        rect2->x = 0;
+        rect2->y = 0;
+        rect2->w = 0;
+        rect2->h = 0;
+    }
 }
 
 SDL_Rect WGB_get_window_rect(wide_gb *wgb)
 {
-    return wgb->window_rect;
+    return wgb->window_enabled ? wgb->window_rect : (SDL_Rect){ 0, 0, 0, 0 };
 }
+
+bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels)
+{
+    if (wgb->window_enabled) {
+        return wgb->window_rect.x < tolered_pixels && wgb->window_rect.y < tolered_pixels;
+    } else {
+        return false;
+    }
+}
+

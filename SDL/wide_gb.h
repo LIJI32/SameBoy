@@ -35,21 +35,13 @@
 //    using `WGB_update_hardware_scroll` and `WGB_update_screen`
 // 3. Render the visible tiles over the canvas, using:
 //    - `WGB_tiles_count` and `WGB_tile_at_index` to enumerate the tiles,
-//    - `WGB_rect_intersects_rect` to cull tiles not visible on screen,
+//    - `WGB_is_tile_visible` to cull tiles not visible on screen,
 //    - `tile->is_dirty` to tell whether the tile pixel buffer has been updated,
-//    - your frontend drawing library to draw the tile ;
+//    - `WGB_rect_for_tile` to draw the tile using your frontend drawing library ;
 // 4. Render the console screen over the tiles
 
 #define WIDE_GB_DEBUG false
 #define WIDE_GB_MAX_TILES 512
-
-/*---------------- Utils -------------------------------------------------*/
-
-SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset);
-SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy);
-SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
-bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
-bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2);
 
 /*---------------- Data definitions --------------------------------------*/
 
@@ -120,8 +112,21 @@ int WGB_tiles_count(wide_gb *wgb);
 WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index);
 
 // Layout tiles
+
+// Returns true if a tile is visible in the current viewport.
+// Viewport is in screen-space (i.e. like { -160, -160, 480, 432 }
+// for a window twice as large as the console screen).
+bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, SDL_Rect viewport);
 // Returns the rect of the tile in screen-space
 SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
+
+/*---------------- Geometry helpers --------------------------------------*/
+
+SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset);
+SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy);
+SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
+bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
+bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2);
 
 /*---------------- Cleanup ----------------------------------------------*/
 
