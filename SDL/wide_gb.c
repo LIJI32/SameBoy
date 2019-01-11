@@ -1,8 +1,11 @@
+#include <Misc/uthash.h>
 #include <stdlib.h>
 #include <math.h>
 #include "wide_gb.h"
 
 #define BACKGROUND_SIZE 256
+#define WGB_FIND_SCENE_DELAY 30
+#define WGB_FIND_SCENE_MAX_ATTEMPTS 60 * 3
 
 // Forward declarations
 WGB_scene *WGB_create_scene(wide_gb *wgb);
@@ -90,9 +93,10 @@ void WGB_tile_destroy(WGB_tile *tile)
     }
 }
 
-WGB_scene WGB_scene_init()
+WGB_scene WGB_scene_init(int scene_id)
 {
     WGB_scene new = {
+        .id = scene_id,
         .scroll = { 0, 0 },
         .tiles_count = 0
     };
@@ -114,6 +118,8 @@ wide_gb WGB_init()
         .window_enabled = false,
         .frame_perceptual_hash = 0,
         .previous_perceptual_hash = 0,
+        .scene_frames = NULL,
+        .find_existing_scene_countdown = 0
     };
     new.active_scene = WGB_create_scene(&new);
     return new;
@@ -166,18 +172,119 @@ WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
 
 WGB_scene *WGB_create_scene(wide_gb *wgb)
 {
+    static int next_scene_id = 0;
 #if WIDE_GB_DEBUG
-    fprintf(stderr, "wgb: create scene n°%zu\n", wgb->scenes_count);
+    fprintf(stderr, "wgb: create scene { id: %i }\n", next_scene_id);
 #endif
-    wgb->scenes[wgb->scenes_count] = WGB_scene_init();
+
+    wgb->scenes[wgb->scenes_count] = WGB_scene_init(next_scene_id);
     wgb->scenes_count += 1;
+    next_scene_id += 1;
 
     return &(wgb->scenes[wgb->scenes_count - 1]);
+}
+
+WGB_scene *WGB_find_scene_by_id(wide_gb *wgb, int scene_id)
+{
+    for (int i = 0; i < wgb->scenes_count; i++) {
+        if (wgb->scenes[i].id == scene_id) {
+            return &wgb->scenes[i];
+        }
+    }
+    return NULL;
+}
+
+WGB_scene_frame *WGB_find_scene_frame_for_hash(wide_gb *wgb, WGB_exact_hash hash)
+{
+    WGB_scene_frame *scene_frame;
+    HASH_FIND_INT(wgb->scene_frames, &hash, scene_frame);
+    return scene_frame;
 }
 
 void WGB_make_scene_active(wide_gb *wgb, WGB_scene *scene)
 {
     wgb->active_scene = scene;
+}
+
+void WGB_restore_scene_for_frame(wide_gb *wgb, WGB_scene_frame *scene_frame)
+{
+    #if WIDE_GB_DEBUG
+        fprintf(stderr, "wgb: Restore scene %i.\n", scene_frame->scene_id);
+    #endif
+
+    // Find the scene matching the frame
+    WGB_scene *scene = WGB_find_scene_by_id(wgb, scene_frame->scene_id);
+    if (scene == NULL) {
+        fprintf(stderr, "wgb: Error while restoring a saved scene for scene %i: scene not found.\n", scene_frame->scene_id);
+        return;
+    }
+
+    // Restore the scene
+    scene->scroll = scene_frame->scene_scroll;
+    for (int i = 0; i < scene->tiles_count; i++) {
+        scene->tiles[i].dirty = true;
+    }
+    WGB_scene *previous_scene = wgb->active_scene;
+    WGB_make_scene_active(wgb, scene);
+
+    // Now that we know this frame belonged to a specific scene,
+    // destroy the temporary scene that was created meanwhile.
+    #if WIDE_GB_DEBUG
+        fprintf(stderr, "wgb: Delete scene %i.\n", previous_scene->id);
+    #endif
+    // Remove the frames belonging to this scene…
+    WGB_scene *scene_to_delete = previous_scene;
+    WGB_scene_frame *current_scene_frame, *tmp;
+    HASH_ITER(hh, wgb->scene_frames, current_scene_frame, tmp) {
+        if (current_scene_frame->scene_id == scene_to_delete->id) {
+            HASH_DEL(wgb->scene_frames, current_scene_frame);
+            free(current_scene_frame);
+        }
+    }
+    // …and destroy the scene itself
+    WGB_scene_destroy(scene_to_delete);
+}
+
+void WGB_store_frame_hash(wide_gb *wgb, WGB_exact_hash hash)
+{
+    // Attempt to find an existing scene_frame for this frame
+    WGB_scene_frame *scene_frame;
+    HASH_FIND_INT(wgb->scene_frames, &hash, scene_frame);
+    if (scene_frame == NULL) {
+        // No scene_frame for this frame has been stored yet: create and insert it
+        scene_frame = malloc(sizeof(WGB_scene_frame));
+        scene_frame->frame_hash = hash;
+        HASH_ADD_INT(wgb->scene_frames, frame_hash, scene_frame);
+    }
+
+    // Update the stored scene_frame with all informations (except the hash key)
+    // #if WIDE_GB_DEBUG
+    //     fprintf(stderr, "wgb: save frame hash { scene_id: %i, hash: %llu }\n", wgb->active_scene->id, hash);
+    // #endif
+    scene_frame->scene_id = wgb->active_scene->id;
+    scene_frame->scene_scroll = wgb->active_scene->scroll;
+}
+
+void WGB_update_frame_hash(wide_gb *wgb, WGB_exact_hash hash)
+{
+    // Attempt to find an existing scene for this frame
+    if (wgb->find_existing_scene_countdown > 0) {
+        #if WIDE_GB_DEBUG
+            fprintf(stderr, "wgb: Attempt to match an existing frame (countdown: %i)\n", wgb->find_existing_scene_countdown);
+        #endif
+        WGB_scene_frame *existing_frame = WGB_find_scene_frame_for_hash(wgb, hash);
+        if (existing_frame && existing_frame->scene_id != wgb->active_scene->id) {
+            WGB_restore_scene_for_frame(wgb, existing_frame);
+            // Now that we found a matching scene, disable the countdown
+            wgb->find_existing_scene_countdown = 0;
+        } else {
+            // No matching scene found: continue looking for a matching scene
+            wgb->find_existing_scene_countdown -= 1;
+        }
+    }
+
+    // Store the frame hash for the active scene
+    WGB_store_frame_hash(wgb, hash);
 }
 
 WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
@@ -228,7 +335,18 @@ int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
     return d;
 }
 
-WGB_perceptual_hash WGB_average_hash(uint8_t *rgb_pixels)
+WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
+{
+    // FIXME: ignore pixels in window
+    WGB_exact_hash hash = 0;
+    for (int i = 0; i < 160 * 144 * 3; i += 3) {
+        int pixels_sum = rgb_pixels[i] + rgb_pixels[i + 1] + rgb_pixels[i + 2];
+        hash = (hash + 324723947 + pixels_sum * 2) ^ 93485734985;
+    }
+    return hash;
+}
+
+WGB_perceptual_hash WGB_average_hash(wide_gb *wgb, uint8_t *rgb_pixels)
 {
     const int block_length_h = 160 / 8;
     const int block_length_v = 144 / 8;
@@ -253,7 +371,7 @@ WGB_perceptual_hash WGB_average_hash(uint8_t *rgb_pixels)
                     r = rgb_pixels[rgb_pos + 0];
                     g = rgb_pixels[rgb_pos + 1];
                     b = rgb_pixels[rgb_pos + 2];
-                    // Convert to grayscale
+                    // // Convert to grayscale
                     float grayscaled = 0.212671f * r + 0.715160f * g + 0.072169f * b;
                     // Add contribution to the block value
                     block_avg += (grayscaled / block_size);
@@ -329,7 +447,7 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
     wgb->previous_perceptual_hash = wgb->frame_perceptual_hash;
     wgb->frame_perceptual_hash = p_hash;
 
-    const int scene_change_threshold = 23;
+    const int scene_change_threshold = 22;
     int distance = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
     if (distance >= scene_change_threshold) {
 #if WIDE_GB_DEBUG
@@ -337,12 +455,15 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
 #endif
         WGB_scene *new_scene = WGB_create_scene(wgb);
         WGB_make_scene_active(wgb, new_scene);
+        // Attempt to find the next frames in an existing scene during the next 3 seconds
+        wgb->find_existing_scene_countdown = WGB_FIND_SCENE_MAX_ATTEMPTS;
     }
 }
 
-void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_perceptual_hash p_hash)
+void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_perceptual_hash p_hash)
 {
     WGB_update_frame_perceptual_hash(wgb, p_hash);
+    WGB_update_frame_hash(wgb, hash);
     WGB_write_screen_pixels(wgb, pixels);
 }
 

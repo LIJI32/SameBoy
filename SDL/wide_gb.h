@@ -2,7 +2,8 @@
 #define wide_gb_h
 
 #include <SDL2/SDL.h>
-#include  <stdbool.h>
+#include <Misc/uthash.h>
+#include <stdbool.h>
 
 // This file implements an engine for recording and displaying
 // extended scenes on a canvas in a Game Boy emulator, in a
@@ -40,7 +41,7 @@
 //    - `WGB_rect_for_tile` to draw the tile using your frontend drawing library ;
 // 4. Render the console screen over the tiles
 
-#define WIDE_GB_DEBUG true
+#define WIDE_GB_DEBUG false
 #define WIDE_GB_MAX_TILES 512
 #define WIDE_GB_MAX_SCENES 512
 
@@ -61,12 +62,21 @@ typedef struct {
 } WGB_tile;
 
 typedef struct {
+    int id;
     SDL_Point scroll;
     WGB_tile tiles[WIDE_GB_MAX_TILES];
     size_t tiles_count;
 } WGB_scene;
 
+typedef uint64_t WGB_exact_hash;
 typedef uint64_t WGB_perceptual_hash;
+
+typedef struct {
+    int scene_id;
+    SDL_Point scene_scroll;
+    WGB_exact_hash frame_hash;
+    UT_hash_handle hh;
+} WGB_scene_frame;
 
 // Main WideGB struct.
 // Initialize with WGB_init().
@@ -79,6 +89,8 @@ typedef struct {
     WGB_scene *active_scene;
     WGB_scene scenes[WIDE_GB_MAX_SCENES];
     size_t scenes_count;
+    WGB_scene_frame *scene_frames; // a <frame_hash, WGB_scene_frame> map
+    int find_existing_scene_countdown;
 } wide_gb;
 
 /*---------------- Initializing ------------------------------------------*/
@@ -108,11 +120,12 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
 //
 // Inputs:
 //   - pixels: an array of 160*144 uint32 opaque values, written as-this to the relevant tiles.
-//   - p_hash: a perceptual hash of pixels. If the p_hash is too different from the previous one,
+//   - hash: an exact hash of the pixels. If any of the pixels changes, the hash should be different.
+//   - p_hash: a perceptual hash of the pixels. If the p_hash is too different from the previous one,
 //             WGB creates a new scene.
 //
 // On return, the updated tiles are marked as `dirty`.
-void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_perceptual_hash p_hash);
+void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_perceptual_hash p_hash);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 
@@ -169,10 +182,20 @@ bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2);
 
 /*---------------- Frame hashing helpers --------------------------------*/
 
+// Compute an exact hash of a frame. This is used to identify if a frame belongs
+// to an already stored scene.
+//
+// As the window content is often not relevant to know if a given screen
+// is the same than another, pixels in the window area are excluded from the hash.
+//
+// `rgb_pixels` must be a 160 * 144 * 3 array, where each consecutive triplet
+// store the r, g and b values for a pixel.
+WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels);
+
 // Compute a perceptual hash of a frame using the "average hash" algorithm.
 // `rgb_pixels` must be a 160 * 144 * 3 array, where each consecutive triplet
 // store the r, g and b values for a pixel.
-WGB_perceptual_hash WGB_average_hash(uint8_t *rgb_pixels);
+WGB_perceptual_hash WGB_average_hash(wide_gb *wgb, uint8_t *rgb_pixels);
 
 /*---------------- Cleanup ----------------------------------------------*/
 
