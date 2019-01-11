@@ -5,6 +5,9 @@
 
 #define BACKGROUND_SIZE 256
 
+// Forward declarations
+WGB_scene *WGB_create_scene(wide_gb *wgb);
+
 /*---------------- Utils -------------------------------------------------*/
 
 SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset)
@@ -55,16 +58,16 @@ bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position p
 WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point)
 {
     return (WGB_tile_position){
-        .horizontal = floorf((wgb->logical_pos.x + screen_point.x) / 160.0),
-        .vertical   = floorf((wgb->logical_pos.y + screen_point.y) / 144.0)
+        .horizontal = floorf((wgb->active_scene->logical_pos.x + screen_point.x) / 160.0),
+        .vertical   = floorf((wgb->active_scene->logical_pos.y + screen_point.y) / 144.0)
     };
 }
 
 SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile)
 {
     SDL_Point tile_origin = {
-        .x = wgb->logical_pos.x - target_tile.horizontal * 160,
-        .y = wgb->logical_pos.y - target_tile.vertical   * 144
+        .x = wgb->active_scene->logical_pos.x - target_tile.horizontal * 160,
+        .y = wgb->active_scene->logical_pos.y - target_tile.vertical   * 144
     };
     return WGB_offset_point(tile_origin, screen_point);
 }
@@ -88,38 +91,54 @@ void WGB_tile_destroy(WGB_tile *tile)
     }
 }
 
+WGB_scene WGB_scene_init()
+{
+    WGB_scene new = {
+        .logical_pos = { 0, 0 },
+        .tiles_count = 0
+    };
+    return new;
+}
+
+void WGB_scene_destroy(WGB_scene *scene)
+{
+    for (int i = 0; i < scene->tiles_count; i++) {
+        WGB_tile_destroy(&scene->tiles[i]);
+    }
+}
+
 wide_gb WGB_init()
 {
     wide_gb new = {
-        .logical_pos  = { 0, 0 },
         .hardware_pos = { 0, 0 },
         .window_rect = { 0, 0, 0, 0 },
         .window_enabled = false,
-        .tiles_count = 0,
         .frame_perceptual_hash = 0,
         .previous_perceptual_hash = 0,
     };
+    new.active_scene = WGB_create_scene(&new);
     return new;
 }
 
 void WGB_destroy(wide_gb *wgb)
 {
-    for (int i = 0; i < wgb->tiles_count; i++) {
-        WGB_tile_destroy(&wgb->tiles[i]);
+    for (int i = 0; i < wgb->scenes_count; i++) {
+        WGB_scene_destroy(&wgb->scenes[i]);
     }
 }
 
 /*---------------- Managing tiles -------------------------------------*/
 
-int WGB_tiles_count(wide_gb *wgb)
+size_t WGB_tiles_count(wide_gb *wgb)
 {
-    return wgb->tiles_count;
+    return wgb->active_scene->tiles_count;
 }
 
 WGB_tile *WGB_tile_at_position(wide_gb *wgb, WGB_tile_position position_to_find)
 {
-    for (int i = 0; i < wgb->tiles_count; i++) {
-        WGB_tile *tile = &(wgb->tiles[i]);
+    size_t tiles_count = WGB_tiles_count(wgb);
+    for (int i = 0; i < tiles_count; i++) {
+        WGB_tile *tile = WGB_tile_at_index(wgb, i);
         if (WGB_tile_position_equal_to(tile->position, position_to_find)) {
             return tile;
         }
@@ -129,17 +148,37 @@ WGB_tile *WGB_tile_at_position(wide_gb *wgb, WGB_tile_position position_to_find)
 
 WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index)
 {
-    return &(wgb->tiles[index]);
+    return &(wgb->active_scene->tiles[index]);
 }
 
 WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
 {
 #if WIDE_GB_DEBUG
-    fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %lu)\n", position.horizontal, position.vertical, wgb->tiles_count);
+    fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %lu)\n", position.horizontal, position.vertical, wgb->active_scene->tiles_count);
 #endif
-    wgb->tiles[wgb->tiles_count] = WGB_tile_init(position);
-    wgb->tiles_count += 1;
-    return &(wgb->tiles[wgb->tiles_count - 1]);
+    WGB_scene *scene = wgb->active_scene;
+    scene->tiles[scene->tiles_count] = WGB_tile_init(position);
+    scene->tiles_count += 1;
+
+   return &(scene->tiles[scene->tiles_count - 1]);
+}
+
+/*---------------- Managing scenes -------------------------------------*/
+
+WGB_scene *WGB_create_scene(wide_gb *wgb)
+{
+#if WIDE_GB_DEBUG
+    fprintf(stderr, "wgb: create scene n°%zu\n", wgb->scenes_count);
+#endif
+    wgb->scenes[wgb->scenes_count] = WGB_scene_init();
+    wgb->scenes_count += 1;
+
+    return &(wgb->scenes[wgb->scenes_count - 1]);
+}
+
+void WGB_make_scene_active(wide_gb *wgb, WGB_scene *scene)
+{
+    wgb->active_scene = scene;
 }
 
 WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
@@ -159,15 +198,6 @@ WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel
     tile->pixel_buffer[pixel_destination.x + pixel_destination.y * 160] = pixel;
 
     return tile;
-}
-
-void WGB_clear_tiles(wide_gb *wgb)
-{
-    for (size_t i = 0; i < wgb->tiles_count; i++) {
-        WGB_tile *tile = &wgb->tiles[i];
-        memset(tile->pixel_buffer, 0, sizeof (uint32_t) * 160 * 144);
-        tile->dirty = true;
-    }
 }
 
 /*---------------- Frame hashing helpers -------------------------------*/
@@ -262,8 +292,8 @@ void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
 
     // Update the new positions
     wide_gb->hardware_pos = new_hardware_pos;
-    wide_gb->logical_pos.x += delta.x;
-    wide_gb->logical_pos.y += delta.y;
+    wide_gb->active_scene->logical_pos.x += delta.x;
+    wide_gb->active_scene->logical_pos.y += delta.y;
 }
 
 void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy)
@@ -286,10 +316,10 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
     int distance = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
     if (distance >= scene_change_threshold) {
 #if WIDE_GB_DEBUG
-        fprintf(stderr, "\n\n\nWideGB scene changed (diff = %i)\n", diff);
-        fprintf(stderr, "Clearing %zu tiles…\n", wgb->tiles_count);
+        fprintf(stderr, "\n\n\nWideGB scene changed (distance = %i)\n", distance);
 #endif
-        WGB_clear_tiles(wgb);
+        WGB_scene *new_scene = WGB_create_scene(wgb);
+        WGB_make_scene_active(wgb, new_scene);
     }
 }
 
@@ -322,8 +352,8 @@ bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, SDL_Rect viewport)
 SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
 {
     return (SDL_Rect) {
-        .x = tile->position.horizontal * 160 - wgb->logical_pos.x,
-        .y = tile->position.vertical   * 144 - wgb->logical_pos.y,
+        .x = tile->position.horizontal * 160 - wgb->active_scene->logical_pos.x,
+        .y = tile->position.vertical   * 144 - wgb->active_scene->logical_pos.y,
         .w = 160,
         .h = 144
     };

@@ -42,6 +42,7 @@
 
 #define WIDE_GB_DEBUG false
 #define WIDE_GB_MAX_TILES 512
+#define WIDE_GB_MAX_SCENES 512
 
 /*---------------- Data definitions --------------------------------------*/
 
@@ -59,19 +60,25 @@ typedef struct {
     bool dirty;
 } WGB_tile;
 
+typedef struct {
+    SDL_Point logical_pos;
+    WGB_tile tiles[WIDE_GB_MAX_TILES];
+    size_t tiles_count;
+} WGB_scene;
+
 typedef uint64_t WGB_perceptual_hash;
 
 // Main WideGB struct.
 // Initialize with WGB_init().
 typedef struct {
-    SDL_Point logical_pos;
     SDL_Point hardware_pos;
     SDL_Rect window_rect;
     bool window_enabled;
-    WGB_tile tiles[WIDE_GB_MAX_TILES];
-    size_t tiles_count;
     WGB_perceptual_hash frame_perceptual_hash;
     WGB_perceptual_hash previous_perceptual_hash;
+    WGB_scene *active_scene;
+    WGB_scene scenes[WIDE_GB_MAX_SCENES];
+    size_t scenes_count;
 } wide_gb;
 
 /*---------------- Initializing ------------------------------------------*/
@@ -113,7 +120,7 @@ void WGB_update_screen(wide_gb *wgb, uint32_t *pixels);
 /*---------------- Retrieving informations for rendering -----------------*/
 
 // Enumerate tiles
-int WGB_tiles_count(wide_gb *wgb);
+size_t WGB_tiles_count(wide_gb *wgb);
 WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index);
 
 // Layout tiles
