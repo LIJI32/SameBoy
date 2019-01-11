@@ -40,7 +40,7 @@
 //    - `WGB_rect_for_tile` to draw the tile using your frontend drawing library ;
 // 4. Render the console screen over the tiles
 
-#define WIDE_GB_DEBUG false
+#define WIDE_GB_DEBUG true
 #define WIDE_GB_MAX_TILES 512
 #define WIDE_GB_MAX_SCENES 512
 
@@ -99,14 +99,6 @@ void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy);
 // (as the window area is most often overlapped UI).
 void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy);
 
-// Notify WGB of the perceptual hash of the current frame.
-// WGB stores the hashes, and clears the scene when a frame is too different
-// from the previous one.
-//
-// TODO: once several frontends are implemented, see if this function
-// could be moved to WGB_update_screen.
-void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash);
-
 // Write the screen content to the relevant tiles.
 // Typically called at vblank.
 //
@@ -114,8 +106,13 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash);
 // to write pixels on the correct tiles – so `WGB_update_hardware_scroll`
 // must be called before to set the current scroll position.
 //
+// Inputs:
+//   - pixels: an array of 160*144 uint32 opaque values, written as-this to the relevant tiles.
+//   - p_hash: a perceptual hash of pixels. If the p_hash is too different from the previous one,
+//             WGB creates a new scene.
+//
 // On return, the updated tiles are marked as `dirty`.
-void WGB_update_screen(wide_gb *wgb, uint32_t *pixels);
+void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_perceptual_hash p_hash);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 

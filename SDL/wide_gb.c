@@ -200,6 +200,24 @@ WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel
     return tile;
 }
 
+void WGB_write_screen_pixels(wide_gb *wgb, uint32_t *pixels)
+{
+    // For each pixel visible on the console screen…
+    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
+        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
+            SDL_Point pixel_pos = { pixel_x, pixel_y };
+            if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
+                continue; // pixel is in the window: skip it
+            }
+            // read the screen pixel
+            uint32_t pixel = pixels[pixel_x + pixel_y * 160];
+            // and write the pixel to the relevant tile
+            WGB_tile *tile = WGB_write_tile_pixel(wgb, pixel_pos, pixel);
+            tile->dirty = true;
+        }
+    }
+}
+
 /*---------------- Frame hashing helpers -------------------------------*/
 
 int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
@@ -323,22 +341,10 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
     }
 }
 
-void WGB_update_screen(wide_gb *wgb, uint32_t *pixels)
+void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_perceptual_hash p_hash)
 {
-    // For each pixel visible on the console screen…
-    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
-        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
-            SDL_Point pixel_pos = { pixel_x, pixel_y };
-            if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
-                continue; // pixel is in the window: skip it
-            }
-            // read the screen pixel
-            uint32_t pixel = pixels[pixel_x + pixel_y * 160];
-            // and write the pixel to the tile
-            WGB_tile *tile = WGB_write_tile_pixel(wgb, pixel_pos, pixel);
-            tile->dirty = true;
-        }
-    }
+    WGB_update_frame_perceptual_hash(wgb, p_hash);
+    WGB_write_screen_pixels(wgb, pixels);
 }
 
 /*---------------------- Laying out tiles --------------------------------*/
@@ -389,4 +395,3 @@ bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels)
         return false;
     }
 }
-
