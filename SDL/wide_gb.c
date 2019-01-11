@@ -58,16 +58,16 @@ bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position p
 WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point)
 {
     return (WGB_tile_position){
-        .horizontal = floorf((wgb->active_scene->logical_pos.x + screen_point.x) / 160.0),
-        .vertical   = floorf((wgb->active_scene->logical_pos.y + screen_point.y) / 144.0)
+        .horizontal = floorf((wgb->active_scene->scroll.x + screen_point.x) / 160.0),
+        .vertical   = floorf((wgb->active_scene->scroll.y + screen_point.y) / 144.0)
     };
 }
 
 SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile)
 {
     SDL_Point tile_origin = {
-        .x = wgb->active_scene->logical_pos.x - target_tile.horizontal * 160,
-        .y = wgb->active_scene->logical_pos.y - target_tile.vertical   * 144
+        .x = wgb->active_scene->scroll.x - target_tile.horizontal * 160,
+        .y = wgb->active_scene->scroll.y - target_tile.vertical   * 144
     };
     return WGB_offset_point(tile_origin, screen_point);
 }
@@ -94,7 +94,7 @@ void WGB_tile_destroy(WGB_tile *tile)
 WGB_scene WGB_scene_init()
 {
     WGB_scene new = {
-        .logical_pos = { 0, 0 },
+        .scroll = { 0, 0 },
         .tiles_count = 0
     };
     return new;
@@ -110,7 +110,7 @@ void WGB_scene_destroy(WGB_scene *scene)
 wide_gb WGB_init()
 {
     wide_gb new = {
-        .hardware_pos = { 0, 0 },
+        .hardware_scroll = { 0, 0 },
         .window_rect = { 0, 0, 0, 0 },
         .window_enabled = false,
         .frame_perceptual_hash = 0,
@@ -267,12 +267,12 @@ WGB_perceptual_hash WGB_average_hash(uint8_t *rgb_pixels)
 
 void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
 {
-    SDL_Point new_hardware_pos = { scx, scy };
+    SDL_Point new_hardware_scroll = { scx, scy };
 
     // Compute difference with the previous scroll position
     SDL_Point delta;
-    delta.x = new_hardware_pos.x - wide_gb->hardware_pos.x;
-    delta.y = new_hardware_pos.y - wide_gb->hardware_pos.y;
+    delta.x = new_hardware_scroll.x - wide_gb->hardware_scroll.x;
+    delta.y = new_hardware_scroll.y - wide_gb->hardware_scroll.y;
 
     // Apply heuristic to tell if the background position wrapped into the other side
     const int fuzz = 10;
@@ -291,9 +291,9 @@ void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
     }
 
     // Update the new positions
-    wide_gb->hardware_pos = new_hardware_pos;
-    wide_gb->active_scene->logical_pos.x += delta.x;
-    wide_gb->active_scene->logical_pos.y += delta.y;
+    wide_gb->hardware_scroll = new_hardware_scroll;
+    wide_gb->active_scene->scroll.x += delta.x;
+    wide_gb->active_scene->scroll.y += delta.y;
 }
 
 void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy)
@@ -352,8 +352,8 @@ bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, SDL_Rect viewport)
 SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
 {
     return (SDL_Rect) {
-        .x = tile->position.horizontal * 160 - wgb->active_scene->logical_pos.x,
-        .y = tile->position.vertical   * 144 - wgb->active_scene->logical_pos.y,
+        .x = tile->position.horizontal * 160 - wgb->active_scene->scroll.x,
+        .y = tile->position.vertical   * 144 - wgb->active_scene->scroll.y,
         .w = 160,
         .h = 144
     };

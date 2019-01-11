@@ -61,7 +61,7 @@ typedef struct {
 } WGB_tile;
 
 typedef struct {
-    SDL_Point logical_pos;
+    SDL_Point scroll;
     WGB_tile tiles[WIDE_GB_MAX_TILES];
     size_t tiles_count;
 } WGB_scene;
@@ -71,7 +71,7 @@ typedef uint64_t WGB_perceptual_hash;
 // Main WideGB struct.
 // Initialize with WGB_init().
 typedef struct {
-    SDL_Point hardware_pos;
+    SDL_Point hardware_scroll;
     SDL_Rect window_rect;
     bool window_enabled;
     WGB_perceptual_hash frame_perceptual_hash;
