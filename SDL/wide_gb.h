@@ -59,6 +59,8 @@ typedef struct {
     bool dirty;
 } WGB_tile;
 
+typedef uint64_t WGB_perceptual_hash;
+
 // Main WideGB struct.
 // Initialize with WGB_init().
 typedef struct {
@@ -68,8 +70,8 @@ typedef struct {
     bool window_enabled;
     WGB_tile tiles[WIDE_GB_MAX_TILES];
     size_t tiles_count;
-    uint64_t frame_perceptual_hash;
-    uint64_t previous_perceptual_hash;
+    WGB_perceptual_hash frame_perceptual_hash;
+    WGB_perceptual_hash previous_perceptual_hash;
 } wide_gb;
 
 /*---------------- Initializing ------------------------------------------*/
@@ -90,7 +92,13 @@ void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy);
 // (as the window area is most often overlapped UI).
 void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy);
 
-void WGB_update_frame_perceptual_hash(wide_gb *wgb, uint64_t perceptual_hash);
+// Notify WGB of the perceptual hash of the current frame.
+// WGB stores the hashes, and clears the scene when a frame is too different
+// from the previous one.
+//
+// TODO: once several frontends are implemented, see if this function
+// could be moved to WGB_update_screen.
+void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash);
 
 // Write the screen content to the relevant tiles.
 // Typically called at vblank.
@@ -154,6 +162,13 @@ SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy);
 SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
 bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
 bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2);
+
+/*---------------- Frame hashing helpers --------------------------------*/
+
+// Compute a perceptual hash of a frame using the "average hash" algorithm.
+// `rgb_pixels` must be a 160 * 144 * 3 array, where each consecutive triplet
+// store the r, g and b values for a pixel.
+WGB_perceptual_hash WGB_average_hash(uint8_t *rgb_pixels);
 
 /*---------------- Cleanup ----------------------------------------------*/
 

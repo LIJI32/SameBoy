@@ -109,6 +109,8 @@ void WGB_destroy(wide_gb *wgb)
     }
 }
 
+/*---------------- Managing tiles -------------------------------------*/
+
 int WGB_tiles_count(wide_gb *wgb)
 {
     return wgb->tiles_count;
@@ -139,6 +141,99 @@ WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
     wgb->tiles_count += 1;
     return &(wgb->tiles[wgb->tiles_count - 1]);
 }
+
+WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
+{
+    // Retrieve the tile for this pixel
+    WGB_tile_position tile_pos = WGB_tile_position_from_screen_point(wgb, pixel_pos);
+    WGB_tile *tile = WGB_tile_at_position(wgb, tile_pos);
+
+    // Create the tile if it doesn't exist
+    if (tile == NULL) {
+        tile = WGB_create_tile(wgb, tile_pos);
+    }
+
+    // Convert the pixel position from screen-space to tile-space
+    SDL_Point pixel_destination = WGB_tile_point_from_screen_point(wgb, pixel_pos, tile_pos);
+
+    tile->pixel_buffer[pixel_destination.x + pixel_destination.y * 160] = pixel;
+
+    return tile;
+}
+
+void WGB_clear_tiles(wide_gb *wgb)
+{
+    for (size_t i = 0; i < wgb->tiles_count; i++) {
+        WGB_tile *tile = &wgb->tiles[i];
+        memset(tile->pixel_buffer, 0, sizeof (uint32_t) * 160 * 144);
+        tile->dirty = true;
+    }
+}
+
+/*---------------- Frame hashing helpers -------------------------------*/
+
+int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
+    WGB_perceptual_hash z  = x ^ y;
+    int d = 0;
+    for (; z > 0; z >>= 1) {
+        d += z & 1;
+    }
+    return d;
+}
+
+WGB_perceptual_hash WGB_average_hash(uint8_t *rgb_pixels)
+{
+    const int block_length_h = 160 / 8;
+    const int block_length_v = 144 / 8;
+    const int block_size = block_length_h * block_length_v;
+
+    // 1. Downsample, grayscale, and get image average value
+
+    uint8_t grayscale[8*8];
+    float image_avg = 0;
+    uint8_t r, g, b;
+    // For each block
+    for (int block_y = 0; block_y < 8; block_y++) {
+        for (int block_x = 0; block_x < 8; block_x++) {
+            float block_avg = 0;
+            int block_top_x = block_x * block_length_h;
+            int block_top_y = block_y * block_length_v;
+            // For each pixel in the block
+            for (int pixel_y = 0; pixel_y < block_length_v; pixel_y++) {
+                for (int pixel_x = 0; pixel_x < block_length_h; pixel_x++) {
+                    // Extract pixel color
+                    int rgb_pos = ((block_top_x + pixel_x) + (block_top_y + pixel_y) * 160) * 3;
+                    r = rgb_pixels[rgb_pos + 0];
+                    g = rgb_pixels[rgb_pos + 1];
+                    b = rgb_pixels[rgb_pos + 2];
+                    // Convert to grayscale
+                    float grayscaled = 0.212671f * r + 0.715160f * g + 0.072169f * b;
+                    // Add contribution to the block value
+                    block_avg += (grayscaled / block_size);
+                }
+            }
+            // Write final block value to the downsampled grayscale picture
+            if (block_avg > 255) { block_avg = 255.0; }
+            grayscale[block_x + block_y * 8] = (uint8_t)floor(block_avg);
+            // Add contribution to the image average
+            image_avg += block_avg / 64.0;
+        }
+    }
+
+    // 2. Compare pixels to image average
+    WGB_perceptual_hash hash = 0;
+    // For each block
+    for (int i = 0; i < 8 * 8; i++) {
+        uint8_t pixel = grayscale[i];
+        if (pixel > image_avg) {
+            hash |= 1ULL << i;
+        }
+    }
+
+    return hash;
+}
+
+/*---------------- Updates from hardware ------------------------------*/
 
 void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
 {
@@ -182,63 +277,19 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
     };
 }
 
-// Set a specific pixel on a given tile.
-// The tile is created if it doesn't exist yet.
-//
-// Inputs:
-//  - pixel_pos: the pixel position in screen space
-//  - pixel: the actual value of the pixel
-//
-// Returns the address of the tile the pixel was written to.
-WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
-{
-    // Retrieve the tile for this pixel
-    WGB_tile_position tile_pos = WGB_tile_position_from_screen_point(wgb, pixel_pos);
-    WGB_tile *tile = WGB_tile_at_position(wgb, tile_pos);
-    if (tile == NULL) {
-        tile = WGB_create_tile(wgb, tile_pos);
-    }
-
-    // Convert the pixel position from screen-space to tile-space
-    SDL_Point pixel_destination = WGB_tile_point_from_screen_point(wgb, pixel_pos, tile_pos);
-
-    tile->pixel_buffer[pixel_destination.x + pixel_destination.y * 160] = pixel;
-
-    return tile;
-}
-
-int hamming_distance(uint64_t x, uint64_t y) {
-    uint64_t z  = x ^ y;
-    int d = 0;
-    for (; z > 0; z >>= 1) {
-        d += z & 1;
-    }
-    return d;
-}
-
-void WGB_update_frame_perceptual_hash(wide_gb *wgb, uint64_t perceptual_hash)
+void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
 {
     wgb->previous_perceptual_hash = wgb->frame_perceptual_hash;
-    wgb->frame_perceptual_hash = perceptual_hash;
+    wgb->frame_perceptual_hash = p_hash;
 
     const int scene_change_threshold = 23;
-    int diff = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
-#if WIDE_GB_DEBUG
-    if (diff != 0) {
-        fprintf(stderr, "WideGB scene hash diff: %i\n", diff);
-    }
-#endif
-
-    if (diff >= scene_change_threshold) {
+    int distance = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
+    if (distance >= scene_change_threshold) {
 #if WIDE_GB_DEBUG
         fprintf(stderr, "\n\n\nWideGB scene changed (diff = %i)\n", diff);
         fprintf(stderr, "Clearing %zu tiles…\n", wgb->tiles_count);
 #endif
-        for (size_t i = 0; i < wgb->tiles_count; i++) {
-            WGB_tile *tile = &wgb->tiles[i];
-            memset(tile->pixel_buffer, 0, sizeof (uint32_t) * 160 * 144);
-            tile->dirty = true;
-        }
+        WGB_clear_tiles(wgb);
     }
 }
 
