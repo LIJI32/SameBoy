@@ -192,10 +192,15 @@ bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2);
 // store the r, g and b values for a pixel.
 WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels);
 
-// Compute a perceptual hash of a frame using the "average hash" algorithm.
+// Compute a perceptual hash of a frame using the "added difference hash" algorithm.
+//
+// This algorith detects how many blocks are brighter than the block on their left.
+// The resulting hash is not very sensitive to translations (great for allowing scrolling),
+// but quite sensitive to luminance changes (great for detecting fade transitions).
+//
 // `rgb_pixels` must be a 160 * 144 * 3 array, where each consecutive triplet
 // store the r, g and b values for a pixel.
-WGB_perceptual_hash WGB_average_hash(wide_gb *wgb, uint8_t *rgb_pixels);
+WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels);
 
 /*---------------- Cleanup ----------------------------------------------*/
 

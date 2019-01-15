@@ -39,9 +39,7 @@ struct scale compute_viewport_scale(void);
 SDL_Rect window_drawable_rect();
 
 // TODO:
-// - Move window rect logic to WGB
-// - Move perceptual hash logic to WGB
-// - Scenes reloading
+// - improve the temp scene logic (maybe allow to delete a scene more easily?)
 // - zoom in / out
 // - Save/restore backgrounds on the disk
 

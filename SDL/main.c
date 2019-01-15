@@ -352,7 +352,7 @@ static void vblank(GB_gameboy_t *gb)
     uint8_t bg_rgb_pixels[160 * 144 * 3];
     texture_to_rgb(bg_pixel_buffer, pixel_format, bg_rgb_pixels);
     WGB_exact_hash hash = WGB_frame_hash(&wgb, bg_rgb_pixels);
-    WGB_perceptual_hash p_hash = WGB_average_hash(&wgb, bg_rgb_pixels);
+    WGB_perceptual_hash p_hash = WGB_added_difference_hash(&wgb, bg_rgb_pixels);
 
     WGB_update_screen(&wgb, bg_pixel_buffer, hash, p_hash);
 

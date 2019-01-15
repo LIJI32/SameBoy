@@ -5,10 +5,11 @@
 
 #define BACKGROUND_SIZE 256
 #define WGB_FIND_SCENE_DELAY 30
-#define WGB_FIND_SCENE_MAX_ATTEMPTS 60 * 3
+#define WGB_FIND_SCENE_MAX_ATTEMPTS 60 * 2
 
 // Forward declarations
 WGB_scene *WGB_create_scene(wide_gb *wgb);
+int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y);
 
 /*---------------- Utils -------------------------------------------------*/
 
@@ -158,9 +159,9 @@ WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index)
 
 WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
 {
-#if WIDE_GB_DEBUG
-    fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %lu)\n", position.horizontal, position.vertical, wgb->active_scene->tiles_count);
-#endif
+// #if WIDE_GB_DEBUG
+//     fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %lu)\n", position.horizontal, position.vertical, wgb->active_scene->tiles_count);
+// #endif
     WGB_scene *scene = wgb->active_scene;
     scene->tiles[scene->tiles_count] = WGB_tile_init(position);
     scene->tiles_count += 1;
@@ -174,7 +175,7 @@ WGB_scene *WGB_create_scene(wide_gb *wgb)
 {
     static int next_scene_id = 0;
 #if WIDE_GB_DEBUG
-    fprintf(stderr, "wgb: create scene { id: %i }\n", next_scene_id);
+    fprintf(stderr, "wgb: create scene %i\n", next_scene_id);
 #endif
 
     wgb->scenes[wgb->scenes_count] = WGB_scene_init(next_scene_id);
@@ -213,19 +214,19 @@ void WGB_restore_scene_for_frame(wide_gb *wgb, WGB_scene_frame *scene_frame)
     #endif
 
     // Find the scene matching the frame
-    WGB_scene *scene = WGB_find_scene_by_id(wgb, scene_frame->scene_id);
-    if (scene == NULL) {
-        fprintf(stderr, "wgb: Error while restoring a saved scene for scene %i: scene not found.\n", scene_frame->scene_id);
+    WGB_scene *matched_scene = WGB_find_scene_by_id(wgb, scene_frame->scene_id);
+    if (matched_scene == NULL) {
+        fprintf(stderr, "wgb: Error while restoring a saved scene for scene %i: matching scene not found.\n", scene_frame->scene_id);
         return;
     }
 
     // Restore the scene
-    scene->scroll = scene_frame->scene_scroll;
-    for (int i = 0; i < scene->tiles_count; i++) {
-        scene->tiles[i].dirty = true;
+    matched_scene->scroll = scene_frame->scene_scroll;
+    for (int i = 0; i < matched_scene->tiles_count; i++) {
+        matched_scene->tiles[i].dirty = true;
     }
     WGB_scene *previous_scene = wgb->active_scene;
-    WGB_make_scene_active(wgb, scene);
+    WGB_make_scene_active(wgb, matched_scene);
 
     // Now that we know this frame belonged to a specific scene,
     // destroy the temporary scene that was created meanwhile.
@@ -269,17 +270,21 @@ void WGB_update_frame_hash(wide_gb *wgb, WGB_exact_hash hash)
 {
     // Attempt to find an existing scene for this frame
     if (wgb->find_existing_scene_countdown > 0) {
-        #if WIDE_GB_DEBUG
-            fprintf(stderr, "wgb: Attempt to match an existing frame (countdown: %i)\n", wgb->find_existing_scene_countdown);
-        #endif
+
         WGB_scene_frame *existing_frame = WGB_find_scene_frame_for_hash(wgb, hash);
         if (existing_frame && existing_frame->scene_id != wgb->active_scene->id) {
             WGB_restore_scene_for_frame(wgb, existing_frame);
             // Now that we found a matching scene, disable the countdown
             wgb->find_existing_scene_countdown = 0;
+
         } else {
             // No matching scene found: continue looking for a matching scene
             wgb->find_existing_scene_countdown -= 1;
+#if WIDE_GB_DEBUG
+            if (wgb->find_existing_scene_countdown == 0) {
+                fprintf(stderr, "wgb: Countdown ended: stop attempting to match frames\n");
+            }
+#endif
         }
     }
 
@@ -322,80 +327,6 @@ void WGB_write_screen_pixels(wide_gb *wgb, uint32_t *pixels)
             tile->dirty = true;
         }
     }
-}
-
-/*---------------- Frame hashing helpers -------------------------------*/
-
-int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
-    WGB_perceptual_hash z  = x ^ y;
-    int d = 0;
-    for (; z > 0; z >>= 1) {
-        d += z & 1;
-    }
-    return d;
-}
-
-WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
-{
-    // FIXME: ignore pixels in window
-    WGB_exact_hash hash = 0;
-    for (int i = 0; i < 160 * 144 * 3; i += 3) {
-        int pixels_sum = rgb_pixels[i] + rgb_pixels[i + 1] + rgb_pixels[i + 2];
-        hash = (hash + 324723947 + pixels_sum * 2) ^ 93485734985;
-    }
-    return hash;
-}
-
-WGB_perceptual_hash WGB_average_hash(wide_gb *wgb, uint8_t *rgb_pixels)
-{
-    const int block_length_h = 160 / 8;
-    const int block_length_v = 144 / 8;
-    const int block_size = block_length_h * block_length_v;
-
-    // 1. Downsample, grayscale, and get image average value
-
-    uint8_t grayscale[8*8];
-    float image_avg = 0;
-    uint8_t r, g, b;
-    // For each block
-    for (int block_y = 0; block_y < 8; block_y++) {
-        for (int block_x = 0; block_x < 8; block_x++) {
-            float block_avg = 0;
-            int block_top_x = block_x * block_length_h;
-            int block_top_y = block_y * block_length_v;
-            // For each pixel in the block
-            for (int pixel_y = 0; pixel_y < block_length_v; pixel_y++) {
-                for (int pixel_x = 0; pixel_x < block_length_h; pixel_x++) {
-                    // Extract pixel color
-                    int rgb_pos = ((block_top_x + pixel_x) + (block_top_y + pixel_y) * 160) * 3;
-                    r = rgb_pixels[rgb_pos + 0];
-                    g = rgb_pixels[rgb_pos + 1];
-                    b = rgb_pixels[rgb_pos + 2];
-                    // // Convert to grayscale
-                    float grayscaled = 0.212671f * r + 0.715160f * g + 0.072169f * b;
-                    // Add contribution to the block value
-                    block_avg += (grayscaled / block_size);
-                }
-            }
-            // Write final block value to the downsampled grayscale picture
-            if (block_avg > 255) { block_avg = 255.0; }
-            grayscale[block_x + block_y * 8] = (uint8_t)floor(block_avg);
-            // Add contribution to the image average
-            image_avg += block_avg / 64.0;
-        }
-    }
-
-    // 2. Compare pixels to image average
-    WGB_perceptual_hash hash = 0;
-    // For each block
-    for (int i = 0; i < 8 * 8; i++) {
-        uint8_t pixel = grayscale[i];
-        if (pixel > image_avg) {
-            hash |= 1ULL << i;
-        }
-    }
-
-    return hash;
 }
 
 /*---------------- Updates from hardware ------------------------------*/
@@ -447,15 +378,24 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
     wgb->previous_perceptual_hash = wgb->frame_perceptual_hash;
     wgb->frame_perceptual_hash = p_hash;
 
-    const int scene_change_threshold = 22;
+    const int scene_change_threshold = 17;
     int distance = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
+#if WIDE_GB_DEBUG
+    if (distance > 0) {
+        fprintf(stderr, "WideGB scene distance: %i\n", distance);
+    }
+#endif
+
     if (distance >= scene_change_threshold) {
 #if WIDE_GB_DEBUG
         fprintf(stderr, "\n\n\nWideGB scene changed (distance = %i)\n", distance);
 #endif
         WGB_scene *new_scene = WGB_create_scene(wgb);
         WGB_make_scene_active(wgb, new_scene);
-        // Attempt to find the next frames in an existing scene during the next 3 seconds
+        // Attempt to find the next frames in an existing scene during the next 2 seconds
+#if WIDE_GB_DEBUG
+        fprintf(stderr, "wgb: Attempt to match an existing scene during the next %i frames…\n", WGB_FIND_SCENE_MAX_ATTEMPTS);
+#endif
         wgb->find_existing_scene_countdown = WGB_FIND_SCENE_MAX_ATTEMPTS;
     }
 }
@@ -514,4 +454,84 @@ bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels)
     } else {
         return false;
     }
+}
+
+/*---------------- Frame hashing helpers -------------------------------*/
+
+int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
+    WGB_perceptual_hash z  = x ^ y;
+    int d = 0;
+    for (; z > 0; z >>= 1) {
+        d += z & 1;
+    }
+    return d;
+}
+
+WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
+{
+    // FIXME: ignore pixels in window
+    WGB_exact_hash hash = 0;
+    for (int i = 0; i < 160 * 144 * 3; i += 3) {
+        int pixels_sum = rgb_pixels[i] + rgb_pixels[i + 1] + rgb_pixels[i + 2];
+        hash = (hash + 324723947 + pixels_sum * 2) ^ 93485734985;
+    }
+    return hash;
+}
+
+WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels)
+{
+    const int block_length_h = 160 / 8;
+    const int block_length_v = 144 / 8;
+    const int block_size = block_length_h * block_length_v;
+
+    // 1. Downsample to 8 * 8 blocks, and extract the luminance
+
+    uint8_t grayscale[8*8];
+    uint8_t r, g, b;
+    // For each block
+    for (int block_y = 0; block_y < 8; block_y++) {
+        for (int block_x = 0; block_x < 8; block_x++) {
+            float block_avg = 0;
+            int block_top_x = block_x * block_length_h;
+            int block_top_y = block_y * block_length_v;
+            // For each pixel in the block
+            for (int pixel_y = 0; pixel_y < block_length_v; pixel_y++) {
+                for (int pixel_x = 0; pixel_x < block_length_h; pixel_x++) {
+                    // Extract pixel color
+                    int rgb_pos = ((block_top_x + pixel_x) + (block_top_y + pixel_y) * 160) * 3;
+                    r = rgb_pixels[rgb_pos + 0];
+                    g = rgb_pixels[rgb_pos + 1];
+                    b = rgb_pixels[rgb_pos + 2];
+                    // // Convert to grayscale
+                    float grayscaled = 0.212671f * r + 0.715160f * g + 0.072169f * b;
+                    // Add contribution to the block value
+                    block_avg += (grayscaled / block_size);
+                }
+            }
+            // Write final block value to the downsampled grayscale picture
+            if (block_avg > 255) { block_avg = 255.0; }
+            grayscale[block_x + block_y * 8] = (uint8_t)floor(block_avg);
+        }
+    }
+
+    // 2. Count the number of blocks brighter than the previous block
+
+    int sum = 0;
+    for (int i = 1; i < 8 * 8; i++) {
+        uint8_t block_luminance = grayscale[i];
+        uint8_t previous_block_luminance = grayscale[i-1];
+        if (block_luminance > previous_block_luminance) {
+            sum += 1;
+        }
+    }
+
+    // 3. Encode the sum as a hash that can be compared using the hamming distance
+
+    // The first N bits of the hash are set to 1, and the others to 0.
+    WGB_perceptual_hash hash = 0;
+    for (int i = 0; i < sum; i++) {
+        hash |= 1ULL << i;
+    }
+
+    return hash;
 }
