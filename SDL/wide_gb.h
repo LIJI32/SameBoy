@@ -194,7 +194,7 @@ WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels);
 
 // Compute a perceptual hash of a frame using the "added difference hash" algorithm.
 //
-// This algorith detects how many blocks are brighter than the block on their left.
+// This algorith detects how many blocks are brighter than the adjascent block.
 // The resulting hash is not very sensitive to translations (great for allowing scrolling),
 // but quite sensitive to luminance changes (great for detecting fade transitions).
 //

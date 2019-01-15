@@ -378,7 +378,7 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
     wgb->previous_perceptual_hash = wgb->frame_perceptual_hash;
     wgb->frame_perceptual_hash = p_hash;
 
-    const int scene_change_threshold = 17;
+    const int scene_change_threshold = 12;
     int distance = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
 #if WIDE_GB_DEBUG
     if (distance > 0) {
@@ -514,18 +514,20 @@ WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels)
         }
     }
 
-    // 2. Count the number of blocks brighter than the previous block
+    // 2. Count the number of blocks brighter than the block on the top-left
 
     int sum = 0;
-    for (int i = 1; i < 8 * 8; i++) {
-        uint8_t block_luminance = grayscale[i];
-        uint8_t previous_block_luminance = grayscale[i-1];
-        if (block_luminance > previous_block_luminance) {
-            sum += 1;
+    for (int x = 1; x < 8; x++) {
+        for (int y = 1; y < 8; y++) {
+            uint8_t block_luminance = grayscale[x + y * 8];
+            uint8_t diagonal_block_luminance = grayscale[(x - 1) + (y - 1) * 8];
+            if (block_luminance > diagonal_block_luminance) {
+                sum += 1;
+            }
         }
     }
 
-    // 3. Encode the sum as a hash that can be compared using the hamming distance
+    // 3. Encode the sum as a hash that can be compared using a hamming distance
 
     // The first N bits of the hash are set to 1, and the others to 0.
     WGB_perceptual_hash hash = 0;
