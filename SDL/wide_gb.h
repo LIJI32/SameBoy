@@ -66,6 +66,7 @@ typedef struct {
     SDL_Point scroll;
     WGB_tile tiles[WIDE_GB_MAX_TILES];
     size_t tiles_count;
+    time_t created_at;
 } WGB_scene;
 
 typedef uint64_t WGB_exact_hash;

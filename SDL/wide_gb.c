@@ -1,11 +1,14 @@
 #include <Misc/uthash.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include "wide_gb.h"
 
+#define MAX(a,b) ((a) > (b) ? a : b)
+#define MIN(a,b) ((a) < (b) ? a : b)
+
 #define BACKGROUND_SIZE 256
-#define WGB_FIND_SCENE_DELAY 30
-#define WGB_FIND_SCENE_MAX_ATTEMPTS 60 * 2
+#define WGB_YOUNG_SCENE_DELAY 2
 
 // Forward declarations
 WGB_scene *WGB_create_scene(wide_gb *wgb);
@@ -101,6 +104,7 @@ WGB_scene WGB_scene_init(int scene_id)
         .scroll = { 0, 0 },
         .tiles_count = 0
     };
+    new.created_at = time(NULL);
     return new;
 }
 
@@ -207,10 +211,29 @@ void WGB_make_scene_active(wide_gb *wgb, WGB_scene *scene)
     wgb->active_scene = scene;
 }
 
+void WGB_delete_scene(wide_gb *wgb, WGB_scene *scene)
+{
+    #if WIDE_GB_DEBUG
+        fprintf(stderr, "wgb: Delete scene %i.\n", scene->id);
+    #endif
+
+    // Remove the frames belonging to this scene
+    WGB_scene_frame *current_scene_frame, *tmp;
+    HASH_ITER(hh, wgb->scene_frames, current_scene_frame, tmp) {
+        if (current_scene_frame->scene_id == scene->id) {
+            HASH_DEL(wgb->scene_frames, current_scene_frame);
+            free(current_scene_frame);
+        }
+    }
+
+    // Destroy the scene itself
+    WGB_scene_destroy(scene);
+}
+
 void WGB_restore_scene_for_frame(wide_gb *wgb, WGB_scene_frame *scene_frame)
 {
     #if WIDE_GB_DEBUG
-        fprintf(stderr, "wgb: Restore scene %i.\n", scene_frame->scene_id);
+        fprintf(stderr, "wgb: Found a matching scene. Restore scene %i.\n", scene_frame->scene_id);
     #endif
 
     // Find the scene matching the frame
@@ -230,20 +253,7 @@ void WGB_restore_scene_for_frame(wide_gb *wgb, WGB_scene_frame *scene_frame)
 
     // Now that we know this frame belonged to a specific scene,
     // destroy the temporary scene that was created meanwhile.
-    #if WIDE_GB_DEBUG
-        fprintf(stderr, "wgb: Delete scene %i.\n", previous_scene->id);
-    #endif
-    // Remove the frames belonging to this scene…
-    WGB_scene *scene_to_delete = previous_scene;
-    WGB_scene_frame *current_scene_frame, *tmp;
-    HASH_ITER(hh, wgb->scene_frames, current_scene_frame, tmp) {
-        if (current_scene_frame->scene_id == scene_to_delete->id) {
-            HASH_DEL(wgb->scene_frames, current_scene_frame);
-            free(current_scene_frame);
-        }
-    }
-    // …and destroy the scene itself
-    WGB_scene_destroy(scene_to_delete);
+    WGB_delete_scene(wgb, previous_scene);
 }
 
 void WGB_store_frame_hash(wide_gb *wgb, WGB_exact_hash hash)
@@ -259,32 +269,22 @@ void WGB_store_frame_hash(wide_gb *wgb, WGB_exact_hash hash)
     }
 
     // Update the stored scene_frame with all informations (except the hash key)
-    // #if WIDE_GB_DEBUG
-    //     fprintf(stderr, "wgb: save frame hash { scene_id: %i, hash: %llu }\n", wgb->active_scene->id, hash);
-    // #endif
     scene_frame->scene_id = wgb->active_scene->id;
     scene_frame->scene_scroll = wgb->active_scene->scroll;
 }
 
+double WGB_is_scene_young(WGB_scene *scene)
+{
+    return difftime(time(NULL), scene->created_at) < WGB_YOUNG_SCENE_DELAY;
+}
+
 void WGB_update_frame_hash(wide_gb *wgb, WGB_exact_hash hash)
 {
-    // Attempt to find an existing scene for this frame
-    if (wgb->find_existing_scene_countdown > 0) {
-
+    if (WGB_is_scene_young(wgb->active_scene)) {
+        // Attempt to find an existing scene for this frame
         WGB_scene_frame *existing_frame = WGB_find_scene_frame_for_hash(wgb, hash);
         if (existing_frame && existing_frame->scene_id != wgb->active_scene->id) {
             WGB_restore_scene_for_frame(wgb, existing_frame);
-            // Now that we found a matching scene, disable the countdown
-            wgb->find_existing_scene_countdown = 0;
-
-        } else {
-            // No matching scene found: continue looking for a matching scene
-            wgb->find_existing_scene_countdown -= 1;
-#if WIDE_GB_DEBUG
-            if (wgb->find_existing_scene_countdown == 0) {
-                fprintf(stderr, "wgb: Countdown ended: stop attempting to match frames\n");
-            }
-#endif
         }
     }
 
@@ -366,10 +366,10 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
 {
     wgb->window_enabled = is_window_enabled;
     wgb->window_rect = (SDL_Rect) {
-        .x = wx,
-        .y = wy,
-        .w = 160 - wx,
-        .h = 144 - wy
+        .x = MIN(wx, 160),
+        .y = MIN(wy, 144),
+        .w = MAX(0, 160 - wx),
+        .h = MAX(0, 144 - wy)
     };
 }
 
@@ -390,13 +390,15 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
 #if WIDE_GB_DEBUG
         fprintf(stderr, "\n\n\nWideGB scene changed (distance = %i)\n", distance);
 #endif
+        WGB_scene *previous_scene = wgb->active_scene;
         WGB_scene *new_scene = WGB_create_scene(wgb);
         WGB_make_scene_active(wgb, new_scene);
-        // Attempt to find the next frames in an existing scene during the next 2 seconds
-#if WIDE_GB_DEBUG
-        fprintf(stderr, "wgb: Attempt to match an existing scene during the next %i frames…\n", WGB_FIND_SCENE_MAX_ATTEMPTS);
-#endif
-        wgb->find_existing_scene_countdown = WGB_FIND_SCENE_MAX_ATTEMPTS;
+
+        // Short-lived scenes often contain garbage during screen transitions.
+        // Delete it, so that we won't match it by error later.
+        if (WGB_is_scene_young(previous_scene)) {
+            WGB_delete_scene(wgb, previous_scene);
+        }
     }
 }
 
