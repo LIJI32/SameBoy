@@ -387,10 +387,33 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
     }
 #endif
 
+    bool scene_changed = false;
+
+    // Transitionning from or to a screen with a uniform color (i.e. no edges, i.e. p_hash == 0)
+    // signals a scene change.
+    if (wgb->previous_perceptual_hash == 0 && distance != 0) {
+#if WIDE_GB_DEBUG
+        fprintf(stderr, "\n\n\nWideGB scene changed (transition from 0 to %i)\n", distance);
+#endif
+        scene_changed = true;
+    }
+
+    if (p_hash == 0 && distance != 0) {
+#if WIDE_GB_DEBUG
+        fprintf(stderr, "\n\n\nWideGB scene changed (transition from %i to 0)\n", distance);
+#endif
+        scene_changed = true;
+    }
+
+    // A great distance between two perceptual hashes also signals a scene change.
     if (distance >= scene_change_threshold) {
 #if WIDE_GB_DEBUG
         fprintf(stderr, "\n\n\nWideGB scene changed (distance = %i)\n", distance);
 #endif
+        scene_changed = true;
+    }
+
+    if (scene_changed) {
         WGB_scene *previous_scene = wgb->active_scene;
         WGB_scene *new_scene = WGB_create_scene(wgb);
         WGB_make_scene_active(wgb, new_scene);

@@ -39,7 +39,6 @@ struct scale compute_viewport_scale(void);
 SDL_Rect window_drawable_rect();
 
 // TODO:
-// - Improve the temp scene logic : some white screens still get recorded to the main scene
 // - Save/restore scenes on the disk
 // - zoom in / out
 
