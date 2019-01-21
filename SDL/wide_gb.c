@@ -60,7 +60,6 @@ bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position p
     return (position1.horizontal == position2.horizontal &&
             position1.vertical == position2.vertical);
 }
-
 WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point)
 {
     return (WGB_tile_position){
@@ -243,11 +242,13 @@ void WGB_restore_scene_for_frame(wide_gb *wgb, WGB_scene_frame *scene_frame)
         return;
     }
 
-    // Restore the scene
+    // Mark all tiles of the new scene as dirty
     matched_scene->scroll = scene_frame->scene_scroll;
     for (int i = 0; i < matched_scene->tiles_count; i++) {
         matched_scene->tiles[i].dirty = true;
     }
+
+    // Restore the scene
     WGB_scene *previous_scene = wgb->active_scene;
     WGB_make_scene_active(wgb, matched_scene);
 
@@ -480,41 +481,86 @@ WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
     return hash;
 }
 
+void DEBUG_write_grayscale_PPM(int width, int height, uint8_t *pixels) {
+    char filename[255];
+    static int filename_increment = 0;
+    filename_increment++;
+    sprintf(filename, "/Users/kemenaran/Desktop/debug/%i.ppm", filename_increment);
+    FILE *fp = fopen(filename, "wb"); /* b - binary mode */
+    fprintf(fp, "P6\n%d %d\n255\n", width, height);
+
+    uint8_t color[3];
+    for (int j = 0; j < height; ++j) {
+        for (int i = 0; i < width; ++i) {
+            uint8_t grayscale = pixels[i + j * width];
+            color[0] = grayscale; // red
+            color[1] = grayscale; // green
+            color[2] = grayscale; // blue
+            fwrite(color, 1, 3, fp);
+      }
+  }
+  fclose(fp);
+}
+
 WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels)
 {
-    const int block_length_h = 160 / 8;
-    const int block_length_v = 144 / 8;
-    const int block_size = block_length_h * block_length_v;
+    const int block_width = 160 / 8;
+    const int block_height = 144 / 8;
 
-    // 1. Downsample to 8 * 8 blocks, and extract the luminance
+    // 1. Grayscale
+
+    // For each pixel
+    uint8_t r, g, b;
+    uint8_t grayscaled_pixels[160 * 144];
+    for (int i = 0; i < 160 * 144 * 3; i += 3) {
+        r = rgb_pixels[i + 0];
+        g = rgb_pixels[i + 1];
+        b = rgb_pixels[i + 2];
+        // Convert to grayscale
+        grayscaled_pixels[i / 3] = 0.212671f * r + 0.715160f * g + 0.072169f * b;
+    }
+
+    // DEBUG_write_grayscale_PPM(160, 144, grayscaled_pixels);
+
+    // 2. Downscale to 8 * 8 blocks, using a Triangle filter
 
     uint8_t grayscale[8*8];
-    uint8_t r, g, b;
+    const float block_center_x = block_width / 2;
+    const float block_center_y = block_height / 2;
+    const float max_dist = sqrtf(powf(block_width, 2) + powf(block_height, 2)) / 2;
     // For each block
     for (int block_y = 0; block_y < 8; block_y++) {
         for (int block_x = 0; block_x < 8; block_x++) {
-            float block_avg = 0;
-            int block_top_x = block_x * block_length_h;
-            int block_top_y = block_y * block_length_v;
+            float sum_of_coefs = 0;
+            float block_contributions = 0;
+            int block_top_x = block_x * block_width;
+            int block_top_y = block_y * block_height;
             // For each pixel in the block
-            for (int pixel_y = 0; pixel_y < block_length_v; pixel_y++) {
-                for (int pixel_x = 0; pixel_x < block_length_h; pixel_x++) {
-                    // Extract pixel color
-                    int rgb_pos = ((block_top_x + pixel_x) + (block_top_y + pixel_y) * 160) * 3;
-                    r = rgb_pixels[rgb_pos + 0];
-                    g = rgb_pixels[rgb_pos + 1];
-                    b = rgb_pixels[rgb_pos + 2];
-                    // // Convert to grayscale
-                    float grayscaled = 0.212671f * r + 0.715160f * g + 0.072169f * b;
-                    // Add contribution to the block value
-                    block_avg += (grayscaled / block_size);
+            for (int pixel_y = 0; pixel_y < block_height; pixel_y++) {
+                for (int pixel_x = 0; pixel_x < block_width; pixel_x++) {
+                    // Extract pixel luminance
+                    int pixel_index = ((block_top_x + pixel_x) + (block_top_y + pixel_y) * 160);
+                    float luminance = grayscaled_pixels[pixel_index];
+                    // Compute pixel contribution using a Triangle filter
+                    // (pixels at the center point contribute `luminance * 1.0`, pixels farther contribute less)
+                    float pixel_center_x = pixel_x + 0.5;
+                    float pixel_center_y = pixel_y + 0.5;
+                    float distance_from_center = sqrtf(powf(block_center_x - pixel_center_x, 2) + powf(block_center_y - pixel_center_y, 2));
+                    float coef = -(distance_from_center / max_dist) + 1;
+                    float contrib = coef * luminance;
+                    // Add pixel contribution to the block value
+                    block_contributions += contrib;
+                    sum_of_coefs += coef;
                 }
             }
+            // Normalize the contributions (so that the sum of each coeficient is exacly 1.0)
+            float normalized_block_contribution = block_contributions / sum_of_coefs;
             // Write final block value to the downsampled grayscale picture
-            if (block_avg > 255) { block_avg = 255.0; }
-            grayscale[block_x + block_y * 8] = (uint8_t)floor(block_avg);
+            grayscale[block_x + block_y * 8] = (uint8_t)floor(normalized_block_contribution);
         }
     }
+
+    // DEBUG_write_grayscale_PPM(8, 8, grayscale);
 
     // 2. Count the number of blocks brighter than the block on the top-left
 

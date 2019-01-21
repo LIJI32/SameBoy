@@ -39,9 +39,9 @@ struct scale compute_viewport_scale(void);
 SDL_Rect window_drawable_rect();
 
 // TODO:
-// - improve the temp scene logic : delete young scenes on scene transition
+// - Improve the temp scene logic : some white screens still get recorded to the main scene
+// - Save/restore scenes on the disk
 // - zoom in / out
-// - Save/restore backgrounds on the disk
 
 SDL_Texture* sdl_texture_for_wgb_tile(int tile_index)
 {
