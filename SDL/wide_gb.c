@@ -8,6 +8,7 @@
 #define WIDE_GB_DEBUG false
 #define BACKGROUND_SIZE 256
 #define WGB_YOUNG_SCENE_DELAY 2
+#define WGB_SCENE_DELETED 0
 
 // Debug macros
 #if WIDE_GB_DEBUG
@@ -82,7 +83,9 @@ wide_gb WGB_init()
 void WGB_destroy(wide_gb *wgb)
 {
     for (int i = 0; i < wgb->scenes_count; i++) {
-        WGB_scene_destroy(&wgb->scenes[i]);
+        if (wgb->scenes[i].id != WGB_SCENE_DELETED) {
+            WGB_scene_destroy(&wgb->scenes[i]);
+        }
     }
 }
 
@@ -124,7 +127,7 @@ WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
 
 WGB_scene *WGB_create_scene(wide_gb *wgb)
 {
-    static int next_scene_id = 0;
+    static int next_scene_id = 1;
     WGB_DEBUG_LOG("Create scene %i", next_scene_id);
 
     wgb->scenes[wgb->scenes_count] = WGB_scene_init(next_scene_id);
@@ -168,6 +171,9 @@ void WGB_delete_scene(wide_gb *wgb, WGB_scene *scene)
             free(current_scene_frame);
         }
     }
+
+    // Mark the scene as deleted
+    scene->id = WGB_SCENE_DELETED;
 
     // Destroy the scene itself
     WGB_scene_destroy(scene);
