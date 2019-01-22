@@ -4,11 +4,21 @@
 #include <time.h>
 #include "wide_gb.h"
 
-#define MAX(a,b) ((a) > (b) ? a : b)
-#define MIN(a,b) ((a) < (b) ? a : b)
-
+// Constants
+#define WIDE_GB_DEBUG false
 #define BACKGROUND_SIZE 256
 #define WGB_YOUNG_SCENE_DELAY 2
+
+// Debug macros
+#if WIDE_GB_DEBUG
+#define WGB_DEBUG_LOG(msg, ...) fprintf(stderr, ("wgb: " msg "\n"), __VA_ARGS__)
+#else
+#define WGB_DEBUG_LOG(msg, ...)
+#endif
+
+// Math macros
+#define MAX(a,b) ((a) > (b) ? a : b)
+#define MIN(a,b) ((a) < (b) ? a : b)
 
 // Forward declarations
 WGB_scene *WGB_create_scene(wide_gb *wgb);
@@ -162,9 +172,7 @@ WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index)
 
 WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
 {
-// #if WIDE_GB_DEBUG
-//     fprintf(stderr, "wgb: create tile at { %i, %i } (tiles count: %lu)\n", position.horizontal, position.vertical, wgb->active_scene->tiles_count);
-// #endif
+//  WGB_DEBUG_LOG("Create tile at { %i, %i } (tiles count: %lu)", position.horizontal, position.vertical, wgb->active_scene->tiles_count);
     WGB_scene *scene = wgb->active_scene;
     scene->tiles[scene->tiles_count] = WGB_tile_init(position);
     scene->tiles_count += 1;
@@ -177,9 +185,7 @@ WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
 WGB_scene *WGB_create_scene(wide_gb *wgb)
 {
     static int next_scene_id = 0;
-#if WIDE_GB_DEBUG
-    fprintf(stderr, "wgb: create scene %i\n", next_scene_id);
-#endif
+    WGB_DEBUG_LOG("Create scene %i", next_scene_id);
 
     wgb->scenes[wgb->scenes_count] = WGB_scene_init(next_scene_id);
     wgb->scenes_count += 1;
@@ -212,9 +218,7 @@ void WGB_make_scene_active(wide_gb *wgb, WGB_scene *scene)
 
 void WGB_delete_scene(wide_gb *wgb, WGB_scene *scene)
 {
-    #if WIDE_GB_DEBUG
-        fprintf(stderr, "wgb: Delete scene %i.\n", scene->id);
-    #endif
+    WGB_DEBUG_LOG("Delete scene %i", scene->id);
 
     // Remove the frames belonging to this scene
     WGB_scene_frame *current_scene_frame, *tmp;
@@ -231,9 +235,7 @@ void WGB_delete_scene(wide_gb *wgb, WGB_scene *scene)
 
 void WGB_restore_scene_for_frame(wide_gb *wgb, WGB_scene_frame *scene_frame)
 {
-    #if WIDE_GB_DEBUG
-        fprintf(stderr, "wgb: Found a matching scene. Restore scene %i.\n", scene_frame->scene_id);
-    #endif
+    WGB_DEBUG_LOG("Found a matching scene: restore scene %i.", scene_frame->scene_id);
 
     // Find the scene matching the frame
     WGB_scene *matched_scene = WGB_find_scene_by_id(wgb, scene_frame->scene_id);
@@ -381,35 +383,26 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
 
     const int scene_change_threshold = 12;
     int distance = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
-#if WIDE_GB_DEBUG
     if (distance > 0) {
-        fprintf(stderr, "WideGB scene distance: %i\n", distance);
+        WGB_DEBUG_LOG("Perceptual distance from previous frame: %i", distance);
     }
-#endif
 
     bool scene_changed = false;
 
+    // A great distance between two perceptual hashes signals a scene change.
+    if (distance >= scene_change_threshold) {
+        WGB_DEBUG_LOG("\n\n\nWideGB scene changed (distance = %i)", distance);
+        scene_changed = true;
+    }
+
     // Transitionning from or to a screen with a uniform color (i.e. no edges, i.e. p_hash == 0)
     // signals a scene change.
-    if (wgb->previous_perceptual_hash == 0 && distance != 0) {
-#if WIDE_GB_DEBUG
-        fprintf(stderr, "\n\n\nWideGB scene changed (transition from 0 to %i)\n", distance);
-#endif
-        scene_changed = true;
-    }
-
     if (p_hash == 0 && distance != 0) {
-#if WIDE_GB_DEBUG
-        fprintf(stderr, "\n\n\nWideGB scene changed (transition from %i to 0)\n", distance);
-#endif
+        WGB_DEBUG_LOG("\n\n\nWideGB scene changed (transition from %i to 0)", distance);
         scene_changed = true;
     }
-
-    // A great distance between two perceptual hashes also signals a scene change.
-    if (distance >= scene_change_threshold) {
-#if WIDE_GB_DEBUG
-        fprintf(stderr, "\n\n\nWideGB scene changed (distance = %i)\n", distance);
-#endif
+    if (wgb->previous_perceptual_hash == 0 && distance != 0) {
+        WGB_DEBUG_LOG("\n\n\nScene changed (transition from 0 to %i)", distance);
         scene_changed = true;
     }
 

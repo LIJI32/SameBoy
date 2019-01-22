@@ -41,11 +41,10 @@
 //    - `WGB_rect_for_tile` to draw the tile using your frontend drawing library ;
 // 4. Render the console screen over the tiles
 
-#define WIDE_GB_DEBUG false
+/*---------------- Data definitions --------------------------------------*/
+
 #define WIDE_GB_MAX_TILES 512
 #define WIDE_GB_MAX_SCENES 512
-
-/*---------------- Data definitions --------------------------------------*/
 
 // The position of a screen-wide tile, as a number of screens relative
 // to the origin.

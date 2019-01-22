@@ -106,11 +106,6 @@ void render_texture_sdl(void *pixels, void *previous)
             SDL_Rect tile_rect = WGB_rect_for_tile(&wgb, tile);
             SDL_Rect tile_rect_in_window = screen_rect_to_window(tile_rect);
             SDL_RenderCopy(renderer, tile_texture, NULL, &tile_rect_in_window);
-    #if WIDE_GB_DEBUG
-            // Draw a border around the tile
-            SDL_SetRenderDrawColor(renderer, 0x60, 0x60, 0x60, 0xff);
-            SDL_RenderDrawRect(renderer, &tile_rect_in_window);
-    #endif
         }
     }
 
