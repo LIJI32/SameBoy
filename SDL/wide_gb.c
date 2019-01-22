@@ -23,69 +23,9 @@
 // Forward declarations
 WGB_scene *WGB_create_scene(wide_gb *wgb);
 int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y);
-
-/*---------------- Utils -------------------------------------------------*/
-
-SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset)
-{
-    point.x += offset.x;
-    point.y += offset.y;
-    return point;
-}
-
-SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy)
-{
-    rect.x += dx;
-    rect.y += dy;
-    return rect;
-}
-
-SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy)
-{
-    rect.x *= dx;
-    rect.y *= dy;
-    rect.w *= dx;
-    rect.h *= dy;
-    return rect;
-}
-
-bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point)
-{
-    return (rect.x <= point.x
-        && point.x <= rect.x + rect.w
-        && rect.y <= point.y
-        && point.y <= rect.y + rect.h);
-}
-
-bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2)
-{
-  if (rect2.x < rect1.x + rect1.w && rect1.x < rect2.x + rect2.w && rect2.y < rect1.y + rect1.h)
-    return rect1.y < rect2.y + rect2.h;
-  else
-    return false;
-}
-
-bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2)
-{
-    return (position1.horizontal == position2.horizontal &&
-            position1.vertical == position2.vertical);
-}
-WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point)
-{
-    return (WGB_tile_position){
-        .horizontal = floorf((wgb->active_scene->scroll.x + screen_point.x) / 160.0),
-        .vertical   = floorf((wgb->active_scene->scroll.y + screen_point.y) / 144.0)
-    };
-}
-
-SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile)
-{
-    SDL_Point tile_origin = {
-        .x = wgb->active_scene->scroll.x - target_tile.horizontal * 160,
-        .y = wgb->active_scene->scroll.y - target_tile.vertical   * 144
-    };
-    return WGB_offset_point(tile_origin, screen_point);
-}
+bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2);
+WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point);
+SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile);
 
 /*---------------- Initializers --------------------------------------*/
 
@@ -381,6 +321,10 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
     wgb->previous_perceptual_hash = wgb->frame_perceptual_hash;
     wgb->frame_perceptual_hash = p_hash;
 
+    //
+    // Do we detect a scene change between these two frames?
+    //
+
     const int scene_change_threshold = 12;
     int distance = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
     if (distance > 0) {
@@ -405,6 +349,10 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
         WGB_DEBUG_LOG("\n\n\nScene changed (transition from 0 to %i)", distance);
         scene_changed = true;
     }
+
+    //
+    // Change scene if needed
+    //
 
     if (scene_changed) {
         WGB_scene *previous_scene = wgb->active_scene;
@@ -601,3 +549,68 @@ WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels)
 
     return hash;
 }
+
+/*---------------- Geometry utils --------------------------------------*/
+
+SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset)
+{
+    point.x += offset.x;
+    point.y += offset.y;
+    return point;
+}
+
+SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy)
+{
+    rect.x += dx;
+    rect.y += dy;
+    return rect;
+}
+
+SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy)
+{
+    rect.x *= dx;
+    rect.y *= dy;
+    rect.w *= dx;
+    rect.h *= dy;
+    return rect;
+}
+
+bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point)
+{
+    return (rect.x <= point.x
+        && point.x <= rect.x + rect.w
+        && rect.y <= point.y
+        && point.y <= rect.y + rect.h);
+}
+
+bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2)
+{
+  if (rect2.x < rect1.x + rect1.w && rect1.x < rect2.x + rect2.w && rect2.y < rect1.y + rect1.h)
+    return rect1.y < rect2.y + rect2.h;
+  else
+    return false;
+}
+
+bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2)
+{
+    return (position1.horizontal == position2.horizontal &&
+            position1.vertical == position2.vertical);
+}
+
+WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point)
+{
+    return (WGB_tile_position){
+        .horizontal = floorf((wgb->active_scene->scroll.x + screen_point.x) / 160.0),
+        .vertical   = floorf((wgb->active_scene->scroll.y + screen_point.y) / 144.0)
+    };
+}
+
+SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile)
+{
+    SDL_Point tile_origin = {
+        .x = wgb->active_scene->scroll.x - target_tile.horizontal * 160,
+        .y = wgb->active_scene->scroll.y - target_tile.vertical   * 144
+    };
+    return WGB_offset_point(tile_origin, screen_point);
+}
+
