@@ -72,7 +72,6 @@ wide_gb WGB_init()
         .window_rect = { 0, 0, 0, 0 },
         .window_enabled = false,
         .frame_perceptual_hash = 0,
-        .previous_perceptual_hash = 0,
         .scene_frames = NULL,
         .find_existing_scene_countdown = 0
     };
@@ -324,7 +323,7 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
 
 void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
 {
-    wgb->previous_perceptual_hash = wgb->frame_perceptual_hash;
+    WGB_perceptual_hash previous_perceptual_hash = wgb->frame_perceptual_hash;
     wgb->frame_perceptual_hash = p_hash;
 
     //
@@ -332,7 +331,7 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
     //
 
     const int scene_change_threshold = 12;
-    int distance = hamming_distance(wgb->previous_perceptual_hash, wgb->frame_perceptual_hash);
+    int distance = hamming_distance(previous_perceptual_hash, wgb->frame_perceptual_hash);
     if (distance > 0) {
         WGB_DEBUG_LOG("Perceptual distance from previous frame: %i", distance);
     }
@@ -351,7 +350,7 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
         WGB_DEBUG_LOG("\n\n\nWideGB scene changed (transition from %i to 0)", distance);
         scene_changed = true;
     }
-    if (wgb->previous_perceptual_hash == 0 && distance != 0) {
+    if (previous_perceptual_hash == 0 && distance != 0) {
         WGB_DEBUG_LOG("\n\n\nScene changed (transition from 0 to %i)", distance);
         scene_changed = true;
     }

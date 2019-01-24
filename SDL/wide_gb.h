@@ -85,7 +85,6 @@ typedef struct {
     SDL_Rect window_rect;
     bool window_enabled;
     WGB_perceptual_hash frame_perceptual_hash;
-    WGB_perceptual_hash previous_perceptual_hash;
     WGB_scene *active_scene;
     WGB_scene scenes[WIDE_GB_MAX_SCENES];
     size_t scenes_count;
