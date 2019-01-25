@@ -43,7 +43,9 @@
 
 
 // TODO:
-// - Save/restore scenes on the disk
+// - Use rgb buffers on tiles (instead of opaque ones)
+// - Save tile pictures
+// - Restore saved file
 // - OpenGL / Cocoa implementation
 // - Implement own hash table?
 // - Better dynamic arrays?
@@ -67,6 +69,7 @@ typedef struct {
     bool dirty;
 } WGB_tile;
 
+// A scene is a group of connected tiles.
 typedef struct {
     int id;
     SDL_Point scroll;
@@ -78,6 +81,7 @@ typedef struct {
 typedef uint64_t WGB_exact_hash;
 typedef uint64_t WGB_perceptual_hash;
 
+// A scene frame connects the hash of a specific frame to the scene it belongs to.
 typedef struct {
     int scene_id;
     SDL_Point scene_scroll;
@@ -98,10 +102,19 @@ typedef struct {
     WGB_scene_frame *scene_frames; // a <frame_hash, WGB_scene_frame> map
 } wide_gb;
 
+// A pointer to a function that takes an opaque uint32 value and decode it into RGB components
+typedef void (*WGB_rgb_decode_callback_t)(uint32_t encoded, uint8_t *r, uint8_t *g, uint8_t *b);
+
 /*---------------- Initializing ------------------------------------------*/
 
-// Return a new initialized wide_gb struct
-wide_gb WGB_init();
+// Return a initialized wide_gb struct with the content of previously
+// saved data.
+// If the path does not contain valid save data, a new wide_gb struct is returned.
+wide_gb WGB_init_from_path(char *save_path);
+
+// Save WideGB data to the given path.
+// if the path already exists, it will be overwritten.
+void WGB_save_to_path(wide_gb *wgb, char *save_path, WGB_rgb_decode_callback_t rgb_decode);
 
 /*---------------- Updating from hardware --------------------------------*/
 

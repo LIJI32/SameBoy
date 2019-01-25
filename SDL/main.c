@@ -378,6 +378,11 @@ static uint32_t rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
     return SDL_MapRGB(pixel_format, r, g, b);
 }
 
+static void rgb_decode(uint32_t pixel, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+    SDL_GetRGB(pixel, pixel_format, r, g, b);
+}
+
 static void debugger_interrupt(int ignore)
 {
     if (!GB_is_inited(&gb)) return;
@@ -482,7 +487,12 @@ restart:
     char symbols_path[path_length + 5];
     replace_extension(filename, path_length, symbols_path, ".sym");
     GB_debugger_load_symbol_file(&gb, symbols_path);
-    
+
+    /* Configure WideGB */
+    char wgb_save_path[path_length + 8];
+    replace_extension(filename, path_length, wgb_save_path, ".widegb");
+    wgb = WGB_init_from_path(wgb_save_path);
+
     /* Run emulation */
     while (true) {
         if (paused || rewind_paused) {
@@ -521,6 +531,15 @@ static void save_configuration(void)
         fwrite(&configuration, 1, sizeof(configuration), prefs_file);
         fclose(prefs_file);
     }
+}
+
+static void save_wide_gb(void)
+{
+    int path_length = strlen(filename);
+    char save_path[path_length + 8];
+    replace_extension(filename, path_length, save_path, ".widegb");
+
+    WGB_save_to_path(&wgb, save_path, rgb_decode);
 }
 
 static bool get_arg_flag(const char *flag, int *argc, char **argv)
@@ -589,8 +608,6 @@ int main(int argc, char **argv)
         pixel_format = SDL_AllocFormat(SDL_PIXELFORMAT_ABGR8888);
     }
 
-    wgb = WGB_init();
-
     /* Configure Audio */
     memset(&want_aspec, 0, sizeof(want_aspec));
     want_aspec.freq = AUDIO_FREQUENCY;
@@ -644,7 +661,8 @@ int main(int argc, char **argv)
     }
     
     atexit(save_configuration);
-    
+    atexit(save_wide_gb);
+
     if (!init_shader_with_name(&shader, configuration.filter)) {
         init_shader_with_name(&shader, "NearestNeighbor");
     }

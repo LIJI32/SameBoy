@@ -1,5 +1,8 @@
 #include <Misc/uthash.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <ftw.h>
+#include <unistd.h>
 #include <math.h>
 #include <time.h>
 #include "wide_gb.h"
@@ -27,6 +30,9 @@ int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y);
 bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2);
 WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point);
 SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile);
+void WGB_tile_write_to_file(WGB_tile *tile, char *tile_path, WGB_rgb_decode_callback_t rgb_decode);
+int WGB_IO_rmdir(char *path);
+void WGB_IO_write_PPM(char *filename, int width, int height, uint8_t *pixels);
 
 /*---------------- Initializers --------------------------------------*/
 
@@ -67,6 +73,79 @@ wide_gb WGB_init()
     wide_gb new = { 0 };
     new.active_scene = WGB_create_scene(&new);
     return new;
+}
+
+wide_gb WGB_init_from_path(char *save_path)
+{
+    return WGB_init();
+
+    // for each directory in save_path
+    //
+    //   if directory begins with "scene-"
+    //     extract scene id
+    //     create a new scene
+    //
+    //     for each tile-x-y.PPM file in the scene directory
+    //       extract tile position
+    //       load the PPM file
+    //       create a new tile for the scene
+    //
+    //     for each line in scene_frames.csv
+    //       parse the line
+    //       create a new scene frame
+}
+
+void WGB_save_to_path(wide_gb *wgb, char *save_path, WGB_rgb_decode_callback_t rgb_decode)
+{
+    // Create temp directory
+    int path_len = strlen(save_path);
+    char tmp_dir[path_len + 5];
+    sprintf(tmp_dir, "%s.tmp", save_path);
+    mkdir(tmp_dir, 0774);
+
+    // For each scene…
+    for (int i = 0; i < wgb->scenes_count; i++) {
+        WGB_scene scene = wgb->scenes[i];
+        if (scene.id == WGB_SCENE_DELETED) {
+            continue;
+        }
+
+        // Create a `#{tmp_dir}/scene-#{id}` directory
+        char scene_dir[path_len + 30];
+        sprintf(scene_dir, "%s/scene-%i", tmp_dir, scene.id);
+        mkdir(scene_dir, 0774);
+
+        // For each tile
+        for (int j = 0; j < scene.tiles_count; j++) {
+            WGB_tile tile = scene.tiles[j];
+
+            // Write a `tile_#{x}_#{y}.ppm` file
+            char tile_path[path_len + 50];
+            sprintf(tile_path, "%s/tile_%i_%i.ppm", scene_dir, tile.position.horizontal, tile.position.vertical);
+            WGB_tile_write_to_file(&tile, tile_path, rgb_decode);
+        }
+
+        // Create a scene_frames.csv file
+        char frames_path[path_len + 30];
+        sprintf(frames_path, "%s/scene_frames.csv", scene_dir);
+        FILE *frames_file = fopen(frames_path, "w");
+        fprintf(frames_file, "frame_hash, scene_id, scene_scroll_x, scene_scroll_y\n");
+
+        // For each scene_frame…
+        WGB_scene_frame *scene_frame, *tmp;
+        HASH_ITER(hh, wgb->scene_frames, scene_frame, tmp) {
+            // If the scene_frame belongs to the current scene…
+            if (scene_frame->scene_id == scene.id) {
+                // Write a line in scene_frames.csv
+                fprintf(frames_file, "%llu, %i, %i, %i\n", scene_frame->frame_hash, scene_frame->scene_id, scene_frame->scene_scroll.x, scene_frame->scene_scroll.y);
+            }
+        }
+        fclose(frames_file);
+    }
+
+    // Delete any previous save_path, and rename the tmp dir to the save_path
+    WGB_IO_rmdir(save_path);
+    rename(tmp_dir, save_path);
 }
 
 void WGB_destroy(wide_gb *wgb)
@@ -110,6 +189,23 @@ WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_tile_position position)
     scene->tiles_count += 1;
 
    return &(scene->tiles[scene->tiles_count - 1]);
+}
+
+void WGB_tile_write_to_file(WGB_tile *tile, char *tile_path, WGB_rgb_decode_callback_t rgb_decode)
+{
+    // Convert the opaque pixels values to triplets of RGB values
+    uint8_t rgb_pixels[160 * 144 * 3];
+    uint8_t r, g, b;
+    for (int i = 0; i < 160 * 144 * 3; i += 3) {
+        uint32_t pixel = tile->pixel_buffer[i / 3];
+        rgb_decode(pixel, &r, &g, &b);
+        rgb_pixels[i + 0] = r;
+        rgb_pixels[i + 1] = g;
+        rgb_pixels[i + 2] = b;
+    }
+
+    // Write RGB buffer to file
+    WGB_IO_write_PPM(tile_path, 160, 144, rgb_pixels);
 }
 
 /*---------------- Managing scenes -------------------------------------*/
@@ -533,6 +629,34 @@ WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels)
     }
 
     return hash;
+}
+
+/*---------------- File utils --------------------------------------*/
+
+int WGB_IO_unlink_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+{
+    int rv = remove(fpath);
+    if (rv) {
+        perror(fpath);
+    }
+    return rv;
+}
+
+int WGB_IO_rmdir(char *path)
+{
+    return nftw(path, WGB_IO_unlink_callback, 64, FTW_DEPTH | FTW_PHYS);
+}
+
+void WGB_IO_write_PPM(char *filename, int width, int height, uint8_t *pixels) {
+    FILE *file = fopen(filename, "wb");
+    fprintf(file, "P6\n%d %d\n255\n", width, height);
+
+    for (int i = 0; i < width * height * 3; i += 3) {
+        // Write 3 uint8 values (R, G and B), starting from pixels[i] to pixels[i + 2]
+        fwrite((uint8_t *)&pixels[i], 1, 3, file);
+    }
+
+    fclose(file);
 }
 
 /*---------------- Geometry utils --------------------------------------*/
