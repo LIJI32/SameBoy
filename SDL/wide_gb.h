@@ -41,6 +41,13 @@
 //    - `WGB_rect_for_tile` to draw the tile using your frontend drawing library ;
 // 4. Render the console screen over the tiles
 
+
+// TODO:
+// - Save/restore scenes on the disk
+// - OpenGL / Cocoa implementation
+// - Implement own hash table?
+// - Better dynamic arrays?
+
 /*---------------- Data definitions --------------------------------------*/
 
 #define WIDE_GB_MAX_TILES 512

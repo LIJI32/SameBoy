@@ -226,20 +226,6 @@ double WGB_is_scene_young(WGB_scene *scene)
     return difftime(time(NULL), scene->created_at) < WGB_YOUNG_SCENE_DELAY;
 }
 
-void WGB_update_frame_hash(wide_gb *wgb, WGB_exact_hash hash)
-{
-    if (WGB_is_scene_young(wgb->active_scene)) {
-        // Attempt to find an existing scene for this frame
-        WGB_scene_frame *existing_frame = WGB_find_scene_frame_for_hash(wgb, hash);
-        if (existing_frame && existing_frame->scene_id != wgb->active_scene->id) {
-            WGB_restore_scene_for_frame(wgb, existing_frame);
-        }
-    }
-
-    // Store the frame hash for the active scene
-    WGB_store_frame_hash(wgb, hash);
-}
-
 WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
 {
     // Retrieve the tile for this pixel
@@ -257,24 +243,6 @@ WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel
     tile->pixel_buffer[pixel_destination.x + pixel_destination.y * 160] = pixel;
 
     return tile;
-}
-
-void WGB_write_screen_pixels(wide_gb *wgb, uint32_t *pixels)
-{
-    // For each pixel visible on the console screen…
-    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
-        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
-            SDL_Point pixel_pos = { pixel_x, pixel_y };
-            if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
-                continue; // pixel is in the window: skip it
-            }
-            // read the screen pixel
-            uint32_t pixel = pixels[pixel_x + pixel_y * 160];
-            // and write the pixel to the relevant tile
-            WGB_tile *tile = WGB_write_tile_pixel(wgb, pixel_pos, pixel);
-            tile->dirty = true;
-        }
-    }
 }
 
 /*---------------- Updates from hardware ------------------------------*/
@@ -321,45 +289,40 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
     };
 }
 
-void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
+bool WGB_has_scene_changed(WGB_perceptual_hash frame_perceptual_hash, WGB_perceptual_hash previous_perceptual_hash)
 {
-    WGB_perceptual_hash previous_perceptual_hash = wgb->frame_perceptual_hash;
-    wgb->frame_perceptual_hash = p_hash;
-
-    //
-    // Do we detect a scene change between these two frames?
-    //
-
-    const int scene_change_threshold = 12;
-    int distance = hamming_distance(previous_perceptual_hash, wgb->frame_perceptual_hash);
+    int distance = hamming_distance(frame_perceptual_hash, previous_perceptual_hash);
     if (distance > 0) {
         WGB_DEBUG_LOG("Perceptual distance from previous frame: %i", distance);
     }
 
-    bool scene_changed = false;
-
     // A great distance between two perceptual hashes signals a scene change.
+    const int scene_change_threshold = 12;
     if (distance >= scene_change_threshold) {
-        WGB_DEBUG_LOG("\n\n\nWideGB scene changed (distance = %i)", distance);
-        scene_changed = true;
+        WGB_DEBUG_LOG("WideGB scene changed (distance = %i)\n\n\n", distance);
+        return true;
     }
 
     // Transitionning from or to a screen with a uniform color (i.e. no edges, i.e. p_hash == 0)
     // signals a scene change.
-    if (p_hash == 0 && distance != 0) {
-        WGB_DEBUG_LOG("\n\n\nWideGB scene changed (transition from %i to 0)", distance);
-        scene_changed = true;
-    }
-    if (previous_perceptual_hash == 0 && distance != 0) {
-        WGB_DEBUG_LOG("\n\n\nScene changed (transition from 0 to %i)", distance);
-        scene_changed = true;
+    if ((frame_perceptual_hash == 0 || previous_perceptual_hash == 0) && distance != 0) {
+        WGB_DEBUG_LOG("\n\n\nWideGB scene changed (transitionned from or to a uniform color ; distance = %i)", distance);
+        return true;
     }
 
+    return false;
+}
+
+void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_perceptual_hash p_hash)
+{
     //
-    // Change scene if needed
+    // If we detect a scene transition, create a new scene
     //
 
-    if (scene_changed) {
+    WGB_perceptual_hash previous_perceptual_hash = wgb->frame_perceptual_hash;
+    wgb->frame_perceptual_hash = p_hash;
+
+    if (WGB_has_scene_changed(wgb->frame_perceptual_hash, previous_perceptual_hash)) {
         WGB_scene *previous_scene = wgb->active_scene;
         WGB_scene *new_scene = WGB_create_scene(wgb);
         WGB_make_scene_active(wgb, new_scene);
@@ -370,13 +333,40 @@ void WGB_update_frame_perceptual_hash(wide_gb *wgb, WGB_perceptual_hash p_hash)
             WGB_delete_scene(wgb, previous_scene);
         }
     }
-}
 
-void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_perceptual_hash p_hash)
-{
-    WGB_update_frame_perceptual_hash(wgb, p_hash);
-    WGB_update_frame_hash(wgb, hash);
-    WGB_write_screen_pixels(wgb, pixels);
+    //
+    // If the scene is young, attempt to match the current frame with an existing scene
+    //
+
+    if (WGB_is_scene_young(wgb->active_scene)) {
+        WGB_scene_frame *existing_frame = WGB_find_scene_frame_for_hash(wgb, hash);
+        if (existing_frame && existing_frame->scene_id != wgb->active_scene->id) {
+            WGB_restore_scene_for_frame(wgb, existing_frame);
+        }
+    }
+
+    // Store the frame hash for the active scene
+    WGB_store_frame_hash(wgb, hash);
+
+    //
+    // Write frame pixels to the relevant tiles
+    //
+
+    // For each frame pixel…
+    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
+        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
+            SDL_Point pixel_pos = { pixel_x, pixel_y };
+            // Skip pixels in window
+            if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
+                continue;
+            }
+            // Read the frame pixel
+            uint32_t pixel = pixels[pixel_x + pixel_y * 160];
+            // Write the pixel to the relevant tile
+            WGB_tile *tile = WGB_write_tile_pixel(wgb, pixel_pos, pixel);
+            tile->dirty = true;
+        }
+    }
 }
 
 /*---------------------- Laying out tiles --------------------------------*/

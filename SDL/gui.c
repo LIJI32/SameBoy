@@ -38,11 +38,6 @@ struct scale {
 struct scale compute_viewport_scale(void);
 SDL_Rect window_drawable_rect();
 
-// TODO:
-// - Save/restore scenes on the disk
-// - Implement own hash table?
-// - zoom in / out
-
 SDL_Texture* sdl_texture_for_wgb_tile(int tile_index)
 {
     SDL_Texture *texture = wgb_textures[tile_index];
