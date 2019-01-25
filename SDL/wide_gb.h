@@ -96,7 +96,6 @@ typedef struct {
     WGB_scene scenes[WIDE_GB_MAX_SCENES];
     size_t scenes_count;
     WGB_scene_frame *scene_frames; // a <frame_hash, WGB_scene_frame> map
-    int find_existing_scene_countdown;
 } wide_gb;
 
 /*---------------- Initializing ------------------------------------------*/
