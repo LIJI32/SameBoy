@@ -6,7 +6,7 @@
 
 // Constants
 #define WIDE_GB_DEBUG false
-#define BACKGROUND_SIZE 256
+#define WGB_SCENE_CHANGE_THRESHOLD 12
 #define WGB_YOUNG_SCENE_DELAY 2
 #define WGB_SCENE_DELETED 0
 
@@ -49,11 +49,8 @@ void WGB_tile_destroy(WGB_tile *tile)
 
 WGB_scene WGB_scene_init(int scene_id)
 {
-    WGB_scene new = {
-        .id = scene_id,
-        .scroll = { 0, 0 },
-        .tiles_count = 0
-    };
+    WGB_scene new = { 0 };
+    new.id = scene_id;
     new.created_at = time(NULL);
     return new;
 }
@@ -67,14 +64,7 @@ void WGB_scene_destroy(WGB_scene *scene)
 
 wide_gb WGB_init()
 {
-    wide_gb new = {
-        .hardware_scroll = { 0, 0 },
-        .window_rect = { 0, 0, 0, 0 },
-        .window_enabled = false,
-        .frame_perceptual_hash = 0,
-        .scene_frames = NULL,
-        .find_existing_scene_countdown = 0
-    };
+    wide_gb new = { 0 };
     new.active_scene = WGB_create_scene(&new);
     return new;
 }
@@ -258,18 +248,19 @@ void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
 
     // Apply heuristic to tell if the background position wrapped into the other side
     const int fuzz = 10;
-    const int threshold = BACKGROUND_SIZE - fuzz;
+    const int gb_background_size = 256;
+    const int threshold = gb_background_size - fuzz;
     // 255 -> 0 | delta.x is negative: we are going right
     // 0 -> 255 | delta.x is positive: we are going left
     if (abs(delta.x) > threshold) {
-        if (delta.x < 0) delta.x += BACKGROUND_SIZE; // going right
-        else             delta.x -= BACKGROUND_SIZE; // going left
+        if (delta.x < 0) delta.x += gb_background_size; // going right
+        else             delta.x -= gb_background_size; // going left
     }
     // 255 -> 0 | delta.y is negative: we are going down
     // 0 -> 255 | delta.y is positive: we are going up
     if (abs(delta.y) > threshold) {
-        if (delta.y < 0) delta.y += BACKGROUND_SIZE; // going down
-        else             delta.y -= BACKGROUND_SIZE; // going up
+        if (delta.y < 0) delta.y += gb_background_size; // going down
+        else             delta.y -= gb_background_size; // going up
     }
 
     // Update the new positions
@@ -297,8 +288,7 @@ bool WGB_has_scene_changed(WGB_perceptual_hash frame_perceptual_hash, WGB_percep
     }
 
     // A great distance between two perceptual hashes signals a scene change.
-    const int scene_change_threshold = 12;
-    if (distance >= scene_change_threshold) {
+    if (distance >= WGB_SCENE_CHANGE_THRESHOLD) {
         WGB_DEBUG_LOG("WideGB scene changed (distance = %i)\n\n\n", distance);
         return true;
     }
@@ -608,4 +598,3 @@ SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point,
     };
     return WGB_offset_point(tile_origin, screen_point);
 }
-
