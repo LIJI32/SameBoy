@@ -44,7 +44,6 @@
 
 // TODO:
 // - Exclude window pixels from frame hash
-// - Fix Pokémon Gold reseting the viewport on dialog opening
 // - Helpers for concatenating paths
 // - OpenGL / Cocoa implementation
 // - Implement own hash table?
@@ -93,6 +92,7 @@ typedef struct {
 // Initialize with WGB_init().
 typedef struct {
     SDL_Point hardware_scroll;
+    SDL_Point scroll_delta;
     SDL_Rect window_rect;
     bool window_enabled;
     WGB_perceptual_hash frame_perceptual_hash;

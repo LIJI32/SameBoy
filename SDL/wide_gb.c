@@ -443,19 +443,20 @@ WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel
 
 /*---------------- Updates from hardware ------------------------------*/
 
-void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
+void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy)
 {
+    SDL_Point previous_hardware_scroll = wgb->hardware_scroll;
     SDL_Point new_hardware_scroll = { scx, scy };
 
     // Compute difference with the previous scroll position
-    SDL_Point delta;
-    delta.x = new_hardware_scroll.x - wide_gb->hardware_scroll.x;
-    delta.y = new_hardware_scroll.y - wide_gb->hardware_scroll.y;
+    SDL_Point delta = {
+        .x = new_hardware_scroll.x - previous_hardware_scroll.x,
+        .y = new_hardware_scroll.y - previous_hardware_scroll.y
+    };
 
     // Apply heuristic to tell if the background position wrapped into the other side
-    const int fuzz = 10;
     const int gb_background_size = 256;
-    const int threshold = gb_background_size - fuzz;
+    const int threshold = gb_background_size - WGB_SCROLL_WRAP_AROUND_THRESHOLD;
     // 255 -> 0 | delta.x is negative: we are going right
     // 0 -> 255 | delta.x is positive: we are going left
     if (abs(delta.x) > threshold) {
@@ -470,9 +471,10 @@ void WGB_update_hardware_scroll(wide_gb *wide_gb, int scx, int scy)
     }
 
     // Update the new positions
-    wide_gb->hardware_scroll = new_hardware_scroll;
-    wide_gb->active_scene->scroll.x += delta.x;
-    wide_gb->active_scene->scroll.y += delta.y;
+    wgb->hardware_scroll = new_hardware_scroll;
+    wgb->scroll_delta = delta;
+    wgb->active_scene->scroll.x += delta.x;
+    wgb->active_scene->scroll.y += delta.y;
 }
 
 void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy)
@@ -486,23 +488,38 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
     };
 }
 
-bool WGB_has_scene_changed(WGB_perceptual_hash frame_perceptual_hash, WGB_perceptual_hash previous_perceptual_hash)
+bool WGB_has_scene_changed(wide_gb *wgb, WGB_perceptual_hash frame_perceptual_hash, WGB_perceptual_hash previous_perceptual_hash)
 {
-    int distance = hamming_distance(frame_perceptual_hash, previous_perceptual_hash);
-    if (distance > 0) {
-        WGB_DEBUG_LOG("Perceptual distance from previous frame: %i", distance);
+    // When the scroll position jumps to the origin, this can either signal:
+    //
+    // - an actual scene change;
+    // - the game reseting the viewport (e.g. Pokemon Gold/Silver when opening a dialog or a menu).
+    //
+    // In either case, triggering a scene change starts the scene matching sequence, which allow WGB
+    // to recognize the frame and map the new hardware scroll value to the logical scroll value.
+    bool is_hardware_scroll_at_origin = (wgb->hardware_scroll.x == 0 && wgb->hardware_scroll.y == 0);
+    SDL_Point scroll_distance = { abs(wgb->scroll_delta.x), abs(wgb->scroll_delta.y) };
+    bool scroll_jumped = MAX(scroll_distance.x, scroll_distance.y) > WGB_SCROLL_WRAP_AROUND_THRESHOLD;
+    if (is_hardware_scroll_at_origin && scroll_jumped) {
+        WGB_DEBUG_LOG("WideGB scene changed (scroll jumped to origin by %i, %i)\n\n", scroll_distance.x, scroll_distance.y);
+        return true;
     }
+
+    int distance = hamming_distance(frame_perceptual_hash, previous_perceptual_hash);
+    // if (distance > 0) {
+    //     WGB_DEBUG_LOG("Perceptual distance from previous frame: %i", distance);
+    // }
 
     // A great distance between two perceptual hashes signals a scene change.
     if (distance >= WGB_SCENE_CHANGE_THRESHOLD) {
-        WGB_DEBUG_LOG("WideGB scene changed (distance = %i)\n\n\n", distance);
+        WGB_DEBUG_LOG("WideGB scene changed (distance = %i)\n\n", distance);
         return true;
     }
 
     // Transitionning from or to a screen with a uniform color (i.e. no edges, i.e. p_hash == 0)
     // signals a scene change.
     if ((frame_perceptual_hash == 0 || previous_perceptual_hash == 0) && distance != 0) {
-        WGB_DEBUG_LOG("\n\n\nWideGB scene changed (transitionned from or to a uniform color ; distance = %i)", distance);
+        WGB_DEBUG_LOG("WideGB scene changed (transitionned from or to a uniform color ; distance = %i)\n\n", distance);
         return true;
     }
 
@@ -518,7 +535,7 @@ void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_
     WGB_perceptual_hash previous_perceptual_hash = wgb->frame_perceptual_hash;
     wgb->frame_perceptual_hash = p_hash;
 
-    if (WGB_has_scene_changed(wgb->frame_perceptual_hash, previous_perceptual_hash)) {
+    if (WGB_has_scene_changed(wgb, wgb->frame_perceptual_hash, previous_perceptual_hash)) {
         WGB_scene *previous_scene = wgb->active_scene;
         WGB_scene *new_scene = WGB_create_scene(wgb);
         WGB_make_scene_active(wgb, new_scene);
