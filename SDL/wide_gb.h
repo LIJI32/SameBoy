@@ -43,9 +43,9 @@
 
 
 // TODO:
-// - Use rgb buffers on tiles (instead of opaque ones)
-// - Save tile pictures
-// - Restore saved file
+// - Exclude window pixels from frame hash
+// - Fix Pokémon Gold reseting the viewport on dialog opening
+// - Helpers for concatenating paths
 // - OpenGL / Cocoa implementation
 // - Implement own hash table?
 // - Better dynamic arrays?
@@ -97,6 +97,7 @@ typedef struct {
     bool window_enabled;
     WGB_perceptual_hash frame_perceptual_hash;
     WGB_scene *active_scene;
+    int next_scene_id;
     WGB_scene scenes[WIDE_GB_MAX_SCENES];
     size_t scenes_count;
     WGB_scene_frame *scene_frames; // a <frame_hash, WGB_scene_frame> map
@@ -105,12 +106,15 @@ typedef struct {
 // A pointer to a function that takes an opaque uint32 value and decode it into RGB components
 typedef void (*WGB_rgb_decode_callback_t)(uint32_t encoded, uint8_t *r, uint8_t *g, uint8_t *b);
 
+// A pointer to a function that takes RGB components and encode it into the pixel format expected by the texture handler
+typedef uint32_t (*WGB_rgb_encode_callback_t)(uint8_t r, uint8_t g, uint8_t b);
+
 /*---------------- Initializing ------------------------------------------*/
 
 // Return a initialized wide_gb struct with the content of previously
 // saved data.
 // If the path does not contain valid save data, a new wide_gb struct is returned.
-wide_gb WGB_init_from_path(char *save_path);
+wide_gb WGB_init_from_path(char *save_path, WGB_rgb_encode_callback_t rgb_encode);
 
 // Save WideGB data to the given path.
 // if the path already exists, it will be overwritten.

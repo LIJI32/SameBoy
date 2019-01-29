@@ -373,14 +373,21 @@ static void vblank(GB_gameboy_t *gb)
     handle_events(gb);
 }
 
-static uint32_t rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
-{
-    return SDL_MapRGB(pixel_format, r, g, b);
-}
+
 
 static void rgb_decode(uint32_t pixel, uint8_t *r, uint8_t *g, uint8_t *b)
 {
     SDL_GetRGB(pixel, pixel_format, r, g, b);
+}
+
+static uint32_t rgb_encode(uint8_t r, uint8_t g, uint8_t b)
+{
+    return SDL_MapRGB(pixel_format, r, g, b);
+}
+
+static uint32_t gb_rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
+{
+    return SDL_MapRGB(pixel_format, r, g, b);
 }
 
 static void debugger_interrupt(int ignore)
@@ -456,7 +463,7 @@ restart:
         GB_set_vblank_callback(&gb, (GB_vblank_callback_t) vblank);
         GB_set_pixels_output(&gb, active_pixel_buffer);
         GB_set_bg_pixels_output(&gb, bg_pixel_buffer);
-        GB_set_rgb_encode_callback(&gb, rgb_encode);
+        GB_set_rgb_encode_callback(&gb, gb_rgb_encode);
         GB_set_sample_rate(&gb, have_aspec.freq);
         GB_set_color_correction_mode(&gb, configuration.color_correction_mode);
         GB_set_highpass_filter_mode(&gb, configuration.highpass_mode);
@@ -491,7 +498,7 @@ restart:
     /* Configure WideGB */
     char wgb_save_path[path_length + 8];
     replace_extension(filename, path_length, wgb_save_path, ".widegb");
-    wgb = WGB_init_from_path(wgb_save_path);
+    wgb = WGB_init_from_path(wgb_save_path, rgb_encode);
 
     /* Run emulation */
     while (true) {
