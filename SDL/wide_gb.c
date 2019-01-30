@@ -1,4 +1,8 @@
+// Use the best hash function for our hashes repartition
+// See https://troydhanson.github.io/uthash/userguide.html#hash_functions
+#define HASH_FUNCTION HASH_OAT
 #include <Misc/uthash.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
