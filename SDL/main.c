@@ -608,7 +608,6 @@ int main(int argc, char **argv)
     
     if (gl_context == NULL) {
         renderer = SDL_CreateRenderer(window, -1, 0);
-        screen_texture = SDL_CreateTexture(renderer, SDL_GetWindowPixelFormat(window), SDL_TEXTUREACCESS_STREAMING, 160, 144);
         pixel_format = SDL_AllocFormat(SDL_GetWindowPixelFormat(window));
     }
     else {

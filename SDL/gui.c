@@ -15,7 +15,9 @@ static uint32_t gui_palette_native[4];
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
-SDL_Texture *screen_texture = NULL;
+SDL_Texture *window_texture = NULL;
+SDL_Surface *window_surface = NULL;
+SDL_Surface *screen_surface = NULL;
 SDL_PixelFormat *pixel_format = NULL;
 enum pending_command pending_command;
 unsigned command_parameter;
@@ -29,7 +31,7 @@ unsigned command_parameter;
 shader_t shader;
 SDL_Rect viewport;
 wide_gb wgb;
-SDL_Texture *wgb_textures[WIDE_GB_MAX_TILES];
+SDL_Surface *wgb_surfaces[WIDE_GB_MAX_TILES];
 
 struct scale {
     double x;
@@ -38,17 +40,17 @@ struct scale {
 struct scale compute_viewport_scale(void);
 SDL_Rect window_drawable_rect();
 
-SDL_Texture* sdl_texture_for_wgb_tile(int tile_index)
+SDL_Surface* sdl_surface_for_wgb_tile(int tile_index)
 {
-    SDL_Texture *texture = wgb_textures[tile_index];
-    if (texture == NULL) {
-        texture = SDL_CreateTexture(renderer, SDL_GetWindowPixelFormat(window), SDL_TEXTUREACCESS_STREAMING, 160, 144);
-        if (texture == NULL) {
-            fprintf(stderr, "Failed to create SDL texture for tile %i\n", tile_index);
+    SDL_Surface *surface = wgb_surfaces[tile_index];
+    if (surface == NULL) {
+        surface = SDL_CreateRGBSurfaceWithFormat(0, 160, 144, 32, pixel_format->format);
+        if (surface == NULL || SDL_MUSTLOCK(surface)) {
+            fprintf(stderr, "Failed to create SDL surface for tile %i\n", tile_index);
         }
-        wgb_textures[tile_index] = texture;
+        wgb_surfaces[tile_index] = surface;
     }
-    return texture;
+    return surface;
 }
 
 // Convert a rectangle from screen-space to window-space
@@ -73,17 +75,27 @@ SDL_Rect window_to_screen_rect(SDL_Rect window_rect)
     return result;
 }
 
+// Convert a rectangle from screen-space to surface-space
+SDL_Rect screen_rect_to_surface(SDL_Rect screen_rect)
+{
+    SDL_Rect drawable_rect = window_drawable_rect();
+    SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
+    return WGB_offset_rect(screen_rect, -drawable_rect_in_screen.x, -drawable_rect_in_screen.y);
+}
+
 void render_texture_sdl(void *pixels, void *previous)
 {
+    // 0. Create the surface
+    SDL_Rect drawable_rect = window_drawable_rect();
+    SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
+    SDL_Rect surface_rect = screen_rect_to_surface(drawable_rect_in_screen);
+
     // 1. Clear the surface
-    SDL_SetTextureBlendMode(screen_texture, SDL_BLENDMODE_NONE);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xff);
-    SDL_RenderClear(renderer);
+    SDL_SetSurfaceBlendMode(window_surface, SDL_BLENDMODE_NONE);
+    SDL_FillRect(window_surface, NULL, SDL_MapRGB(window_surface->format, 0, 0, 0));
 
     // 2. Display each WideGB tile
     if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
-        SDL_Rect drawable_rect = window_drawable_rect();
-        SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
         // For each tile…
         size_t tiles_count = WGB_tiles_count(&wgb);
         for (int i = 0; i < tiles_count; i++) {
@@ -92,16 +104,15 @@ void render_texture_sdl(void *pixels, void *previous)
             if (!WGB_is_tile_visible(&wgb, tile, drawable_rect_in_screen)) {
                 continue;
             }
-            // If the tile pixel buffer has been updated, update the associated texture.
-            SDL_Texture *tile_texture = sdl_texture_for_wgb_tile(i);
+            // Draw the tile
+            SDL_Surface *tile_surface = sdl_surface_for_wgb_tile(i);
             if (tile->dirty) {
-                SDL_UpdateTexture(tile_texture, NULL, tile->pixel_buffer, 160 * sizeof (uint32_t));
+                memcpy(tile_surface->pixels, tile->pixel_buffer, 160 * 144 * sizeof (uint32_t));
                 tile->dirty = false;
             }
-            // Draw the tile
             SDL_Rect tile_rect = WGB_rect_for_tile(&wgb, tile);
-            SDL_Rect tile_rect_in_window = screen_rect_to_window(tile_rect);
-            SDL_RenderCopy(renderer, tile_texture, NULL, &tile_rect_in_window);
+            SDL_Rect tile_rect_in_surface = screen_rect_to_surface(tile_rect);
+            SDL_BlitSurface(tile_surface, NULL, window_surface, &tile_rect_in_surface);
         }
     }
 
@@ -109,7 +120,7 @@ void render_texture_sdl(void *pixels, void *previous)
 
     // Update the screen texture
     if (pixels) {
-        SDL_UpdateTexture(screen_texture, NULL, pixels, 160 * sizeof (uint32_t));
+        memcpy(screen_surface->pixels, pixels, 160 * 144 * sizeof (uint32_t));
     }
 
     bool draw_opaque_window = (
@@ -117,8 +128,10 @@ void render_texture_sdl(void *pixels, void *previous)
         WGB_is_window_covering_screen(&wgb, 6));
 
     if (draw_opaque_window) {
-      // Draw the entire screen in one pass
-      SDL_RenderCopy(renderer, screen_texture, NULL, &viewport);
+        // Draw the entire screen in one pass
+        SDL_Rect viewport_in_surface = screen_rect_to_surface(window_to_screen_rect(viewport));
+        SDL_SetSurfaceBlendMode(screen_surface, SDL_BLENDMODE_NONE);
+        SDL_BlitSurface(screen_surface, NULL, window_surface, &viewport_in_surface);
 
     } else {
       // Draw the window separately from the rest of the screen (for transparency)
@@ -131,28 +144,37 @@ void render_texture_sdl(void *pixels, void *previous)
       for (int i = 0; i < 2; i++) {
         // if the area is not empty…
         SDL_Rect bg_rect = bg_rects[i];
-        SDL_Rect bg_rect_in_window = screen_rect_to_window(bg_rect);
+        SDL_Rect bg_rect_in_surface = screen_rect_to_surface(bg_rect);
         if (bg_rect.w >= 0 && bg_rect.h >= 0) {
           // draw it opaquely to the screen.
-          SDL_RenderCopy(renderer, screen_texture, &bg_rect, &bg_rect_in_window);
+          SDL_SetSurfaceBlendMode(screen_surface, SDL_BLENDMODE_NONE);
+          SDL_BlitSurface(screen_surface, &bg_rect, window_surface, &bg_rect_in_surface);
         }
       }
 
       // Draw transparently the screen area overlapped by the window
-      SDL_Rect wnd_rect_in_window = screen_rect_to_window(wnd_rect);
-      SDL_SetTextureBlendMode(screen_texture, SDL_BLENDMODE_BLEND);
-      SDL_SetTextureAlphaMod(screen_texture, 170);
-      SDL_RenderCopy(renderer, screen_texture, &wnd_rect, &wnd_rect_in_window);
+      SDL_Rect wnd_rect_in_surface = screen_rect_to_surface(wnd_rect);
+      SDL_SetSurfaceBlendMode(screen_surface, SDL_BLENDMODE_BLEND);
+      SDL_SetSurfaceAlphaMod(screen_surface, 170);
+      SDL_BlitSurface(screen_surface, &wnd_rect, window_surface, &wnd_rect_in_surface);
     }
 
     // 4. Draw a border around the screen
-    if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(renderer, 0x0, 0x00, 0x00, 0x60);
-        SDL_RenderDrawRect(renderer, &viewport);
-    }
+    // if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
+    //     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    //     SDL_SetRenderDrawColor(renderer, 0x0, 0x00, 0x00, 0x60);
+    //     SDL_RenderDrawRect(renderer, &viewport);
+    // }
 
-    // 5. Finish rendering
+    // 5. Convert the surface to a texture
+    uint32_t *window_pixels;
+    int pitch;
+    SDL_LockTexture(window_texture, NULL, (void**)&window_pixels, &pitch);
+    memcpy(window_pixels, window_surface->pixels, surface_rect.w * surface_rect.h * sizeof (uint32_t));
+    SDL_UnlockTexture(window_texture);
+
+    // 6. Render the scaled texture
+    SDL_RenderCopy(renderer, window_texture, NULL, &drawable_rect);
     SDL_RenderPresent(renderer);
 }
 
@@ -291,6 +313,15 @@ void update_viewport(void)
         .w = new_width,
         .h = new_height
     };
+
+    SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
+    if (window_texture) {
+        SDL_DestroyTexture(window_texture);
+        SDL_FreeSurface(window_surface);
+    }
+    window_texture = SDL_CreateTexture(renderer, pixel_format->format, SDL_TEXTUREACCESS_STREAMING, drawable_rect_in_screen.w, drawable_rect_in_screen.h);
+    window_surface = SDL_CreateRGBSurfaceWithFormat(0, drawable_rect_in_screen.w, drawable_rect_in_screen.h, 32, pixel_format->format);
+    screen_surface = SDL_CreateRGBSurfaceWithFormat(0, 160, 144, 32, pixel_format->format);
 
     if (configuration.scaling_mode != GB_SDL_SCALING_WIDE_SCREEN) {
         if (renderer) {
