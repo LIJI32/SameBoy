@@ -162,20 +162,20 @@ bool init_shader_with_name(shader_t *shader, const char *name)
     return true;
 }
 
-void render_bitmap_with_shader(shader_t *shader, void *bitmap, void *previous,unsigned x, unsigned y, unsigned w, unsigned h)
+void render_bitmap_with_shader(shader_t *shader, void *bitmap, void *previous, unsigned source_w, unsigned source_h, unsigned x, unsigned y, unsigned w, unsigned h)
 {
     glUseProgram(shader->program);
     glUniform2f(shader->origin_uniform, x, y);
     glUniform2f(shader->resolution_uniform, w, h);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, shader->texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 160, 144, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, source_w, source_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
     glUniform1i(shader->texture_uniform, 0);
     glUniform1i(shader->mix_previous_uniform, previous != NULL);
     if (previous) {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, shader->previous_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 160, 144, 0, GL_RGBA, GL_UNSIGNED_BYTE, previous);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, source_w, source_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, previous);
         glUniform1i(shader->previous_texture_uniform, 1);
     }
     glBindFragDataLocation(shader->program, 0, "frag_color");

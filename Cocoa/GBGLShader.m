@@ -3,7 +3,7 @@
 
 /*
  Loosely based of https://www.raywenderlich.com/70208/opengl-es-pixel-shaders-tutorial
- 
+
  This code probably makes no sense after I upgraded it to OpenGL 3, since OpenGL makes aboslute no sense and has zero
  helpful documentation.
  */

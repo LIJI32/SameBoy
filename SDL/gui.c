@@ -187,7 +187,7 @@ void render_texture_gl(void *pixels, void *previous)
     }
     glClearColor(0, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    render_bitmap_with_shader(&shader, _pixels, previous, viewport.x, viewport.y, viewport.w, viewport.h);
+    render_bitmap_with_shader(&shader, _pixels, previous, 160, 144, viewport.x, viewport.y, viewport.w, viewport.h);
     SDL_GL_SwapWindow(window);
 }
 
