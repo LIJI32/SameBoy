@@ -600,8 +600,7 @@ int main(int argc, char **argv)
     glGetIntegerv(GL_MAJOR_VERSION, &major);
     glGetIntegerv(GL_MINOR_VERSION, &minor);
 
-    bool forceSDLRenderer = true;
-    if (major * 0x100 + minor < 0x302 || forceSDLRenderer) {
+    if (major * 0x100 + minor < 0x302) {
         SDL_GL_DeleteContext(gl_context);
         gl_context = NULL;
     }

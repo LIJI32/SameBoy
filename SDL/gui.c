@@ -16,7 +16,8 @@ static uint32_t gui_palette_native[4];
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 SDL_Texture *window_texture = NULL;
-SDL_Surface *window_surface = NULL;
+SDL_Surface *active_window_surface = NULL;
+SDL_Surface *previous_window_surface = NULL;
 SDL_Surface *screen_surface = NULL;
 SDL_PixelFormat *pixel_format = NULL;
 enum pending_command pending_command;
@@ -83,16 +84,55 @@ SDL_Rect screen_rect_to_surface(SDL_Rect screen_rect)
     return WGB_offset_rect(screen_rect, -drawable_rect_in_screen.x, -drawable_rect_in_screen.y);
 }
 
-void render_texture_sdl(void *pixels, void *previous)
+void render_surface_sdl(SDL_Surface *surface, SDL_Surface *previous_surface)
 {
-    // 0. Create the surface
+    SDL_Rect drawable_rect = window_drawable_rect();
+    SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
+
+    // Convert the surface to a texture
+    uint32_t *window_pixels;
+    int pitch;
+    SDL_LockTexture(window_texture, NULL, (void**)&window_pixels, &pitch);
+    memcpy(window_pixels, surface->pixels, drawable_rect_in_screen.w * drawable_rect_in_screen.h * sizeof (uint32_t));
+    SDL_UnlockTexture(window_texture);
+
+    // Render the scaled texture
+    SDL_RenderCopy(renderer, window_texture, NULL, &drawable_rect);
+    SDL_RenderPresent(renderer);
+}
+
+void render_surface_gl(SDL_Surface *surface, SDL_Surface *previous_surface)
+{
     SDL_Rect drawable_rect = window_drawable_rect();
     SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
     SDL_Rect surface_rect = screen_rect_to_surface(drawable_rect_in_screen);
 
+    uint32_t *pixels = surface->pixels;
+    uint32_t *previous_pixels = previous_surface ? previous_surface->pixels : NULL;
+
+    glClearColor(0, 0, 0, 1);
+    glClear(GL_COLOR_BUFFER_BIT);
+    render_bitmap_with_shader(&shader, pixels, previous_pixels, surface_rect.w, surface_rect.h, drawable_rect.x, drawable_rect.y, drawable_rect.w, drawable_rect.h);
+    SDL_GL_SwapWindow(window);
+}
+
+void render_texture(void *pixels, void *previous)
+{
+    //
+    // For now the rendering is done by composing the screen (and optionally WideGB tiles)
+    // using a software SDL_Surface – then using SDL_Renderer or OpenGL to display the
+    // resulting texture.
+    //
+    // TODO: as an optimisation, use hardware-accelerated methods to compose tiles.
+    //
+
+    SDL_Rect drawable_rect = window_drawable_rect();
+    SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
+    SDL_Rect viewport_in_surface = screen_rect_to_surface(window_to_screen_rect(viewport));
+
     // 1. Clear the surface
-    SDL_SetSurfaceBlendMode(window_surface, SDL_BLENDMODE_NONE);
-    SDL_FillRect(window_surface, NULL, SDL_MapRGB(window_surface->format, 0, 0, 0));
+    SDL_SetSurfaceBlendMode(active_window_surface, SDL_BLENDMODE_NONE);
+    SDL_FillRect(active_window_surface, NULL, SDL_MapRGB(active_window_surface->format, 0, 0, 0));
 
     // 2. Display each WideGB tile
     if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
@@ -112,7 +152,7 @@ void render_texture_sdl(void *pixels, void *previous)
             }
             SDL_Rect tile_rect = WGB_rect_for_tile(&wgb, tile);
             SDL_Rect tile_rect_in_surface = screen_rect_to_surface(tile_rect);
-            SDL_BlitSurface(tile_surface, NULL, window_surface, &tile_rect_in_surface);
+            SDL_BlitSurface(tile_surface, NULL, active_window_surface, &tile_rect_in_surface);
         }
     }
 
@@ -129,9 +169,8 @@ void render_texture_sdl(void *pixels, void *previous)
 
     if (draw_opaque_window) {
         // Draw the entire screen in one pass
-        SDL_Rect viewport_in_surface = screen_rect_to_surface(window_to_screen_rect(viewport));
         SDL_SetSurfaceBlendMode(screen_surface, SDL_BLENDMODE_NONE);
-        SDL_BlitSurface(screen_surface, NULL, window_surface, &viewport_in_surface);
+        SDL_BlitSurface(screen_surface, NULL, active_window_surface, &viewport_in_surface);
 
     } else {
       // Draw the window separately from the rest of the screen (for transparency)
@@ -148,7 +187,7 @@ void render_texture_sdl(void *pixels, void *previous)
         if (bg_rect.w >= 0 && bg_rect.h >= 0) {
           // draw it opaquely to the screen.
           SDL_SetSurfaceBlendMode(screen_surface, SDL_BLENDMODE_NONE);
-          SDL_BlitSurface(screen_surface, &bg_rect, window_surface, &bg_rect_in_surface);
+          SDL_BlitSurface(screen_surface, &bg_rect, active_window_surface, &bg_rect_in_surface);
         }
       }
 
@@ -156,7 +195,7 @@ void render_texture_sdl(void *pixels, void *previous)
       SDL_Rect wnd_rect_in_surface = screen_rect_to_surface(wnd_rect);
       SDL_SetSurfaceBlendMode(screen_surface, SDL_BLENDMODE_BLEND);
       SDL_SetSurfaceAlphaMod(screen_surface, 170);
-      SDL_BlitSurface(screen_surface, &wnd_rect, window_surface, &wnd_rect_in_surface);
+      SDL_BlitSurface(screen_surface, &wnd_rect, active_window_surface, &wnd_rect_in_surface);
     }
 
     // 4. Draw a border around the screen
@@ -166,38 +205,17 @@ void render_texture_sdl(void *pixels, void *previous)
     //     SDL_RenderDrawRect(renderer, &viewport);
     // }
 
-    // 5. Convert the surface to a texture
-    uint32_t *window_pixels;
-    int pitch;
-    SDL_LockTexture(window_texture, NULL, (void**)&window_pixels, &pitch);
-    memcpy(window_pixels, window_surface->pixels, surface_rect.w * surface_rect.h * sizeof (uint32_t));
-    SDL_UnlockTexture(window_texture);
-
-    // 6. Render the scaled texture
-    SDL_RenderCopy(renderer, window_texture, NULL, &drawable_rect);
-    SDL_RenderPresent(renderer);
-}
-
-void render_texture_gl(void *pixels, void *previous)
-{
-    // TODO: implement WideGB OpenGL rendering
-    static void *_pixels = NULL;
-    if (pixels) {
-        _pixels = pixels;
-    }
-    glClearColor(0, 0, 0, 1);
-    glClear(GL_COLOR_BUFFER_BIT);
-    render_bitmap_with_shader(&shader, _pixels, previous, 160, 144, viewport.x, viewport.y, viewport.w, viewport.h);
-    SDL_GL_SwapWindow(window);
-}
-
-void render_texture(void *pixels, void *previous)
-{
+    // 5. Render
     if (renderer) {
-        render_texture_sdl(pixels, previous);
+        render_surface_sdl(active_window_surface, previous ? previous_window_surface : NULL);
     } else {
-        render_texture_gl(pixels, previous);
+        render_surface_gl(active_window_surface, previous ? previous_window_surface : NULL);
     }
+
+    // Swap surfaces
+    SDL_Surface *tmp = previous_window_surface;
+    previous_window_surface = active_window_surface;
+    active_window_surface = tmp;
 }
 
 configuration_t configuration =
@@ -317,10 +335,13 @@ void update_viewport(void)
     SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
     if (window_texture) {
         SDL_DestroyTexture(window_texture);
-        SDL_FreeSurface(window_surface);
+        SDL_FreeSurface(active_window_surface);
+        SDL_FreeSurface(previous_window_surface);
+        SDL_FreeSurface(screen_surface);
     }
     window_texture = SDL_CreateTexture(renderer, pixel_format->format, SDL_TEXTUREACCESS_STREAMING, drawable_rect_in_screen.w, drawable_rect_in_screen.h);
-    window_surface = SDL_CreateRGBSurfaceWithFormat(0, drawable_rect_in_screen.w, drawable_rect_in_screen.h, 32, pixel_format->format);
+    active_window_surface = SDL_CreateRGBSurfaceWithFormat(0, drawable_rect_in_screen.w, drawable_rect_in_screen.h, 32, pixel_format->format);
+    previous_window_surface = SDL_CreateRGBSurfaceWithFormat(0, drawable_rect_in_screen.w, drawable_rect_in_screen.h, 32, pixel_format->format);
     screen_surface = SDL_CreateRGBSurfaceWithFormat(0, 160, 144, 32, pixel_format->format);
 
     if (configuration.scaling_mode != GB_SDL_SCALING_WIDE_SCREEN) {

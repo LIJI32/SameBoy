@@ -37,15 +37,16 @@
 // 3. Render the visible tiles over the canvas, using:
 //    - `WGB_tiles_count` and `WGB_tile_at_index` to enumerate the tiles,
 //    - `WGB_is_tile_visible` to cull tiles not visible on screen,
-//    - `tile->is_dirty` to tell whether the tile pixel buffer has been updated,
+//    - `tile->dirty` to tell whether the tile pixel buffer has been updated,
 //    - `WGB_rect_for_tile` to draw the tile using your frontend drawing library ;
 // 4. Render the console screen over the tiles
 
 
 // TODO:
 // - Exclude window pixels from frame hash
+// - Move surface generation to main.c
 // - Helpers for concatenating paths
-// - OpenGL / Cocoa implementation
+// - Cocoa implementation
 // - Implement own hash table?
 // - Better dynamic arrays?
 
