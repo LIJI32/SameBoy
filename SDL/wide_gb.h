@@ -43,7 +43,6 @@
 
 
 // TODO:
-// - Exclude window pixels from frame hash
 // - Move surface generation to main.c
 // - Helpers for concatenating paths
 // - Cocoa implementation

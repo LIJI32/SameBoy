@@ -625,7 +625,7 @@ void WGB_get_screen_layout(wide_gb *wgb, SDL_Rect *bg_rect1, SDL_Rect *bg_rect2,
 bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels)
 {
     if (wgb->window_enabled) {
-        return wgb->window_rect.x < tolered_pixels && wgb->window_rect.y < tolered_pixels;
+        return wgb->window_rect.x <= tolered_pixels && wgb->window_rect.y <= tolered_pixels;
     } else {
         return false;
     }
@@ -644,12 +644,26 @@ int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
 
 WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
 {
-    // FIXME: ignore pixels in window
+    // The window is often used as a HUD – and we don't want things like the
+    // number of remaning lives to influence wether a frame is matched or
+    // not.
+    //
+    // If the window is enabled, and partially covering the screen, ignore
+    // window pixels in the frame hash.
+    bool ignore_pixels_in_window = wgb->window_enabled && !WGB_is_window_covering_screen(wgb, 0);
+
     WGB_exact_hash hash = 0;
-    for (int i = 0; i < 160 * 144 * 3; i += 3) {
-        int pixels_sum = rgb_pixels[i] + rgb_pixels[i + 1] + rgb_pixels[i + 2];
-        hash = (hash + 324723947 + pixels_sum * 2) ^ 93485734985;
+    for (int y = 0; y < 144; y++) {
+        for (int x = 0; x < 160; x++) {
+            if (ignore_pixels_in_window && WGB_rect_contains_point(wgb->window_rect, (SDL_Point) { x, y })) {
+                continue;
+            }
+            int i = (x + y * 160) * 3;
+            int pixels_sum = rgb_pixels[i] + rgb_pixels[i + 1] + rgb_pixels[i + 2];
+            hash = (hash + 324723947 + pixels_sum * 2) ^ 93485734985;
+        }
     }
+
     return hash;
 }
 
