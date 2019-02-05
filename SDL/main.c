@@ -318,13 +318,13 @@ static void handle_events(GB_gameboy_t *gb)
 
 void texture_to_rgb(uint32_t *pixel_buffer, SDL_PixelFormat *pixel_format, uint8_t *out_rgb_pixels)
 {
-    uint8_t r, g, b;
     for (int i = 0; i < 160 * 144 * 3; i += 3) {
         uint32_t pixel = pixel_buffer[i / 3];
-        SDL_GetRGB(pixel, pixel_format, &r, &g, &b);
-        out_rgb_pixels[i + 0] = r;
-        out_rgb_pixels[i + 1] = g;
-        out_rgb_pixels[i + 2] = b;
+        SDL_GetRGB(pixel,
+            pixel_format,
+            &out_rgb_pixels[i + 0],
+            &out_rgb_pixels[i + 1],
+            &out_rgb_pixels[i + 2]);
     }
 }
 
