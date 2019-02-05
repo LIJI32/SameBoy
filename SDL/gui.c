@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <Misc/wide_gb.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -8,7 +9,6 @@
 #include "utils.h"
 #include "gui.h"
 #include "font.h"
-#include "wide_gb.h"
 
 static const SDL_Color gui_palette[4] = {{8, 24, 16,}, {57, 97, 57,}, {132, 165, 99}, {198, 222, 140}};
 static uint32_t gui_palette_native[4];

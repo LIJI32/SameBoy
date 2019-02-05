@@ -119,7 +119,7 @@ all: cocoa sdl tester libretro
 
 # Get a list of our source files and their respective object file targets
 
-CORE_SOURCES := $(shell ls Core/*.c)
+CORE_SOURCES := $(shell ls Core/*.c Misc/*.c)
 SDL_SOURCES := $(shell ls SDL/*.c)
 TESTER_SOURCES := $(shell ls Tester/*.c)
 

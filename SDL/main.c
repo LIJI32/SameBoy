@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <SDL2/SDL.h>
 #include <Core/gb.h>
+#include <Misc/wide_gb.h>
 #include <inttypes.h>
 #include "utils.h"
 #include "gui.h"

@@ -2,8 +2,8 @@
 #define wide_gb_h
 
 #include <SDL2/SDL.h>
-#include <Misc/uthash.h>
 #include <stdbool.h>
+#include "uthash.h"
 
 // This file implements an engine for recording and displaying
 // extended scenes on a canvas in a Game Boy emulator, in a
@@ -43,9 +43,49 @@
 
 
 // TODO:
-// - Move surface generation to main.c
-// - Helpers for concatenating paths
+// - Draw screen border
 // - Cocoa implementation
+//   - Shader code passes a bitmap to the shader
+//   - thus we need a bitmap (we can't render tiles directly)
+//   Solution: when rendering:
+
+/*
+    + init {}
+        // Create a context that will draw into the final `pixels` buffer
+        _outputContext = CGBitmapContextCreate(*pixels, …)
+    }
+
+    - (uint32_t*) currentBuffer {
+        for (tile in visibleTiles) {
+            CGImageRef tileImage = [self imageForTile:tile];
+            if (!tileImage || tile.dirty) {
+                // We want to save the CGImage for later: load it using a data provider
+                CGDataProviderRef tileDataProvider = CGDataProviderCreateWithData(tile->pixels)
+                CGImageRef tileImage = CGImageCreate(160, 144, tileDataProvider)
+                [sel setImage: tileImage forTile:tile];
+            }
+            CGContextDrawImage(_outputContext, tileRect, tileImage);
+        }
+
+        // We want to map the screen pixels buffers once, and avoid copying:
+        // load it using a CGBitmapContext
+        CGBitmapContextRef screenContext = CGBitmapContextCreate(*screenPixels, …)
+        CGImageRef screenImage = CGBitmapContextCreateImage(screenContext) // won't copy until a write
+        CGContextDrawImage(_outputContext, screenRect, screenImage)
+        CGImageRelease(screenImage)
+        CGContextRelease(screenContext)
+
+        // Pass to OpenGL
+        return CGBitmapContextGetData(_outputContext)
+    }
+*/
+//
+// - Performances
+//   - don't write to tiles if frame hash didn't change (DONE)
+//   - optimize floor (DONE)
+//   - don't query tiles for each written pixel
+//   - optimize hashes
+//
 // - Implement own hash table?
 // - Better dynamic arrays?
 
@@ -95,6 +135,7 @@ typedef struct {
     SDL_Point scroll_delta;
     SDL_Rect window_rect;
     bool window_enabled;
+    WGB_exact_hash frame_hash;
     WGB_perceptual_hash frame_perceptual_hash;
     WGB_scene *active_scene;
     int next_scene_id;

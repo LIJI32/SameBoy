@@ -1,7 +1,7 @@
 // Use the best hash function for our hashes repartition
 // See https://troydhanson.github.io/uthash/userguide.html#hash_functions
 #define HASH_FUNCTION HASH_OAT
-#include <Misc/uthash.h>
+#include "uthash.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +29,7 @@
 // Math macros
 #define MAX(a,b) ((a) > (b) ? a : b)
 #define MIN(a,b) ((a) < (b) ? a : b)
+#define FLOOR_DIV(a, b) (((a) < 0) ? ((((a) + 1) / (b)) - 1) : ((a) / (b)))
 
 // Forward declarations
 WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_scene *scene, WGB_tile_position position);
@@ -75,13 +76,7 @@ void WGB_scene_destroy(WGB_scene *scene)
     for (int i = 0; i < scene->tiles_count; i++) {
         WGB_tile_destroy(&scene->tiles[i]);
     }
-}
-
-wide_gb WGB_init()
-{
-    wide_gb new = { 0 };
-    new.active_scene = WGB_create_scene(&new);
-    return new;
+    scene->tiles_count = 0;
 }
 
 wide_gb WGB_init_from_path(char *save_path, WGB_rgb_encode_callback_t rgb_encode)
@@ -235,6 +230,7 @@ void WGB_destroy(wide_gb *wgb)
             WGB_scene_destroy(&wgb->scenes[i]);
         }
     }
+    wgb->scenes_count = 0;
 }
 
 /*---------------- Managing tiles -------------------------------------*/
@@ -532,12 +528,15 @@ bool WGB_has_scene_changed(wide_gb *wgb, WGB_perceptual_hash frame_perceptual_ha
 
 void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_perceptual_hash p_hash)
 {
+    // Save new hash values
+    WGB_exact_hash previous_exact_hash = wgb->frame_hash;
+    WGB_perceptual_hash previous_perceptual_hash = wgb->frame_perceptual_hash;
+    wgb->frame_hash = hash;
+    wgb->frame_perceptual_hash = p_hash;
+
     //
     // If we detect a scene transition, create a new scene
     //
-
-    WGB_perceptual_hash previous_perceptual_hash = wgb->frame_perceptual_hash;
-    wgb->frame_perceptual_hash = p_hash;
 
     if (WGB_has_scene_changed(wgb, wgb->frame_perceptual_hash, previous_perceptual_hash)) {
         WGB_scene *previous_scene = wgb->active_scene;
@@ -569,19 +568,27 @@ void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_
     // Write frame pixels to the relevant tiles
     //
 
-    // For each frame pixel…
-    for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
-        for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
-            SDL_Point pixel_pos = { pixel_x, pixel_y };
-            // Skip pixels in window
-            if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
-                continue;
+    bool frame_changed = (wgb->frame_hash != previous_exact_hash);
+    if (frame_changed) {
+
+        // TODO: optimize hot loop, and avoid to write the tile all the time
+        // Generate corner tiles
+        // for each 4 tiles…
+        // write pixels on the tile
+        // For each frame pixel…
+        for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
+            for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
+                SDL_Point pixel_pos = { pixel_x, pixel_y };
+                // Skip pixels in window
+                if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
+                    continue;
+                }
+                // Read the frame pixel
+                uint32_t pixel = pixels[pixel_x + pixel_y * 160];
+                // Write the pixel to the relevant tile
+                WGB_tile *tile = WGB_write_tile_pixel(wgb, pixel_pos, pixel);
+                tile->dirty = true;
             }
-            // Read the frame pixel
-            uint32_t pixel = pixels[pixel_x + pixel_y * 160];
-            // Write the pixel to the relevant tile
-            WGB_tile *tile = WGB_write_tile_pixel(wgb, pixel_pos, pixel);
-            tile->dirty = true;
         }
     }
 }
@@ -629,7 +636,7 @@ void WGB_get_screen_layout(wide_gb *wgb, SDL_Rect *bg_rect1, SDL_Rect *bg_rect2,
 bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels)
 {
     if (wgb->window_enabled) {
-        return wgb->window_rect.x <= tolered_pixels && wgb->window_rect.y <= tolered_pixels;
+        return (wgb->window_rect.x <= tolered_pixels) && (wgb->window_rect.y <= tolered_pixels);
     } else {
         return false;
     }
@@ -746,7 +753,7 @@ WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels)
             // Normalize the contributions (so that the sum of each coeficient is exacly 1.0)
             float normalized_block_contribution = block_contributions / sum_of_coefs;
             // Write final block value to the downsampled grayscale picture
-            grayscale[block_x + block_y * 8] = (uint8_t)floor(normalized_block_contribution);
+            grayscale[block_x + block_y * 8] = normalized_block_contribution;
         }
     }
 
@@ -853,9 +860,9 @@ bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position p
 
 WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point)
 {
-    return (WGB_tile_position){
-        .horizontal = floorf((wgb->active_scene->scroll.x + screen_point.x) / 160.0),
-        .vertical   = floorf((wgb->active_scene->scroll.y + screen_point.y) / 144.0)
+    return (WGB_tile_position) {
+        .horizontal = FLOOR_DIV((wgb->active_scene->scroll.x + screen_point.x), 160),
+        .vertical   = FLOOR_DIV((wgb->active_scene->scroll.y + screen_point.y), 144)
     };
 }
 

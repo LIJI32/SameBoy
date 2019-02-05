@@ -3,9 +3,9 @@
 
 #include <SDL2/SDL.h>
 #include <Core/gb.h>
-#include <stdbool.h> 
+#include <Misc/wide_gb.h>
+#include <stdbool.h>
 #include "shader.h"
-#include "wide_gb.h"
 
 #define JOYSTICK_HIGH 0x4000
 #define JOYSTICK_LOW 0x3800
