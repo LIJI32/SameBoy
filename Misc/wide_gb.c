@@ -41,7 +41,7 @@ SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point,
 void WGB_tile_write_to_file(WGB_tile *tile, char *tile_path, WGB_rgb_decode_callback_t rgb_decode);
 void WGB_load_tile_from_file(WGB_tile *tile, char *path, WGB_rgb_encode_callback_t rgb_encode);
 void WGB_store_frame_hash(wide_gb *wgb, WGB_exact_hash hash, int scene_id, SDL_Point scene_scroll);
-int WGB_IO_rmdir(char *path);
+int WGB_IO_rmdir(const char *path);
 void WGB_IO_write_PPM(char *filename, int width, int height, uint8_t *pixels);
 
 /*---------------- Initializers --------------------------------------*/
@@ -79,7 +79,7 @@ void WGB_scene_destroy(WGB_scene *scene)
     scene->tiles_count = 0;
 }
 
-wide_gb WGB_init_from_path(char *save_path, WGB_rgb_encode_callback_t rgb_encode)
+wide_gb WGB_init_from_path(const char *save_path, WGB_rgb_encode_callback_t rgb_encode)
 {
     wide_gb wgb = { 0 };
     int max_scene_id = 0;
@@ -170,7 +170,7 @@ wide_gb WGB_init_from_path(char *save_path, WGB_rgb_encode_callback_t rgb_encode
     return wgb;
 }
 
-void WGB_save_to_path(wide_gb *wgb, char *save_path, WGB_rgb_decode_callback_t rgb_decode)
+void WGB_save_to_path(wide_gb *wgb, const char *save_path, WGB_rgb_decode_callback_t rgb_decode)
 {
     // Create temp directory
     int path_len = strlen(save_path);
@@ -794,7 +794,7 @@ int WGB_IO_unlink_callback(const char *fpath, const struct stat *sb, int typefla
     return rv;
 }
 
-int WGB_IO_rmdir(char *path)
+int WGB_IO_rmdir(const char *path)
 {
     return nftw(path, WGB_IO_unlink_callback, 64, FTW_DEPTH | FTW_PHYS);
 }
