@@ -33,7 +33,7 @@
 //
 // 1. Create a global wide_gb struct using `WGB_init`
 // 2. On V-blank, notify WideGB of the updates
-//    using `WGB_update_hardware_scroll` and `WGB_update_screen`
+//    using `WGB_update_hardware_values` and `WGB_update_screen`
 // 3. Render the visible tiles over the canvas, using:
 //    - `WGB_tiles_count` and `WGB_tile_at_index` to enumerate the tiles,
 //    - `WGB_is_tile_visible` to cull tiles not visible on screen,
@@ -174,6 +174,17 @@ void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy);
 // This is used to avoid writing the Window area to the tiles
 // (as the window area is most often overlapped UI).
 void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy);
+
+// Notify WGB of the new hardware registers values.
+// Typically called at vblank.
+//
+// Inputs:
+//   - scx: the SCX (ScrollX) Game Boy register value
+//   - scy: the SCY (ScrollY) Game Boy register value
+//   - wx: the WX (WindowX) Game Boy register value
+//   - wy: the WY (WindowY) Game Boy register value
+//   - is_window_enabled: the Game Boy register flag indicating that the Window is enabled (see LCDC)
+void WGB_update_hardware_values(wide_gb *wgb, int scx, int scy, int wx, int wy, bool is_window_enabled);
 
 // Write the screen content to the relevant tiles.
 // Typically called at vblank.

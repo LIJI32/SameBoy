@@ -346,12 +346,10 @@ static void vblank(GB_gameboy_t *gb)
     // Notify WideGB of hardware updates (scroll, window position, background pixels)
     int scrollX = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCX];
     int scrollY = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCY];
-    WGB_update_hardware_scroll(&wgb, scrollX, scrollY);
-
     int wX = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_WX] - 7;
     int wY = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_WY];
     bool is_window_enabled = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_LCDC] & 0x20;
-    WGB_update_window_position(&wgb, is_window_enabled, wX, wY);
+    WGB_update_hardware_values(&wgb, scrollX, scrollY, wX, wY, is_window_enabled);
 
     WGB_exact_hash hash = WGB_frame_hash(&wgb, bg_pixel_buffer, rgb_decode);
     WGB_perceptual_hash p_hash = WGB_added_difference_hash(&wgb, bg_pixel_buffer, rgb_decode);

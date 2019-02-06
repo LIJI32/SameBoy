@@ -443,8 +443,12 @@ WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel
 
 /*---------------- Updates from hardware ------------------------------*/
 
-void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy)
+void WGB_update_hardware_values(wide_gb *wgb, int scx, int scy, int wx, int wy, bool is_window_enabled)
 {
+    //
+    // Update hardware scroll registers
+    //
+
     SDL_Point previous_hardware_scroll = wgb->hardware_scroll;
     SDL_Point new_hardware_scroll = { scx, scy };
 
@@ -470,15 +474,16 @@ void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy)
         else             delta.y -= gb_background_size; // going up
     }
 
-    // Update the new positions
+    // Update the new scroll positions
     wgb->hardware_scroll = new_hardware_scroll;
     wgb->scroll_delta = delta;
     wgb->active_scene->scroll.x += delta.x;
     wgb->active_scene->scroll.y += delta.y;
-}
 
-void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy)
-{
+    //
+    // Update window position
+    //
+
     wgb->window_enabled = is_window_enabled;
     wgb->window_rect = (SDL_Rect) {
         .x = MIN(wx, 160),
