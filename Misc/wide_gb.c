@@ -356,6 +356,45 @@ void WGB_make_scene_active(wide_gb *wgb, WGB_scene *scene)
     wgb->active_scene = scene;
 }
 
+bool WGB_has_scene_changed(wide_gb *wgb, WGB_perceptual_hash frame_perceptual_hash, WGB_perceptual_hash previous_perceptual_hash)
+{
+    // When the scroll position jumps to the origin, this can either signal:
+    //
+    // - an actual scene change;
+    // - the game reseting the viewport (e.g. Pokemon Gold/Silver when opening a dialog or a menu).
+    //
+    // In either case, triggering a scene change starts the scene matching sequence, which allow WGB
+    // to recognize the frame and map the new hardware scroll value to the logical scroll value.
+    bool is_hardware_scroll_at_origin = (wgb->hardware_scroll.x == 0 && wgb->hardware_scroll.y == 0);
+    SDL_Point scroll_distance = { abs(wgb->scroll_delta.x), abs(wgb->scroll_delta.y) };
+    bool scroll_jumped = MAX(scroll_distance.x, scroll_distance.y) > WGB_SCROLL_WRAP_AROUND_THRESHOLD;
+    if (is_hardware_scroll_at_origin && scroll_jumped) {
+        WGB_DEBUG_LOG("WideGB scene changed (scroll jumped to origin by %i, %i)\n\n", scroll_distance.x, scroll_distance.y);
+        return true;
+    }
+
+    int distance = hamming_distance(frame_perceptual_hash, previous_perceptual_hash);
+    // if (distance > 0) {
+    //     WGB_DEBUG_LOG("Perceptual distance from previous frame: %i", distance);
+    // }
+
+    // A great distance between two perceptual hashes signals a scene change.
+    if (distance >= WGB_SCENE_CHANGE_THRESHOLD) {
+        WGB_DEBUG_LOG("WideGB scene changed (distance = %i)\n\n", distance);
+        return true;
+    }
+
+    // Transitionning from or to a screen with a uniform color (i.e. no edges, i.e. p_hash == 0)
+    // signals a scene change.
+    if ((frame_perceptual_hash == 0 || previous_perceptual_hash == 0) && distance != 0) {
+        WGB_DEBUG_LOG("WideGB scene changed (transitionned from or to a uniform color ; distance = %i)\n\n", distance);
+        return true;
+    }
+
+    return false;
+}
+
+
 void WGB_delete_scene(wide_gb *wgb, WGB_scene *scene)
 {
     WGB_DEBUG_LOG("Delete scene %i", scene->id);
@@ -493,44 +532,6 @@ void WGB_update_hardware_values(wide_gb *wgb, int scx, int scy, int wx, int wy, 
         .w = MAX(0, 160 - wx),
         .h = MAX(0, 144 - wy)
     };
-}
-
-bool WGB_has_scene_changed(wide_gb *wgb, WGB_perceptual_hash frame_perceptual_hash, WGB_perceptual_hash previous_perceptual_hash)
-{
-    // When the scroll position jumps to the origin, this can either signal:
-    //
-    // - an actual scene change;
-    // - the game reseting the viewport (e.g. Pokemon Gold/Silver when opening a dialog or a menu).
-    //
-    // In either case, triggering a scene change starts the scene matching sequence, which allow WGB
-    // to recognize the frame and map the new hardware scroll value to the logical scroll value.
-    bool is_hardware_scroll_at_origin = (wgb->hardware_scroll.x == 0 && wgb->hardware_scroll.y == 0);
-    SDL_Point scroll_distance = { abs(wgb->scroll_delta.x), abs(wgb->scroll_delta.y) };
-    bool scroll_jumped = MAX(scroll_distance.x, scroll_distance.y) > WGB_SCROLL_WRAP_AROUND_THRESHOLD;
-    if (is_hardware_scroll_at_origin && scroll_jumped) {
-        WGB_DEBUG_LOG("WideGB scene changed (scroll jumped to origin by %i, %i)\n\n", scroll_distance.x, scroll_distance.y);
-        return true;
-    }
-
-    int distance = hamming_distance(frame_perceptual_hash, previous_perceptual_hash);
-    // if (distance > 0) {
-    //     WGB_DEBUG_LOG("Perceptual distance from previous frame: %i", distance);
-    // }
-
-    // A great distance between two perceptual hashes signals a scene change.
-    if (distance >= WGB_SCENE_CHANGE_THRESHOLD) {
-        WGB_DEBUG_LOG("WideGB scene changed (distance = %i)\n\n", distance);
-        return true;
-    }
-
-    // Transitionning from or to a screen with a uniform color (i.e. no edges, i.e. p_hash == 0)
-    // signals a scene change.
-    if ((frame_perceptual_hash == 0 || previous_perceptual_hash == 0) && distance != 0) {
-        WGB_DEBUG_LOG("WideGB scene changed (transitionned from or to a uniform color ; distance = %i)\n\n", distance);
-        return true;
-    }
-
-    return false;
 }
 
 void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode)
