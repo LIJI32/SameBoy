@@ -164,17 +164,6 @@ void WGB_save_to_path(wide_gb *wgb, const char *save_path, WGB_rgb_decode_callba
 
 /*---------------- Updating from hardware --------------------------------*/
 
-// Notify WGB of the new hardware scroll registers values.
-// Typically called at vblank.
-void WGB_update_hardware_scroll(wide_gb *wgb, int scx, int scy);
-
-// Notify WGB of the new Game Boy Window status and position.
-// Typically called at vblank.
-//
-// This is used to avoid writing the Window area to the tiles
-// (as the window area is most often overlapped UI).
-void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, int wy);
-
 // Notify WGB of the new hardware registers values.
 // Typically called at vblank.
 //
@@ -190,17 +179,16 @@ void WGB_update_hardware_values(wide_gb *wgb, int scx, int scy, int wx, int wy, 
 // Typically called at vblank.
 //
 // This function uses the logical scroll position and window position
-// to write pixels on the correct tiles – so `WGB_update_hardware_scroll`
-// must be called before to set the current scroll position.
+// to write pixels on the correct tiles – so `WGB_update_hardware_values`
+// must be called before.
 //
 // Inputs:
-//   - pixels: an array of 160*144 uint32 opaque values, written as-this to the relevant tiles.
-//   - hash: an exact hash of the pixels. If any of the pixels changes, the hash should be different.
-//   - p_hash: a perceptual hash of the pixels. If the hamming distance of p_hash is too different
-//             from the previous one, WGB creates a new scene.
+//   - pixels: a array of 160 * 144 values, which can be decoded to RGB components
+//             using the `rgb_decode` function.
+//   - rgb_decode: a callback for decoding the pixels to RGB components
 //
 // On return, the updated tiles are marked as `dirty`.
-void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_perceptual_hash p_hash);
+void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode);
 
 /*---------------- Retrieving informations for rendering -----------------*/
 
@@ -214,6 +202,7 @@ WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index);
 // Viewport is in screen-space (i.e. like { -160, -160, 480, 432 }
 // for a window twice as large as the console screen).
 bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, SDL_Rect viewport);
+
 // Returns the rect of the tile in screen-space
 SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
 
@@ -241,6 +230,7 @@ SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
 // Depending on how the window is positionned,
 // some of these areas may have a width or a height of 0.
 void WGB_get_screen_layout(wide_gb *wgb, SDL_Rect *bg_rect1, SDL_Rect *bg_rect2, SDL_Rect *wnd_rect);
+
 // Return true if the window is enabled and entirely covering the screen.
 // Some games slighly shake the window at times (e.g. Pokémon):
 // you can use `tolered_pixels` to return `true` even if the window is not
@@ -254,28 +244,6 @@ SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy);
 SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
 bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
 bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2);
-
-/*---------------- Frame hashing helpers --------------------------------*/
-
-// Compute an exact hash of a frame. This is used to identify if a frame belongs
-// to an already stored scene.
-//
-// As the window content is often not relevant to know if a given screen
-// is the same than another, pixels in the window area are excluded from the hash.
-//
-// `pixels` must be a array of 160 * 144 values, which can be decoded to RGB triplets
-// using the `rgb_decode` function.
-WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode);
-
-// Compute a perceptual hash of a frame using the "added difference hash" algorithm.
-//
-// This algorith detects how many blocks are brighter than the adjascent block.
-// The resulting hash is not very sensitive to translations (great for allowing scrolling),
-// but quite sensitive to luminance changes (great for detecting fade transitions).
-//
-// `pixels` must be a array of 160 * 144 values, which can be decoded to RGB triplets
-// using the `rgb_decode` function.
-WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode);
 
 /*---------------- Cleanup ----------------------------------------------*/
 

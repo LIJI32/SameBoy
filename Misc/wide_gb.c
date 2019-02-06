@@ -34,6 +34,8 @@
 // Forward declarations
 WGB_tile *WGB_create_tile(wide_gb *wgb, WGB_scene *scene, WGB_tile_position position);
 WGB_scene *WGB_create_scene(wide_gb *wgb);
+WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels);
+WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels);
 int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y);
 bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2);
 WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point);
@@ -531,8 +533,25 @@ bool WGB_has_scene_changed(wide_gb *wgb, WGB_perceptual_hash frame_perceptual_ha
     return false;
 }
 
-void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_perceptual_hash p_hash)
+void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode)
 {
+    //
+    // Generate frame hashes
+    //
+
+    // Decode the RGB components of the pixels
+    uint8_t rgb_pixels[160 * 144 * 3];
+    for (size_t pixels_i = 0, rgb_i = 0; pixels_i < 160 * 144; pixels_i += 1, rgb_i += 3) {
+        rgb_decode(pixels[pixels_i],
+            &rgb_pixels[rgb_i + 0],
+            &rgb_pixels[rgb_i + 1],
+            &rgb_pixels[rgb_i + 2]);
+    }
+
+    // Compute frame hashes from RGB values
+    WGB_exact_hash hash = WGB_frame_hash(wgb, rgb_pixels);
+    WGB_perceptual_hash p_hash = WGB_added_difference_hash(wgb, rgb_pixels);
+
     // Save new hash values
     WGB_exact_hash previous_exact_hash = wgb->frame_hash;
     WGB_perceptual_hash previous_perceptual_hash = wgb->frame_perceptual_hash;
@@ -649,16 +668,15 @@ bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels)
 
 /*---------------- Frame hashing helpers -------------------------------*/
 
-int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
-    WGB_perceptual_hash z  = x ^ y;
-    int d = 0;
-    for (; z > 0; z >>= 1) {
-        d += z & 1;
-    }
-    return d;
-}
-
-WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode)
+// Compute an exact hash of a frame. This is used to identify if a frame belongs
+// to an already stored scene.
+//
+// As the window content is often not relevant to know if a given screen
+// is the same than another, pixels in the window area are excluded from the hash.
+//
+// `rgb_pixels` must be a 160 * 144 * 3 array, where each consecutive triplet
+// store the r, g and b components for a pixel.
+WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
 {
     // The window is often used as a HUD – and we don't want things like the
     // number of remaning lives to influence wether a frame is matched or
@@ -669,14 +687,13 @@ WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_cal
     bool ignore_pixels_in_window = wgb->window_enabled && !WGB_is_window_covering_screen(wgb, 0);
 
     WGB_exact_hash hash = 0;
-    uint8_t r, g, b;
     for (int y = 0; y < 144; y++) {
         for (int x = 0; x < 160; x++) {
             if (ignore_pixels_in_window && WGB_rect_contains_point(wgb->window_rect, (SDL_Point) { x, y })) {
                 continue;
             }
-            rgb_decode(pixels[x + y * 160], &r, &g, &b);
-            int pixels_sum = r + g + b;
+            size_t rgb_i = (x + y * 160) * 3;
+            int pixels_sum = rgb_pixels[rgb_i] + rgb_pixels[rgb_i + 1] + rgb_pixels[rgb_i + 2];
             hash = (hash + 324723947 + pixels_sum * 2) ^ 93485734985;
         }
     }
@@ -684,7 +701,7 @@ WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_cal
     return hash;
 }
 
-void DEBUG_write_grayscale_PPM(int width, int height, uint32_t *pixels) {
+void DEBUG_write_grayscale_PPM(int width, int height, uint8_t *pixels) {
     char filename[255];
     static int filename_increment = 0;
     filename_increment++;
@@ -705,7 +722,15 @@ void DEBUG_write_grayscale_PPM(int width, int height, uint32_t *pixels) {
   fclose(fp);
 }
 
-WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode)
+// Compute a perceptual hash of a frame using the "added difference hash" algorithm.
+//
+// This algorith detects how many blocks are brighter than the adjascent block.
+// The resulting hash is not very sensitive to translations (great for allowing scrolling),
+// but quite sensitive to luminance changes (great for detecting fade transitions).
+//
+// `rgb_pixels` must be a 160 * 144 * 3 array, where each consecutive triplet
+// store the r, g and b components for a pixel.
+WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels)
 {
     const int block_width = 160 / 8;
     const int block_height = 144 / 8;
@@ -715,10 +740,12 @@ WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint32_t *pixels, WG
     // For each pixel
     uint8_t r, g, b;
     uint8_t grayscaled_pixels[160 * 144];
-    for (int i = 0; i < 160 * 144; i++) {
+    for (size_t rgb_i = 0, grayscaled_i = 0; rgb_i < 160 * 144 * 3; rgb_i += 3, grayscaled_i += 1) {
+        r = rgb_pixels[rgb_i + 0];
+        g = rgb_pixels[rgb_i + 1];
+        b = rgb_pixels[rgb_i + 2];
         // Convert to grayscale
-        rgb_decode(pixels[i], &r, &g, &b);
-        grayscaled_pixels[i] = 0.212671f * r + 0.715160f * g + 0.072169f * b;
+        grayscaled_pixels[grayscaled_i] = 0.212671f * r + 0.715160f * g + 0.072169f * b;
     }
 
     // DEBUG_write_grayscale_PPM(160, 144, grayscaled_pixels);
@@ -785,6 +812,15 @@ WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint32_t *pixels, WG
     }
 
     return hash;
+}
+
+int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
+    WGB_perceptual_hash z  = x ^ y;
+    int d = 0;
+    for (; z > 0; z >>= 1) {
+        d += z & 1;
+    }
+    return d;
 }
 
 /*---------------- File utils --------------------------------------*/
