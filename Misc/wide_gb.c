@@ -653,7 +653,7 @@ int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
     return d;
 }
 
-WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
+WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode)
 {
     // The window is often used as a HUD – and we don't want things like the
     // number of remaning lives to influence wether a frame is matched or
@@ -664,13 +664,14 @@ WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
     bool ignore_pixels_in_window = wgb->window_enabled && !WGB_is_window_covering_screen(wgb, 0);
 
     WGB_exact_hash hash = 0;
+    uint8_t r, g, b;
     for (int y = 0; y < 144; y++) {
         for (int x = 0; x < 160; x++) {
             if (ignore_pixels_in_window && WGB_rect_contains_point(wgb->window_rect, (SDL_Point) { x, y })) {
                 continue;
             }
-            int i = (x + y * 160) * 3;
-            int pixels_sum = rgb_pixels[i] + rgb_pixels[i + 1] + rgb_pixels[i + 2];
+            rgb_decode(pixels[x + y * 160], &r, &g, &b);
+            int pixels_sum = r + g + b;
             hash = (hash + 324723947 + pixels_sum * 2) ^ 93485734985;
         }
     }
@@ -678,7 +679,7 @@ WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
     return hash;
 }
 
-void DEBUG_write_grayscale_PPM(int width, int height, uint8_t *pixels) {
+void DEBUG_write_grayscale_PPM(int width, int height, uint32_t *pixels) {
     char filename[255];
     static int filename_increment = 0;
     filename_increment++;
@@ -699,7 +700,7 @@ void DEBUG_write_grayscale_PPM(int width, int height, uint8_t *pixels) {
   fclose(fp);
 }
 
-WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels)
+WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode)
 {
     const int block_width = 160 / 8;
     const int block_height = 144 / 8;
@@ -709,12 +710,10 @@ WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels)
     // For each pixel
     uint8_t r, g, b;
     uint8_t grayscaled_pixels[160 * 144];
-    for (int i = 0; i < 160 * 144 * 3; i += 3) {
-        r = rgb_pixels[i + 0];
-        g = rgb_pixels[i + 1];
-        b = rgb_pixels[i + 2];
+    for (int i = 0; i < 160 * 144; i++) {
         // Convert to grayscale
-        grayscaled_pixels[i / 3] = 0.212671f * r + 0.715160f * g + 0.072169f * b;
+        rgb_decode(pixels[i], &r, &g, &b);
+        grayscaled_pixels[i] = 0.212671f * r + 0.715160f * g + 0.072169f * b;
     }
 
     // DEBUG_write_grayscale_PPM(160, 144, grayscaled_pixels);

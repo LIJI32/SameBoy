@@ -316,16 +316,19 @@ static void handle_events(GB_gameboy_t *gb)
         }
     }
 
-void texture_to_rgb(uint32_t *pixel_buffer, SDL_PixelFormat *pixel_format, uint8_t *out_rgb_pixels)
+static void rgb_decode(uint32_t pixel, uint8_t *r, uint8_t *g, uint8_t *b)
 {
-    for (int i = 0; i < 160 * 144 * 3; i += 3) {
-        uint32_t pixel = pixel_buffer[i / 3];
-        SDL_GetRGB(pixel,
-            pixel_format,
-            &out_rgb_pixels[i + 0],
-            &out_rgb_pixels[i + 1],
-            &out_rgb_pixels[i + 2]);
-    }
+    SDL_GetRGB(pixel, pixel_format, r, g, b);
+}
+
+static uint32_t rgb_encode(uint8_t r, uint8_t g, uint8_t b)
+{
+    return SDL_MapRGB(pixel_format, r, g, b);
+}
+
+static uint32_t gb_rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
+{
+    return SDL_MapRGB(pixel_format, r, g, b);
 }
 
 static void vblank(GB_gameboy_t *gb)
@@ -350,11 +353,8 @@ static void vblank(GB_gameboy_t *gb)
     bool is_window_enabled = ((uint8_t *)GB_get_direct_access(gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_LCDC] & 0x20;
     WGB_update_window_position(&wgb, is_window_enabled, wX, wY);
 
-    uint8_t bg_rgb_pixels[160 * 144 * 3];
-    texture_to_rgb(bg_pixel_buffer, pixel_format, bg_rgb_pixels);
-    WGB_exact_hash hash = WGB_frame_hash(&wgb, bg_rgb_pixels);
-    WGB_perceptual_hash p_hash = WGB_added_difference_hash(&wgb, bg_rgb_pixels);
-
+    WGB_exact_hash hash = WGB_frame_hash(&wgb, bg_pixel_buffer, rgb_decode);
+    WGB_perceptual_hash p_hash = WGB_added_difference_hash(&wgb, bg_pixel_buffer, rgb_decode);
     WGB_update_screen(&wgb, bg_pixel_buffer, hash, p_hash);
 
     // Present frame
@@ -372,23 +372,6 @@ static void vblank(GB_gameboy_t *gb)
 
     do_rewind = rewind_down;
     handle_events(gb);
-}
-
-
-
-static void rgb_decode(uint32_t pixel, uint8_t *r, uint8_t *g, uint8_t *b)
-{
-    SDL_GetRGB(pixel, pixel_format, r, g, b);
-}
-
-static uint32_t rgb_encode(uint8_t r, uint8_t g, uint8_t b)
-{
-    return SDL_MapRGB(pixel_format, r, g, b);
-}
-
-static uint32_t gb_rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
-{
-    return SDL_MapRGB(pixel_format, r, g, b);
 }
 
 static void debugger_interrupt(int ignore)

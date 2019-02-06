@@ -45,9 +45,10 @@
 // TODO:
 // - Draw screen border
 // - Cocoa implementation
-//   - Shader code passes a bitmap to the shader
-//   - thus we need a bitmap (we can't render tiles directly)
-//   Solution: when rendering:
+//   - Hook WGB on init (Done)
+//   - Hook WGB on vblank (Done)
+//   - Add GBView currentCompositedBuffer (and GBView previousCompositedBuffer)
+//   - Implement currentCompositedBuffer by drawing tiles to a bitmap
 
 /*
     + init {}
@@ -184,8 +185,8 @@ void WGB_update_window_position(wide_gb *wgb, bool is_window_enabled, int wx, in
 // Inputs:
 //   - pixels: an array of 160*144 uint32 opaque values, written as-this to the relevant tiles.
 //   - hash: an exact hash of the pixels. If any of the pixels changes, the hash should be different.
-//   - p_hash: a perceptual hash of the pixels. If the p_hash is too different from the previous one,
-//             WGB creates a new scene.
+//   - p_hash: a perceptual hash of the pixels. If the hamming distance of p_hash is too different
+//             from the previous one, WGB creates a new scene.
 //
 // On return, the updated tiles are marked as `dirty`.
 void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_exact_hash hash, WGB_perceptual_hash p_hash);
@@ -251,9 +252,9 @@ bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2);
 // As the window content is often not relevant to know if a given screen
 // is the same than another, pixels in the window area are excluded from the hash.
 //
-// `rgb_pixels` must be a 160 * 144 * 3 array, where each consecutive triplet
-// store the r, g and b values for a pixel.
-WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels);
+// `pixels` must be a array of 160 * 144 values, which can be decoded to RGB triplets
+// using the `rgb_decode` function.
+WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode);
 
 // Compute a perceptual hash of a frame using the "added difference hash" algorithm.
 //
@@ -261,9 +262,9 @@ WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels);
 // The resulting hash is not very sensitive to translations (great for allowing scrolling),
 // but quite sensitive to luminance changes (great for detecting fade transitions).
 //
-// `rgb_pixels` must be a 160 * 144 * 3 array, where each consecutive triplet
-// store the r, g and b values for a pixel.
-WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels);
+// `pixels` must be a array of 160 * 144 values, which can be decoded to RGB triplets
+// using the `rgb_decode` function.
+WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t rgb_decode);
 
 /*---------------- Cleanup ----------------------------------------------*/
 
