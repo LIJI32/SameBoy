@@ -11,12 +11,18 @@
     
     GBView *gbview = (GBView *)self.superview;
     double scale = self.window.backingScaleFactor;
-    glViewport(0, 0, self.bounds.size.width * scale, self.bounds.size.height * scale);
+    glViewport(
+        gbview.viewport.origin.x * scale,
+        gbview.viewport.origin.y * scale,
+        gbview.viewport.size.width * scale,
+        gbview.viewport.size.height * scale);
     
+    glClearColor(0, 0, 0, 1);
+    glClear(GL_COLOR_BUFFER_BIT);
     [self.shader renderBitmap:gbview.currentBuffer
                      previous:gbview.shouldBlendFrameWithPrevious? gbview.previousBuffer : NULL
                         sized:NSMakeSize(GB_get_screen_width(gbview.gb), GB_get_screen_height(gbview.gb))
-                       inSize:self.bounds.size
+                       inRect:gbview.viewport
                         scale:scale];
     glFlush();
 }

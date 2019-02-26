@@ -18,6 +18,7 @@ void main(void) {\n\
 
 @implementation GBGLShader
 {
+    GLuint origin_uniform;
     GLuint resolution_uniform;
     GLuint texture_uniform;
     GLuint previous_texture_uniform;
@@ -50,6 +51,7 @@ void main(void) {\n\
         // Attributes
         position_attribute = glGetAttribLocation(program, "aPosition");
         // Uniforms
+        origin_uniform = glGetUniformLocation(program, "origin");
         resolution_uniform = glGetUniformLocation(program, "output_resolution");
 
         glGenTextures(1, &texture);
@@ -79,22 +81,38 @@ void main(void) {\n\
     return self;
 }
 
-- (void) renderBitmap: (void *)bitmap previous:(void*) previous sized:(NSSize)srcSize inSize:(NSSize)dstSize scale: (double) scale
+- (void) renderBitmap:(void *)bitmap previous:(void*)previous sized:(NSSize)srcSize inRect:(NSRect)dstRect scale:(double)scale
 {
+    // Activate the shader
     glUseProgram(program);
-    glUniform2f(resolution_uniform, dstSize.width * scale, dstSize.height * scale);
+
+    // Set up the output_resolution parameter on the shader
+    glUniform2f(origin_uniform, dstRect.origin.x * scale, dstRect.origin.y * scale);
+    glUniform2f(resolution_uniform, dstRect.size.width * scale, dstRect.size.height * scale);
+
+    // Convert the frame bitmap into a texture
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, srcSize.width, srcSize.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
+
+    // Set up the frame texture on the shader
     glUniform1i(texture_uniform, 0);
+
+    // Set up the mix_previous_uniform parameter on the shader
     glUniform1i(mix_previous_uniform, previous != NULL);
+
     if (previous) {
+        // Set up the previous frame bitmap
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, previous_texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, srcSize.width, srcSize.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, previous);
         glUniform1i(previous_texture_uniform, 1);
     }
+
+    // Configure the output variable
     glBindFragDataLocation(program, 0, "frag_color");
+
+    // Draw the frame on the current GL context, using the shader
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 

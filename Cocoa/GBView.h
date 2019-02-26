@@ -13,5 +13,8 @@
 - (void) createInternalView;
 - (uint32_t *)currentBuffer;
 - (uint32_t *)previousBuffer;
+
+- (NSRect) viewport;
+
 - (void)screenSizeChanged;
 @end

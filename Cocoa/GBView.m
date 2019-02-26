@@ -11,6 +11,7 @@
 @implementation GBView
 {
     uint32_t *image_buffers[3];
+    NSRect viewport;
     unsigned char current_buffer;
     BOOL mouse_hidden;
     NSTrackingArea *tracking_area;
@@ -123,26 +124,30 @@
 
 - (void)setFrame:(NSRect)frame
 {
-    frame = self.superview.frame;
+    frame = self.superview.bounds;
+    [super setFrame:frame];
+
+    // Update viewport
+    viewport = self.bounds;
+
     if (_gb && ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBAspectRatioUnkept"]) {
         double ratio = frame.size.width / frame.size.height;
         double width = GB_get_screen_width(_gb);
         double height = GB_get_screen_height(_gb);
         if (ratio >= width / height) {
             double new_width = round(frame.size.height / height * width);
-            frame.origin.x = floor((frame.size.width - new_width) / 2);
-            frame.size.width = new_width;
-            frame.origin.y = 0;
+            viewport.origin.x = floor((frame.size.width - new_width) / 2);
+            viewport.size.width = new_width;
+            viewport.origin.y = 0;
         }
         else {
             double new_height = round(frame.size.width / width * height);
-            frame.origin.y = floor((frame.size.height - new_height) / 2);
-            frame.size.height = new_height;
-            frame.origin.x = 0;
+            viewport.origin.y = floor((frame.size.height - new_height) / 2);
+            viewport.size.height = new_height;
+            viewport.origin.x = 0;
         }
     }
 
-    [super setFrame:frame];
 }
 
 - (void) flip
@@ -161,6 +166,11 @@
 - (uint32_t *) pixels
 {
     return image_buffers[(current_buffer + 1) % self.numberOfBuffers];
+}
+
+- (NSRect) viewport
+{
+    return viewport;
 }
 
 -(void)keyDown:(NSEvent *)theEvent
