@@ -11,6 +11,7 @@
 @implementation GBView
 {
     CGContextRef image_buffers[3];
+    CGContextRef bg_image_buffers[3];
     CGColorSpaceRef colorSpace;
     NSRect viewport;
     unsigned char current_buffer;
@@ -65,12 +66,18 @@
     if (image_buffers[0]) CGContextRelease(image_buffers[0]);
     if (image_buffers[1]) CGContextRelease(image_buffers[1]);
     if (image_buffers[2]) CGContextRelease(image_buffers[2]);
-
+    if (bg_image_buffers[0]) CGContextRelease(bg_image_buffers[0]);
+    if (bg_image_buffers[1]) CGContextRelease(bg_image_buffers[1]);
+    if (bg_image_buffers[2]) CGContextRelease(bg_image_buffers[2]);
+    
     NSSize bufferSize = NSMakeSize(GB_get_screen_width(_gb), GB_get_screen_height(_gb));
 
     image_buffers[0] = [self createBitmapContextWithSize:bufferSize];
     image_buffers[1] = [self createBitmapContextWithSize:bufferSize];
     image_buffers[2] = [self createBitmapContextWithSize:bufferSize];
+    bg_image_buffers[0] = [self createBitmapContextWithSize:bufferSize];
+    bg_image_buffers[1] = [self createBitmapContextWithSize:bufferSize];
+    bg_image_buffers[2] = [self createBitmapContextWithSize:bufferSize];
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [self setFrame:self.superview.frame];
@@ -125,6 +132,9 @@
     CGContextRelease(image_buffers[0]);
     CGContextRelease(image_buffers[1]);
     CGContextRelease(image_buffers[2]);
+    CGContextRelease(bg_image_buffers[0]);
+    CGContextRelease(bg_image_buffers[1]);
+    CGContextRelease(bg_image_buffers[2]);
     CGColorSpaceRelease(colorSpace);
     
     if (mouse_hidden) {
@@ -203,6 +213,12 @@
 - (NSRect) viewport
 {
     return viewport;
+}
+
+- (uint32_t *) bg_pixels
+{
+    CGContextRef bg_image_buffer = bg_image_buffers[(current_buffer + 1) % self.numberOfBuffers];
+    return CGBitmapContextGetData(bg_image_buffer);
 }
 
 -(void)keyDown:(NSEvent *)theEvent

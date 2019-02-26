@@ -1,11 +1,17 @@
 #import <Cocoa/Cocoa.h>
 #include <Core/gb.h>
+#include <Misc/wide_gb.h>
 #import "GBJoystickListener.h"
 
 @interface GBView<GBJoystickListener> : NSView
 - (void) flip;
-- (uint32_t *) pixels;
+
+// Input buffers where the emulator draws the pixels
+- (uint32_t *) pixels;    // whole screen buffer
+- (uint32_t *) bg_pixels; // BG-only buffer
+
 @property GB_gameboy_t *gb;
+@property wide_gb *wgb;
 @property (nonatomic) BOOL shouldBlendFrameWithPrevious;
 @property (getter=isMouseHidingEnabled) BOOL mouseHidingEnabled;
 @property bool isRewinding;

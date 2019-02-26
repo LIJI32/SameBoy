@@ -1,6 +1,7 @@
 #include <AVFoundation/AVFoundation.h>
 #include <CoreAudio/CoreAudio.h>
 #include <Core/gb.h>
+#include <Misc/wide_gb.h>
 #include "GBAudioClient.h"
 #include "Document.h"
 #include "AppDelegate.h"
@@ -94,7 +95,19 @@ static char *asyncConsoleInput(GB_gameboy_t *gb)
     return ret;
 }
 
-static uint32_t rgbEncode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
+static void rgbDecode(uint32_t pixel, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+    *r = (pixel >> 0)  & 0xFF;
+    *g = (pixel >> 8)  & 0xFF;
+    *b = (pixel >> 16) & 0xFF;
+}
+
+static uint32_t rgbEncode(uint8_t r, uint8_t g, uint8_t b)
+{
+    return (r << 0) | (g << 8) | (b << 16) | 0xFF000000;
+}
+
+static uint32_t gbRgbEncode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
 {
     return (r << 0) | (g << 8) | (b << 16) | 0xFF000000;
 }
@@ -121,6 +134,7 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
 @implementation Document
 {
     GB_gameboy_t gb;
+    wide_gb wgb;
     volatile bool running;
     volatile bool stopping;
     NSConditionLock *has_debugger_input;
@@ -179,7 +193,7 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
     GB_set_input_callback(&gb, (GB_input_callback_t) consoleInput);
     GB_set_async_input_callback(&gb, (GB_input_callback_t) asyncConsoleInput);
     GB_set_color_correction_mode(&gb, (GB_color_correction_mode_t) [[NSUserDefaults standardUserDefaults] integerForKey:@"GBColorCorrection"]);
-    GB_set_rgb_encode_callback(&gb, rgbEncode);
+    GB_set_rgb_encode_callback(&gb, gbRgbEncode);
     GB_set_camera_get_pixel_callback(&gb, cameraGetPixel);
     GB_set_camera_update_request_callback(&gb, cameraRequestUpdate);
     GB_set_highpass_filter_mode(&gb, (GB_highpass_mode_t) [[NSUserDefaults standardUserDefaults] integerForKey:@"GBHighpassFilter"]);
@@ -188,14 +202,29 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
 
 - (void) vblank
 {
+    // Notify WideGB of hardware updates (scroll, window position, background pixels)
+    int scrollX = ((uint8_t *)GB_get_direct_access(&gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCX];
+    int scrollY = ((uint8_t *)GB_get_direct_access(&gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_SCY];
+    int wX = ((uint8_t *)GB_get_direct_access(&gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_WX] - 7;
+    int wY = ((uint8_t *)GB_get_direct_access(&gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_WY];
+    bool is_window_enabled = ((uint8_t *)GB_get_direct_access(&gb, GB_DIRECT_ACCESS_IO, NULL, NULL))[GB_IO_LCDC] & 0x20;
+    WGB_update_hardware_values(&wgb, scrollX, scrollY, wX, wY, is_window_enabled);
+
+    // Update WGB tiles
+    WGB_update_screen(&wgb, self.view.bg_pixels, rgbDecode);
+
     [self.view flip];
+
     GB_set_pixels_output(&gb, self.view.pixels);
+    GB_set_bg_pixels_output(&gb, self.view.bg_pixels);
+
     if (self.vramWindow.isVisible) {
         dispatch_async(dispatch_get_main_queue(), ^{
             self.view.mouseHidingEnabled = (self.mainWindow.styleMask & NSFullScreenWindowMask) != 0;
             [self reloadVRAMData: nil];
         });
     }
+
     if (self.view.isRewinding) {
         rewind = true;
     }
@@ -252,6 +281,9 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
     running = false;
     while (stopping);
     GB_debugger_set_disabled(&gb, false);
+
+    NSString *wgbSavePath = [[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"widegb"];
+    WGB_save_to_path(&wgb, [wgbSavePath UTF8String], rgbDecode);
 }
 
 - (void) loadBootROM
@@ -326,6 +358,7 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
 {
     [cameraSession stopRunning];
     GB_free(&gb);
+    WGB_destroy(&wgb);
     if (cameraImage) {
         CVBufferRelease(cameraImage);
     }
@@ -497,6 +530,12 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
         rom_warning_issued = true;
         [GBWarningPopover popoverWithContents:rom_warnings onWindow:self.mainWindow];
     }
+
+    WGB_destroy(&wgb);
+
+    NSString *wgbSavePath = [[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"widegb"];
+    wgb = WGB_init_from_path([wgbSavePath UTF8String], rgbEncode);
+    self.view.wgb = &wgb;
 }
 
 - (void)close
