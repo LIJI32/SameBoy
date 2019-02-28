@@ -17,9 +17,12 @@
 @property bool isRewinding;
 @property NSView *internalView;
 - (void) createInternalView;
+
+// Output composited buffers
 - (CGContextRef)currentBuffer;
 - (CGContextRef)previousBuffer;
 
+// The rectangle in which the actual emulated screen is displayed (in view cordinates)
 - (NSRect) viewport;
 
 - (void)screenSizeChanged;

@@ -64,7 +64,6 @@ static const vector_float2 rect[] =
                                                    length:sizeof(output_resolution)
                                                   options:MTLResourceStorageModeShared];
     
-    output_resolution = (simd_float2){view.drawableSize.width, view.drawableSize.height};
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(loadShader) name:@"GBFilterChanged" object:nil];
     [self loadShader];
 }
@@ -122,7 +121,6 @@ static const vector_float2 rect[] =
 
 - (void)mtkView:(nonnull MTKView *)view drawableSizeWillChange:(CGSize)size
 {
-    output_resolution = (vector_float2){size.width, size.height};
     dispatch_async(dispatch_get_main_queue(), ^{
         [(MTKView *)self.internalView draw];
     });
@@ -157,15 +155,22 @@ static const vector_float2 rect[] =
 
     if(render_pass_descriptor != nil)
     {
+        bool isWidescreenEnabled = true;
+        NSRect viewport = isWidescreenEnabled ? self.bounds : self.viewport;
+        double scale = self.window.backingScaleFactor;
+        output_resolution = (vector_float2){viewport.size.width * scale, viewport.size.height * scale};
+
         *(bool *)[mix_previous_buffer contents] = [self shouldBlendFrameWithPrevious];
         *(vector_float2 *)[output_resolution_buffer contents] = output_resolution;
 
         id<MTLRenderCommandEncoder> render_encoder =
             [command_buffer renderCommandEncoderWithDescriptor:render_pass_descriptor];
         
-        [render_encoder setViewport:(MTLViewport){0.0, 0.0,
-            output_resolution.x,
-            output_resolution.y,
+        [render_encoder setViewport:(MTLViewport){
+            viewport.origin.x * scale,
+            viewport.origin.y * scale,
+            viewport.size.width * scale,
+            viewport.size.height * scale,
             -1.0, 1.0}];
         
         [render_encoder setRenderPipelineState:pipeline_state];
