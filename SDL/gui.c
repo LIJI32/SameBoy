@@ -46,7 +46,7 @@ SDL_Surface* sdl_surface_for_wgb_tile(int tile_index)
 {
     SDL_Surface *surface = wgb_surfaces[tile_index];
     if (surface == NULL) {
-        surface = SDL_CreateRGBSurfaceWithFormat(0, 160, 144, 32, pixel_format->format);
+        surface = SDL_CreateRGBSurfaceWithFormat(0, WIDE_GB_TILE_WIDTH, WIDE_GB_TILE_HEIGHT, 32, pixel_format->format);
         if (surface == NULL || SDL_MUSTLOCK(surface)) {
             fprintf(stderr, "Failed to create SDL surface for tile %i\n", tile_index);
         }

@@ -52,7 +52,7 @@ WGB_tile WGB_tile_init(WGB_tile_position position)
 {
     WGB_tile new = {
         .position = position,
-        .pixel_buffer = calloc(160 * 144, sizeof(uint32_t))
+        .pixel_buffer = calloc(WIDE_GB_TILE_WIDTH * WIDE_GB_TILE_HEIGHT, sizeof(uint32_t))
     };
     return new;
 }

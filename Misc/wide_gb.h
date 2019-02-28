@@ -94,6 +94,8 @@
 
 #define WIDE_GB_MAX_TILES 512
 #define WIDE_GB_MAX_SCENES 512
+#define WIDE_GB_TILE_WIDTH 160
+#define WIDE_GB_TILE_HEIGHT 144
 
 // The position of a screen-wide tile, as a number of screens relative
 // to the origin.
