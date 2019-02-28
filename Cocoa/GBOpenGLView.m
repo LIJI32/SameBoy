@@ -19,9 +19,9 @@
     
     glClearColor(0, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    [self.shader renderBitmap:gbview.currentBuffer
-                     previous:gbview.shouldBlendFrameWithPrevious? gbview.previousBuffer : NULL
-                        sized:NSMakeSize(GB_get_screen_width(gbview.gb), GB_get_screen_height(gbview.gb))
+    [self.shader renderBitmap:CGBitmapContextGetData(gbview.currentBuffer)
+                     previous:gbview.shouldBlendFrameWithPrevious? CGBitmapContextGetData(gbview.previousBuffer) : NULL
+                        sized:NSMakeSize(CGBitmapContextGetWidth(gbview.currentBuffer), CGBitmapContextGetHeight(gbview.currentBuffer))
                        inRect:gbview.viewport
                         scale:scale];
     glFlush();

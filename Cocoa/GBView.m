@@ -10,7 +10,8 @@
 
 @implementation GBView
 {
-    uint32_t *image_buffers[3];
+    CGContextRef image_buffers[3];
+    CGColorSpaceRef colorSpace;
     NSRect viewport;
     unsigned char current_buffer;
     BOOL mouse_hidden;
@@ -46,6 +47,7 @@
 - (void) _init
 {    
     _shouldBlendFrameWithPrevious = 1;
+    colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ratioKeepingChanged) name:@"GBAspectChanged" object:nil];
     tracking_area = [ [NSTrackingArea alloc] initWithRect:(NSRect){}
                                                   options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect
@@ -60,19 +62,46 @@
 
 - (void)screenSizeChanged
 {
-    if (image_buffers[0]) free(image_buffers[0]);
-    if (image_buffers[1]) free(image_buffers[1]);
-    if (image_buffers[2]) free(image_buffers[2]);
-    
-    size_t buffer_size = sizeof(image_buffers[0][0]) * GB_get_screen_width(_gb) * GB_get_screen_height(_gb);
-    
-    image_buffers[0] = malloc(buffer_size);
-    image_buffers[1] = malloc(buffer_size);
-    image_buffers[2] = malloc(buffer_size);
+    if (image_buffers[0]) CGContextRelease(image_buffers[0]);
+    if (image_buffers[1]) CGContextRelease(image_buffers[1]);
+    if (image_buffers[2]) CGContextRelease(image_buffers[2]);
+
+    NSSize bufferSize = NSMakeSize(GB_get_screen_width(_gb), GB_get_screen_height(_gb));
+
+    image_buffers[0] = [self createBitmapContextWithSize:bufferSize];
+    image_buffers[1] = [self createBitmapContextWithSize:bufferSize];
+    image_buffers[2] = [self createBitmapContextWithSize:bufferSize];
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [self setFrame:self.superview.frame];
     });
+}
+
+- (CGContextRef) createBitmapContextWithSize:(NSSize)size
+{
+    return [self createBitmapContextWithSize:size buffer: NULL];
+}
+
+- (CGContextRef) createBitmapContextWithSize:(NSSize)size buffer:(void*)buffer
+{
+    // Use an RGBA pixel format
+    size_t bitsPerComponent = 8;
+    size_t bytesPerPixel = sizeof (uint32_t);
+    uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
+
+    CGContextRef context = CGBitmapContextCreate(
+        buffer,
+        size.width,
+        size.height,
+        bitsPerComponent,
+        bytesPerPixel * size.width,
+        colorSpace,
+        bitmapInfo);
+    
+    if (!context) {
+        NSLog(@"Failed to create context with size %@", NSStringFromSize(size));
+    }
+    return context;
 }
 
 - (void) ratioKeepingChanged
@@ -93,9 +122,11 @@
 
 - (void)dealloc
 {
-    free(image_buffers[0]);
-    free(image_buffers[1]);
-    free(image_buffers[2]);
+    CGContextRelease(image_buffers[0]);
+    CGContextRelease(image_buffers[1]);
+    CGContextRelease(image_buffers[2]);
+    CGColorSpaceRelease(colorSpace);
+    
     if (mouse_hidden) {
         mouse_hidden = false;
         [NSCursor unhide];
@@ -165,7 +196,8 @@
 
 - (uint32_t *) pixels
 {
-    return image_buffers[(current_buffer + 1) % self.numberOfBuffers];
+    CGContextRef image_buffer = image_buffers[(current_buffer + 1) % self.numberOfBuffers];
+    return CGBitmapContextGetData(image_buffer);
 }
 
 - (NSRect) viewport
@@ -411,12 +443,12 @@
     previousModifiers = event.modifierFlags;
 }
 
-- (uint32_t *)currentBuffer
+- (CGContextRef)currentBuffer
 {
     return image_buffers[current_buffer];
 }
 
-- (uint32_t *)previousBuffer
+- (CGContextRef)previousBuffer
 {
     return image_buffers[(current_buffer + 2) % self.numberOfBuffers];
 }

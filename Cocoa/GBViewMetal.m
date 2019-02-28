@@ -143,12 +143,12 @@ static const vector_float2 rect[] =
 
     [texture replaceRegion:region
                mipmapLevel:0
-                 withBytes:[self currentBuffer]
+                 withBytes:CGBitmapContextGetData(self.currentBuffer)
                bytesPerRow:texture.width * 4];
     if ([self shouldBlendFrameWithPrevious]) {
         [previous_texture replaceRegion:region
                             mipmapLevel:0
-                              withBytes:[self previousBuffer]
+                              withBytes:CGBitmapContextGetData(self.previousBuffer)
                             bytesPerRow:texture.width * 4];
     }
     

@@ -11,8 +11,8 @@
 @property bool isRewinding;
 @property NSView *internalView;
 - (void) createInternalView;
-- (uint32_t *)currentBuffer;
-- (uint32_t *)previousBuffer;
+- (CGContextRef)currentBuffer;
+- (CGContextRef)previousBuffer;
 
 - (NSRect) viewport;
 
