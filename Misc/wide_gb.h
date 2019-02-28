@@ -1,16 +1,15 @@
 #ifndef wide_gb_h
 #define wide_gb_h
 
-#include <SDL2/SDL.h>
 #include <stdbool.h>
 #include "uthash.h"
 
 // This file implements an engine for recording and displaying
 // extended scenes on a canvas in a Game Boy emulator, in a
-// library-agnostic way (except for geometric SDL data-types).
+// library-agnostic way.
 //
 // It provides:
-//  - basic data types
+//  - basic data types (equal to the SDL geometric types if the SDL is included)
 //  - conversion of coordinates between screen-space and logical-scroll space
 //  - screen-updating logic
 //
@@ -97,6 +96,15 @@
 #define WIDE_GB_TILE_WIDTH 160
 #define WIDE_GB_TILE_HEIGHT 144
 
+#ifdef SDL_INIT_EVERYTHING
+#define WGB_Rect SDL_Rect
+#define WGB_Point SDL_Point
+#else
+typedef struct { int x, y, w, h; } WGB_Rect;
+typedef struct { int x, y; } WGB_Point;
+#endif
+
+
 // The position of a screen-wide tile, as a number of screens relative
 // to the origin.
 typedef struct {
@@ -114,7 +122,7 @@ typedef struct {
 // A scene is a group of connected tiles.
 typedef struct {
     int id;
-    SDL_Point scroll;
+    WGB_Point scroll;
     WGB_tile tiles[WIDE_GB_MAX_TILES];
     size_t tiles_count;
     time_t created_at;
@@ -126,7 +134,7 @@ typedef uint64_t WGB_perceptual_hash;
 // A scene frame connects the hash of a specific frame to the scene it belongs to.
 typedef struct {
     int scene_id;
-    SDL_Point scene_scroll;
+    WGB_Point scene_scroll;
     WGB_exact_hash frame_hash;
     UT_hash_handle hh;
 } WGB_scene_frame;
@@ -134,9 +142,9 @@ typedef struct {
 // Main WideGB struct.
 // Initialize with WGB_init().
 typedef struct {
-    SDL_Point hardware_scroll;
-    SDL_Point scroll_delta;
-    SDL_Rect window_rect;
+    WGB_Point hardware_scroll;
+    WGB_Point scroll_delta;
+    WGB_Rect window_rect;
     bool window_enabled;
     WGB_exact_hash frame_hash;
     WGB_perceptual_hash frame_perceptual_hash;
@@ -203,10 +211,10 @@ WGB_tile* WGB_tile_at_index(wide_gb *wgb, int index);
 // Returns true if a tile is visible in the current viewport.
 // Viewport is in screen-space (i.e. like { -160, -160, 480, 432 }
 // for a window twice as large as the console screen).
-bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, SDL_Rect viewport);
+bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, WGB_Rect viewport);
 
 // Returns the rect of the tile in screen-space
-SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
+WGB_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
 
 // Layout screen (optional)
 
@@ -231,21 +239,22 @@ SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile);
 //  - area overlapped by window (if the Game Boy window is enabled)
 // Depending on how the window is positionned,
 // some of these areas may have a width or a height of 0.
-void WGB_get_screen_layout(wide_gb *wgb, SDL_Rect *bg_rect1, SDL_Rect *bg_rect2, SDL_Rect *wnd_rect);
+void WGB_get_screen_layout(wide_gb *wgb, WGB_Rect *bg_rect1, WGB_Rect *bg_rect2, WGB_Rect *wnd_rect);
 
 // Return true if the window is enabled and entirely covering the screen.
 // Some games slighly shake the window at times (e.g. Pokémon):
 // you can use `tolered_pixels` to return `true` even if the window is not
 // entirerly overlapping the screen.
-bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels);
+
+bool WGB_is_window_covering_screen(wide_gb *wgb, unsigned int tolered_pixels);
 
 /*---------------- Geometry helpers --------------------------------------*/
 
-SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset);
-SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy);
-SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy);
-bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point);
-bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2);
+WGB_Point WGB_offset_point(WGB_Point point, WGB_Point offset);
+WGB_Rect WGB_offset_rect(WGB_Rect rect, int dx, int dy);
+WGB_Rect WGB_scale_rect(WGB_Rect rect, double dx, double dy);
+bool WGB_rect_contains_point(WGB_Rect rect, WGB_Point point);
+bool WGB_rect_intersects_rect(WGB_Rect rect1, WGB_Rect rect2);
 
 /*---------------- Cleanup ----------------------------------------------*/
 

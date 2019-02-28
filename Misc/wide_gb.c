@@ -38,11 +38,11 @@ WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels);
 WGB_perceptual_hash WGB_added_difference_hash(wide_gb *wgb, uint8_t *rgb_pixels);
 int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y);
 bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position position2);
-WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point);
-SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile);
+WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, WGB_Point screen_point);
+WGB_Point WGB_tile_point_from_screen_point(wide_gb *wgb, WGB_Point screen_point, WGB_tile_position target_tile);
 void WGB_tile_write_to_file(WGB_tile *tile, char *tile_path, WGB_rgb_decode_callback_t rgb_decode);
 void WGB_load_tile_from_file(WGB_tile *tile, char *path, WGB_rgb_encode_callback_t rgb_encode);
-void WGB_store_frame_hash(wide_gb *wgb, WGB_exact_hash hash, int scene_id, SDL_Point scene_scroll);
+void WGB_store_frame_hash(wide_gb *wgb, WGB_exact_hash hash, int scene_id, WGB_Point scene_scroll);
 int WGB_IO_rmdir(const char *path);
 void WGB_IO_write_PPM(char *filename, int width, int height, uint8_t *pixels);
 
@@ -150,7 +150,7 @@ wide_gb WGB_init_from_path(const char *save_path, WGB_rgb_encode_callback_t rgb_
             // Parse the line
             WGB_exact_hash frame_hash;
             int scene_id;
-            SDL_Point scene_scroll;
+            WGB_Point scene_scroll;
             sscanf(line, "%llu,%i,%i,%i", &frame_hash, &scene_id, &scene_scroll.x, &scene_scroll.y);
 
             // Create a new scene frame
@@ -366,7 +366,7 @@ bool WGB_has_scene_changed(wide_gb *wgb, WGB_perceptual_hash frame_perceptual_ha
     // In either case, triggering a scene change starts the scene matching sequence, which allow WGB
     // to recognize the frame and map the new hardware scroll value to the logical scroll value.
     bool is_hardware_scroll_at_origin = (wgb->hardware_scroll.x == 0 && wgb->hardware_scroll.y == 0);
-    SDL_Point scroll_distance = { abs(wgb->scroll_delta.x), abs(wgb->scroll_delta.y) };
+    WGB_Point scroll_distance = { abs(wgb->scroll_delta.x), abs(wgb->scroll_delta.y) };
     bool scroll_jumped = MAX(scroll_distance.x, scroll_distance.y) > WGB_SCROLL_WRAP_AROUND_THRESHOLD;
     if (is_hardware_scroll_at_origin && scroll_jumped) {
         WGB_DEBUG_LOG("WideGB scene changed (scroll jumped to origin by %i, %i)\n\n", scroll_distance.x, scroll_distance.y);
@@ -441,7 +441,7 @@ void WGB_restore_scene_for_frame(wide_gb *wgb, WGB_scene_frame *scene_frame)
     WGB_delete_scene(wgb, previous_scene);
 }
 
-void WGB_store_frame_hash(wide_gb *wgb, WGB_exact_hash hash, int scene_id, SDL_Point scene_scroll)
+void WGB_store_frame_hash(wide_gb *wgb, WGB_exact_hash hash, int scene_id, WGB_Point scene_scroll)
 {
     // Attempt to find an existing scene_frame for this frame
     WGB_scene_frame *scene_frame;
@@ -463,7 +463,7 @@ double WGB_is_scene_young(WGB_scene *scene)
     return difftime(time(NULL), scene->created_at) < WGB_YOUNG_SCENE_DELAY;
 }
 
-WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel)
+WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, WGB_Point pixel_pos, uint32_t pixel)
 {
     // Retrieve the tile for this pixel
     WGB_tile_position tile_pos = WGB_tile_position_from_screen_point(wgb, pixel_pos);
@@ -475,7 +475,7 @@ WGB_tile* WGB_write_tile_pixel(wide_gb *wgb, SDL_Point pixel_pos, uint32_t pixel
     }
 
     // Convert the pixel position from screen-space to tile-space
-    SDL_Point pixel_destination = WGB_tile_point_from_screen_point(wgb, pixel_pos, tile_pos);
+    WGB_Point pixel_destination = WGB_tile_point_from_screen_point(wgb, pixel_pos, tile_pos);
 
     tile->pixel_buffer[pixel_destination.x + pixel_destination.y * 160] = pixel;
 
@@ -490,11 +490,11 @@ void WGB_update_hardware_values(wide_gb *wgb, int scx, int scy, int wx, int wy, 
     // Update hardware scroll registers
     //
 
-    SDL_Point previous_hardware_scroll = wgb->hardware_scroll;
-    SDL_Point new_hardware_scroll = { scx, scy };
+    WGB_Point previous_hardware_scroll = wgb->hardware_scroll;
+    WGB_Point new_hardware_scroll = { scx, scy };
 
     // Compute difference with the previous scroll position
-    SDL_Point delta = {
+    WGB_Point delta = {
         .x = new_hardware_scroll.x - previous_hardware_scroll.x,
         .y = new_hardware_scroll.y - previous_hardware_scroll.y
     };
@@ -526,7 +526,7 @@ void WGB_update_hardware_values(wide_gb *wgb, int scx, int scy, int wx, int wy, 
     //
 
     wgb->window_enabled = is_window_enabled;
-    wgb->window_rect = (SDL_Rect) {
+    wgb->window_rect = (WGB_Rect) {
         .x = MIN(wx, 160),
         .y = MIN(wy, 144),
         .w = MAX(0, 160 - wx),
@@ -603,7 +603,7 @@ void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t
         // For each frame pixel…
         for (int pixel_y = 0; pixel_y < 144; pixel_y++) {
             for (int pixel_x = 0; pixel_x < 160; pixel_x++) {
-                SDL_Point pixel_pos = { pixel_x, pixel_y };
+                WGB_Point pixel_pos = { pixel_x, pixel_y };
                 // Skip pixels in window
                 if (wgb->window_enabled && WGB_rect_contains_point(wgb->window_rect, pixel_pos)) {
                     continue;
@@ -620,15 +620,15 @@ void WGB_update_screen(wide_gb *wgb, uint32_t *pixels, WGB_rgb_decode_callback_t
 
 /*---------------------- Laying out tiles --------------------------------*/
 
-bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, SDL_Rect viewport)
+bool WGB_is_tile_visible(wide_gb *wgb, WGB_tile *tile, WGB_Rect viewport)
 {
-    SDL_Rect tile_rect = WGB_rect_for_tile(wgb, tile);
+    WGB_Rect tile_rect = WGB_rect_for_tile(wgb, tile);
     return WGB_rect_intersects_rect(tile_rect, viewport);
 }
 
-SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
+WGB_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
 {
-    return (SDL_Rect) {
+    return (WGB_Rect) {
         .x = tile->position.horizontal * 160 - wgb->active_scene->scroll.x,
         .y = tile->position.vertical   * 144 - wgb->active_scene->scroll.y,
         .w = 160,
@@ -638,9 +638,9 @@ SDL_Rect WGB_rect_for_tile(wide_gb *wgb, WGB_tile *tile)
 
 /*---------------------- Laying out screen -------------------------------*/
 
-void WGB_get_screen_layout(wide_gb *wgb, SDL_Rect *bg_rect1, SDL_Rect *bg_rect2, SDL_Rect *wnd_rect)
+void WGB_get_screen_layout(wide_gb *wgb, WGB_Rect *bg_rect1, WGB_Rect *bg_rect2, WGB_Rect *wnd_rect)
 {
-    SDL_Rect window_rect = wgb->window_enabled ? wgb->window_rect : (SDL_Rect){ 160, 144, 0, 0 };
+    WGB_Rect window_rect = wgb->window_enabled ? wgb->window_rect : (WGB_Rect){ 160, 144, 0, 0 };
 
     bg_rect1->x = 0;
     bg_rect1->y = 0;
@@ -658,7 +658,7 @@ void WGB_get_screen_layout(wide_gb *wgb, SDL_Rect *bg_rect1, SDL_Rect *bg_rect2,
     wnd_rect->h = window_rect.h;
 }
 
-bool WGB_is_window_covering_screen(wide_gb *wgb, uint tolered_pixels)
+bool WGB_is_window_covering_screen(wide_gb *wgb, unsigned int tolered_pixels)
 {
     if (wgb->window_enabled) {
         return (wgb->window_rect.x <= tolered_pixels) && (wgb->window_rect.y <= tolered_pixels);
@@ -690,7 +690,7 @@ WGB_exact_hash WGB_frame_hash(wide_gb *wgb, uint8_t *rgb_pixels)
     WGB_exact_hash hash = 0;
     for (int y = 0; y < 144; y++) {
         for (int x = 0; x < 160; x++) {
-            if (ignore_pixels_in_window && WGB_rect_contains_point(wgb->window_rect, (SDL_Point) { x, y })) {
+            if (ignore_pixels_in_window && WGB_rect_contains_point(wgb->window_rect, (WGB_Point) { x, y })) {
                 continue;
             }
             size_t rgb_i = (x + y * 160) * 3;
@@ -854,21 +854,21 @@ void WGB_IO_write_PPM(char *filename, int width, int height, uint8_t *pixels) {
 
 /*---------------- Geometry utils --------------------------------------*/
 
-SDL_Point WGB_offset_point(SDL_Point point, SDL_Point offset)
+WGB_Point WGB_offset_point(WGB_Point point, WGB_Point offset)
 {
     point.x += offset.x;
     point.y += offset.y;
     return point;
 }
 
-SDL_Rect WGB_offset_rect(SDL_Rect rect, int dx, int dy)
+WGB_Rect WGB_offset_rect(WGB_Rect rect, int dx, int dy)
 {
     rect.x += dx;
     rect.y += dy;
     return rect;
 }
 
-SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy)
+WGB_Rect WGB_scale_rect(WGB_Rect rect, double dx, double dy)
 {
     rect.x *= dx;
     rect.y *= dy;
@@ -877,7 +877,7 @@ SDL_Rect WGB_scale_rect(SDL_Rect rect, double dx, double dy)
     return rect;
 }
 
-bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point)
+bool WGB_rect_contains_point(WGB_Rect rect, WGB_Point point)
 {
     return (rect.x <= point.x
         && point.x <= rect.x + rect.w
@@ -885,7 +885,7 @@ bool WGB_rect_contains_point(SDL_Rect rect, SDL_Point point)
         && point.y <= rect.y + rect.h);
 }
 
-bool WGB_rect_intersects_rect(SDL_Rect rect1, SDL_Rect rect2)
+bool WGB_rect_intersects_rect(WGB_Rect rect1, WGB_Rect rect2)
 {
   if (rect2.x < rect1.x + rect1.w && rect1.x < rect2.x + rect2.w && rect2.y < rect1.y + rect1.h)
     return rect1.y < rect2.y + rect2.h;
@@ -899,7 +899,7 @@ bool WGB_tile_position_equal_to(WGB_tile_position position1, WGB_tile_position p
             position1.vertical == position2.vertical);
 }
 
-WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point screen_point)
+WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, WGB_Point screen_point)
 {
     return (WGB_tile_position) {
         .horizontal = FLOOR_DIV((wgb->active_scene->scroll.x + screen_point.x), 160),
@@ -907,9 +907,9 @@ WGB_tile_position WGB_tile_position_from_screen_point(wide_gb *wgb, SDL_Point sc
     };
 }
 
-SDL_Point WGB_tile_point_from_screen_point(wide_gb *wgb, SDL_Point screen_point, WGB_tile_position target_tile)
+WGB_Point WGB_tile_point_from_screen_point(wide_gb *wgb, WGB_Point screen_point, WGB_tile_position target_tile)
 {
-    SDL_Point tile_origin = {
+    WGB_Point tile_origin = {
         .x = wgb->active_scene->scroll.x - target_tile.horizontal * 160,
         .y = wgb->active_scene->scroll.y - target_tile.vertical   * 144
     };
