@@ -12,6 +12,7 @@
 
 @property GB_gameboy_t *gb;
 @property wide_gb *wgb;
+
 @property (nonatomic) BOOL shouldBlendFrameWithPrevious;
 @property (getter=isMouseHidingEnabled) BOOL mouseHidingEnabled;
 @property bool isRewinding;

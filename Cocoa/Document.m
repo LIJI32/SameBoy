@@ -335,6 +335,8 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
     /* Reload the ROM, SAV and SYM files */
     [self loadROM];
 
+    self.view.wgb = &wgb;
+
     [self start];
 
     if (hex_controller) {

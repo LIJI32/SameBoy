@@ -28,7 +28,7 @@ static const vector_float2 rect[] =
     return false;
 }
 
-- (void) allocateTextures
+- (void) allocateTexturesForSize:(NSSize)size
 {
     if (!device) return;
     
@@ -36,8 +36,8 @@ static const vector_float2 rect[] =
     
     texture_descriptor.pixelFormat = MTLPixelFormatRGBA8Unorm;
     
-    texture_descriptor.width = GB_get_screen_width(self.gb);
-    texture_descriptor.height = GB_get_screen_height(self.gb);
+    texture_descriptor.width = size.width;
+    texture_descriptor.height = size.height;
     
     texture = [device newTextureWithDescriptor:texture_descriptor];
     previous_texture = [device newTextureWithDescriptor:texture_descriptor];
@@ -129,9 +129,13 @@ static const vector_float2 rect[] =
 - (void)drawInMTKView:(nonnull MTKView *)view
 {
     if (!(view.window.occlusionState & NSWindowOcclusionStateVisible)) return;
-    if (texture.width  != GB_get_screen_width(self.gb) ||
-        texture.height != GB_get_screen_height(self.gb)) {
-        [self allocateTextures];
+
+    CGContextRef buffer = self.currentBuffer;
+    NSSize bufferDimensions = NSMakeSize(CGBitmapContextGetWidth(buffer), CGBitmapContextGetHeight(buffer));
+    
+    if (texture.width  != bufferDimensions.width ||
+        texture.height != bufferDimensions.height) {
+        [self allocateTexturesForSize:bufferDimensions];
     }
     
     MTLRegion region = {
@@ -141,7 +145,7 @@ static const vector_float2 rect[] =
 
     [texture replaceRegion:region
                mipmapLevel:0
-                 withBytes:CGBitmapContextGetData(self.currentBuffer)
+                 withBytes:CGBitmapContextGetData(buffer)
                bytesPerRow:texture.width * 4];
     if ([self shouldBlendFrameWithPrevious]) {
         [previous_texture replaceRegion:region

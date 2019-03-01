@@ -1,4 +1,5 @@
 #import <Carbon/Carbon.h>
+#import <Misc/wide_gb.h>
 #import "GBView.h"
 #import "GBViewGL.h"
 #import "GBViewMetal.h"
@@ -8,12 +9,17 @@
 #define JOYSTICK_HIGH 0x4000
 #define JOYSTICK_LOW 0x3800
 
+
+NSRect NSRectFromWGBRect(WGB_Rect rect) { return NSMakeRect(rect.x, rect.y, rect.w, rect.h); }
+WGB_Rect WGBRectFromNSRect(NSRect rect) { return (WGB_Rect) { rect.origin.x, rect.origin.y, rect.size.width, rect.size.height }; }
+
 @implementation GBView
 {
     CGContextRef image_buffers[3];
     CGContextRef bg_image_buffers[3];
     CGContextRef composited_buffers[3];
     CGColorSpaceRef colorSpace;
+    NSMutableDictionary *tileContexts;
     NSRect viewport;
     bool needsCompositing;
     unsigned char current_buffer;
@@ -51,6 +57,7 @@
 {    
     _shouldBlendFrameWithPrevious = 1;
     colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
+    tileContexts = [NSMutableDictionary new];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ratioKeepingChanged) name:@"GBAspectChanged" object:nil];
     tracking_area = [ [NSTrackingArea alloc] initWithRect:(NSRect){}
                                                   options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect
@@ -82,11 +89,17 @@
     bg_image_buffers[2] = [self createBitmapContextWithSize:bufferSize];
     
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self setFrame:self.superview.frame];
+        [self setFrame:self.superview.bounds];
     });
 }
 
 - (CGContextRef) createBitmapContextWithSize:(NSSize)size
+{
+    // Let the API allocate memory for the buffer by itself
+    return [self createBitmapContextWithSize:size data:NULL];
+}
+
+- (CGContextRef) createBitmapContextWithSize:(NSSize)size data:(void*)data
 {  
     // Use an RGBA pixel format
     size_t bitsPerComponent = 8;
@@ -94,7 +107,7 @@
     uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
 
     CGContextRef context = CGBitmapContextCreate(
-        NULL, // let the API allocate the buffer itself
+        data,
         size.width,
         size.height,
         bitsPerComponent,
@@ -136,7 +149,11 @@
     CGContextRelease(composited_buffers[1]);
     CGContextRelease(composited_buffers[2]);
     CGColorSpaceRelease(colorSpace);
-    
+
+    for (NSValue *contextValue in [tileContexts allValues]) {
+        CGContextRelease(contextValue.pointerValue);
+    }
+
     if (mouse_hidden) {
         mouse_hidden = false;
         [NSCursor unhide];
@@ -194,10 +211,12 @@
     if (composited_buffers[1]) CGContextRelease(composited_buffers[1]);
     if (composited_buffers[2]) CGContextRelease(composited_buffers[2]);
 
-    NSRect viewRectInScreenSpace = [self screenRectFromView:frame];
-    composited_buffers[0] = [self createBitmapContextWithSize:viewRectInScreenSpace.size];
-    composited_buffers[1] = [self createBitmapContextWithSize:viewRectInScreenSpace.size];
-    composited_buffers[2] = [self createBitmapContextWithSize:viewRectInScreenSpace.size];
+    NSSize compositedBufferSize = self.widescreenEnabled ? [self screenRectFromView:frame].size : [self screenRectFromView:viewport].size;
+    composited_buffers[0] = [self createBitmapContextWithSize:compositedBufferSize];
+    composited_buffers[1] = [self createBitmapContextWithSize:compositedBufferSize];
+    composited_buffers[2] = [self createBitmapContextWithSize:compositedBufferSize];
+
+    [self setNeedsCompositing];
 }
 
 - (void) flip
@@ -473,42 +492,26 @@
     needsCompositing = true;
 }
 
+- (CGContextRef) contextForTile:(WGB_tile*)tile atIndex:(uint)tileIndex
+{
+    NSValue *tileValue = [NSValue valueWithPointer:tile];
+    NSValue *contextValue = tileContexts[tileValue];
+    
+    // Create a context for the tile if none exist yet
+    if (!contextValue) {
+        CGContextRef context = [self createBitmapContextWithSize:NSMakeSize(WIDE_GB_TILE_WIDTH, WIDE_GB_TILE_HEIGHT) data:tile->pixel_buffer];
+        contextValue = [NSValue valueWithPointer:context];
+        tileContexts[tileValue] = contextValue;
+    }
+
+    return contextValue.pointerValue;
+}
+
 - (CGContextRef)currentBuffer
 {
     if (needsCompositing && _gb) {
         needsCompositing = false;
-
-        NSRect viewRectInScreenSpace = [self screenRectFromView:self.bounds];
-        NSRect viewRectInContextSpace = [self contextRectFromScreen:viewRectInScreenSpace];
-        NSRect viewportInScreenSpace = [self screenRectFromView:viewport];
-        NSRect viewportInContextSpace = [self contextRectFromScreen:viewportInScreenSpace];
-
-        CGContextRef outputContext = composited_buffers[current_buffer];
-
-        // Fill the background color
-        NSColor* backgroundColor = NSColor.blackColor;
-        CGContextSetFillColorWithColor(outputContext, backgroundColor.CGColor);
-        CGContextFillRect(outputContext, viewRectInContextSpace);
-
-        // TODO: draw tiles
-
-        // for (tile in visibleTiles) {
-        //     CGImageRef tileImage = [self imageForTile:tile];
-        //     if (!tileImage || tile.dirty) {
-        //         // We want to save the CGImage for later: load it using a data provider
-        //         CGDataProviderRef tileDataProvider = CGDataProviderCreateWithData(tile->pixels)
-        //         CGImageRef tileImage = CGImageCreate(160, 144, tileDataProvider)
-        //         [sel setImage: tileImage forTile:tile];
-        //     }
-        //     CGContextDrawImage(_outputContext, tileRect, tileImage);
-        // }
-
-        // Draw the screen
-        CGContextRef screenContext = image_buffers[current_buffer];
-        CGImageRef screenImage = CGBitmapContextCreateImage(screenContext); // won't copy until a write
-
-        CGContextDrawImage(outputContext, viewportInContextSpace, screenImage);
-        CGImageRelease(screenImage);
+        [self composeScreen:image_buffers[current_buffer] toContext:composited_buffers[current_buffer]];
     }
 
     return composited_buffers[current_buffer];
@@ -517,6 +520,53 @@
 - (CGContextRef)previousBuffer
 {
     return composited_buffers[(current_buffer + 2) % self.numberOfBuffers];
+}
+
+- (void) composeScreen:(CGContextRef)screenContext toContext:(CGContextRef)outputContext
+{
+    NSRect viewRectInScreenSpace = [self screenRectFromView:self.bounds];
+    NSRect viewRectInContextSpace = [self contextRectFromScreen:viewRectInScreenSpace];
+    NSRect viewportInScreenSpace = [self screenRectFromView:viewport];
+    NSRect viewportInContextSpace = [self contextRectFromScreen:viewportInScreenSpace];
+
+    // Fill the background color
+    NSColor* backgroundColor = NSColor.blackColor;
+    CGContextSetFillColorWithColor(outputContext, backgroundColor.CGColor);
+    CGContextFillRect(outputContext, viewRectInContextSpace);
+
+    // Draw tiles
+    bool isWideGBEnabled = true;
+    if (isWideGBEnabled) {
+        WGB_Rect wgbViewRectInScreenSpace = WGBRectFromNSRect(viewRectInScreenSpace);
+        // For each tile…
+        size_t tiles_count = WGB_tiles_count(_wgb);
+        for (int i = 0; i < tiles_count; i++) {
+            WGB_tile *tile = WGB_tile_at_index(_wgb, i);
+            // Culling: skip non-visible tiles
+            if (!WGB_is_tile_visible(_wgb, tile, wgbViewRectInScreenSpace)) {
+                continue;
+            }
+            // Draw the tile
+            //
+            // (We need a CGImage to draw to the outputContext.
+            // Ideally we would cache the CGImage objects – but they are immutable,
+            // and so need to be recreated every time the tile underlying content changes.
+            //
+            // Fortunately, CGImage doesn't copy the context data (except if the data change),
+            // so they are cheap to create.)
+            CGContextRef tileContext = [self contextForTile:tile atIndex:i];
+            CGImageRef tileImage = CGBitmapContextCreateImage(tileContext); // won't copy until a write
+            NSRect tileRectInScreen = NSRectFromWGBRect(WGB_rect_for_tile(_wgb, tile));
+            NSRect tileRectInContext = [self contextRectFromScreen:tileRectInScreen];
+            CGContextDrawImage(outputContext, tileRectInContext, tileImage);
+            CGImageRelease(tileImage);
+        }
+    }
+
+    // Draw the screen
+    CGImageRef screenImage = CGBitmapContextCreateImage(screenContext); // won't copy until a write
+    CGContextDrawImage(outputContext, viewportInContextSpace, screenImage);
+    CGImageRelease(screenImage);
 }
 
 #pragma mark - Geometry utils
@@ -540,10 +590,20 @@
 }
 
 // Convert a rectangle from screen-space to context-space
+// This accounts for the inverted coordinate system of CoreGraphics (origin is at bottom-left)
 - (NSRect) contextRectFromScreen:(NSRect)screenRect
 {
-    NSRect viewBoundsInScreen = [self screenRectFromView:self.bounds];
-    return NSOffsetRect(screenRect, -viewBoundsInScreen.origin.x, -viewBoundsInScreen.origin.y);
+    NSRect contextFrameInScreen = self.widescreenEnabled ? [self screenRectFromView:self.bounds] : [self screenRectFromView:viewport];
+    NSSize contextSize = contextFrameInScreen.size;
+
+    NSRect contextRect = screenRect;
+    contextRect.origin.x = screenRect.origin.x - contextFrameInScreen.origin.x;
+    contextRect.origin.y = screenRect.origin.y - contextFrameInScreen.origin.y;
+
+    NSRect flippedContextRect = contextRect;
+    flippedContextRect.origin.y = - (contextRect.origin.y + screenRect.size.height - contextSize.height);
+    
+    return flippedContextRect;
 }
 
 @end
