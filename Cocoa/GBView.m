@@ -189,7 +189,9 @@ WGB_Rect WGBRectFromNSRect(NSRect rect) { return (WGB_Rect) { rect.origin.x, rec
     // Update viewport
     viewport = frame;
 
-    if (_gb && ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBAspectRatioUnkept"]) {
+    bool isWideGBEnabled = true;
+    bool keepAspectRatio = ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBAspectRatioUnkept"] || isWideGBEnabled;
+    if (_gb && keepAspectRatio) {
         double ratio = frame.size.width / frame.size.height;
         double width = GB_get_screen_width(_gb);
         double height = GB_get_screen_height(_gb);
@@ -205,6 +207,12 @@ WGB_Rect WGBRectFromNSRect(NSRect rect) { return (WGB_Rect) { rect.origin.x, rec
             viewport.size.height = new_height;
             viewport.origin.x = 0;
         }
+    }
+
+    if (isWideGBEnabled) {
+        float scaleFactor = 0.8;
+        NSRect scaledviewport = CGRectInset(viewport, viewport.size.width * (1 - scaleFactor) / 2, viewport.size.height * (1 - scaleFactor) / 2);
+        viewport = NSIntegralRectWithOptions(scaledviewport, NSAlignAllEdgesNearest);
     }
 
     if (composited_buffers[0]) CGContextRelease(composited_buffers[0]);
