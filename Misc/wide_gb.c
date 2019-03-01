@@ -140,23 +140,24 @@ wide_gb WGB_init_from_path(const char *save_path, WGB_rgb_encode_callback_t rgb_
         char frames_path[save_path_len + 50];
         sprintf(frames_path, "%s/scene_frames.csv", scene_path);
         FILE *frames_file = fopen(frames_path, "r");
+        if (frames_file) {
+            char line[255];
+            fgets(line, 255, frames_file); // skip CSV header
 
-        char line[255];
-        fgets(line, 255, frames_file); // skip CSV header
+            // For each line in scene_frames.csv
+            while (fgets(line, 1024, frames_file)) {
 
-        // For each line in scene_frames.csv
-        while (fgets(line, 1024, frames_file)) {
+                // Parse the line
+                WGB_exact_hash frame_hash;
+                int scene_id;
+                WGB_Point scene_scroll;
+                sscanf(line, "%llu,%i,%i,%i", &frame_hash, &scene_id, &scene_scroll.x, &scene_scroll.y);
 
-            // Parse the line
-            WGB_exact_hash frame_hash;
-            int scene_id;
-            WGB_Point scene_scroll;
-            sscanf(line, "%llu,%i,%i,%i", &frame_hash, &scene_id, &scene_scroll.x, &scene_scroll.y);
-
-            // Create a new scene frame
-            WGB_store_frame_hash(&wgb, frame_hash, scene_id, scene_scroll);
+                // Create a new scene frame
+                WGB_store_frame_hash(&wgb, frame_hash, scene_id, scene_scroll);
+            }
+            fclose(frames_file);
         }
-        fclose(frames_file);
 
         scene_dir != NULL && closedir(scene_dir);
     }
