@@ -42,52 +42,12 @@
 
 
 // TODO:
-// - Draw screen border
-// - Cocoa implementation
-//   - Hook WGB on init (Done)
-//   - Hook WGB on vblank (Done)
-//   - Add GBView currentCompositedBuffer (and GBView previousCompositedBuffer)
-//   - Implement currentCompositedBuffer by drawing tiles to a bitmap
-
-/*
-    + init {}
-        // Create a context that will draw into the final `pixels` buffer
-        _outputContext = CGBitmapContextCreate(*pixels, …)
-    }
-
-    - (uint32_t*) currentBuffer {
-        for (tile in visibleTiles) {
-            CGImageRef tileImage = [self imageForTile:tile];
-            if (!tileImage || tile.dirty) {
-                // We want to save the CGImage for later: load it using a data provider
-                CGDataProviderRef tileDataProvider = CGDataProviderCreateWithData(tile->pixels)
-                CGImageRef tileImage = CGImageCreate(160, 144, tileDataProvider)
-                [sel setImage: tileImage forTile:tile];
-            }
-            CGContextDrawImage(_outputContext, tileRect, tileImage);
-        }
-
-        // We want to map the screen pixels buffers once, and avoid copying:
-        // load it using a CGBitmapContext
-        CGBitmapContextRef screenContext = CGBitmapContextCreate(*screenPixels, …)
-        CGImageRef screenImage = CGBitmapContextCreateImage(screenContext) // won't copy until a write
-        CGContextDrawImage(_outputContext, screenRect, screenImage)
-        CGImageRelease(screenImage)
-        CGContextRelease(screenContext)
-
-        // Pass to OpenGL
-        return CGBitmapContextGetData(_outputContext)
-    }
-*/
-//
 // - Performances
-//   - don't write to tiles if frame hash didn't change (DONE)
-//   - optimize floor (DONE)
 //   - don't query tiles for each written pixel
 //   - optimize hashes
 //
-// - Implement own hash table?
 // - Better dynamic arrays?
+// - Implement own hash table?
 
 /*---------------- Data definitions --------------------------------------*/
 
