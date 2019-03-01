@@ -14,6 +14,7 @@
 @property wide_gb *wgb;
 
 @property (nonatomic) BOOL shouldBlendFrameWithPrevious;
+@property (nonatomic) BOOL widescreenEnabled;
 @property (getter=isMouseHidingEnabled) BOOL mouseHidingEnabled;
 @property bool isRewinding;
 @property NSView *internalView;

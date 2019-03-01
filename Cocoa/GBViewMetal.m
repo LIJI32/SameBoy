@@ -159,8 +159,7 @@ static const vector_float2 rect[] =
 
     if(render_pass_descriptor != nil)
     {
-        bool isWidescreenEnabled = true;
-        NSRect viewport = isWidescreenEnabled ? self.bounds : self.viewport;
+        NSRect viewport = self.widescreenEnabled ? self.bounds : self.viewport;
         double scale = self.window.backingScaleFactor;
         output_resolution = (vector_float2){viewport.size.width * scale, viewport.size.height * scale};
 

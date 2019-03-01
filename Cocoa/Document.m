@@ -390,6 +390,7 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
     
     self.consoleOutput.textContainerInset = NSMakeSize(4, 4);
     [self.view becomeFirstResponder];
+    self.view.widescreenEnabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"WidescreenEnabled"];
     self.view.shouldBlendFrameWithPrevious = ![[NSUserDefaults standardUserDefaults] boolForKey:@"DisableFrameBlending"];
     CGRect window_frame = self.mainWindow.frame;
     window_frame.size.width  = MAX([[NSUserDefaults standardUserDefaults] integerForKey:@"LastWindowWidth"],
@@ -577,6 +578,12 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
     [[NSUserDefaults standardUserDefaults] setBool:!self.view.shouldBlendFrameWithPrevious forKey:@"DisableFrameBlending"];
 }
 
+- (IBAction)toggleWidescreen:(id)sender
+{
+    self.view.widescreenEnabled ^= YES;
+    [[NSUserDefaults standardUserDefaults] setBool:self.view.widescreenEnabled forKey:@"WidescreenEnabled"];
+}
+
 - (BOOL)validateUserInterfaceItem:(id<NSValidatedUserInterfaceItem>)anItem
 {
     if([anItem action] == @selector(mute:)) {
@@ -588,6 +595,9 @@ static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
     }
     else if ([anItem action] == @selector(reset:) && anItem.tag != MODEL_NONE) {
         [(NSMenuItem*)anItem setState:anItem.tag == current_model];
+    }
+    else if ([anItem action] == @selector(toggleWidescreen:)) {
+        [(NSMenuItem*)anItem setState:self.view.widescreenEnabled];
     }
     else if ([anItem action] == @selector(toggleBlend:)) {
         [(NSMenuItem*)anItem setState:self.view.shouldBlendFrameWithPrevious];

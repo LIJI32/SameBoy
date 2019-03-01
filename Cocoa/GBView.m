@@ -70,6 +70,12 @@ WGB_Rect WGBRectFromNSRect(NSRect rect) { return (WGB_Rect) { rect.origin.x, rec
     self.internalView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 }
 
+- (void) setWidescreenEnabled:(BOOL)enabled
+{
+    _widescreenEnabled = enabled;
+    [self updateViewFrame];
+}
+
 - (void)screenSizeChanged
 {
     if (image_buffers[0]) CGContextRelease(image_buffers[0]);
@@ -121,9 +127,9 @@ WGB_Rect WGBRectFromNSRect(NSRect rect) { return (WGB_Rect) { rect.origin.x, rec
     return context;
 }
 
-- (void) ratioKeepingChanged
+- (void) updateViewFrame
 {
-    [self setFrame:self.superview.frame];
+    [self setFrame:self.superview.bounds];
 }
 
 - (void) setShouldBlendFrameWithPrevious:(BOOL)shouldBlendFrameWithPrevious
@@ -189,8 +195,7 @@ WGB_Rect WGBRectFromNSRect(NSRect rect) { return (WGB_Rect) { rect.origin.x, rec
     // Update viewport
     viewport = frame;
 
-    bool isWideGBEnabled = true;
-    bool keepAspectRatio = ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBAspectRatioUnkept"] || isWideGBEnabled;
+    bool keepAspectRatio = ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBAspectRatioUnkept"] || self.widescreenEnabled;
     if (_gb && keepAspectRatio) {
         double ratio = frame.size.width / frame.size.height;
         double width = GB_get_screen_width(_gb);
@@ -209,7 +214,7 @@ WGB_Rect WGBRectFromNSRect(NSRect rect) { return (WGB_Rect) { rect.origin.x, rec
         }
     }
 
-    if (isWideGBEnabled) {
+    if (self.widescreenEnabled) {
         float scaleFactor = 0.8;
         NSRect scaledviewport = CGRectInset(viewport, viewport.size.width * (1 - scaleFactor) / 2, viewport.size.height * (1 - scaleFactor) / 2);
         viewport = NSIntegralRectWithOptions(scaledviewport, NSAlignAllEdgesNearest);
@@ -543,8 +548,7 @@ WGB_Rect WGBRectFromNSRect(NSRect rect) { return (WGB_Rect) { rect.origin.x, rec
     CGContextFillRect(outputContext, viewRectInContextSpace);
 
     // Draw tiles
-    bool isWideGBEnabled = true;
-    if (isWideGBEnabled) {
+    if (self.widescreenEnabled) {
         WGB_Rect wgbViewRectInScreenSpace = WGBRectFromNSRect(viewRectInScreenSpace);
         // For each tile…
         size_t tiles_count = WGB_tiles_count(_wgb);

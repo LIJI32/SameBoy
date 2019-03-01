@@ -343,10 +343,16 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="YIZ-pz-N4V"/>
-                            <menuItem title="Blend Frames" id="AWj-r8-L6U">
+                            <menuItem title="Widescreen" id="AWj-r8-L6U">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
-                                    <action selector="toggleBlend:" target="-1" id="TjO-ce-UxL"/>
+                                    <action selector="toggleWidescreen:" target="-1" id="QrD-sM-FsW"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Blend Frames" id="9rj-r3-CPc">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="toggleBlend:" target="-1" id="MMc-Qc-hkk"/>
                                 </connections>
                             </menuItem>
                         </items>

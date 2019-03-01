@@ -8,19 +8,17 @@
     if (!self.shader) {
         self.shader = [[GBGLShader alloc] initWithName:[[NSUserDefaults standardUserDefaults] objectForKey:@"GBFilter"]];
     }
-    
+
     GBView *gbview = (GBView *)self.superview;
     double scale = self.window.backingScaleFactor;
 
-    bool isWgbEnabled = true;
-    NSRect viewport = isWgbEnabled ? gbview.bounds : gbview.viewport;
-
+    NSRect viewport = gbview.widescreenEnabled ? gbview.bounds : gbview.viewport;
     glViewport(
         viewport.origin.x * scale,
         viewport.origin.y * scale,
         viewport.size.width * scale,
         viewport.size.height * scale);
-    
+
     glClearColor(0, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
     [self.shader renderBitmap:CGBitmapContextGetData(gbview.currentBuffer)
