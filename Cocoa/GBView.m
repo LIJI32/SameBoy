@@ -579,6 +579,17 @@ WGB_Rect WGBRectFromNSRect(NSRect rect) { return (WGB_Rect) { rect.origin.x, rec
     CGImageRef screenImage = CGBitmapContextCreateImage(screenContext); // won't copy until a write
     CGContextDrawImage(outputContext, viewportInContextSpace, screenImage);
     CGImageRelease(screenImage);
+
+    // Draw a border around the screen
+    if (self.widescreenEnabled) {
+        float borderWidth = 1.0;
+        NSRect borderRect = NSInsetRect(viewportInContextSpace, -(borderWidth / 2), -(borderWidth / 2));
+        CGContextSetLineJoin(outputContext, kCGLineJoinMiter);
+        CGContextSetStrokeColorWithColor(outputContext, [NSColor colorWithWhite:0.7 alpha:1].CGColor);
+        CGContextSetBlendMode(outputContext, kCGBlendModeHardLight);
+        CGContextStrokeRectWithWidth(outputContext, borderRect, borderWidth);
+        CGContextSetBlendMode(outputContext, kCGBlendModeNormal);
+    }
 }
 
 #pragma mark - Geometry utils
