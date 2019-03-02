@@ -19,6 +19,7 @@ SDL_Texture *window_texture = NULL;
 SDL_Surface *active_window_surface = NULL;
 SDL_Surface *previous_window_surface = NULL;
 SDL_Surface *screen_surface = NULL;
+SDL_Surface *border_surface = NULL;
 SDL_PixelFormat *pixel_format = NULL;
 enum pending_command pending_command;
 unsigned command_parameter;
@@ -199,11 +200,21 @@ void render_texture(void *pixels, void *previous)
     }
 
     // 4. Draw a border around the screen
-    // if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
-    //     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    //     SDL_SetRenderDrawColor(renderer, 0x0, 0x00, 0x00, 0x60);
-    //     SDL_RenderDrawRect(renderer, &viewport);
-    // }
+    if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
+        int ignored = 0;
+        SDL_Rect top_border_src = { 0, 0, 162, 1 };
+        SDL_Rect top_border_dest = screen_rect_to_surface((SDL_Rect){ -1, -1, ignored, ignored });
+        SDL_BlitSurface(border_surface, &top_border_src, active_window_surface, &top_border_dest);
+        SDL_Rect bottom_border_src = { 0, 145, 162, 1 };
+        SDL_Rect bottom_border_dest = screen_rect_to_surface((SDL_Rect){ -1, 144, ignored, ignored });
+        SDL_BlitSurface(border_surface, &bottom_border_src, active_window_surface, &bottom_border_dest);
+        SDL_Rect left_border_src = { 0, 1, 1, 144 };
+        SDL_Rect left_border_dest = screen_rect_to_surface((SDL_Rect){ -1, 0, ignored, ignored });
+        SDL_BlitSurface(border_surface, &left_border_src, active_window_surface, &left_border_dest);
+        SDL_Rect right_border_src = { 161, 1, 1, 144 };
+        SDL_Rect right_border_dest = screen_rect_to_surface((SDL_Rect){ 160, 0, ignored, ignored });
+        SDL_BlitSurface(border_surface, &right_border_src, active_window_surface, &right_border_dest);
+    }
 
     // 5. Render
     if (renderer) {
@@ -338,11 +349,17 @@ void update_viewport(void)
         SDL_FreeSurface(active_window_surface);
         SDL_FreeSurface(previous_window_surface);
         SDL_FreeSurface(screen_surface);
+        SDL_FreeSurface(border_surface);
     }
     window_texture = SDL_CreateTexture(renderer, pixel_format->format, SDL_TEXTUREACCESS_STREAMING, drawable_rect_in_screen.w, drawable_rect_in_screen.h);
     active_window_surface = SDL_CreateRGBSurfaceWithFormat(0, drawable_rect_in_screen.w, drawable_rect_in_screen.h, 32, pixel_format->format);
     previous_window_surface = SDL_CreateRGBSurfaceWithFormat(0, drawable_rect_in_screen.w, drawable_rect_in_screen.h, 32, pixel_format->format);
     screen_surface = SDL_CreateRGBSurfaceWithFormat(0, 160, 144, 32, pixel_format->format);
+
+    border_surface = SDL_CreateRGBSurfaceWithFormat(0, 162, 146, 32, pixel_format->format);
+    SDL_FillRect(border_surface, NULL, SDL_MapRGB(border_surface->format, 0, 0, 0));
+    SDL_SetSurfaceBlendMode(border_surface, SDL_BLENDMODE_BLEND);
+    SDL_SetSurfaceAlphaMod(border_surface, 30);
 
     if (configuration.scaling_mode != GB_SDL_SCALING_WIDE_SCREEN) {
         if (renderer) {
