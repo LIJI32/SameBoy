@@ -46,6 +46,13 @@ static const char slash = '/';
 
 #define RETRO_GAME_TYPE_GAMEBOY_LINK_2P 0x101
 
+#if !defined(ANDROID) && !defined(SWITCH)
+long random(void)
+{
+    return rand();
+}
+#endif
+
 char battery_save_path[512];
 char symbols_path[512];
 
