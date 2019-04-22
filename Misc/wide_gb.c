@@ -48,6 +48,7 @@ WGB_Point WGB_tile_point_from_screen_point(wide_gb *wgb, WGB_Point screen_point,
 void WGB_tile_write_to_file(WGB_tile *tile, char *tile_path, WGB_rgb_decode_callback_t rgb_decode);
 void WGB_load_tile_from_file(WGB_tile *tile, char *path, WGB_rgb_encode_callback_t rgb_encode);
 void WGB_store_frame_hash(wide_gb *wgb, WGB_exact_hash hash, int scene_id, WGB_Point scene_scroll);
+int WGB_IO_mkdir(const char *dir);
 int WGB_IO_rmdir(const char *path);
 void WGB_IO_write_PPM(char *filename, int width, int height, uint8_t *pixels);
 
@@ -184,7 +185,7 @@ void WGB_save_to_path(wide_gb *wgb, const char *save_path, WGB_rgb_decode_callba
     int path_len = strlen(save_path);
     char tmp_dir[path_len + 5];
     sprintf(tmp_dir, "%s.tmp", save_path);
-    mkdir(tmp_dir, 0774);
+    WGB_IO_mkdir(tmp_dir);
 
     // For each scene…
     for (int i = 0; i < wgb->scenes_count; i++) {
@@ -196,7 +197,7 @@ void WGB_save_to_path(wide_gb *wgb, const char *save_path, WGB_rgb_decode_callba
         // Create a `#{tmp_dir}/scene_#{id}` directory
         char scene_dir[path_len + 30];
         sprintf(scene_dir, "%s/scene_%i", tmp_dir, scene.id);
-        mkdir(scene_dir, 0774);
+        WGB_IO_mkdir(scene_dir);
 
         // For each tile
         for (int j = 0; j < scene.tiles_count; j++) {
@@ -831,6 +832,15 @@ int hamming_distance(WGB_perceptual_hash x, WGB_perceptual_hash y) {
 }
 
 /*---------------- File utils --------------------------------------*/
+
+int WGB_IO_mkdir(const char *dir)
+{
+#if defined(_WIN32)
+    return _mkdir(dir);
+#else
+    return mkdir(dir, 0744);
+#endif
+}
 
 int WGB_IO_unlink_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
