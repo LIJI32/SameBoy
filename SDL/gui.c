@@ -130,13 +130,14 @@ void render_texture(void *pixels, void *previous)
     SDL_Rect drawable_rect = window_drawable_rect();
     SDL_Rect drawable_rect_in_screen = window_to_screen_rect(drawable_rect);
     SDL_Rect viewport_in_surface = screen_rect_to_surface(window_to_screen_rect(viewport));
+    bool should_render_widescreen = configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN && GB_is_inited(&gb);
 
     // 1. Clear the surface
     SDL_SetSurfaceBlendMode(active_window_surface, SDL_BLENDMODE_NONE);
     SDL_FillRect(active_window_surface, NULL, SDL_MapRGB(active_window_surface->format, 0, 0, 0));
 
     // 2. Display each WideGB tile
-    if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
+    if (should_render_widescreen) {
         // For each tile…
         size_t tiles_count = WGB_tiles_count(&wgb);
         for (int i = 0; i < tiles_count; i++) {
@@ -165,7 +166,7 @@ void render_texture(void *pixels, void *previous)
     }
 
     bool draw_opaque_window = (
-        configuration.scaling_mode != GB_SDL_SCALING_WIDE_SCREEN ||
+        !should_render_widescreen ||
         WGB_is_window_covering_screen(&wgb, 6));
 
     if (draw_opaque_window) {
@@ -200,7 +201,7 @@ void render_texture(void *pixels, void *previous)
     }
 
     // 4. Draw a border around the screen
-    if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
+    if (should_render_widescreen) {
         int ignored = 0;
         SDL_Rect top_border_src = { 0, 0, 162, 1 };
         SDL_Rect top_border_dest = screen_rect_to_surface((SDL_Rect){ -1, -1, ignored, ignored });
