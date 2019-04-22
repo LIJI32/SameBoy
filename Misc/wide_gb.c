@@ -5,11 +5,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
-#include <ftw.h>
 #include <unistd.h>
 #include <math.h>
 #include <time.h>
+
+#include <dirent.h>
+#if defined(_WIN32)
+    #include <direct.h>
+#else
+    #include <ftw.h>
+#endif
 #include "wide_gb.h"
 
 // Constants
