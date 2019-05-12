@@ -11,6 +11,7 @@
 
 #include <dirent.h>
 #if defined(_WIN32)
+    #include <shellapi.h>
     #include <direct.h>
 #else
     #include <ftw.h>
@@ -842,6 +843,7 @@ int WGB_IO_mkdir(const char *dir)
 #endif
 }
 
+#if !defined(_WIN32)
 int WGB_IO_unlink_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
     int rv = remove(fpath);
@@ -850,10 +852,32 @@ int WGB_IO_unlink_callback(const char *fpath, const struct stat *sb, int typefla
     }
     return rv;
 }
+#endif
 
 int WGB_IO_rmdir(const char *path)
 {
+#if defined(_WIN32)
+    // Make the directory name double-null terminated
+    char *double_null_terminated_path = malloc(sizeof(char) * (strlen(path) + 2));
+    strcpy(double_null_terminated_path, path);
+    memcpy(double_null_terminated_path + strlen(path), "\0\0", 2);
+
+    // Configure a shell operation to the directory silently
+    SHFILEOPSTRUCT fileop = {0};
+    fileop.hwnd   = NULL;                          // no status display
+    fileop.wFunc  = FO_DELETE;                     // delete operation
+    fileop.pFrom  = double_null_terminated_path;   // path to delete
+    fileop.pTo    = NULL;                          // no destination needed
+    fileop.fFlags = FOF_NOCONFIRMATION|FOF_SILENT; // do not prompt the user
+    fileop.lpszProgressTitle = NULL;               // no progress dialog title
+
+    // Execute the delete operation
+    int result = SHFileOperation(&fileop);
+    free(double_null_terminated_path);
+    return result;
+#else
     return nftw(path, WGB_IO_unlink_callback, 64, FTW_DEPTH | FTW_PHYS);
+#endif
 }
 
 void WGB_IO_write_PPM(char *filename, int width, int height, uint8_t *pixels) {

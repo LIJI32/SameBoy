@@ -69,7 +69,7 @@ CFLAGS += -Werror -Wall -Wno-strict-aliasing -Wno-unknown-warning -Wno-unknown-w
 SDL_LDFLAGS := -lSDL2 -lGL
 ifeq ($(PLATFORM),windows32)
 CFLAGS += -IWindows
-LDFLAGS += -lmsvcrt -lSDL2main -Wl,/MANIFESTFILE:NUL
+LDFLAGS += -lmsvcrt -lshell32 -lSDL2main -Wl,/MANIFESTFILE:NUL
 SDL_LDFLAGS := -lSDL2 -lopengl32
 else
 LDFLAGS += -lc -lm
