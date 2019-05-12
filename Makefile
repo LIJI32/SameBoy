@@ -85,7 +85,7 @@ endif
 CFLAGS += -Wno-deprecated-declarations
 ifeq ($(PLATFORM),windows32)
 CFLAGS += -Wno-deprecated-declarations # Seems like Microsoft deprecated every single LIBC function
-LDFLAGS += -Wl,/NODEFAULTLIB:libcmt.lib
+LDFLAGS += -Wl,/NODEFAULTLIB:libcmt.lib -Wl,/STACK:0x1000000
 endif
 
 ifeq ($(CONF),debug)
