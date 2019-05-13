@@ -313,8 +313,11 @@ struct scale compute_viewport_scale(void)
         scale.y = (int)(scale.y);
     }
     else if (configuration.scaling_mode == GB_SDL_SCALING_WIDE_SCREEN) {
-        scale.x = ceil(scale.x * 0.6);
-        scale.y = ceil(scale.y * 0.6);
+        scale.x = floor(scale.x * 0.8);
+        scale.y = floor(scale.y * 0.8);
+
+        if (scale.x < 1.0) scale.x = 1.0;
+        if (scale.y < 1.0) scale.y = 1.0;
     }
 
     if (configuration.scaling_mode != GB_SDL_SCALING_ENTIRE_WINDOW) {
@@ -334,12 +337,12 @@ void update_viewport(void)
     SDL_Rect drawable_rect = window_drawable_rect();
     struct scale scale = compute_viewport_scale();
 
-    unsigned new_width = 160 * scale.x;
-    unsigned new_height = 144 * scale.y;
+    int new_width = 160 * scale.x;
+    int new_height = 144 * scale.y;
 
     viewport = (SDL_Rect) {
-        .x = (drawable_rect.w  - new_width) / 2,
-        .y = (drawable_rect.h - new_height) /2,
+        .x = (drawable_rect.w - new_width) / 2,
+        .y = (drawable_rect.h - new_height) / 2,
         .w = new_width,
         .h = new_height
     };
