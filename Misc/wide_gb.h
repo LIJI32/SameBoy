@@ -45,9 +45,11 @@
 // - Performances
 //   - don't query tiles for each written pixel
 //   - optimize hashes
-//
-// - Better dynamic arrays?
-// - Implement own hash table?
+// - Improve the scene transitions detection algorithm:
+//   - Currently it glitches on zelda pause menu
+//   - Ensures it doesn't break Pokemon Red/Blue (which has some worst-case transitions)
+// - Use dynamic memory allocation for scenes (will reduce stack size and hardcoded limits)
+// - Implement our own hash table?
 
 /*---------------- Data definitions --------------------------------------*/
 
