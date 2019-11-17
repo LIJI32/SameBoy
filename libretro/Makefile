@@ -1,3 +1,5 @@
+.NOTPARALLEL:
+
 STATIC_LINKING := 0
 AR             := ar
 
@@ -245,7 +247,7 @@ else
    SHARED := -shared -static-libgcc -static-libstdc++ -s -Wl,--version-script=$(CORE_DIR)/libretro/link.T -Wl,--no-undefined
 endif
 
-TARGET := $(CORE_DIR)/build/bin/$(TARGET)
+TARGET := $(CORE_DIR)/libretro/$(TARGET)
 
 # To force use of the Unix version instead of the Windows version
 MKDIR := $(shell which mkdir)

@@ -24,8 +24,10 @@ PB8_COMPRESS := build/pb8$(EXESUFFIX)
 
 ifeq ($(PLATFORM),Darwin)
 DEFAULT := cocoa
+HOSTCC := cc
 else
 DEFAULT := sdl
+HOSTCC := $(CC)
 endif
 
 default: $(DEFAULT)
@@ -335,7 +337,7 @@ $(OBJ)/BootROMs/SameBoyLogo.pb8: $(OBJ)/BootROMs/SameBoyLogo.1bpp $(PB8_COMPRESS
 	$(realpath $(PB8_COMPRESS)) -l 384 $< $@
 
 $(PB8_COMPRESS): BootROMs/pb8.c
-	$(CC) $< -o $@
+	$(HOSTCC) $< -o $@
 
 $(BIN)/BootROMs/agb_boot.bin: BootROMs/cgb_boot.asm
 $(BIN)/BootROMs/cgb_boot_fast.bin: BootROMs/cgb_boot.asm
