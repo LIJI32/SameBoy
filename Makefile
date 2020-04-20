@@ -88,7 +88,7 @@ OPEN_DIALOG = OpenDialog/cocoa.m
 endif
 
 
-CFLAGS += -Werror -Wall -Wpartial-availability -Wno-nonnull -Wno-unused-result -Wno-strict-aliasing -Wno-unknown-warning -Wno-unknown-warning-option -Wno-multichar -Wno-int-in-bool-context -std=gnu11 -D_GNU_SOURCE -DVERSION="$(VERSION)" -I. -D_USE_MATH_DEFINES
+CFLAGS += -Werror -Wall -Wno-nonnull -Wno-unused-result -Wno-strict-aliasing -Wno-unknown-warning -Wno-unknown-warning-option -Wno-multichar -Wno-int-in-bool-context -std=gnu11 -D_GNU_SOURCE -DVERSION="$(VERSION)" -I. -D_USE_MATH_DEFINES
 ifeq (,$(PKG_CONFIG))
 SDL_CFLAGS := $(shell sdl2-config --cflags)
 SDL_LDFLAGS := $(shell sdl2-config --libs)
@@ -113,7 +113,7 @@ endif
 
 ifeq ($(PLATFORM),Darwin)
 SYSROOT := $(shell xcodebuild -sdk macosx -version Path 2> $(NULL))
-CFLAGS += -F/Library/Frameworks -mmacosx-version-min=10.9
+CFLAGS += -Wpartial-availability -F/Library/Frameworks -mmacosx-version-min=10.9
 OCFLAGS += -x objective-c -fobjc-arc -Wno-deprecated-declarations -isysroot $(SYSROOT)
 LDFLAGS += -framework AppKit -framework PreferencePanes -framework Carbon -framework QuartzCore -weak_framework Metal -weak_framework MetalKit -mmacosx-version-min=10.9
 SDL_LDFLAGS := -F/Library/Frameworks -framework SDL2
