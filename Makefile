@@ -131,8 +131,8 @@ ifeq (,$(PKG_CONFIG))
 SDL_CFLAGS += -I/usr/local/include
 SDL_LDFLAGS += -lportaudio
 else
-SDL_CFLAGS += $(shell $(PKG_CONFIG) --cflags portaudio)
-SDL_LDFLAGS += $(shell $(PKG_CONFIG) --libs portaudio)
+SDL_CFLAGS += $(shell $(PKG_CONFIG) --cflags libportaudio19)
+SDL_LDFLAGS += $(shell $(PKG_CONFIG) --libs libportaudio19)
 endif
 endif
 
