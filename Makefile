@@ -127,13 +127,8 @@ LDFLAGS += -lc -lm -ldl
 endif
 
 ifeq ($(SDL_AUDIO_DRIVER),portaudio)
-ifeq (,$(PKG_CONFIG))
 SDL_CFLAGS += -I/usr/local/include
 SDL_LDFLAGS += -lportaudio
-else
-SDL_CFLAGS += $(shell $(PKG_CONFIG) --cflags libportaudio19)
-SDL_LDFLAGS += $(shell $(PKG_CONFIG) --libs libportaudio19)
-endif
 endif
 
 ifeq ($(PLATFORM),Darwin)
