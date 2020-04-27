@@ -121,6 +121,16 @@ else
 LDFLAGS += -lc -lm -ldl
 endif
 
+ifeq ($(SDL_AUDIO_DRIVER),portaudio)
+ifeq (,$(PKG_CONFIG))
+SDL_CFLAGS += -I/usr/local/include
+SDL_LDFLAGS += -lportaudio
+else
+SDL_CFLAGS += $(shell $(PKG_CONFIG) --cflags portaudio)
+SDL_LDFLAGS += $(shell $(PKG_CONFIG) --libs portaudio)
+endif
+endif
+
 ifeq ($(PLATFORM),Darwin)
 SYSROOT := $(shell xcodebuild -sdk macosx -version Path 2> $(NULL))
 CFLAGS += -F/Library/Frameworks -mmacosx-version-min=10.9
