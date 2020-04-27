@@ -37,6 +37,7 @@ endif
 VERSION := 0.12.3
 export VERSION
 CONF ?= debug
+SDL_AUDIO_DRIVER ?= sdl
 
 BIN := build/bin
 OBJ := build/obj
@@ -172,7 +173,7 @@ all: cocoa sdl tester libretro
 # Get a list of our source files and their respective object file targets
 
 CORE_SOURCES := $(shell ls Core/*.c)
-SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG)
+SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG) SDL/audio/$(SDL_AUDIO_DRIVER).c
 TESTER_SOURCES := $(shell ls Tester/*.c)
 
 ifeq ($(PLATFORM),Darwin)
