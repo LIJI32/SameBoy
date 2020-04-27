@@ -37,7 +37,12 @@ endif
 VERSION := 0.12.3
 export VERSION
 CONF ?= debug
+
+ifeq ($(PLATFORM),windows32)
 SDL_AUDIO_DRIVER ?= sdl
+else
+SDL_AUDIO_DRIVER ?= portaudio
+endif
 
 BIN := build/bin
 OBJ := build/obj

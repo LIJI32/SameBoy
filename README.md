@@ -37,8 +37,8 @@ SameBoy passes all of [blargg's test ROMs](http://gbdev.gg8.se/wiki/articles/Tes
 SameBoy requires the following tools and libraries to build:
  * clang
  * make
- * Cocoa port: OS X SDK and Xcode command line tools
- * SDL port: libsdl2
+ * Cocoa frontend: OS X SDK and Xcode command line tools
+ * SDL frontend: libsdl2, portaudio (Optional but recommended, set `SDL_AUDIO_DRIVER` to `sdl` to avoid)
  * [rgbds](https://github.com/bentley/rgbds/releases/), for boot ROM compilation
 
 On Windows, SameBoy also requires:
@@ -46,8 +46,8 @@ On Windows, SameBoy also requires:
  * [GnuWin](http://gnuwin32.sourceforge.net/)
  * Running vcvars32 before running make. Make sure all required tools and libraries are in %PATH% and %lib%, respectively.
 
-To compile, simply run `make`. The targets are `cocoa` (Default for macOS), `sdl` (Default for everything else), `libretro`, `bootroms` and `tester`. You may also specify `CONF=debug` (default), `CONF=release` or `CONF=native_release` to control optimization and symbols. `native_release` is faster than `release`, but is optimized to the host's CPU and therefore is not portable. You may set `BOOTROMS_DIR=...` to a directory containing precompiled `dmg_boot.bin` and `cgb_boot.bin` files, otherwise the build system will compile and use SameBoy's own boot ROMs.
+To compile, simply run `make`. The targets are `cocoa` (Default for macOS), `sdl` (Default for everything else), `libretro`, `bootroms` and `tester`. You may also specify `CONF=debug` (default), `CONF=release` or `CONF=native_release` to control optimization and symbols. `native_release` is faster than `release`, but is optimized to the host's CPU and therefore is not portable. You may set `BOOTROMS_DIR=...` to a directory containing precompiled `dmg_boot.bin` and `cgb_boot.bin` files, otherwise the build system will compile and use SameBoy's own boot ROMs. When compiling the SDL frontend, `SDL_AUDIO_DRIVER` can be set to either `sdl` or `portaudio`; the default driver is `sdl` for Windows and `portaudio` for every other platform.
 
-By default, the SDL port will look for resource files with a path relative to executable. If you are packaging SameBoy, you may wish to override this by setting the `DATA_DIR` variable during compilation to the target path of the directory containing all files (apart from the executable, that's not necessary) from the `build/bin/SDL` directory in the source tree. Make sure the variable ends with a `/` character.
+By default, the SDL frontend will look for resource files with a path relative to executable. If you are packaging SameBoy, you may wish to override this by setting the `DATA_DIR` variable during compilation to the target path of the directory containing all files (apart from the executable, that's not necessary) from the `build/bin/SDL` directory in the source tree. Make sure the variable ends with a `/` character.
 
 SameBoy was compiled and tested on macOS, Ubuntu and 32-bit Windows 7.
