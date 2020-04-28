@@ -25,6 +25,11 @@
 static SDL_AudioDeviceID device_id;
 static SDL_AudioSpec want_aspec, have_aspec;
 
+bool GB_audio_set_sync_mode(bool sync_mode)
+{
+    return false;
+}
+
 bool GB_audio_is_playing(void)
 {
     return SDL_GetAudioDeviceStatus(device_id) == SDL_AUDIO_PLAYING;
@@ -58,6 +63,7 @@ void GB_audio_queue_sample(GB_sample_t *sample)
 
 void GB_audio_init(void)
 {
+    SDL_Init(SDL_INIT_AUDIO);
     /* Configure Audio */
     memset(&want_aspec, 0, sizeof(want_aspec));
     want_aspec.freq = AUDIO_FREQUENCY;

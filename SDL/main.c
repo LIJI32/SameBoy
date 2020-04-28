@@ -27,6 +27,16 @@ static char *filename = NULL;
 static typeof(free) *free_function = NULL;
 static char *battery_save_path_ptr;
 
+static void update_turbo_mode(void)
+{
+    if (GB_audio_set_sync_mode(!turbo_down) && !turbo_down) {
+        GB_set_turbo_mode(&gb, true, true);
+    }
+    else {
+        // Sync mode is not supported
+        GB_set_turbo_mode(&gb, turbo_down, turbo_down && rewind_down);
+    }
+}
 
 void set_filename(const char *new_filename, typeof(free) *new_free_function)
 {
@@ -159,7 +169,7 @@ static void handle_events(GB_gameboy_t *gb)
                 else if (button == JOYPAD_BUTTON_TURBO) {
                     GB_audio_clear_queue();
                     turbo_down = event.type == SDL_JOYBUTTONDOWN;
-                    GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
+                    update_turbo_mode();
                 }
                 else if (button == JOYPAD_BUTTON_SLOW_MOTION) {
                     underclock_down = event.type == SDL_JOYBUTTONDOWN;
@@ -169,7 +179,7 @@ static void handle_events(GB_gameboy_t *gb)
                     if (event.type == SDL_JOYBUTTONUP) {
                         rewind_paused = false;
                     }
-                    GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
+                    update_turbo_mode();
                 }
                 else if (button == JOYPAD_BUTTON_MENU && event.type == SDL_JOYBUTTONDOWN) {
                     open_menu();
@@ -311,14 +321,14 @@ static void handle_events(GB_gameboy_t *gb)
                 if (event.key.keysym.scancode == configuration.keys[8]) {
                     turbo_down = event.type == SDL_KEYDOWN;
                     GB_audio_clear_queue();
-                    GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
+                    update_turbo_mode();
                 }
                 else if (event.key.keysym.scancode == configuration.keys_2[0]) {
                     rewind_down = event.type == SDL_KEYDOWN;
                     if (event.type == SDL_KEYUP) {
                         rewind_paused = false;
                     }
-                    GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
+                    update_turbo_mode();
                 }
                 else if (event.key.keysym.scancode == configuration.keys_2[1]) {
                     underclock_down = event.type == SDL_KEYDOWN;
@@ -615,7 +625,7 @@ int main(int argc, char **argv)
 
     signal(SIGINT, debugger_interrupt);
 
-    SDL_Init(SDL_INIT_EVERYTHING);
+    SDL_Init(SDL_INIT_EVERYTHING & ~SDL_INIT_AUDIO);
     
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
@@ -683,6 +693,7 @@ int main(int argc, char **argv)
         connect_joypad();
     }
     GB_audio_set_paused(false);
+    update_turbo_mode();
     run(); // Never returns
     return 0;
 }

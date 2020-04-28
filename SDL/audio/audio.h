@@ -12,5 +12,6 @@ unsigned GB_audio_get_frequency(void);
 size_t GB_audio_get_queue_length(void);
 void GB_audio_queue_sample(GB_sample_t *sample);
 void GB_audio_init(void);
+bool GB_audio_set_sync_mode(bool sync_mode);
 
 #endif /* sdl_audio_h */
