@@ -1114,7 +1114,7 @@ ChangeAnimationPalette:
     push bc
     push de
     ld hl, KeyCombinationPalettes - 1 ; Input palettes are 1-based, 0 means nothing down
-    ld c ,a
+    ld c, a
     ld b, 0
     add hl, bc
     ld a, [hl]
