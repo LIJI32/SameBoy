@@ -1410,10 +1410,11 @@ void GB_reset(GB_gameboy_t *gb)
         
         gb->sgb->player_count = 1;
         GB_sgb_load_default_data(gb);
-
+		GB_sgb_init_sound(gb);
     }
     else {
         if (gb->sgb) {
+			GB_sgb_deinit_sound(gb);
             free(gb->sgb);
             gb->sgb = NULL;
         }

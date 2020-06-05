@@ -97,7 +97,7 @@ OPEN_DIALOG = OpenDialog/cocoa.m
 endif
 
 # These must come before the -Wno- flags
-WARNINGS += -Werror -Wall -Wno-unknown-warning -Wno-unknown-warning-option
+WARNINGS += -Wall -Wno-unknown-warning -Wno-unknown-warning-option
 WARNINGS += -Wno-nonnull -Wno-unused-result -Wno-strict-aliasing -Wno-multichar -Wno-int-in-bool-context
 
 # Only add this flag if the compiler supports it
@@ -188,7 +188,7 @@ all: cocoa sdl tester libretro
 
 # Get a list of our source files and their respective object file targets
 
-CORE_SOURCES := $(shell ls Core/*.c)
+CORE_SOURCES := $(shell ls Core/*.c)  $(shell ls Core/snes_spc/*.cpp)
 SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG) SDL/audio/$(SDL_AUDIO_DRIVER).c
 TESTER_SOURCES := $(shell ls Tester/*.c)
 
@@ -231,6 +231,10 @@ $(OBJ)/%.dep: %
 	$(CC) $(CFLAGS) -MT $(OBJ)/$^.o -M $^ -c -o $@
 
 # Compilation rules
+
+$(OBJ)/Core/snes_spc/%.cpp.o: Core/snes_spc/%.cpp
+	-@$(MKDIR) -p $(dir $@)
+	g++ $(CFLAGS) -c $< -o $@
 
 $(OBJ)/Core/%.c.o: Core/%.c
 	-@$(MKDIR) -p $(dir $@)
@@ -322,11 +326,11 @@ endif
 # Windows version builds two, one with a conole and one without it
 $(BIN)/SDL/sameboy.exe: $(CORE_OBJECTS) $(SDL_OBJECTS) $(OBJ)/Windows/resources.o
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) $(SUBSYSTEM_WINDOWS)
+	g++ $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) $(SUBSYSTEM_WINDOWS)
 
 $(BIN)/SDL/sameboy_debugger.exe: $(CORE_OBJECTS) $(SDL_OBJECTS) $(OBJ)/Windows/resources.o
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) $(SUBSYSTEM_CONSOLE)
+	g++ $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) $(SUBSYSTEM_CONSOLE)
 
 ifneq ($(USE_WINDRES),)
 $(OBJ)/%.o: %.rc

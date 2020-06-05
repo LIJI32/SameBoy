@@ -8,7 +8,8 @@
 				"C:/Develop/msys64/mingw64/include/SDL2"
             ],
             "defines": [
-				"__MINGW32__"
+				"__MINGW32__",
+				"GB_INTERNAL"
             ],
             "intelliSenseMode": "gcc-x64"
         }
