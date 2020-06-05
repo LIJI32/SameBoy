@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Mingw-w64",
+            "includePath": [
+				"C:\\Develop\\msys64\\mingw64\\x86_64-w64-mingw32\\include",
+				"${workspaceFolder}",
+				"C:/Develop/msys64/mingw64/include/SDL2"
+            ],
+            "defines": [
+				"__MINGW32__"
+            ],
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
