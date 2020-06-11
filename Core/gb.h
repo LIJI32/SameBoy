@@ -120,12 +120,6 @@ typedef enum {
     GB_BORDER_ALWAYS,
 } GB_border_mode_t;
 
-#ifdef GB_16BIT_OUTPUT_COLOR
-typedef GB_output_color_t uint16_t
-#else
-typedef GB_output_color_t uint32_t
-#endif
-
 #define GB_MAX_IR_QUEUE 256
 
 enum {
