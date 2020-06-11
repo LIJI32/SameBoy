@@ -120,6 +120,12 @@ typedef enum {
     GB_BORDER_ALWAYS,
 } GB_border_mode_t;
 
+#ifdef GB_16BIT_OUTPUT_COLOR
+typedef GB_output_color_t uint16_t
+#else
+typedef GB_output_color_t uint32_t
+#endif
+
 #define GB_MAX_IR_QUEUE 256
 
 enum {
@@ -266,7 +272,7 @@ typedef enum {
 typedef void (*GB_vblank_callback_t)(GB_gameboy_t *gb);
 typedef void (*GB_log_callback_t)(GB_gameboy_t *gb, const char *string, GB_log_attributes attributes);
 typedef char *(*GB_input_callback_t)(GB_gameboy_t *gb);
-typedef uint32_t (*GB_rgb_encode_callback_t)(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b);
+typedef GB_output_color_t (*GB_rgb_encode_callback_t)(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b);
 typedef void (*GB_infrared_callback_t)(GB_gameboy_t *gb, bool on, uint64_t cycles_since_last_update);
 typedef void (*GB_rumble_callback_t)(GB_gameboy_t *gb, double rumble_amplitude);
 typedef void (*GB_serial_transfer_bit_start_callback_t)(GB_gameboy_t *gb, bool bit_to_send);
@@ -755,7 +761,7 @@ void GB_set_rendering_disabled(GB_gameboy_t *gb, bool disabled);
 void GB_log(GB_gameboy_t *gb, const char *fmt, ...) __printflike(2, 3);
 void GB_attributed_log(GB_gameboy_t *gb, GB_log_attributes attributes, const char *fmt, ...) __printflike(3, 4);
 
-void GB_set_pixels_output(GB_gameboy_t *gb, uint32_t *output);
+void GB_set_pixels_output(GB_gameboy_t *gb, GB_output_color_t *output);
 void GB_set_border_mode(GB_gameboy_t *gb, GB_border_mode_t border_mode);
     
 void GB_set_infrared_input(GB_gameboy_t *gb, bool state);

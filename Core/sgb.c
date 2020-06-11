@@ -519,12 +519,12 @@ void GB_sgb_write(GB_gameboy_t *gb, uint8_t value)
     }
 }
 
-static uint32_t convert_rgb15(GB_gameboy_t *gb, uint16_t color)
+static GB_output_color_t convert_rgb15(GB_gameboy_t *gb, uint16_t color)
 {
     return GB_convert_rgb15(gb, color, false);
 }
 
-static uint32_t convert_rgb15_with_fade(GB_gameboy_t *gb, uint16_t color, uint8_t fade)
+static GB_output_color_t convert_rgb15_with_fade(GB_gameboy_t *gb, uint16_t color, uint8_t fade)
 {
     uint8_t r = ((color) & 0x1F) - fade;
     uint8_t g = ((color >> 5) & 0x1F) - fade;
@@ -543,7 +543,7 @@ static uint32_t convert_rgb15_with_fade(GB_gameboy_t *gb, uint16_t color, uint8_
 static void render_boot_animation (GB_gameboy_t *gb)
 {
 #include "graphics/sgb_animation_logo.inc"
-    uint32_t *output = gb->screen;
+    GB_output_color_t *output = gb->screen;
     if (gb->border_mode != GB_BORDER_NEVER) {
         output += 48 + 40 * 256;
     }
@@ -559,7 +559,7 @@ static void render_boot_animation (GB_gameboy_t *gb)
     else if (gb->sgb->intro_animation > INTRO_ANIMATION_LENGTH - 32) {
         fade_red = fade_blue = gb->sgb->intro_animation - INTRO_ANIMATION_LENGTH + 32;
     }
-    uint32_t colors[] = {
+    GB_output_color_t colors[] = {
         convert_rgb15(gb, 0),
         convert_rgb15_with_fade(gb, 0x14A5, fade_blue),
         convert_rgb15_with_fade(gb, 0x54E0, fade_blue),
@@ -672,7 +672,7 @@ void GB_sgb_render(GB_gameboy_t *gb)
     
     if (!gb->screen || !gb->rgb_encode_callback || gb->disable_rendering) return;
 
-    uint32_t colors[4 * 4];
+    GB_output_color_t colors[4 * 4];
     for (unsigned i = 0; i < 4 * 4; i++) {
         colors[i] = convert_rgb15(gb, gb->sgb->effective_palettes[i]);
     }
@@ -687,7 +687,7 @@ void GB_sgb_render(GB_gameboy_t *gb)
         render_boot_animation(gb);
     }
     else {
-        uint32_t *output = gb->screen;
+        GB_output_color_t *output = gb->screen;
         if (gb->border_mode != GB_BORDER_NEVER) {
             output += 48 + 40 * 256;
         }
@@ -708,7 +708,7 @@ void GB_sgb_render(GB_gameboy_t *gb)
             }
             case MASK_BLACK:
             {
-                uint32_t black = convert_rgb15(gb, 0);
+                GB_output_color_t black = convert_rgb15(gb, 0);
                 for (unsigned y = 0; y < 144; y++) {
                     for (unsigned x = 0; x < 160; x++) {
                         *(output++) = black;
@@ -734,7 +734,7 @@ void GB_sgb_render(GB_gameboy_t *gb)
         }
     }
     
-    uint32_t border_colors[16 * 4];
+    GB_output_color_t border_colors[16 * 4];
     if (gb->sgb->border_animation == 0 || gb->sgb->intro_animation < INTRO_ANIMATION_LENGTH) {
         for (unsigned i = 0; i < 16 * 4; i++) {
             border_colors[i] = convert_rgb15(gb, gb->sgb->border.palette[i]);
@@ -774,7 +774,7 @@ void GB_sgb_render(GB_gameboy_t *gb)
             for (unsigned y = 0; y < 8; y++) {
                 for (unsigned x = 0; x < 8; x++) {
                     uint8_t color = gb->sgb->border.tiles[(tile & 0xFF) * 64 + (x ^ flip_x) + (y ^ flip_y) * 8] & 0xF;
-                    uint32_t *output = gb->screen;
+                    GB_output_color_t *output = gb->screen;
                     if (gb->border_mode == GB_BORDER_NEVER) {
                         output += (tile_x - 6) * 8 + x + ((tile_y - 5) * 8 + y) * 160;
                     }
