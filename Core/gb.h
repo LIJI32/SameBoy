@@ -564,9 +564,9 @@ struct GB_gameboy_internal_s {
         uint8_t *mbc_ram;
 
         /* I/O */
-        uint32_t *screen;
-        uint32_t background_palettes_rgb[0x20];
-        uint32_t sprite_palettes_rgb[0x20];
+        GB_output_color_t *screen;
+        GB_output_color_t background_palettes_rgb[0x20];
+        GB_output_color_t sprite_palettes_rgb[0x20];
         const GB_palette_t *dmg_palette;
         GB_color_correction_mode_t color_correction_mode;
         bool keys[4][GB_KEY_MAX];
