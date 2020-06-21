@@ -16,10 +16,9 @@ endif
 ifeq ($(PLATFORM),windows32)
 _ := $(shell chcp 65001)
 EXESUFFIX:=.exe
-NATIVE_CC = clang -IWindows -Wno-deprecated-declarations
+CC = clang -IWindows -Wno-deprecated-declarations
 else
 EXESUFFIX:=
-NATIVE_CC := cc
 endif
 
 PB12_COMPRESS := build/pb12$(EXESUFFIX)
@@ -392,7 +391,7 @@ $(OBJ)/BootROMs/SameBoyLogo.pb12: $(OBJ)/BootROMs/SameBoyLogo.2bpp $(PB12_COMPRE
 	$(realpath $(PB12_COMPRESS)) < $< > $@
 	
 $(PB12_COMPRESS): BootROMs/pb12.c
-	$(NATIVE_CC) -Wall -Werror $< -o $@
+	$(CC) $(CFLAGS) -Wall -Werror $(LDFLAGS) $< -o $@
 
 $(BIN)/BootROMs/agb_boot.bin: BootROMs/cgb_boot.asm
 $(BIN)/BootROMs/cgb_boot_fast.bin: BootROMs/cgb_boot.asm
