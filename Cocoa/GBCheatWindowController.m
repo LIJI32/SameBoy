@@ -135,7 +135,7 @@
 
     size_t cheatCount;
     const GB_cheat_t *const *cheats = GB_get_cheats(gb, &cheatCount);
-    unsigned row = self.cheatsTable.selectedRow;
+    NSInteger row = self.cheatsTable.selectedRow;
     const GB_cheat_t *cheat = NULL;
     if (row >= cheatCount) {
         static const GB_cheat_t template = {
@@ -203,7 +203,7 @@
     
     size_t cheatCount;
     const GB_cheat_t *const *cheats = GB_get_cheats(gb, &cheatCount);
-    unsigned row = self.cheatsTable.selectedRow;
+    NSInteger row = self.cheatsTable.selectedRow;
     
     [self.document performAtomicBlock:^{
         if (row >= cheatCount) {

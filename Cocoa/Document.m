@@ -231,7 +231,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void) updateRumbleMode
 {
-    GB_set_rumble_mode(&gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBRumbleMode"]);
+    GB_set_rumble_mode(&gb, (GB_rumble_mode_t)[[NSUserDefaults standardUserDefaults] integerForKey:@"GBRumbleMode"]);
 }
 
 - (void) initCommon
@@ -282,7 +282,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     GB_set_pixels_output(&gb, self.view.pixels);
     if (self.vramWindow.isVisible) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.view.mouseHidingEnabled = (self.mainWindow.styleMask & NSFullScreenWindowMask) != 0;
+            self.view.mouseHidingEnabled = (self.mainWindow.styleMask & NSWindowStyleMaskFullScreen) != 0;
             [self reloadVRAMData: nil];
         });
     }
@@ -399,8 +399,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     [self.audioClient stop];
     self.audioClient = nil;
     self.view.mouseHidingEnabled = NO;
-    GB_save_battery(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"sav"] UTF8String]);
-    GB_save_cheats(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"cht"] UTF8String]);
+    GB_save_battery(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"sav"] fileSystemRepresentation]);
+    GB_save_cheats(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"cht"] fileSystemRepresentation]);
     unsigned time_to_alarm = GB_time_to_alarm(&gb);
     
     if (time_to_alarm) {
@@ -425,7 +425,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void) start
 {
     if (running) return;
-    self.view.mouseHidingEnabled = (self.mainWindow.styleMask & NSFullScreenWindowMask) != 0;
+    self.view.mouseHidingEnabled = (self.mainWindow.styleMask & NSWindowStyleMaskFullScreen) != 0;
     [[[NSThread alloc] initWithTarget:self selector:@selector(run) object:nil] start];
 }
 
@@ -705,18 +705,18 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     NSString *rom_warnings = [self captureOutputForBlock:^{
         GB_debugger_clear_symbols(&gb);
         if ([[self.fileType pathExtension] isEqualToString:@"isx"]) {
-            GB_load_isx(&gb, [self.fileName UTF8String]);
-            GB_load_battery(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"ram"] UTF8String]);
+            GB_load_isx(&gb, [self.fileName fileSystemRepresentation]);
+            GB_load_battery(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"ram"] fileSystemRepresentation]);
 
         }
         else {
-            GB_load_rom(&gb, [self.fileName UTF8String]);
+            GB_load_rom(&gb, [self.fileName fileSystemRepresentation]);
         }
-        GB_load_battery(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"sav"] UTF8String]);
-        GB_load_cheats(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"cht"] UTF8String]);
+        GB_load_battery(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"sav"] fileSystemRepresentation]);
+        GB_load_cheats(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"cht"] fileSystemRepresentation]);
         [self.cheatWindowController cheatsUpdated];
-        GB_debugger_load_symbol_file(&gb, [[[NSBundle mainBundle] pathForResource:@"registers" ofType:@"sym"] UTF8String]);
-        GB_debugger_load_symbol_file(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"sym"] UTF8String]);
+        GB_debugger_load_symbol_file(&gb, [[[NSBundle mainBundle] pathForResource:@"registers" ofType:@"sym"] fileSystemRepresentation]);
+        GB_debugger_load_symbol_file(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:@"sym"] fileSystemRepresentation]);
     }];
     if (rom_warnings && !rom_warning_issued) {
         rom_warning_issued = true;
@@ -1013,7 +1013,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
     bool __block success = false;
     [self performAtomicBlock:^{
-        success = GB_save_state(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:[NSString stringWithFormat:@"s%ld", (long)[sender tag] ]] UTF8String]) == 0;
+        success = GB_save_state(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:[NSString stringWithFormat:@"s%ld", (long)[sender tag] ]] fileSystemRepresentation]) == 0;
     }];
     
     if (!success) {
@@ -1027,7 +1027,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     bool __block success = false;
     NSString *error =
     [self captureOutputForBlock:^{
-        success = GB_load_state(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:[NSString stringWithFormat:@"s%ld", (long)[sender tag] ]] UTF8String]) == 0;
+        success = GB_load_state(&gb, [[[self.fileName stringByDeletingPathExtension] stringByAppendingPathExtension:[NSString stringWithFormat:@"s%ld", (long)[sender tag] ]] fileSystemRepresentation]) == 0;
     }];
     
     if (!success) {
@@ -1060,7 +1060,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     GB_write_memory(&gb, addr, value);
 }
 
-- (void) performAtomicBlock: (void (^)())block
+- (void) performAtomicBlock: (void (^ NS_NOESCAPE)(void))block
 {
     while (!GB_is_inited(&gb));
     bool was_running = running && !GB_debugger_is_stopped(&gb);
@@ -1073,7 +1073,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     }
 }
 
-- (NSString *) captureOutputForBlock: (void (^)())block
+- (NSString *) captureOutputForBlock: (void (^ NS_NOESCAPE)(void))block
 {
     capturedOutput = [[NSMutableString alloc] init];
     [self performAtomicBlock:block];
@@ -1655,14 +1655,14 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     NSSavePanel * savePanel = [NSSavePanel savePanel];
     [savePanel setAllowedFileTypes:@[@"png"]];
     [savePanel beginSheetModalForWindow:self.printerFeedWindow completionHandler:^(NSInteger result) {
-        if (result == NSFileHandlingPanelOKButton) {
+        if (result == NSModalResponseOK) {
             [savePanel orderOut:self];
             CGImageRef cgRef = [self.feedImageView.image CGImageForProposedRect:NULL
                                                                         context:nil
                                                                           hints:nil];
             NSBitmapImageRep *imageRep = [[NSBitmapImageRep alloc] initWithCGImage:cgRef];
             [imageRep setSize:(NSSize){160, self.feedImageView.image.size.height / 2}];
-            NSData *data = [imageRep representationUsingType:NSPNGFileType properties:@{}];
+            NSData *data = [imageRep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
             [data writeToURL:savePanel.URL atomically:NO];
             [self.printerFeedWindow setIsVisible:NO];
         }

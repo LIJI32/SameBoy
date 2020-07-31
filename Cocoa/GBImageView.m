@@ -76,19 +76,19 @@
 - (void)setHorizontalGrids:(NSArray *)horizontalGrids
 {
     self->_horizontalGrids = horizontalGrids;
-    [self setNeedsDisplay];
+    [self setNeedsDisplay:YES];
 }
 
 - (void)setVerticalGrids:(NSArray *)verticalGrids
 {
     self->_verticalGrids = verticalGrids;
-    [self setNeedsDisplay];
+    [self setNeedsDisplay:YES];
 }
 
 - (void)setDisplayScrollRect:(bool)displayScrollRect
 {
     self->_displayScrollRect = displayScrollRect;
-    [self setNeedsDisplay];
+    [self setNeedsDisplay:YES];
 }
 
 - (void)updateTrackingAreas

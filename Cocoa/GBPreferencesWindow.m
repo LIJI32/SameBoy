@@ -260,13 +260,13 @@
 
 - (IBAction)changeAnalogControls:(id)sender
 {
-    [[NSUserDefaults standardUserDefaults] setBool: [(NSButton *)sender state] == NSOnState
+    [[NSUserDefaults standardUserDefaults] setBool: [(NSButton *)sender state] == NSControlStateValueOn
                                             forKey:@"GBAnalogControls"];
 }
 
 - (IBAction)changeAspectRatio:(id)sender
 {
-    [[NSUserDefaults standardUserDefaults] setBool: [(NSButton *)sender state] != NSOnState
+    [[NSUserDefaults standardUserDefaults] setBool: [(NSButton *)sender state] != NSControlStateValueOn
                                             forKey:@"GBAspectRatioUnkept"];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"GBAspectChanged" object:nil];
 }
