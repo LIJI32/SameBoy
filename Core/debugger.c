@@ -1128,6 +1128,20 @@ static char *rw_completer(GB_gameboy_t *gb, const char *string, uintptr_t *conte
     return NULL;
 }
 
+static bool _c_start_function_trace(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    GB_coverage_reset(&gb->function_coverage);
+    GB_coverage_start(&gb->function_coverage);
+    return true;
+}
+
+static bool _c_stop_function_trace(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    GB_coverage_write_result(&gb->function_coverage, arguments);
+    GB_coverage_reset(&gb->function_coverage);
+    return true;
+}
+
 static bool watch(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
 {
     if (strlen(lstrip(arguments)) == 0) {
@@ -1938,7 +1952,8 @@ static const debugger_command_t commands[] = {
     {"x", 1, }, /* Alias */
     {"disassemble", 1, disassemble, "Disassemble instructions at address", "<expression>", "count", .argument_completer = symbol_completer},
 
-
+    {"start_trace", 6, _c_start_function_trace, "Starts trace"},
+    {"stop_trace", 6, _c_stop_function_trace, "Stops trace", "<file>"},
     {"help", 1, help, "List available commands or show help for the specified command", "[<command>]"},
     {NULL,}, /* Null terminator */
 };
@@ -2031,6 +2046,8 @@ void GB_debugger_call_hook(GB_gameboy_t *gb, uint16_t call_addr)
         gb->backtrace_returns[gb->backtrace_size].bank = bank_for_addr(gb, call_addr);
         gb->backtrace_returns[gb->backtrace_size].addr = call_addr;
         gb->backtrace_size++;
+
+        GB_coverage_add_data_point(&gb->function_coverage, bank_for_addr(gb, gb->pc), gb->pc);
     }
 
     gb->debug_call_depth++;

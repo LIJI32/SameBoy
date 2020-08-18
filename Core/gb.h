@@ -10,6 +10,7 @@
 
 #include "apu.h"
 #include "camera.h"
+#include "coverage.h"
 #include "debugger.h"
 #include "display.h"
 #include "joypad.h"
@@ -686,6 +687,9 @@ struct GB_gameboy_internal_s {
                
         /* Temporary state */
         bool wx_just_changed;
+
+        /* Coverage */
+        GB_coverage function_coverage;
    );
 };
     

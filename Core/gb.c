@@ -168,6 +168,8 @@ void GB_init(GB_gameboy_t *gb, GB_model_t model)
         /* Disable time syncing. Timing should be done by the SFC emulator. */
         gb->turbo = true;
     }
+
+    GB_coverage_initialize(&gb->function_coverage);
     
     GB_reset(gb);
     load_default_border(gb);
@@ -211,6 +213,7 @@ void GB_free(GB_gameboy_t *gb)
         GB_remove_cheat(gb, gb->cheats[0]);
     }
 #endif
+    GB_coverage_deinitialize(&gb->function_coverage);
     memset(gb, 0, sizeof(*gb));
 }
 
