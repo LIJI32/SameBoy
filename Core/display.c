@@ -737,6 +737,9 @@ static uint16_t get_object_line_address(GB_gameboy_t *gb, const GB_object_t *obj
  */
 void GB_display_run(GB_gameboy_t *gb, uint8_t cycles)
 {
+	if (GB_is_hle_sgb(gb)) {
+		GB_sgb_advance_sound(gb, cycles);
+	}
     /* The PPU does not advance while in STOP mode on the DMG */
     if (gb->stopped && !GB_is_cgb(gb)) {
         gb->cycles_in_stop_mode += cycles;

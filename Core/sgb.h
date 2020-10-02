@@ -3,6 +3,7 @@
 #include "gb_struct_def.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "snes_spc/spc.h"
 
 typedef struct GB_sgb_s GB_sgb_t;
 typedef struct {
@@ -56,11 +57,21 @@ struct GB_sgb_s {
     
     /* Multiplayer (cont) */
     bool mlt_lock;
+
+	/* Sound */
+	SNES_SPC *spc;
+	uint8_t sound_control[4];
+	uint32_t cycles_since_sound_frame;
 };
 
 void GB_sgb_write(GB_gameboy_t *gb, uint8_t value);
 void GB_sgb_render(GB_gameboy_t *gb);
 void GB_sgb_load_default_data(GB_gameboy_t *gb);
+
+void GB_sgb_init_sound(GB_gameboy_t *gb);
+void GB_sgb_deinit_sound(GB_gameboy_t *gb);
+
+void GB_sgb_advance_sound(GB_gameboy_t *gb, uint8_t cycles);
 
 #endif
 

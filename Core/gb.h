@@ -701,6 +701,12 @@ struct GB_gameboy_s {
 };
 #endif
 
+#ifdef __MINGW32__
+/* When defining __USE_MINGW_ANSI_STDIO, we need to teach gcc that user functions
+that call printf() in fact call the mingw printf, not the mvscrt one */
+#define __printflike(fmtarg, firstvararg) \
+__attribute__((__format__ (gnu_printf, fmtarg, firstvararg)))
+#endif
 
 #ifndef __printflike
 /* Missing from Linux headers. */

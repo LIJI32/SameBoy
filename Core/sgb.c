@@ -2,12 +2,49 @@
 #include "random.h"
 #include <math.h>
 #include <assert.h>
+#include <stdio.h>
 
 #ifndef M_PI
   #define M_PI 3.14159265358979323846
 #endif
 
 #define INTRO_ANIMATION_LENGTH 200
+
+static const uint8_t iplrom[64] = {
+	/*ffc0*/ 0xcd, 0xef,	   //mov   x,#$ef
+	/*ffc2*/ 0xbd,			   //mov   sp,x
+	/*ffc3*/ 0xe8, 0x00,	   //mov   a,#$00
+	/*ffc5*/ 0xc6,			   //mov   (x),a
+	/*ffc6*/ 0x1d,			   //dec   x
+	/*ffc7*/ 0xd0, 0xfc,	   //bne   $ffc5
+	/*ffc9*/ 0x8f, 0xaa, 0xf4, //mov   $f4,#$aa
+	/*ffcc*/ 0x8f, 0xbb, 0xf5, //mov   $f5,#$bb
+	/*ffcf*/ 0x78, 0xcc, 0xf4, //cmp   $f4,#$cc
+	/*ffd2*/ 0xd0, 0xfb,	   //bne   $ffcf
+	/*ffd4*/ 0x2f, 0x19,	   //bra   $ffef
+	/*ffd6*/ 0xeb, 0xf4,	   //mov   y,$f4
+	/*ffd8*/ 0xd0, 0xfc,	   //bne   $ffd6
+	/*ffda*/ 0x7e, 0xf4,	   //cmp   y,$f4
+	/*ffdc*/ 0xd0, 0x0b,	   //bne   $ffe9
+	/*ffde*/ 0xe4, 0xf5,	   //mov   a,$f5
+	/*ffe0*/ 0xcb, 0xf4,	   //mov   $f4,y
+	/*ffe2*/ 0xd7, 0x00,	   //mov   ($00)+y,a
+	/*ffe4*/ 0xfc,			   //inc   y
+	/*ffe5*/ 0xd0, 0xf3,	   //bne   $ffda
+	/*ffe7*/ 0xab, 0x01,	   //inc   $01
+	/*ffe9*/ 0x10, 0xef,	   //bpl   $ffda
+	/*ffeb*/ 0x7e, 0xf4,	   //cmp   y,$f4
+	/*ffed*/ 0x10, 0xeb,	   //bpl   $ffda
+	/*ffef*/ 0xba, 0xf6,	   //movw  ya,$f6
+	/*fff1*/ 0xda, 0x00,	   //movw  $00,ya
+	/*fff3*/ 0xba, 0xf4,	   //movw  ya,$f4
+	/*fff5*/ 0xc4, 0xf4,	   //mov   $f4,a
+	/*fff7*/ 0xdd,			   //mov   a,y
+	/*fff8*/ 0x5d,			   //mov   x,a
+	/*fff9*/ 0xd0, 0xdb,	   //bne   $ffd6
+	/*fffb*/ 0x1f, 0x00, 0x00, //jmp   ($0000+x)
+	/*fffe*/ 0xc0, 0xff		   //reset vector location ($ffc0)
+};
 
 enum {
     PAL01    = 0x00,
@@ -18,6 +55,8 @@ enum {
     ATTR_LIN = 0x05,
     ATTR_DIV = 0x06,
     ATTR_CHR = 0x07,
+	SOUND    = 0x08,
+	SOU_TRN  = 0x09,
     PAL_SET  = 0x0A,
     PAL_TRN  = 0x0B,
     DATA_SND = 0x0F,
@@ -42,6 +81,7 @@ typedef enum {
     TRANSFER_BORDER_DATA,
     TRANSFER_PALETTES,
     TRANSFER_ATTRIBUTES,
+	TRANSFER_SOUND,
 } transfer_dest_t;
 
 #define SGB_PACKET_SIZE 16
@@ -408,13 +448,28 @@ static void command_ready(GB_gameboy_t *gb)
             break;
         case ATTR_SET:
             load_attribute_file(gb, gb->sgb->command[0] & 0x3F);
-            
+
             if (gb->sgb->command[0] & 0x40) {
                 gb->sgb->mask_mode = MASK_DISABLED;
             }
             break;
         case MASK_EN:
             gb->sgb->mask_mode = gb->sgb->command[1] & 3;
+            break;
+		case SOUND:
+			if ((gb->sgb->command[0] & 7) == 1) {
+				GB_log(gb, "SGB: SOUND %02x %02x %02x %02x\n", gb->sgb->command[1], gb->sgb->command[2], gb->sgb->command[3], gb->sgb->command[4]);
+				gb->sgb->sound_control[1] = gb->sgb->command[1];
+				gb->sgb->sound_control[2] = gb->sgb->command[2];
+				gb->sgb->sound_control[3] = gb->sgb->command[3];
+				gb->sgb->sound_control[0] = gb->sgb->command[4];
+			} else {
+				// unexpected size??
+			}
+			break;
+		case SOU_TRN:
+            gb->sgb->vram_transfer_countdown = 2;
+            gb->sgb->transfer_dest = TRANSFER_SOUND;
             break;
         default:
             if ((gb->sgb->command[0] >> 3) == 8 &&
@@ -600,12 +655,48 @@ static void render_boot_animation (GB_gameboy_t *gb)
     }
 }
 
+static void GB_sgb_sound_transfer(GB_gameboy_t *gb, const uint8_t* data)
+{
+	const uint8_t *const dataend = data + 0x10000;
+	uint8_t *const dst = spc_get_ram(gb->sgb->spc);
+
+	while (1)
+	{
+		if (data + 4 > dataend)
+		{
+			GB_log(gb, "TRN_SOUND header overflow\n");
+			break;
+		}
+		int len = data[0] | data[1] << 8;
+		int addr = data[2] | data[3] << 8;
+		if (!len)
+		{
+			GB_log(gb, "TRN_SOUND END %04x\n", addr);
+			break;
+		}
+		data += 4;
+		if (data + len > dataend)
+		{
+			GB_log(gb, "TRN_SOUND src overflow\n");
+			break;
+		}
+		if (addr + len >= 0x10000)
+		{
+			GB_log(gb, "TRN_SOUND dst overflow\n");
+			return;
+		}
+		GB_log(gb, "TRN_SOUND addr %04x len %04x\n", addr, len);
+		memcpy(dst + addr, data, len);
+		data += len;
+	}
+}
+
 static void render_jingle(GB_gameboy_t *gb, size_t count);
 void GB_sgb_render(GB_gameboy_t *gb)
 {
-    if (gb->apu_output.sample_rate) {
-        render_jingle(gb, gb->apu_output.sample_rate / GB_get_usual_frame_rate(gb));
-    }
+    // if (gb->apu_output.sample_rate) {
+    //     render_jingle(gb, gb->apu_output.sample_rate / GB_get_usual_frame_rate(gb));
+    // }
     
     if (gb->sgb->intro_animation < INTRO_ANIMATION_LENGTH) gb->sgb->intro_animation++;
     
@@ -628,6 +719,7 @@ void GB_sgb_render(GB_gameboy_t *gb)
             else {
                 unsigned size = 0;
                 uint16_t *data = NULL;
+				uint16_t sound_scratch[2048];
                 
                 switch (gb->sgb->transfer_dest) {
                     case TRANSFER_PALETTES:
@@ -642,6 +734,10 @@ void GB_sgb_render(GB_gameboy_t *gb)
                         size = 0xFE;
                         data = (uint16_t *)gb->sgb->attribute_files;
                         break;
+					case TRANSFER_SOUND:
+						size = 0x100;
+						data = sound_scratch;
+						break;
                     default:
                         return; // Corrupt state?
                 }
@@ -656,7 +752,7 @@ void GB_sgb_render(GB_gameboy_t *gb)
                             *data |= pixel_to_bits[gb->sgb->screen_buffer[(tile_x + x) + (tile_y + y) * 160] & 3] >> x;
                         }
 #ifdef GB_BIG_ENDIAN
-                        if (gb->sgb->transfer_dest == TRANSFER_ATTRIBUTES) {
+                        if (gb->sgb->transfer_dest == TRANSFER_ATTRIBUTES || gb->sgb->transfer_dest == TRANSFER_SOUND) {
                             *data = __builtin_bswap16(*data);
                         }
 #endif
@@ -666,6 +762,9 @@ void GB_sgb_render(GB_gameboy_t *gb)
                 if (gb->sgb->transfer_dest == TRANSFER_BORDER_DATA) {
                     gb->sgb->border_animation = 64;
                 }
+				if (gb->sgb->transfer_dest == TRANSFER_SOUND) {
+					GB_sgb_sound_transfer(gb, (uint8_t*)sound_scratch);
+				}
             }
         }
     }
@@ -911,3 +1010,87 @@ static void render_jingle(GB_gameboy_t *gb, size_t count)
     return;
 }
 
+void GB_sgb_init_sound(GB_gameboy_t *gb)
+{
+	gb->sgb->spc = spc_new();
+	spc_init_rom(gb->sgb->spc, iplrom);
+	spc_reset(gb->sgb->spc);
+	FILE* spcfile = fopen("sgb-cart-present.spc", "rb");
+	fseeko64(spcfile, 0, SEEK_END);
+	int len = ftello64(spcfile);
+	char* junk = malloc(len);
+	fseeko64(spcfile, 0, SEEK_SET);
+	fread(junk, 1, len, spcfile);
+	fclose(spcfile);
+	const char* err = spc_load_spc(gb->sgb->spc, junk, len);
+	if (err)
+		GB_log(gb, err);
+	free(junk);
+
+	// the combination of the sameboy bootrom plus the built in SPC file we use means
+	// that the SPC doesn't finish its init fast enough for donkey kong, which starts poking
+	// data too early.  it's just a combination of various HLE concerns not meshing...
+	// TODO: This may not be needed with Sameboy's delay
+	int16_t sound_buffer[4096];
+	spc_set_output(gb->sgb->spc, sound_buffer, 4096);
+	for (int i = 0; i < 240; i++)
+	{
+		spc_end_frame(gb->sgb->spc, 35104);
+	}
+	memset(gb->sgb->sound_control, 0, sizeof(gb->sgb->sound_control));
+	gb->sgb->cycles_since_sound_frame = 0;
+}
+void GB_sgb_deinit_sound(GB_gameboy_t *gb)
+{
+	spc_delete(gb->sgb->spc);
+}
+
+void GB_sgb_advance_sound(GB_gameboy_t *gb, uint8_t cycles)
+{
+	cycles /= 2;
+	gb->sgb->cycles_since_sound_frame += cycles;
+	if (gb->sgb->cycles_since_sound_frame >= 35112) {
+		gb->sgb->cycles_since_sound_frame -= 35112;
+		int16_t sound_buffer[4096];
+		spc_set_output(gb->sgb->spc, sound_buffer, sizeof(sound_buffer) / sizeof(sound_buffer[0]));
+		int matched = 1;
+		for (int p = 0; p < 4; p++)
+		{
+			if (spc_read_port(gb->sgb->spc, 0, p) != gb->sgb->sound_control[p])
+				matched = 0;
+		}
+		if (matched) // recived
+		{
+			gb->sgb->sound_control[0] = 0;
+			gb->sgb->sound_control[1] = 0;
+			gb->sgb->sound_control[2] = 0;
+		}
+		else
+		{
+			GB_log(gb, "SPC: %02x %02x %02x %02x => %02x %02x %02x %02x\n",
+					spc_read_port(gb->sgb->spc, 0, 0),
+					spc_read_port(gb->sgb->spc, 0, 1),
+					spc_read_port(gb->sgb->spc, 0, 2),
+					spc_read_port(gb->sgb->spc, 0, 3),
+					gb->sgb->sound_control[0],
+					gb->sgb->sound_control[1],
+					gb->sgb->sound_control[2],
+					gb->sgb->sound_control[3]);
+		}
+		for (int p = 0; p < 4; p++)
+		{
+			spc_write_port(gb->sgb->spc, 0, p, gb->sgb->sound_control[p]);
+		}
+
+		// make 524 sample pairs at about 32khz
+		spc_end_frame(gb->sgb->spc, 524 * 32);
+
+		GB_sample_t foo;
+		// TODO: thes are at 32khz, not whatever someone asked for 
+		for (int i = 0; i < 524; i++) {
+			foo.left = sound_buffer[i * 2];
+			foo.right = sound_buffer[i * 2 + 1];
+			gb->apu_output.sample_callback(gb, &foo);
+		}
+	}
+}

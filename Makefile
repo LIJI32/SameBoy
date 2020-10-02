@@ -7,6 +7,12 @@ PLATFORM := $(shell uname -s)
 ifneq ($(findstring MINGW,$(PLATFORM)),)
 PLATFORM := windows32
 USE_WINDRES := true
+CFLAGS += -D__USE_MINGW_ANSI_STDIO=1
+SUBSYSTEM_WINDOWS := -mwindows
+SUBSYSTEM_CONSOLE := -mconsole
+else
+SUBSYSTEM_WINDOWS := -Wl,/subsystem:windows
+SUBSYSTEM_CONSOLE := -Wl,/subsystem:console
 endif
 
 ifneq ($(findstring MSYS,$(PLATFORM)),)
@@ -90,7 +96,9 @@ NULL := /dev/null
 
 ifeq ($(PLATFORM),windows32)
 OPEN_DIALOG = OpenDialog/windows.c
+ifeq ($(findstring MINGW,$(PLATFORM)),)
 NULL := NUL
+endif
 endif
 
 ifeq ($(PLATFORM),Darwin)
@@ -98,7 +106,7 @@ OPEN_DIALOG = OpenDialog/cocoa.m
 endif
 
 # These must come before the -Wno- flags
-WARNINGS += -Werror -Wall -Wno-unknown-warning -Wno-unknown-warning-option
+WARNINGS += -Wall -Wno-unknown-warning -Wno-unknown-warning-option
 WARNINGS += -Wno-nonnull -Wno-unused-result -Wno-strict-aliasing -Wno-multichar -Wno-int-in-bool-context
 
 # Only add this flag if the compiler supports it
@@ -130,8 +138,7 @@ GL_LDFLAGS := $(shell $(PKG_CONFIG) --libs gl || echo -lGL)
 endif
 ifeq ($(PLATFORM),windows32)
 CFLAGS += -IWindows -Drandom=rand
-LDFLAGS += -lmsvcrt -lcomdlg32 -luser32 -lSDL2main -Wl,/MANIFESTFILE:NUL
-SDL_LDFLAGS := -lSDL2
+#LDFLAGS += -lcomdlg32 -luser32 -lSDL2main
 GL_LDFLAGS := -lopengl32
 else
 LDFLAGS += -lc -lm -ldl
@@ -154,7 +161,7 @@ endif
 CFLAGS += -Wno-deprecated-declarations
 ifeq ($(PLATFORM),windows32)
 CFLAGS += -Wno-deprecated-declarations # Seems like Microsoft deprecated every single LIBC function
-LDFLAGS += -Wl,/NODEFAULTLIB:libcmt.lib
+#LDFLAGS += -Wl,/NODEFAULTLIB:libcmt.lib
 endif
 
 ifeq ($(CONF),debug)
@@ -195,7 +202,7 @@ all: cocoa sdl tester libretro
 
 # Get a list of our source files and their respective object file targets
 
-CORE_SOURCES := $(shell ls Core/*.c)
+CORE_SOURCES := $(shell ls Core/*.c)  $(shell ls Core/snes_spc/*.cpp)
 SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG) SDL/audio/$(SDL_AUDIO_DRIVER).c
 TESTER_SOURCES := $(shell ls Tester/*.c)
 
@@ -238,6 +245,10 @@ $(OBJ)/%.dep: %
 	$(CC) $(CFLAGS) -MT $(OBJ)/$^.o -M $^ -c -o $@
 
 # Compilation rules
+
+$(OBJ)/Core/snes_spc/%.cpp.o: Core/snes_spc/%.cpp
+	-@$(MKDIR) -p $(dir $@)
+	g++ $(CFLAGS) -c $< -o $@
 
 $(OBJ)/Core/%.c.o: Core/%.c
 	-@$(MKDIR) -p $(dir $@)
@@ -329,16 +340,16 @@ endif
 # Windows version builds two, one with a conole and one without it
 $(BIN)/SDL/sameboy.exe: $(CORE_OBJECTS) $(SDL_OBJECTS) $(OBJ)/Windows/resources.o
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) -Wl,/subsystem:windows
+	g++ $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) $(SUBSYSTEM_WINDOWS)
 
 $(BIN)/SDL/sameboy_debugger.exe: $(CORE_OBJECTS) $(SDL_OBJECTS) $(OBJ)/Windows/resources.o
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) -Wl,/subsystem:console
+	g++ $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) $(SUBSYSTEM_CONSOLE)
 
 ifneq ($(USE_WINDRES),)
 $(OBJ)/%.o: %.rc
 	-@$(MKDIR) -p $(dir $@)
-	windres --preprocessor cpp -DVERSION=\"$(VERSION)\" $^ $@
+	windres --codepage=65001 -DVERSION='"$(VERSION)"' $^ $@
 else
 $(OBJ)/%.res: %.rc
 	-@$(MKDIR) -p $(dir $@)
@@ -350,7 +361,7 @@ endif
 
 # We must provide SDL2.dll with the Windows port.
 $(BIN)/SDL/SDL2.dll:
-	@$(eval MATCH := $(shell where $$LIB:SDL2.dll))
+	@$(eval MATCH := $(shell where SDL2.dll))
 	cp "$(MATCH)" $@
 
 # Tester
@@ -364,7 +375,7 @@ endif
 
 $(BIN)/tester/sameboy_tester.exe: $(CORE_OBJECTS) $(SDL_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) -Wl,/subsystem:console
+	$(CC) $^ -o $@ $(LDFLAGS) $(SUBSYSTEM_CONSOLE)
 
 $(BIN)/SDL/%.bin: $(BOOTROMS_DIR)/%.bin
 	-@$(MKDIR) -p $(dir $@)
