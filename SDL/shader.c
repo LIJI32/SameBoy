@@ -167,6 +167,7 @@ void render_bitmap_with_shader(shader_t *shader, void *bitmap, void *previous,
                                unsigned x, unsigned y, unsigned w, unsigned h,
                                GB_frame_blending_mode_t blending_mode)
 {
+    glEnable(GL_FRAMEBUFFER_SRGB);
     glUseProgram(shader->program);
     glUniform2f(shader->origin_uniform, x, y);
     glUniform2f(shader->resolution_uniform, w, h);

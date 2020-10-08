@@ -9,7 +9,7 @@ uniform vec2 origin;
 #define equal(x, y) ((x) == (y))
 #define inequal(x, y) ((x) != (y))
 #define STATIC
-#define GAMMA (2.2)
+#define GAMMA (1.0)
 
 out vec4 frag_color;
 
