@@ -207,7 +207,7 @@ static retro_environment_t environ_cb;
 static const struct retro_variable vars_single[] = {
     { "sameboy_color_correction_mode", "Color correction; emulate hardware|preserve brightness|reduce contrast|off|correct curves" },
     { "sameboy_high_pass_filter_mode", "High-pass filter; accurate|remove dc offset|off" },
-    { "sameboy_model", "Emulated model; Auto|Game Boy|Game Boy Color|Game Boy Advance|Super Game Boy|Super Game Boy 2" },
+    { "sameboy_model", "Emulated model (Restart game); Auto|Game Boy|Game Boy Color|Game Boy Advance|Super Game Boy|Super Game Boy 2" },
     { "sameboy_border", "Display border; Super Game Boy only|always|never" },
     { "sameboy_rumble", "Enable rumble; rumble-enabled games|all games|never" },
     { NULL }
@@ -219,8 +219,8 @@ static const struct retro_variable vars_dual[] = {
     /*{ "sameboy_ir",   "Infrared Sensor Emulation; disabled|enabled" },*/
     { "sameboy_screen_layout", "Screen layout; top-down|left-right" },
     { "sameboy_audio_output", "Audio output; Game Boy #1|Game Boy #2" },
-    { "sameboy_model_1", "Emulated model for Game Boy #1; Auto|Game Boy|Game Boy Color|Game Boy Advance" },
-    { "sameboy_model_2", "Emulated model for Game Boy #2; Auto|Game Boy|Game Boy Color|Game Boy Advance" },
+    { "sameboy_model_1", "Emulated model for Game Boy #1 (Restart game); Auto|Game Boy|Game Boy Color|Game Boy Advance" },
+    { "sameboy_model_2", "Emulated model for Game Boy #2 (Restart game); Auto|Game Boy|Game Boy Color|Game Boy Advance" },
     { "sameboy_color_correction_mode_1", "Color correction for Game Boy #1; emulate hardware|preserve brightness|reduce contrast|off|correct curves" },
     { "sameboy_color_correction_mode_2", "Color correction for Game Boy #2; emulate hardware|preserve brightness|reduce contrast|off|correct curves" },
     { "sameboy_high_pass_filter_mode_1", "High-pass filter for Game Boy #1; accurate|remove dc offset|off" },
@@ -601,11 +601,7 @@ static void check_variables()
                 new_model = MODEL_AUTO;
             }
 
-            if (new_model != model[0]) { 
-                geometry_updated = true;
-                model[0] = new_model;
-                init_for_current_model(0);
-            }
+            model[0] = new_model;
         }
 
         var.key = "sameboy_border";
@@ -747,10 +743,7 @@ static void check_variables()
                 new_model = MODEL_AUTO;
             }
 
-            if (model[0] != new_model) { 
-                model[0] = new_model;
-                init_for_current_model(0);
-            }
+            model[0] = new_model;
         }
 
         var.key = "sameboy_model_2";
@@ -776,10 +769,7 @@ static void check_variables()
                 new_model = MODEL_AUTO;
             }
 
-            if (model[1] != new_model) { 
-                model[1] = new_model;
-                init_for_current_model(1);
-            }
+            model[1] = new_model;
         }
 
         var.key = "sameboy_screen_layout";
@@ -947,10 +937,14 @@ void retro_set_video_refresh(retro_video_refresh_t cb)
 
 void retro_reset(void)
 {
+    check_variables();
+
     for (int i = 0; i < emulated_devices; i++) {
+        init_for_current_model(i);
         GB_reset(&gameboy[i]);
     }
 
+    geometry_updated = true;
 }
 
 void retro_run(void)
