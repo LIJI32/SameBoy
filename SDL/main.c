@@ -361,10 +361,14 @@ static void vblank(GB_gameboy_t *gb)
     handle_events(gb);
 }
 
+static uint8_t adjust_gamma(uint8_t c)
+{
+    return 255 * powf(c / 255.f, 1.f / 2.2f);
+}
 
 static uint32_t rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
 {
-    return SDL_MapRGB(pixel_format, r, g, b);
+    return SDL_MapRGB(pixel_format, adjust_gamma(r), adjust_gamma(g), adjust_gamma(b));
 }
 
 static void rumble(GB_gameboy_t *gb, double amp)
