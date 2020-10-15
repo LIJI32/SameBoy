@@ -39,7 +39,7 @@
 
 -(uint8_t) readMemory:(uint16_t) addr;
 -(void) writeMemory:(uint16_t) addr value:(uint8_t)value;
--(void) performAtomicBlock: (void (^)())block;
+-(void) performAtomicBlock: (void (^ NS_NOESCAPE)(void))block;
 
 @end
 
