@@ -33,16 +33,16 @@ bool GB_apu_is_DAC_enabled(GB_gameboy_t *gb, unsigned index)
     
     switch (index) {
         case GB_SQUARE_1:
-            return gb->io_registers[GB_IO_NR12] & 0xF8;
+            return gb->io_registers[GB_IO_NR12] & 0x8F;
 
         case GB_SQUARE_2:
-            return gb->io_registers[GB_IO_NR22] & 0xF8;
+            return gb->io_registers[GB_IO_NR22] & 0x8F;
 
         case GB_WAVE:
             return gb->apu.wave_channel.enable;
 
         case GB_NOISE:
-            return gb->io_registers[GB_IO_NR42] & 0xF8;
+            return gb->io_registers[GB_IO_NR42] & 0x8F;
     }
 
     return false;
@@ -258,7 +258,7 @@ static void update_square_sample(GB_gameboy_t *gb, unsigned index)
    DMG, MGB or SGB/2 */
 static void nrx2_glitch(uint8_t *volume, uint8_t value, uint8_t old_value)
 {
-    if (value & 8) {
+    if (value & 0x80) {
         (*volume)++;
     }
 
@@ -266,11 +266,11 @@ static void nrx2_glitch(uint8_t *volume, uint8_t value, uint8_t old_value)
         *volume = 0x10 - *volume;
     }
 
-    if ((value & 7) && !(old_value & 7) && *volume && !(value & 8)) {
+    if ((value & 0x70) && !(old_value & 0x70) && *volume && !(value & 0x80)) {
         (*volume)--;
     }
 
-    if ((old_value & 7) && (value & 8)) {
+    if ((old_value & 0x70) && (value & 0x880)) {
         (*volume)--;
     }
 
@@ -281,7 +281,7 @@ static void tick_square_envelope(GB_gameboy_t *gb, enum GB_CHANNELS index)
 {
     uint8_t nrx2 = gb->io_registers[index == GB_SQUARE_1? GB_IO_NR12 : GB_IO_NR22];
 
-    if (gb->apu.square_channels[index].volume_countdown || (nrx2 & 7)) {
+    if (gb->apu.square_channels[index].volume_countdown || (nrx2 & 0x70)) {
         if (!gb->apu.square_channels[index].volume_countdown || !--gb->apu.square_channels[index].volume_countdown) {
             if (gb->cgb_double_speed) {
                 if (index == GB_SQUARE_1) {
@@ -292,15 +292,15 @@ static void tick_square_envelope(GB_gameboy_t *gb, enum GB_CHANNELS index)
                 }
             }
             
-            if ((nrx2 & 8) && gb->apu.square_channels[index].current_volume < 0xF) {
+            if ((nrx2 & 0x80) && gb->apu.square_channels[index].current_volume < 0xF) {
                 gb->apu.square_channels[index].current_volume++;
             }
 
-            else if (!(nrx2 & 8) && gb->apu.square_channels[index].current_volume > 0) {
+            else if (!(nrx2 & 0x80) && gb->apu.square_channels[index].current_volume > 0) {
                 gb->apu.square_channels[index].current_volume--;
             }
 
-            gb->apu.square_channels[index].volume_countdown = nrx2 & 7;
+            gb->apu.square_channels[index].volume_countdown = (nrx2 >> 4) & 7;
 
             if (gb->apu.is_active[index]) {
                 update_square_sample(gb, index);
@@ -313,20 +313,20 @@ static void tick_noise_envelope(GB_gameboy_t *gb)
 {
     uint8_t nr42 = gb->io_registers[GB_IO_NR42];
 
-    if (gb->apu.noise_channel.volume_countdown || (nr42 & 7)) {
+    if (gb->apu.noise_channel.volume_countdown || (nr42 & 0x70)) {
         if (!gb->apu.noise_channel.volume_countdown || !--gb->apu.noise_channel.volume_countdown) {
             if (gb->cgb_double_speed) {
                 gb->apu.pcm_mask[0] &= (gb->apu.noise_channel.current_volume << 2) | 0x1F;
             }
-            if ((nr42 & 8) && gb->apu.noise_channel.current_volume < 0xF) {
+            if ((nr42 & 0x80) && gb->apu.noise_channel.current_volume < 0xF) {
                 gb->apu.noise_channel.current_volume++;
             }
 
-            else if (!(nr42 & 8) && gb->apu.noise_channel.current_volume > 0) {
+            else if (!(nr42 & 0x80) && gb->apu.noise_channel.current_volume > 0) {
                 gb->apu.noise_channel.current_volume--;
             }
 
-            gb->apu.noise_channel.volume_countdown = nr42 & 7;
+            gb->apu.noise_channel.volume_countdown = (nr42 >> 4) & 7;
 
             if (gb->apu.is_active[GB_NOISE]) {
                 update_sample(gb, GB_NOISE,
@@ -360,7 +360,7 @@ void GB_apu_div_event(GB_gameboy_t *gb)
             }
         }
 
-        if (gb->apu.is_active[GB_NOISE] && gb->apu.noise_channel.volume_countdown == 0 && (gb->io_registers[GB_IO_NR42] & 7)) {
+        if (gb->apu.is_active[GB_NOISE] && gb->apu.noise_channel.volume_countdown == 0 && (gb->io_registers[GB_IO_NR42] & 0x70)) {
             tick_noise_envelope(gb);
         }
     }
@@ -579,17 +579,17 @@ uint8_t GB_apu_read(GB_gameboy_t *gb, uint8_t reg)
         return value;
     }
 
-    static const char read_mask[GB_IO_WAV_END - GB_IO_NR10 + 1] = {
-     /* NRX0  NRX1  NRX2  NRX3  NRX4 */
-        0x80, 0x3F, 0x00, 0xFF, 0xBF, // NR1X
-        0xFF, 0x3F, 0x00, 0xFF, 0xBF, // NR2X
+    static const char read_mask[GB_IO_NR51 - GB_IO_NR10 + 1] = {
+        0x80, 0x00, 0x3F, 0xFF, 0xBF, // NR1X
+        0x3F, 0xFF, 0x00, 0xFF, 0xBF, // NR2X
         0x7F, 0xFF, 0x9F, 0xFF, 0xBF, // NR3X
-        0xFF, 0xFF, 0x00, 0x00, 0xBF, // NR4X
-        0x00, 0x00, 0x70, 0xFF, 0xFF, // NR5X
-
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Unused
+        0xFF, // "NR40"
         // Wave RAM
-        0, /* ... */
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        
+        0xFF, 0x00, 0x00, 0xBF, // NR4X
+        0x00, 0x00, 0x70,  // NR5X
     };
 
     if (reg >= GB_IO_WAV_START && reg <= GB_IO_WAV_END && gb->apu.is_active[GB_WAVE]) {
@@ -695,11 +695,11 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         case GB_IO_NR12:
         case GB_IO_NR22: {
             unsigned index = reg == GB_IO_NR22? GB_SQUARE_2: GB_SQUARE_1;
-            if (((value & 0x7) == 0) && ((gb->io_registers[reg] & 0x7) != 0)) {
+            if ((((value >> 4) & 0x7) == 0) && (((gb->io_registers[reg] >> 4) & 0x7) != 0)) {
                 /* Envelope disabled */
                 gb->apu.square_channels[index].volume_countdown = 0;
             }
-            if ((value & 0xF8) == 0) {
+            if ((value & 0x8F) == 0) {
                 /* This disables the DAC */
                 gb->io_registers[reg] = value;
                 gb->apu.is_active[index] = false;
@@ -756,7 +756,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     /* Timing quirk: if already active, sound starts 2 (2MHz) ticks earlier.*/
                     gb->apu.square_channels[index].sample_countdown = (gb->apu.square_channels[index].sample_length ^ 0x7FF) * 2 + 4 - gb->apu.lf_div;
                 }
-                gb->apu.square_channels[index].current_volume = gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] >> 4;
+                gb->apu.square_channels[index].current_volume = gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] & 0xF;
 
                 /* The volume changes caused by NRX4 sound start take effect instantly (i.e. the effect the previously
                    started sound). The playback itself is not instant which is why we don't update the sample for other
@@ -765,9 +765,9 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     update_square_sample(gb, index);
                 }
 
-                gb->apu.square_channels[index].volume_countdown = gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] & 7;
+                gb->apu.square_channels[index].volume_countdown = (gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] >> 4) & 7;
 
-                if ((gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] & 0xF8) != 0 && !gb->apu.is_active[index]) {
+                if ((gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] & 0x8F) != 0 && !gb->apu.is_active[index]) {
                     gb->apu.is_active[index] = true;
                     update_sample(gb, index, 0, 0);
                     /* We use the highest bit in current_sample_index to mark this sample is not actually playing yet, */
@@ -915,11 +915,11 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         }
 
         case GB_IO_NR42: {
-            if (((value & 0x7) == 0) && ((gb->io_registers[reg] & 0x7) != 0)) {
+            if (((value & 0x70) == 0) && ((gb->io_registers[reg] & 0x70) != 0)) {
                 /* Envelope disabled */
                 gb->apu.noise_channel.volume_countdown = 0;
             }
-            if ((value & 0xF8) == 0) {
+            if ((value & 0x8F) == 0) {
                 /* This disables the DAC */
                 gb->io_registers[reg] = value;
                 gb->apu.is_active[GB_NOISE] = false;
@@ -936,10 +936,10 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         }
 
         case GB_IO_NR43: {
-            gb->apu.noise_channel.narrow = value & 8;
-            unsigned divisor = (value & 0x07) << 1;
+            gb->apu.noise_channel.narrow = value & 0x80;
+            unsigned divisor = (value & 0x70) << 1;
             if (!divisor) divisor = 1;
-            gb->apu.noise_channel.sample_length = (divisor << (value >> 4)) - 1;
+            gb->apu.noise_channel.sample_length = (divisor << (value & 0xF)) - 1;
 
             /* Todo: changing the frequency sometimes delays the next sample. This is probably
                due to how the frequency is actually calculated in the noise channel, which is probably

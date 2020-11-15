@@ -15,13 +15,7 @@ void GB_handle_rumble(GB_gameboy_t *gb)
         if (gb->rumble_mode == GB_RUMBLE_DISABLED) {
             return;
         }
-        if (gb->cartridge_type->has_rumble) {
-            if (gb->rumble_on_cycles + gb->rumble_off_cycles) {
-                gb->rumble_callback(gb, gb->rumble_on_cycles / (double)(gb->rumble_on_cycles + gb->rumble_off_cycles));
-                gb->rumble_on_cycles = gb->rumble_off_cycles = 0;
-            }
-        }
-        else if (gb->rumble_mode == GB_RUMBLE_ALL_GAMES) {
+        if (gb->rumble_mode == GB_RUMBLE_ALL_GAMES) {
             unsigned volume = (gb->io_registers[GB_IO_NR50] & 7) + 1 + ((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1;
             unsigned ch4_volume = volume * (!!(gb->io_registers[GB_IO_NR51] & 8) + !!(gb->io_registers[GB_IO_NR51] & 0x80));
             unsigned ch1_volume = volume * (!!(gb->io_registers[GB_IO_NR51] & 1) + !!(gb->io_registers[GB_IO_NR51] & 0x10));

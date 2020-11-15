@@ -415,7 +415,7 @@ static void add_object_from_index(GB_gameboy_t *gb, unsigned index)
 
     /* This reverse sorts the visible objects by location and priority */
     GB_object_t *objects = (GB_object_t *) &gb->oam;
-    bool height_16 = (gb->io_registers[GB_IO_LCDC] & 4) != 0;
+    bool height_16 = (gb->io_registers[GB_IO_LCDC] & 2) != 0;
     signed y = objects[index].y - 16;
     if (y <= gb->current_line && y + (height_16? 16 : 8) > gb->current_line) {
         unsigned j = 0;
@@ -443,7 +443,7 @@ static void render_pixel_if_possible(GB_gameboy_t *gb)
         
         if (fifo_size(&gb->oam_fifo)) {
             oam_fifo_item = fifo_pop(&gb->oam_fifo);
-            if (oam_fifo_item->pixel && (gb->io_registers[GB_IO_LCDC] & 2)) {
+            if (oam_fifo_item->pixel && (gb->io_registers[GB_IO_LCDC] & 1)) {
                 draw_oam = true;
                 bg_priority |= oam_fifo_item->bg_priority;
             }
@@ -461,7 +461,7 @@ static void render_pixel_if_possible(GB_gameboy_t *gb)
     
     /* Mixing */
     
-    if ((gb->io_registers[GB_IO_LCDC] & 0x1) == 0) {
+    if ((gb->io_registers[GB_IO_LCDC] & 0x40) == 0) {
         if (gb->cgb_mode) {
             bg_priority = false;
         }
@@ -583,10 +583,10 @@ static void advance_fetcher_state_machine(GB_gameboy_t *gb)
             }
             
             /* Todo: Verified for DMG (Tested: SGB2), CGB timing is wrong. */
-            if (gb->io_registers[GB_IO_LCDC] & 0x08  && !gb->wx_triggered) {
+            if (gb->io_registers[GB_IO_LCDC] & 0x04  && !gb->wx_triggered) {
                 map = 0x1C00;
             }
-            else if (gb->io_registers[GB_IO_LCDC] & 0x40 && gb->wx_triggered) {
+            else if (gb->io_registers[GB_IO_LCDC] & 0x8 && gb->wx_triggered) {
                 map = 0x1C00;
             }
             
@@ -715,7 +715,7 @@ static uint16_t get_object_line_address(GB_gameboy_t *gb, const GB_object_t *obj
         object = &blocked;
     }
     
-    bool height_16 = (gb->io_registers[GB_IO_LCDC] & 4) != 0; /* Todo: Which T-cycle actually reads this? */
+    bool height_16 = (gb->io_registers[GB_IO_LCDC] & 2) != 0; /* Todo: Which T-cycle actually reads this? */
     uint8_t tile_y = (gb->current_line - object->y) & (height_16? 0xF : 7);
     
     if (object->flags & 0x40) { /* Flip Y */
@@ -1044,7 +1044,7 @@ void GB_display_run(GB_gameboy_t *gb, uint8_t cycles)
                 
                 gb->during_object_fetch = true;
                 while (gb->n_visible_objs != 0 &&
-                       (gb->io_registers[GB_IO_LCDC] & 2 || GB_is_cgb(gb)) &&
+                       (gb->io_registers[GB_IO_LCDC] & 1 || GB_is_cgb(gb)) &&
                        gb->obj_comparators[gb->n_visible_objs - 1] == (uint8_t)(gb->position_in_line + 8)) {
                     
                     while (gb->fetcher_state < 5 || fifo_size(&gb->bg_fifo) == 0) {
@@ -1376,7 +1376,7 @@ void GB_draw_tilemap(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette
             break;
     }
     
-    if (map_type == GB_MAP_9C00 || (map_type == GB_MAP_AUTO && gb->io_registers[GB_IO_LCDC] & 0x08)) {
+    if (map_type == GB_MAP_9C00 || (map_type == GB_MAP_AUTO && gb->io_registers[GB_IO_LCDC] & 0x04)) {
         map = 0x1c00;
     }
     
@@ -1425,7 +1425,7 @@ void GB_draw_tilemap(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette
 uint8_t GB_get_oam_info(GB_gameboy_t *gb, GB_oam_info_t *dest, uint8_t *sprite_height)
 {
     uint8_t count = 0;
-    *sprite_height = (gb->io_registers[GB_IO_LCDC] & 4) ? 16:8;
+    *sprite_height = (gb->io_registers[GB_IO_LCDC] & 2) ? 16:8;
     uint8_t oam_to_dest_index[40] = {0,};
     for (unsigned y = 0; y < LINES; y++) {
         GB_object_t *sprite = (GB_object_t *) &gb->oam;

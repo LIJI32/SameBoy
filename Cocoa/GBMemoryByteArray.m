@@ -60,8 +60,6 @@
                     addr += 0x8000;
                     break;
                 case GBMemoryExternalRAM:
-                    bank_backup = gb->mbc_ram_bank;
-                    gb->mbc_ram_bank = self.selectedBank;
                     addr += 0xA000;
                     break;
                 case GBMemoryRAM:
@@ -86,7 +84,6 @@
                     gb->cgb_vram_bank = bank_backup;
                     break;
                 case GBMemoryExternalRAM:
-                    gb->mbc_ram_bank = bank_backup;
                     break;
                 case GBMemoryRAM:
                     gb->cgb_ram_bank = bank_backup;
@@ -133,8 +130,6 @@
                 addr += 0x8000;
                 break;
             case GBMemoryExternalRAM:
-                bank_backup = gb->mbc_ram_bank;
-                gb->mbc_ram_bank = self.selectedBank;
                 addr += 0xA000;
                 break;
             case GBMemoryRAM:
@@ -163,7 +158,6 @@
                 gb->cgb_vram_bank = bank_backup;
                 break;
             case GBMemoryExternalRAM:
-                gb->mbc_ram_bank = bank_backup;
                 break;
             case GBMemoryRAM:
                 gb->cgb_ram_bank = bank_backup;

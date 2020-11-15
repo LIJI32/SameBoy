@@ -80,8 +80,6 @@ static uint16_t bank_for_addr(GB_gameboy_t *gb, uint16_t addr)
 typedef struct {
     uint16_t rom0_bank;
     uint16_t rom_bank;
-    uint8_t mbc_ram_bank;
-    bool mbc_ram_enable;
     uint8_t ram_bank;
     uint8_t vram_bank;
 } banking_state_t;
@@ -90,8 +88,6 @@ static inline void save_banking_state(GB_gameboy_t *gb, banking_state_t *state)
 {
     state->rom0_bank = gb->mbc_rom0_bank;
     state->rom_bank = gb->mbc_rom_bank;
-    state->mbc_ram_bank = gb->mbc_ram_bank;
-    state->mbc_ram_enable = gb->mbc_ram_enable;
     state->ram_bank = gb->cgb_ram_bank;
     state->vram_bank = gb->cgb_vram_bank;
 }
@@ -101,8 +97,6 @@ static inline void restore_banking_state(GB_gameboy_t *gb, banking_state_t *stat
 
     gb->mbc_rom0_bank = state->rom0_bank;
     gb->mbc_rom_bank = state->rom_bank;
-    gb->mbc_ram_bank = state->mbc_ram_bank;
-    gb->mbc_ram_enable = state->mbc_ram_enable;
     gb->cgb_ram_bank = state->ram_bank;
     gb->cgb_vram_bank = state->vram_bank;
 }
@@ -111,8 +105,6 @@ static inline void switch_banking_state(GB_gameboy_t *gb, uint16_t bank)
 {
     gb->mbc_rom0_bank = bank;
     gb->mbc_rom_bank = bank;
-    gb->mbc_ram_bank = bank;
-    gb->mbc_ram_enable = true;
     if (GB_is_cgb(gb)) {
         gb->cgb_ram_bank = bank & 7;
         gb->cgb_vram_bank = bank & 1;
@@ -1530,58 +1522,8 @@ static bool mbc(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugg
         return true;
     }
 
-    const GB_cartridge_t *cartridge = gb->cartridge_type;
-
-    if (cartridge->has_ram) {
-        GB_log(gb, "Cartridge includes%s RAM: $%x bytes\n", cartridge->has_battery? " battery-backed": "", gb->mbc_ram_size);
-    }
-    else {
-        GB_log(gb, "No cartridge RAM\n");
-    }
-
-    if (cartridge->mbc_type) {
-        if (gb->is_mbc30) {
-            GB_log(gb, "MBC30\n");
-        }
-        else {
-            static const char *const mapper_names[] = {
-                [GB_MBC1] = "MBC1",
-                [GB_MBC2] = "MBC2",
-                [GB_MBC3] = "MBC3",
-                [GB_MBC5] = "MBC5",
-                [GB_HUC1] = "HUC-1",
-                [GB_HUC3] = "HUC-3",
-            };
-            GB_log(gb, "%s\n", mapper_names[cartridge->mbc_type]);
-        }
-        GB_log(gb, "Current mapped ROM bank: %x\n", gb->mbc_rom_bank);
-        if (cartridge->has_ram) {
-            GB_log(gb, "Current mapped RAM bank: %x\n", gb->mbc_ram_bank);
-            if (gb->cartridge_type->mbc_type != GB_HUC1) {
-                GB_log(gb, "RAM is curently %s\n", gb->mbc_ram_enable? "enabled" : "disabled");
-            }
-        }
-        if (cartridge->mbc_type == GB_MBC1 && gb->mbc1_wiring == GB_STANDARD_MBC1_WIRING) {
-            GB_log(gb, "MBC1 banking mode is %s\n", gb->mbc1.mode == 1 ? "RAM" : "ROM");
-        }
-        if (cartridge->mbc_type == GB_MBC1 && gb->mbc1_wiring == GB_MBC1M_WIRING) {
-            GB_log(gb, "MBC1 uses MBC1M wiring. \n");
-            GB_log(gb, "Current mapped ROM0 bank: %x\n", gb->mbc_rom0_bank);
-            GB_log(gb, "MBC1 multicart banking mode is %s\n", gb->mbc1.mode == 1 ? "enabled" : "disabled");
-        }
-
-    }
-    else {
-        GB_log(gb, "No MBC\n");
-    }
-
-    if (cartridge->has_rumble) {
-        GB_log(gb, "Cart contains a Rumble Pak\n");
-    }
-
-    if (cartridge->has_rtc) {
-        GB_log(gb, "Cart contains a real time clock\n");
-    }
+    GB_log(gb, "Current mapped ROM bank: %x\n", gb->mbc_rom_bank);
+    GB_log(gb, "Current mapped ROM0 bank: %x\n", gb->mbc_rom0_bank);
 
     return true;
 }
@@ -1662,13 +1604,13 @@ static bool lcd(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugg
     GB_log(gb, "LCDC:\n");
     GB_log(gb, "    LCD enabled: %s\n",(gb->io_registers[GB_IO_LCDC] & 128)? "Enabled" : "Disabled");
     GB_log(gb, "    %s: %s\n", (gb->cgb_mode? "Sprite priority flags" : "Background and Window"),
-                               (gb->io_registers[GB_IO_LCDC] & 1)? "Enabled" : "Disabled");
-    GB_log(gb, "    Objects: %s\n", (gb->io_registers[GB_IO_LCDC] & 2)? "Enabled" : "Disabled");
-    GB_log(gb, "    Object size: %s\n", (gb->io_registers[GB_IO_LCDC] & 4)? "8x16" : "8x8");
-    GB_log(gb, "    Background tilemap: %s\n", (gb->io_registers[GB_IO_LCDC] & 8)? "$9C00" : "$9800");
+                               (gb->io_registers[GB_IO_LCDC] & 64)? "Enabled" : "Disabled");
+    GB_log(gb, "    Objects: %s\n", (gb->io_registers[GB_IO_LCDC] & 1)? "Enabled" : "Disabled");
+    GB_log(gb, "    Object size: %s\n", (gb->io_registers[GB_IO_LCDC] & 2)? "8x16" : "8x8");
+    GB_log(gb, "    Background tilemap: %s\n", (gb->io_registers[GB_IO_LCDC] & 4)? "$9C00" : "$9800");
     GB_log(gb, "    Background and Window Tileset: %s\n", (gb->io_registers[GB_IO_LCDC] & 16)? "$8000" : "$8800");
     GB_log(gb, "    Window: %s\n", (gb->io_registers[GB_IO_LCDC] & 32)? "Enabled" : "Disabled");
-    GB_log(gb, "    Window tilemap: %s\n", (gb->io_registers[GB_IO_LCDC] & 64)? "$9C00" : "$9800");
+    GB_log(gb, "    Window tilemap: %s\n", (gb->io_registers[GB_IO_LCDC] & 8)? "$9C00" : "$9800");
 
     GB_log(gb, "\nSTAT:\n");
     static const char *modes[] = {"Mode 0, H-Blank", "Mode 1, V-Blank", "Mode 2, OAM", "Mode 3, Rendering"};

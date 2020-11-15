@@ -56,9 +56,6 @@ void GB_trigger_oam_bug(GB_gameboy_t *gb, uint16_t address)
             gb->oam[gb->accessed_oam_row + 1] = bitwise_glitch(gb->oam[gb->accessed_oam_row + 1],
                                                                gb->oam[gb->accessed_oam_row - 7],
                                                                gb->oam[gb->accessed_oam_row - 3]);
-            for (unsigned i = 2; i < 8; i++) {
-                gb->oam[gb->accessed_oam_row + i] = gb->oam[gb->accessed_oam_row - 8 + i];
-            }
         }
     }
 }
@@ -120,14 +117,6 @@ static bool effective_ir_input(GB_gameboy_t *gb)
 
 static uint8_t read_rom(GB_gameboy_t *gb, uint16_t addr)
 {
-    if (addr < 0x100 && !gb->boot_rom_finished) {
-        return gb->boot_rom[addr];
-    }
-
-    if (addr >= 0x200 && addr < 0x900 && GB_is_cgb(gb) && !gb->boot_rom_finished) {
-        return gb->boot_rom[addr];
-    }
-
     if (!gb->rom_size) {
         return 0xFF;
     }
@@ -163,65 +152,7 @@ static uint8_t read_vram(GB_gameboy_t *gb, uint16_t addr)
 
 static uint8_t read_mbc_ram(GB_gameboy_t *gb, uint16_t addr)
 {
-    if (gb->cartridge_type->mbc_type == GB_HUC3) {
-        switch (gb->huc3_mode) {
-            case 0xC: // RTC read
-                if (gb->huc3_access_flags == 0x2) {
-                    return 1;
-                }
-                return gb->huc3_read;
-            case 0xD: // RTC status
-                return 1;
-            case 0xE: // IR mode
-                return effective_ir_input(gb); // TODO: What are the other bits?
-            default:
-                GB_log(gb, "Unsupported HuC-3 mode %x read: %04x\n", gb->huc3_mode, addr);
-                return 1; // TODO: What happens in this case?
-            case 0: // TODO: R/O RAM? (or is it disabled?)
-            case 0xA: // RAM
-                break;
-        }
-    }
-    
-    if ((!gb->mbc_ram_enable) &&
-        gb->cartridge_type->mbc_subtype != GB_CAMERA &&
-        gb->cartridge_type->mbc_type != GB_HUC1 &&
-        gb->cartridge_type->mbc_type != GB_HUC3) {
-        return 0xFF;
-    }
-    
-    if (gb->cartridge_type->mbc_type == GB_HUC1 && gb->huc1.ir_mode) {
-        return 0xc0 | effective_ir_input(gb);
-    }
-    
-    if (gb->cartridge_type->has_rtc && gb->cartridge_type->mbc_type != GB_HUC3 &&
-        gb->mbc3_rtc_mapped && gb->mbc_ram_bank <= 4) {
-        /* RTC read */
-        gb->rtc_latched.high |= ~0xC1; /* Not all bytes in RTC high are used. */
-        return gb->rtc_latched.data[gb->mbc_ram_bank];
-    }
-
-    if (gb->camera_registers_mapped) {
-        return GB_camera_read_register(gb, addr);
-    }
-
-    if (!gb->mbc_ram || !gb->mbc_ram_size) {
-        return 0xFF;
-    }
-
-    if (gb->cartridge_type->mbc_subtype == GB_CAMERA && gb->mbc_ram_bank == 0 && addr >= 0xa100 && addr < 0xaf00) {
-        return GB_camera_read_image(gb, addr - 0xa100);
-    }
-
-    uint8_t effective_bank = gb->mbc_ram_bank;
-    if (gb->cartridge_type->mbc_type == GB_MBC3 && !gb->is_mbc30) {
-        effective_bank &= 0x3;
-    }
-    uint8_t ret = gb->mbc_ram[((addr & 0x1FFF) + effective_bank * 0x2000) & (gb->mbc_ram_size - 1)];
-    if (gb->cartridge_type->mbc_type == GB_MBC2) {
-        ret |= 0xF0;
-    }
-    return ret;
+    return 0xFF;
 }
 
 static uint8_t read_ram(GB_gameboy_t *gb, uint16_t addr)
@@ -442,7 +373,7 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
             case GB_IO_UNKNOWN5:
                 return GB_is_cgb(gb)? gb->io_registers[addr & 0xFF] | 0x8F : 0xFF;
             default:
-                if ((addr & 0xFF) >= GB_IO_NR10 && (addr & 0xFF) <= GB_IO_WAV_END) {
+                if ((addr & 0xFF) >= GB_IO_NR10 && (addr & 0xFF) <= GB_IO_NR51) {
                     return GB_apu_read(gb, addr & 0xFF);
                 }
                 return 0xFF;
@@ -493,75 +424,9 @@ uint8_t GB_read_memory(GB_gameboy_t *gb, uint16_t addr)
 
 static void write_mbc(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 {
-    switch (gb->cartridge_type->mbc_type) {
-        case GB_NO_MBC: return;
-        case GB_MBC1:
-            switch (addr & 0xF000) {
-                case 0x0000: case 0x1000: gb->mbc_ram_enable = (value & 0xF) == 0xA; break;
-                case 0x2000: case 0x3000: gb->mbc1.bank_low  = value; break;
-                case 0x4000: case 0x5000: gb->mbc1.bank_high = value; break;
-                case 0x6000: case 0x7000: gb->mbc1.mode      = value; break;
-            }
-            break;
-        case GB_MBC2:
-            switch (addr & 0x4100) {
-                case 0x0000: gb->mbc_ram_enable = (value & 0xF) == 0xA; break;
-                case 0x0100: gb->mbc2.rom_bank  = value; break;
-            }
-            break;
-        case GB_MBC3:
-            switch (addr & 0xF000) {
-                case 0x0000: case 0x1000: gb->mbc_ram_enable = (value & 0xF) == 0xA; break;
-                case 0x2000: case 0x3000: gb->mbc3.rom_bank  = value; break;
-                case 0x4000: case 0x5000:
-                    gb->mbc3.ram_bank  = value;
-                    gb->mbc3_rtc_mapped = value & 8;
-                    break;
-                case 0x6000: case 0x7000:
-                    if (!gb->rtc_latch && (value & 1)) { /* Todo: verify condition is correct */
-                        memcpy(&gb->rtc_latched, &gb->rtc_real, sizeof(gb->rtc_real));
-                    }
-                    gb->rtc_latch = value & 1;
-                    break;
-            }
-            break;
-        case GB_MBC5:
-            switch (addr & 0xF000) {
-                case 0x0000: case 0x1000: gb->mbc_ram_enable      = (value & 0xF) == 0xA; break;
-                case 0x2000:              gb->mbc5.rom_bank_low   = value; break;
-                case 0x3000:              gb->mbc5.rom_bank_high  = value; break;
-                case 0x4000: case 0x5000:
-                    if (gb->cartridge_type->has_rumble) {
-                        if (!!(value & 8) != gb->rumble_state) {
-                            gb->rumble_state = !gb->rumble_state;
-                        }
-                        value &= 7;
-                    }
-                    gb->mbc5.ram_bank = value;
-                    gb->camera_registers_mapped = (value & 0x10) && gb->cartridge_type->mbc_subtype == GB_CAMERA;
-                    break;
-            }
-            break;
-        case GB_HUC1:
-            switch (addr & 0xF000) {
-                case 0x0000: case 0x1000: gb->huc1.ir_mode = (value & 0xF) == 0xE; break;
-                case 0x2000: case 0x3000: gb->huc1.bank_low  = value; break;
-                case 0x4000: case 0x5000: gb->huc1.bank_high = value; break;
-                case 0x6000: case 0x7000: gb->huc1.mode      = value; break;
-            }
-            break;
-        case GB_HUC3:
-            switch (addr & 0xF000) {
-                case 0x0000: case 0x1000:
-                    gb->huc3_mode = value & 0xF;
-                    gb->mbc_ram_enable = gb->huc3_mode == 0xA;
-                    break;
-                case 0x2000: case 0x3000: gb->huc3.rom_bank  = value; break;
-                case 0x4000: case 0x5000: gb->huc3.ram_bank  = value; break;
-            }
-            break;
+    if (addr == 0x0001) {
+        gb->mbc_rom_bank = value;
     }
-    GB_update_mbc_mappings(gb);
 }
 
 static void write_vram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
@@ -586,135 +451,12 @@ static void write_vram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
     gb->vram[(addr & 0x1FFF) + (uint16_t) gb->cgb_vram_bank * 0x2000] = value;
 }
 
-static bool huc3_write(GB_gameboy_t *gb, uint8_t value)
-{
-    switch (gb->huc3_mode) {
-        case 0xB: // RTC Write
-            switch (value >> 4) {
-                case 1:
-                    if (gb->huc3_access_index < 3) {
-                        gb->huc3_read = (gb->huc3_minutes >> (gb->huc3_access_index  * 4)) & 0xF;
-                    }
-                    else if (gb->huc3_access_index < 7) {
-                        gb->huc3_read = (gb->huc3_days >> ((gb->huc3_access_index - 3) * 4)) & 0xF;
-                    }
-                    else {
-                        // GB_log(gb, "Attempting to read from unsupported HuC-3 register: %03x\n", gb->huc3_access_index);
-                    }
-                    gb->huc3_access_index++;
-                    break;
-                case 2:
-                case 3:
-                    if (gb->huc3_access_index < 3) {
-                        gb->huc3_minutes &= ~(0xF << (gb->huc3_access_index * 4));
-                        gb->huc3_minutes |= ((value & 0xF) << (gb->huc3_access_index * 4));
-                    }
-                    else if (gb->huc3_access_index < 7)  {
-                        gb->huc3_days &= ~(0xF << ((gb->huc3_access_index - 3) * 4));
-                        gb->huc3_days |= ((value & 0xF) << ((gb->huc3_access_index - 3) * 4));
-                    }
-                    else if (gb->huc3_access_index >= 0x58 && gb->huc3_access_index <= 0x5a) {
-                        gb->huc3_alarm_minutes &= ~(0xF << ((gb->huc3_access_index - 0x58) * 4));
-                        gb->huc3_alarm_minutes |= ((value & 0xF) << ((gb->huc3_access_index - 0x58) * 4));
-                    }
-                    else if (gb->huc3_access_index >= 0x5b && gb->huc3_access_index <= 0x5e) {
-                        gb->huc3_alarm_days &= ~(0xF << ((gb->huc3_access_index - 0x5b) * 4));
-                        gb->huc3_alarm_days |= ((value & 0xF) << ((gb->huc3_access_index - 0x5b) * 4));
-                    }
-                    else if (gb->huc3_access_index == 0x5f) {
-                        gb->huc3_alarm_enabled = value & 1;
-                    }
-                    else {
-                        // GB_log(gb, "Attempting to write %x to unsupported HuC-3 register: %03x\n", value & 0xF, gb->huc3_access_index);
-                    }
-                    if ((value >> 4) == 3) {
-                        gb->huc3_access_index++;
-                    }
-                    break;
-                case 4:
-                    gb->huc3_access_index &= 0xF0;
-                    gb->huc3_access_index |= value & 0xF;
-                    break;
-                case 5:
-                    gb->huc3_access_index &= 0x0F;
-                    gb->huc3_access_index |= (value & 0xF) << 4;
-                    break;
-                case 6:
-                    gb->huc3_access_flags = (value & 0xF);
-                    break;
-                    
-                default:
-                    break;
-            }
-            
-            return true;
-        case 0xD: // RTC status
-            // Not sure what writes here mean, they're always 0xFE
-            return true;
-        case 0xE: { // IR mode
-            bool old_input = effective_ir_input(gb);
-            gb->cart_ir = value & 1;
-            bool new_input = effective_ir_input(gb);
-            if (new_input != old_input) {
-                if (gb->infrared_callback) {
-                    gb->infrared_callback(gb, new_input, gb->cycles_since_ir_change);
-                }
-                gb->cycles_since_ir_change = 0;
-            }
-            return true;
-        }
-        case 0xC:
-            return true;
-        default:
-            return false;
-        case 0: // Disabled
-        case 0xA: // RAM
-            return false;
-    }
-}
-
 static void write_mbc_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 {
-    if (gb->cartridge_type->mbc_type == GB_HUC3) {
-        if (huc3_write(gb, value)) return;
+    if (addr == 0xb000) {
+        gb->mbc_rom0_bank = value * 2;
+        gb->mbc_rom_bank = value * 2 + 1;
     }
-    
-    if (gb->camera_registers_mapped) {
-        GB_camera_write_register(gb, addr, value);
-        return;
-    }
-    
-    if ((!gb->mbc_ram_enable)
-       && gb->cartridge_type->mbc_type != GB_HUC1) return;
-    
-    if (gb->cartridge_type->mbc_type == GB_HUC1 && gb->huc1.ir_mode) {
-        bool old_input = effective_ir_input(gb);
-        gb->cart_ir = value & 1;
-        bool new_input = effective_ir_input(gb);
-        if (new_input != old_input) {
-            if (gb->infrared_callback) {
-                gb->infrared_callback(gb, new_input, gb->cycles_since_ir_change);
-            }
-            gb->cycles_since_ir_change = 0;
-        }
-        return;
-    }
-
-    if (gb->cartridge_type->has_rtc && gb->mbc3_rtc_mapped && gb->mbc_ram_bank <= 4) {
-        gb->rtc_latched.data[gb->mbc_ram_bank] = gb->rtc_real.data[gb->mbc_ram_bank] = value;
-        return;
-    }
-
-    if (!gb->mbc_ram || !gb->mbc_ram_size) {
-        return;
-    }
-    
-    uint8_t effective_bank = gb->mbc_ram_bank;
-    if (gb->cartridge_type->mbc_type == GB_MBC3 && !gb->is_mbc30) {
-        effective_bank &= 0x3;
-    }
-
-    gb->mbc_ram[((addr & 0x1FFF) + effective_bank * 0x2000) & (gb->mbc_ram_size - 1)] = value;
 }
 
 static void write_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
@@ -1121,7 +863,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
             }
 
             default:
-                if ((addr & 0xFF) >= GB_IO_NR10 && (addr & 0xFF) <= GB_IO_WAV_END) {
+                if ((addr & 0xFF) >= GB_IO_NR10 && (addr & 0xFF) <= GB_IO_NR51) {
                     GB_apu_write(gb, addr & 0xFF, value);
                     return;
                 }

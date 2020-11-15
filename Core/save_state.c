@@ -40,10 +40,6 @@ int GB_save_state(GB_gameboy_t *gb, const char *path)
         if (!dump_section(f, gb->sgb, sizeof(*gb->sgb))) goto error;
     }
     
-    if (fwrite(gb->mbc_ram, 1, gb->mbc_ram_size, f) != gb->mbc_ram_size) {
-        goto error;
-    }
-    
     if (fwrite(gb->ram, 1, gb->ram_size, f) != gb->ram_size) {
         goto error;
     }
@@ -73,7 +69,6 @@ size_t GB_get_save_state_size(GB_gameboy_t *gb)
     + GB_SECTION_SIZE(rtc       ) + sizeof(uint32_t)
     + GB_SECTION_SIZE(video     ) + sizeof(uint32_t)
     + (GB_is_hle_sgb(gb)? sizeof(*gb->sgb) + sizeof(uint32_t) : 0)
-    + gb->mbc_ram_size
     + gb->ram_size
     + gb->vram_size;
 }
@@ -109,7 +104,6 @@ void GB_save_state_to_buffer(GB_gameboy_t *gb, uint8_t *buffer)
     }
     
     
-    buffer_write(gb->mbc_ram, gb->mbc_ram_size, &buffer);
     buffer_write(gb->ram, gb->ram_size, &buffer);
     buffer_write(gb->vram, gb->vram_size, &buffer);
 }
@@ -165,11 +159,6 @@ static bool verify_and_update_state_compatibility(GB_gameboy_t *gb, GB_gameboy_t
     
     if (gb->version != save->version) {
         GB_log(gb, "The save state is for a different version of SameBoy.\n");
-        return false;
-    }
-    
-    if (gb->mbc_ram_size < save->mbc_ram_size) {
-        GB_log(gb, "The save state has non-matching MBC RAM size.\n");
         return false;
     }
     
@@ -265,13 +254,7 @@ int GB_load_state(GB_gameboy_t *gb, const char *path)
     if (GB_is_hle_sgb(gb)) {
         if (!read_section(f, gb->sgb, sizeof(*gb->sgb), false)) goto error;
     }
-    
-    memset(gb->mbc_ram + save.mbc_ram_size, 0xFF, gb->mbc_ram_size - save.mbc_ram_size);
-    if (fread(gb->mbc_ram, 1, save.mbc_ram_size, f) != save.mbc_ram_size) {
-        fclose(f);
-        return EIO;
-    }
-    
+        
     if (fread(gb->ram, 1, gb->ram_size, f) != gb->ram_size) {
         fclose(f);
         return EIO;
@@ -385,12 +368,7 @@ int GB_load_state_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t le
     if (GB_is_hle_sgb(gb)) {
         if (!buffer_read_section(&buffer, &length, gb->sgb, sizeof(*gb->sgb), false)) return -1;
     }
-    
-    memset(gb->mbc_ram + save.mbc_ram_size, 0xFF, gb->mbc_ram_size - save.mbc_ram_size);
-    if (buffer_read(gb->mbc_ram, save.mbc_ram_size, &buffer, &length) != save.mbc_ram_size) {
-        return -1;
-    }
-    
+        
     if (buffer_read(gb->ram, gb->ram_size, &buffer, &length) != gb->ram_size) {
         return -1;
     }

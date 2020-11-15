@@ -13,7 +13,6 @@
 #include "debugger.h"
 #include "display.h"
 #include "joypad.h"
-#include "mbc.h"
 #include "memory.h"
 #include "printer.h"
 #include "timing.h"
@@ -128,66 +127,52 @@ typedef enum {
 #define GB_MAX_IR_QUEUE 256
 
 enum {
-    /* Joypad and Serial */
-    GB_IO_JOYP       = 0x00, // Joypad (R/W)
-    GB_IO_SB         = 0x01, // Serial transfer data (R/W)
-    GB_IO_SC         = 0x02, // Serial Transfer Control (R/W)
 
-    /* Missing */
+    GB_IO_JOYP = 0x00,
+    GB_IO_SB = 0x01,
+    GB_IO_SC = 0x02,
+    GB_IO_DIV = 0x04,
+    GB_IO_TIMA = 0x05,
+    GB_IO_TMA = 0x06,
+    GB_IO_TAC = 0x07,
+    GB_IO_IF = 0x0F,
+    GB_IO_LCDC = 0x10,
+    GB_IO_STAT = 0x11,
+    GB_IO_SCY = 0x12,
+    GB_IO_SCX = 0x13,
+    GB_IO_OBP0 = 0x14,
+    GB_IO_OBP1 = 0x15,
+    GB_IO_WY = 0x16,
+    GB_IO_WX = 0x17,
+    GB_IO_LY = 0x18,
+    GB_IO_LYC = 0x19,
+    GB_IO_DMA = 0x1A,
+    GB_IO_BGP = 0x1B,
+    GB_IO_NR10 = 0x20,
+    GB_IO_NR12 = 0x21,
+    GB_IO_NR11 = 0x22,
+    GB_IO_NR13 = 0x23,
+    GB_IO_NR14 = 0x24,
+    GB_IO_NR21 = 0x25,
+    GB_IO_NR22 = 0x27,
+    GB_IO_NR23 = 0x28,
+    GB_IO_NR24 = 0x29,
+    GB_IO_NR30 = 0x2A,
+    GB_IO_NR31 = 0x2B,
+    GB_IO_NR32 = 0x2C,
+    GB_IO_NR33 = 0x2D,
+    GB_IO_NR34 = 0x2E,
+    GB_IO_WAV_START = 0x30,
+    GB_IO_WAV_END = 0x3F,
+    GB_IO_NR41 = 0x40,
+    GB_IO_NR43 = 0x41,
+    GB_IO_NR42 = 0x42,
+    GB_IO_NR44 = 0x43,
+    GB_IO_NR50 = 0x44,
+    GB_IO_NR52 = 0x45,
+    GB_IO_NR51 = 0x46,
+    GB_IO_IE = 0xFF,
 
-    /* Timers */
-    GB_IO_DIV        = 0x04, // Divider Register (R/W)
-    GB_IO_TIMA       = 0x05, // Timer counter (R/W)
-    GB_IO_TMA        = 0x06, // Timer Modulo (R/W)
-    GB_IO_TAC        = 0x07, // Timer Control (R/W)
-
-    /* Missing */
-
-    GB_IO_IF         = 0x0f, // Interrupt Flag (R/W)
-
-    /* Sound */
-    GB_IO_NR10       = 0x10, // Channel 1 Sweep register (R/W)
-    GB_IO_NR11       = 0x11, // Channel 1 Sound length/Wave pattern duty (R/W)
-    GB_IO_NR12       = 0x12, // Channel 1 Volume Envelope (R/W)
-    GB_IO_NR13       = 0x13, // Channel 1 Frequency lo (Write Only)
-    GB_IO_NR14       = 0x14, // Channel 1 Frequency hi (R/W)
-    /* NR20 does not exist */
-    GB_IO_NR21       = 0x16, // Channel 2 Sound Length/Wave Pattern Duty (R/W)
-    GB_IO_NR22       = 0x17, // Channel 2 Volume Envelope (R/W)
-    GB_IO_NR23       = 0x18, // Channel 2 Frequency lo data (W)
-    GB_IO_NR24       = 0x19, // Channel 2 Frequency hi data (R/W)
-    GB_IO_NR30       = 0x1a, // Channel 3 Sound on/off (R/W)
-    GB_IO_NR31       = 0x1b, // Channel 3 Sound Length
-    GB_IO_NR32       = 0x1c, // Channel 3 Select output level (R/W)
-    GB_IO_NR33       = 0x1d, // Channel 3 Frequency's lower data (W)
-    GB_IO_NR34       = 0x1e, // Channel 3 Frequency's higher data (R/W)
-    /* NR40 does not exist */
-    GB_IO_NR41       = 0x20, // Channel 4 Sound Length (R/W)
-    GB_IO_NR42       = 0x21, // Channel 4 Volume Envelope (R/W)
-    GB_IO_NR43       = 0x22, // Channel 4 Polynomial Counter (R/W)
-    GB_IO_NR44       = 0x23, // Channel 4 Counter/consecutive, Inital (R/W)
-    GB_IO_NR50       = 0x24, // Channel control / ON-OFF / Volume (R/W)
-    GB_IO_NR51       = 0x25, // Selection of Sound output terminal (R/W)
-    GB_IO_NR52       = 0x26, // Sound on/off
-
-    /* Missing */
-
-    GB_IO_WAV_START  = 0x30, // Wave pattern start
-    GB_IO_WAV_END    = 0x3f, // Wave pattern end
-
-    /* Graphics */
-    GB_IO_LCDC       = 0x40, // LCD Control (R/W)
-    GB_IO_STAT       = 0x41, // LCDC Status (R/W)
-    GB_IO_SCY        = 0x42, // Scroll Y (R/W)
-    GB_IO_SCX        = 0x43, // Scroll X (R/W)
-    GB_IO_LY         = 0x44, // LCDC Y-Coordinate (R)
-    GB_IO_LYC        = 0x45, // LY Compare (R/W)
-    GB_IO_DMA        = 0x46, // DMA Transfer and Start Address (W)
-    GB_IO_BGP        = 0x47, // BG Palette Data (R/W) - Non CGB Mode Only
-    GB_IO_OBP0       = 0x48, // Object Palette 0 Data (R/W) - Non CGB Mode Only
-    GB_IO_OBP1       = 0x49, // Object Palette 1 Data (R/W) - Non CGB Mode Only
-    GB_IO_WY         = 0x4a, // Window Y Position (R/W)
-    GB_IO_WX         = 0x4b, // Window X Position minus 7 (R/W)
     // Has some undocumented compatibility flags written at boot.
     // Unfortunately it is not readable or writable after boot has finished, so research of this
     // register is quite limited. The value written to this register, however, can be controlled
@@ -396,9 +381,6 @@ struct GB_gameboy_internal_s {
     /* MBC */
     GB_SECTION(mbc,
         uint16_t mbc_rom_bank;
-        uint8_t mbc_ram_bank;
-        uint32_t mbc_ram_size;
-        bool mbc_ram_enable;
         union {
             struct {
                 uint8_t bank_low:5;
@@ -556,19 +538,12 @@ struct GB_gameboy_internal_s {
         /* ROM */
         uint8_t *rom;
         uint32_t rom_size;
-        const GB_cartridge_t *cartridge_type;
-        enum {
-            GB_STANDARD_MBC1_WIRING,
-            GB_MBC1M_WIRING,
-        } mbc1_wiring;
-        bool is_mbc30;
 
         unsigned pending_cycles;
                
         /* Various RAMs */
         uint8_t *ram;
         uint8_t *vram;
-        uint8_t *mbc_ram;
 
         /* I/O */
         uint32_t *screen;

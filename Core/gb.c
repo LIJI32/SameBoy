@@ -161,7 +161,6 @@ void GB_init(GB_gameboy_t *gb, GB_model_t model)
     gb->input_callback = default_input_callback;
     gb->async_input_callback = default_async_input_callback;
 #endif
-    gb->cartridge_type = &GB_cart_defs[0]; // Default cartridge type
     gb->clock_multiplier = 1.0;
     
     if (model & GB_MODEL_NO_SFC_BIT) {
@@ -186,9 +185,6 @@ void GB_free(GB_gameboy_t *gb)
     }
     if (gb->vram) {
         free(gb->vram);
-    }
-    if (gb->mbc_ram) {
-        free(gb->mbc_ram);
     }
     if (gb->rom) {
         free(gb->rom);
@@ -245,7 +241,6 @@ void GB_borrow_sgb_border(GB_gameboy_t *gb)
     if (!gb->boot_rom_load_callback) return; // Can't borrow a border without this callback
     GB_gameboy_t sgb;
     GB_init(&sgb, GB_MODEL_SGB);
-    sgb.cartridge_type = gb->cartridge_type;
     sgb.rom = gb->rom;
     sgb.rom_size = gb->rom_size;
     sgb.turbo = true;
@@ -301,7 +296,6 @@ int GB_load_rom(GB_gameboy_t *gb, const char *path)
     memset(gb->rom, 0xFF, gb->rom_size); /* Pad with 0xFFs */
     fread(gb->rom, 1, gb->rom_size, f);
     fclose(f);
-    GB_configure_cart(gb);
     return 0;
 }
 
@@ -483,44 +477,7 @@ done:;
         memset(gb->rom + gb->rom_size, 0, needed_size - gb->rom_size);
         gb->rom_size = needed_size;
     }
-    
-    GB_configure_cart(gb);
-    
-    // Fix a common wrong MBC error
-    if (gb->rom[0x147] == 3) { // MBC1 + RAM + Battery
-        bool needs_fix = false;
-        if (gb->rom_size >= 0x21 * 0x4000) {
-            for (unsigned i = 0x20 * 0x4000; i < 0x21 * 0x4000; i++) {
-                if (gb->rom[i]) {
-                    needs_fix = true;
-                    break;
-                }
-            }
-        }
-        if (!needs_fix && gb->rom_size >= 0x41 * 0x4000) {
-            for (unsigned i = 0x40 * 0x4000; i < 0x41 * 0x4000; i++) {
-                if (gb->rom[i]) {
-                    needs_fix = true;
-                    break;
-                }
-            }
-        }
-        if (!needs_fix && gb->rom_size >= 0x61 * 0x4000) {
-            for (unsigned i = 0x60 * 0x4000; i < 0x61 * 0x4000; i++) {
-                if (gb->rom[i]) {
-                    needs_fix = true;
-                    break;
-                }
-            }
-        }
-        if (needs_fix) {
-            gb->rom[0x147] = 0x10; // MBC3 + RTC + RAM + Battery
-            GB_configure_cart(gb);
-            gb->rom[0x147] = 0x3;
-            GB_log(gb, "ROM claims to use MBC1 but appears to require MBC3 or 5, assuming MBC3.\n");
-        }
-    }
-    
+
     if (old_rom) {
         free(old_rom);
     }
@@ -553,7 +510,6 @@ void GB_load_rom_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t siz
     gb->rom = malloc(gb->rom_size);
     memset(gb->rom, 0xff, gb->rom_size);
     memcpy(gb->rom, buffer, size);
-    GB_configure_cart(gb);
 }
 
 typedef struct {
@@ -596,351 +552,27 @@ typedef union {
 
 int GB_save_battery_size(GB_gameboy_t *gb)
 {
-    if (!gb->cartridge_type->has_battery) return 0; // Nothing to save.
-    if (gb->mbc_ram_size == 0 && !gb->cartridge_type->has_rtc) return 0; /* Claims to have battery, but has no RAM or RTC */
-
-    if (gb->cartridge_type->mbc_type == GB_HUC3) {
-        return  gb->mbc_ram_size + sizeof(GB_huc3_rtc_time_t);
-    }
-    GB_rtc_save_t rtc_save_size;
-    return gb->mbc_ram_size + (gb->cartridge_type->has_rtc ? sizeof(rtc_save_size.vba64) : 0);
+    return 0;
 }
 
 int GB_save_battery_to_buffer(GB_gameboy_t *gb, uint8_t *buffer, size_t size)
 {
-    if (!gb->cartridge_type->has_battery) return 0; // Nothing to save.
-    if (gb->mbc_ram_size == 0 && !gb->cartridge_type->has_rtc) return 0; /* Claims to have battery, but has no RAM or RTC */
-
-    if (size < GB_save_battery_size(gb)) return EIO;
-
-    memcpy(buffer, gb->mbc_ram, gb->mbc_ram_size);
-
-    if (gb->cartridge_type->mbc_type == GB_HUC3) {
-        buffer += gb->mbc_ram_size;
-
-#ifdef GB_BIG_ENDIAN
-        GB_huc3_rtc_time_t rtc_save = {
-            __builtin_bswap64(gb->last_rtc_second),
-            __builtin_bswap16(gb->huc3_minutes),
-            __builtin_bswap16(gb->huc3_days),
-            __builtin_bswap16(gb->huc3_alarm_minutes),
-            __builtin_bswap16(gb->huc3_alarm_days),
-            gb->huc3_alarm_enabled,
-        };
-#else
-        GB_huc3_rtc_time_t rtc_save = {
-            gb->last_rtc_second,
-            gb->huc3_minutes,
-            gb->huc3_days,
-            gb->huc3_alarm_minutes,
-            gb->huc3_alarm_days,
-            gb->huc3_alarm_enabled,
-        };
-#endif
-        memcpy(buffer, &rtc_save, sizeof(rtc_save));
-    }
-    else if (gb->cartridge_type->has_rtc) {
-        GB_rtc_save_t rtc_save = {{{{0,}},},};
-        rtc_save.vba64.rtc_real.seconds = gb->rtc_real.seconds;
-        rtc_save.vba64.rtc_real.minutes = gb->rtc_real.minutes;
-        rtc_save.vba64.rtc_real.hours = gb->rtc_real.hours;
-        rtc_save.vba64.rtc_real.days = gb->rtc_real.days;
-        rtc_save.vba64.rtc_real.high = gb->rtc_real.high;
-        rtc_save.vba64.rtc_latched.seconds = gb->rtc_latched.seconds;
-        rtc_save.vba64.rtc_latched.minutes = gb->rtc_latched.minutes;
-        rtc_save.vba64.rtc_latched.hours = gb->rtc_latched.hours;
-        rtc_save.vba64.rtc_latched.days = gb->rtc_latched.days;
-        rtc_save.vba64.rtc_latched.high = gb->rtc_latched.high;
-#ifdef GB_BIG_ENDIAN
-        rtc_save.vba64.last_rtc_second = __builtin_bswap64(gb->last_rtc_second);
-#else
-        rtc_save.vba64.last_rtc_second = gb->last_rtc_second;
-#endif
-        memcpy(buffer + gb->mbc_ram_size, &rtc_save.vba64, sizeof(rtc_save.vba64));
-    }
-
-    errno = 0;
-    return errno;
+    return 0;
 }
 
 int GB_save_battery(GB_gameboy_t *gb, const char *path)
 {
-    if (!gb->cartridge_type->has_battery) return 0; // Nothing to save.
-    if (gb->mbc_ram_size == 0 && !gb->cartridge_type->has_rtc) return 0; /* Claims to have battery, but has no RAM or RTC */
-    FILE *f = fopen(path, "wb");
-    if (!f) {
-        GB_log(gb, "Could not open battery save: %s.\n", strerror(errno));
-        return errno;
-    }
-
-    if (fwrite(gb->mbc_ram, 1, gb->mbc_ram_size, f) != gb->mbc_ram_size) {
-        fclose(f);
-        return EIO;
-    }
-    if (gb->cartridge_type->mbc_type == GB_HUC3) {
-#ifdef GB_BIG_ENDIAN
-        GB_huc3_rtc_time_t rtc_save = {
-            __builtin_bswap64(gb->last_rtc_second),
-            __builtin_bswap16(gb->huc3_minutes),
-            __builtin_bswap16(gb->huc3_days),
-            __builtin_bswap16(gb->huc3_alarm_minutes),
-            __builtin_bswap16(gb->huc3_alarm_days),
-            gb->huc3_alarm_enabled,
-        };
-#else
-        GB_huc3_rtc_time_t rtc_save = {
-            gb->last_rtc_second,
-            gb->huc3_minutes,
-            gb->huc3_days,
-            gb->huc3_alarm_minutes,
-            gb->huc3_alarm_days,
-            gb->huc3_alarm_enabled,
-        };
-#endif
-
-        if (fwrite(&rtc_save, sizeof(rtc_save), 1, f) != 1) {
-            fclose(f);
-            return EIO;
-        }
-    }
-    else if (gb->cartridge_type->has_rtc) {
-        GB_rtc_save_t rtc_save = {{{{0,}},},};
-        rtc_save.vba64.rtc_real.seconds = gb->rtc_real.seconds;
-        rtc_save.vba64.rtc_real.minutes = gb->rtc_real.minutes;
-        rtc_save.vba64.rtc_real.hours = gb->rtc_real.hours;
-        rtc_save.vba64.rtc_real.days = gb->rtc_real.days;
-        rtc_save.vba64.rtc_real.high = gb->rtc_real.high;
-        rtc_save.vba64.rtc_latched.seconds = gb->rtc_latched.seconds;
-        rtc_save.vba64.rtc_latched.minutes = gb->rtc_latched.minutes;
-        rtc_save.vba64.rtc_latched.hours = gb->rtc_latched.hours;
-        rtc_save.vba64.rtc_latched.days = gb->rtc_latched.days;
-        rtc_save.vba64.rtc_latched.high = gb->rtc_latched.high;
-#ifdef GB_BIG_ENDIAN
-        rtc_save.vba64.last_rtc_second = __builtin_bswap64(gb->last_rtc_second);
-#else
-        rtc_save.vba64.last_rtc_second = gb->last_rtc_second;
-#endif
-        if (fwrite(&rtc_save.vba64, 1, sizeof(rtc_save.vba64), f) != sizeof(rtc_save.vba64)) {
-            fclose(f);
-            return EIO;
-        }
-
-    }
-
-    errno = 0;
-    fclose(f);
-    return errno;
+    return 0;
 }
 
 void GB_load_battery_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t size)
 {
-    memcpy(gb->mbc_ram, buffer, MIN(gb->mbc_ram_size, size));
-    if (size <= gb->mbc_ram_size) {
-        goto reset_rtc;
-    }
-    
-    if (gb->cartridge_type->mbc_type == GB_HUC3) {
-        GB_huc3_rtc_time_t rtc_save;
-        if (size - gb->mbc_ram_size < sizeof(rtc_save)) {
-            goto reset_rtc;
-        }
-        memcpy(&rtc_save, buffer + gb->mbc_ram_size, sizeof(rtc_save));
-#ifdef GB_BIG_ENDIAN
-        gb->last_rtc_second = __builtin_bswap64(rtc_save.last_rtc_second);
-        gb->huc3_minutes = __builtin_bswap16(rtc_save.minutes);
-        gb->huc3_days = __builtin_bswap16(rtc_save.days);
-        gb->huc3_alarm_minutes = __builtin_bswap16(rtc_save.alarm_minutes);
-        gb->huc3_alarm_days = __builtin_bswap16(rtc_save.alarm_days);
-        gb->huc3_alarm_enabled = rtc_save.alarm_enabled;
-#else
-        gb->last_rtc_second = rtc_save.last_rtc_second;
-        gb->huc3_minutes = rtc_save.minutes;
-        gb->huc3_days = rtc_save.days;
-        gb->huc3_alarm_minutes = rtc_save.alarm_minutes;
-        gb->huc3_alarm_days = rtc_save.alarm_days;
-        gb->huc3_alarm_enabled = rtc_save.alarm_enabled;
-#endif
-        if (gb->last_rtc_second > time(NULL)) {
-            /* We must reset RTC here, or it will not advance. */
-            goto reset_rtc;
-        }
-        return;
-    }
-
-    GB_rtc_save_t rtc_save;
-    memcpy(&rtc_save, buffer + gb->mbc_ram_size, MIN(sizeof(rtc_save), size));
-    switch (size - gb->mbc_ram_size) {
-        case sizeof(rtc_save.sameboy_legacy):
-            memcpy(&gb->rtc_real, &rtc_save.sameboy_legacy.rtc_real, sizeof(gb->rtc_real));
-            memcpy(&gb->rtc_latched, &rtc_save.sameboy_legacy.rtc_real, sizeof(gb->rtc_real));
-            gb->last_rtc_second = rtc_save.sameboy_legacy.last_rtc_second;
-            break;
-            
-        case sizeof(rtc_save.vba32):
-            gb->rtc_real.seconds = rtc_save.vba32.rtc_real.seconds;
-            gb->rtc_real.minutes = rtc_save.vba32.rtc_real.minutes;
-            gb->rtc_real.hours = rtc_save.vba32.rtc_real.hours;
-            gb->rtc_real.days = rtc_save.vba32.rtc_real.days;
-            gb->rtc_real.high = rtc_save.vba32.rtc_real.high;
-            gb->rtc_latched.seconds = rtc_save.vba32.rtc_latched.seconds;
-            gb->rtc_latched.minutes = rtc_save.vba32.rtc_latched.minutes;
-            gb->rtc_latched.hours = rtc_save.vba32.rtc_latched.hours;
-            gb->rtc_latched.days = rtc_save.vba32.rtc_latched.days;
-            gb->rtc_latched.high = rtc_save.vba32.rtc_latched.high;
-#ifdef GB_BIG_ENDIAN
-            gb->last_rtc_second = __builtin_bswap32(rtc_save.vba32.last_rtc_second);
-#else
-            gb->last_rtc_second = rtc_save.vba32.last_rtc_second;
-#endif
-            break;
-            
-        case sizeof(rtc_save.vba64):
-            gb->rtc_real.seconds = rtc_save.vba64.rtc_real.seconds;
-            gb->rtc_real.minutes = rtc_save.vba64.rtc_real.minutes;
-            gb->rtc_real.hours = rtc_save.vba64.rtc_real.hours;
-            gb->rtc_real.days = rtc_save.vba64.rtc_real.days;
-            gb->rtc_real.high = rtc_save.vba64.rtc_real.high;
-            gb->rtc_latched.seconds = rtc_save.vba64.rtc_latched.seconds;
-            gb->rtc_latched.minutes = rtc_save.vba64.rtc_latched.minutes;
-            gb->rtc_latched.hours = rtc_save.vba64.rtc_latched.hours;
-            gb->rtc_latched.days = rtc_save.vba64.rtc_latched.days;
-            gb->rtc_latched.high = rtc_save.vba64.rtc_latched.high;
-#ifdef GB_BIG_ENDIAN
-            gb->last_rtc_second = __builtin_bswap64(rtc_save.vba64.last_rtc_second);
-#else
-            gb->last_rtc_second = rtc_save.vba64.last_rtc_second;
-#endif
-            break;
-            
-        default:
-            goto reset_rtc;
-    }
-    if (gb->last_rtc_second > time(NULL)) {
-        /* We must reset RTC here, or it will not advance. */
-        goto reset_rtc;
-    }
-
-    if (gb->last_rtc_second < 852076800) { /* 1/1/97. There weren't any RTC games that time,
-                                            so if the value we read is lower it means it wasn't
-                                            really RTC data. */
-        goto reset_rtc;
-    }
-    goto exit;
-reset_rtc:
-    gb->last_rtc_second = time(NULL);
-    gb->rtc_real.high |= 0x80; /* This gives the game a hint that the clock should be reset. */
-    gb->huc3_days = 0xFFFF;
-    gb->huc3_minutes = 0xFFF;
-    gb->huc3_alarm_enabled = false;
-exit:
     return;
 }
 
 /* Loading will silently stop if the format is incomplete */
 void GB_load_battery(GB_gameboy_t *gb, const char *path)
 {
-    FILE *f = fopen(path, "rb");
-    if (!f) {
-        return;
-    }
-
-    if (fread(gb->mbc_ram, 1, gb->mbc_ram_size, f) != gb->mbc_ram_size) {
-        goto reset_rtc;
-    }
-    
-    if (gb->cartridge_type->mbc_type == GB_HUC3) {
-        GB_huc3_rtc_time_t rtc_save;
-        if (fread(&rtc_save, sizeof(rtc_save), 1, f) != 1) {
-            goto reset_rtc;
-        }
-#ifdef GB_BIG_ENDIAN
-        gb->last_rtc_second = __builtin_bswap64(rtc_save.last_rtc_second);
-        gb->huc3_minutes = __builtin_bswap16(rtc_save.minutes);
-        gb->huc3_days = __builtin_bswap16(rtc_save.days);
-        gb->huc3_alarm_minutes = __builtin_bswap16(rtc_save.alarm_minutes);
-        gb->huc3_alarm_days = __builtin_bswap16(rtc_save.alarm_days);
-        gb->huc3_alarm_enabled = rtc_save.alarm_enabled;
-#else
-        gb->last_rtc_second = rtc_save.last_rtc_second;
-        gb->huc3_minutes = rtc_save.minutes;
-        gb->huc3_days = rtc_save.days;
-        gb->huc3_alarm_minutes = rtc_save.alarm_minutes;
-        gb->huc3_alarm_days = rtc_save.alarm_days;
-        gb->huc3_alarm_enabled = rtc_save.alarm_enabled;
-#endif
-        if (gb->last_rtc_second > time(NULL)) {
-            /* We must reset RTC here, or it will not advance. */
-            goto reset_rtc;
-        }
-        return;
-    }
-
-    GB_rtc_save_t rtc_save;
-    switch (fread(&rtc_save, 1, sizeof(rtc_save), f)) {
-        case sizeof(rtc_save.sameboy_legacy):
-            memcpy(&gb->rtc_real, &rtc_save.sameboy_legacy.rtc_real, sizeof(gb->rtc_real));
-            memcpy(&gb->rtc_latched, &rtc_save.sameboy_legacy.rtc_real, sizeof(gb->rtc_real));
-            gb->last_rtc_second = rtc_save.sameboy_legacy.last_rtc_second;
-            break;
-            
-        case sizeof(rtc_save.vba32):
-            gb->rtc_real.seconds = rtc_save.vba32.rtc_real.seconds;
-            gb->rtc_real.minutes = rtc_save.vba32.rtc_real.minutes;
-            gb->rtc_real.hours = rtc_save.vba32.rtc_real.hours;
-            gb->rtc_real.days = rtc_save.vba32.rtc_real.days;
-            gb->rtc_real.high = rtc_save.vba32.rtc_real.high;
-            gb->rtc_latched.seconds = rtc_save.vba32.rtc_latched.seconds;
-            gb->rtc_latched.minutes = rtc_save.vba32.rtc_latched.minutes;
-            gb->rtc_latched.hours = rtc_save.vba32.rtc_latched.hours;
-            gb->rtc_latched.days = rtc_save.vba32.rtc_latched.days;
-            gb->rtc_latched.high = rtc_save.vba32.rtc_latched.high;
-#ifdef GB_BIG_ENDIAN
-            gb->last_rtc_second = __builtin_bswap32(rtc_save.vba32.last_rtc_second);
-#else
-            gb->last_rtc_second = rtc_save.vba32.last_rtc_second;
-#endif
-            break;
-            
-        case sizeof(rtc_save.vba64):
-            gb->rtc_real.seconds = rtc_save.vba64.rtc_real.seconds;
-            gb->rtc_real.minutes = rtc_save.vba64.rtc_real.minutes;
-            gb->rtc_real.hours = rtc_save.vba64.rtc_real.hours;
-            gb->rtc_real.days = rtc_save.vba64.rtc_real.days;
-            gb->rtc_real.high = rtc_save.vba64.rtc_real.high;
-            gb->rtc_latched.seconds = rtc_save.vba64.rtc_latched.seconds;
-            gb->rtc_latched.minutes = rtc_save.vba64.rtc_latched.minutes;
-            gb->rtc_latched.hours = rtc_save.vba64.rtc_latched.hours;
-            gb->rtc_latched.days = rtc_save.vba64.rtc_latched.days;
-            gb->rtc_latched.high = rtc_save.vba64.rtc_latched.high;
-#ifdef GB_BIG_ENDIAN
-            gb->last_rtc_second = __builtin_bswap64(rtc_save.vba64.last_rtc_second);
-#else
-            gb->last_rtc_second = rtc_save.vba64.last_rtc_second;
-#endif
-            break;
-            
-        default:
-            goto reset_rtc;
-    }
-    if (gb->last_rtc_second > time(NULL)) {
-        /* We must reset RTC here, or it will not advance. */
-        goto reset_rtc;
-    }
-
-    if (gb->last_rtc_second < 852076800) { /* 1/1/97. There weren't any RTC games that time,
-                                            so if the value we read is lower it means it wasn't
-                                            really RTC data. */
-        goto reset_rtc;
-    }
-    goto exit;
-reset_rtc:
-    gb->last_rtc_second = time(NULL);
-    gb->rtc_real.high |= 0x80; /* This gives the game a hint that the clock should be reset. */
-    gb->huc3_days = 0xFFFF;
-    gb->huc3_minutes = 0xFFF;
-    gb->huc3_alarm_enabled = false;
-exit:
-    fclose(f);
     return;
 }
 
@@ -964,7 +596,6 @@ uint8_t GB_run(GB_gameboy_t *gb)
     gb->cycles_since_run = 0;
     GB_cpu_run(gb);
     if (gb->vblank_just_occured) {
-        GB_rtc_run(gb);
         GB_debugger_handle_async_commands(gb);
         GB_rewind_push(gb);
     }
@@ -1361,7 +992,6 @@ static void request_boot_rom(GB_gameboy_t *gb)
 
 void GB_reset(GB_gameboy_t *gb)
 {
-    uint32_t mbc_ram_size = gb->mbc_ram_size;
     GB_model_t model = gb->model;
     memset(gb, 0, (size_t)GB_GET_SECTION((GB_gameboy_t *) 0, unsaved));
     gb->model = model;
@@ -1371,7 +1001,6 @@ void GB_reset(GB_gameboy_t *gb)
     gb->last_rtc_second = time(NULL);
     gb->cgb_ram_bank = 1;
     gb->io_registers[GB_IO_JOYP] = 0xCF;
-    gb->mbc_ram_size = mbc_ram_size;
     if (GB_is_cgb(gb)) {
         gb->ram_size = 0x1000 * 8;
         gb->vram_size = 0x2000 * 2;
@@ -1474,9 +1103,9 @@ void *GB_get_direct_access(GB_gameboy_t *gb, GB_direct_access_t access, size_t *
             *bank = gb->cgb_ram_bank;
             return gb->ram;
         case GB_DIRECT_ACCESS_CART_RAM:
-            *size = gb->mbc_ram_size;
-            *bank = gb->mbc_ram_bank;
-            return gb->mbc_ram;
+            *size = 0;
+            *bank = 0;
+            return NULL;
         case GB_DIRECT_ACCESS_VRAM:
             *size = gb->vram_size;
             *bank = gb->cgb_vram_bank;
@@ -1609,11 +1238,5 @@ void GB_set_boot_rom_load_callback(GB_gameboy_t *gb, GB_boot_rom_load_callback_t
 
 unsigned GB_time_to_alarm(GB_gameboy_t *gb)
 {
-    if (gb->cartridge_type->mbc_type != GB_HUC3) return 0;
-    if (!gb->huc3_alarm_enabled) return 0;
-    if (!(gb->huc3_alarm_days & 0x2000)) return 0;
-    unsigned current_time = (gb->huc3_days & 0x1FFF) * 24 * 60 * 60 + gb->huc3_minutes * 60 + (time(NULL) % 60);
-    unsigned alarm_time = (gb->huc3_alarm_days & 0x1FFF) * 24 * 60 * 60 + gb->huc3_alarm_minutes * 60;
-    if (current_time > alarm_time) return 0;
-    return alarm_time - current_time;
+    return 0;
 }
