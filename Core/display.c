@@ -115,11 +115,6 @@ static void display_vblank(GB_gameboy_t *gb)
 {  
     gb->vblank_just_occured = true;
     
-    /* TODO: Slow in turbo mode! */
-    if (GB_is_hle_sgb(gb)) {
-        GB_sgb_render(gb);
-    }
-    
     if (gb->turbo) {
         if (GB_timing_sync_turbo(gb)) {
             return;
@@ -155,51 +150,6 @@ static void display_vblank(GB_gameboy_t *gb)
         }
     }
     
-    if (gb->border_mode == GB_BORDER_ALWAYS && !GB_is_sgb(gb)) {
-        GB_borrow_sgb_border(gb);
-        uint32_t border_colors[16 * 4];
-        
-        if (!gb->has_sgb_border && GB_is_cgb(gb) && gb->model != GB_MODEL_AGB) {
-            static uint16_t colors[] = {
-                0x2095, 0x5129, 0x1EAF, 0x1EBA, 0x4648,
-                0x30DA, 0x69AD, 0x2B57, 0x2B5D, 0x632C,
-                0x1050, 0x3C84, 0x0E07, 0x0E18, 0x2964,
-            };
-            unsigned index = gb->rom? gb->rom[0x14e] % 5 : 0;
-            gb->borrowed_border.palette[0] = colors[index];
-            gb->borrowed_border.palette[10] = colors[5 + index];
-            gb->borrowed_border.palette[14] = colors[10 + index];
-
-        }
-        
-        for (unsigned i = 0; i < 16 * 4; i++) {
-            border_colors[i] = GB_convert_rgb15(gb, gb->borrowed_border.palette[i], true);
-        }
-        
-        for (unsigned tile_y = 0; tile_y < 28; tile_y++) {
-            for (unsigned tile_x = 0; tile_x < 32; tile_x++) {
-                if (tile_x >= 6 && tile_x < 26 && tile_y >= 5 && tile_y < 23) {
-                    continue;
-                }
-                uint16_t tile = gb->borrowed_border.map[tile_x + tile_y * 32];
-                uint8_t flip_x = (tile & 0x4000)? 0x7 : 0;
-                uint8_t flip_y = (tile & 0x8000)? 0x7 : 0;
-                uint8_t palette = (tile >> 10) & 3;
-                for (unsigned y = 0; y < 8; y++) {
-                    for (unsigned x = 0; x < 8; x++) {
-                        uint8_t color = gb->borrowed_border.tiles[(tile & 0xFF) * 64 + (x ^ flip_x) + (y ^ flip_y) * 8] & 0xF;
-                        uint32_t *output = gb->screen + tile_x * 8 + x + (tile_y * 8 + y) * 256;
-                        if (color == 0) {
-                            *output = border_colors[0];
-                        }
-                        else {
-                            *output = border_colors[color + palette * 16];
-                        }
-                    }
-                }
-            }
-        }
-    }
     GB_handle_rumble(gb);
 
     if (gb->vblank_callback) {
@@ -489,17 +439,7 @@ static void render_pixel_if_possible(GB_gameboy_t *gb)
         if (!gb->cgb_mode) {
             pixel = ((gb->io_registers[GB_IO_BGP] >> (pixel << 1)) & 3);
         }
-        if (gb->sgb) {
-            if (gb->current_lcd_line < LINES) {
-                gb->sgb->screen_buffer[gb->lcd_x + gb->current_lcd_line * WIDTH] = gb->stopped? 0 : pixel;
-            }
-        }
-        else if (gb->model & GB_MODEL_NO_SFC_BIT) {
-            if (gb->icd_pixel_callback) {
-                icd_pixel = pixel;
-            }
-        }
-        else if (gb->cgb_palettes_ppu_blocked) {
+        if (gb->cgb_palettes_ppu_blocked) {
             *dest = gb->rgb_encode_callback(gb, 0, 0, 0);
         }
         else {
@@ -513,18 +453,7 @@ static void render_pixel_if_possible(GB_gameboy_t *gb)
             /* Todo: Verify access timings */
             pixel = ((gb->io_registers[oam_fifo_item->palette? GB_IO_OBP1 : GB_IO_OBP0] >> (pixel << 1)) & 3);
         }
-        if (gb->sgb) {
-            if (gb->current_lcd_line < LINES) {
-                gb->sgb->screen_buffer[gb->lcd_x + gb->current_lcd_line * WIDTH] = gb->stopped? 0 : pixel;
-            }
-        }
-        else if (gb->model & GB_MODEL_NO_SFC_BIT) {
-            if (gb->icd_pixel_callback) {
-                icd_pixel = pixel;
-              //gb->icd_pixel_callback(gb, pixel);
-            }
-        }
-        else if (gb->cgb_palettes_ppu_blocked) {
+        if (gb->cgb_palettes_ppu_blocked) {
             *dest = gb->rgb_encode_callback(gb, 0, 0, 0);
         }
         else {
@@ -1304,25 +1233,10 @@ abort_fetching_object:
 
 void GB_draw_tileset(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette_type, uint8_t palette_index)
 {
-    uint32_t none_palette[4];
     uint32_t *palette = NULL;
     
-    switch (GB_is_cgb(gb)? palette_type : GB_PALETTE_NONE) {
-        default:
-        case GB_PALETTE_NONE:
-            none_palette[0] = gb->rgb_encode_callback(gb, 0xFF, 0xFF, 0xFF);
-            none_palette[1] = gb->rgb_encode_callback(gb, 0xAA, 0xAA, 0xAA);
-            none_palette[2] = gb->rgb_encode_callback(gb, 0x55, 0x55, 0x55);
-            none_palette[3] = gb->rgb_encode_callback(gb, 0,    0,    0   );
-            palette = none_palette;
-            break;
-        case GB_PALETTE_BACKGROUND:
-            palette = gb->background_palettes_rgb + (4 * (palette_index & 7));
-            break;
-        case GB_PALETTE_OAM:
-            palette = gb->sprite_palettes_rgb + (4 * (palette_index & 7));
-            break;
-    }
+    palette = gb->background_palettes_rgb;
+
     
     for (unsigned y = 0; y < 192; y++) {
         for (unsigned x = 0; x < 256; x++) {
@@ -1354,27 +1268,8 @@ void GB_draw_tileset(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette
 
 void GB_draw_tilemap(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette_type, uint8_t palette_index, GB_map_type_t map_type, GB_tileset_type_t tileset_type)
 {
-    uint32_t none_palette[4];
-    uint32_t *palette = NULL;
+    uint32_t *palette = gb->background_palettes_rgb;
     uint16_t map = 0x1800;
-    
-    switch (GB_is_cgb(gb)? palette_type : GB_PALETTE_NONE) {
-        case GB_PALETTE_NONE:
-            none_palette[0] = gb->rgb_encode_callback(gb, 0xFF, 0xFF, 0xFF);
-            none_palette[1] = gb->rgb_encode_callback(gb, 0xAA, 0xAA, 0xAA);
-            none_palette[2] = gb->rgb_encode_callback(gb, 0x55, 0x55, 0x55);
-            none_palette[3] = gb->rgb_encode_callback(gb, 0,    0,    0   );
-            palette = none_palette;
-            break;
-        case GB_PALETTE_BACKGROUND:
-            palette = gb->background_palettes_rgb + (4 * (palette_index & 7));
-            break;
-        case GB_PALETTE_OAM:
-            palette = gb->sprite_palettes_rgb + (4 * (palette_index & 7));
-            break;
-        case GB_PALETTE_AUTO:
-            break;
-    }
     
     if (map_type == GB_MAP_9C00 || (map_type == GB_MAP_AUTO && gb->io_registers[GB_IO_LCDC] & 0x04)) {
         map = 0x1c00;

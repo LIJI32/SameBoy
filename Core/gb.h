@@ -19,7 +19,6 @@
 #include "rewind.h"
 #include "sm83_cpu.h"
 #include "symbol_hash.h"
-#include "sgb.h"
 #include "cheats.h"
 #include "rumble.h"
 #include "workboy.h"
@@ -348,7 +347,6 @@ struct GB_gameboy_internal_s {
         bool cgb_double_speed;
         bool halted;
         bool stopped;
-        bool boot_rom_finished;
         bool ime_toggle; /* ei has delayed a effect.*/
         bool halt_bug;
         bool just_halted;
@@ -553,7 +551,6 @@ struct GB_gameboy_internal_s {
         GB_color_correction_mode_t color_correction_mode;
         bool keys[4][GB_KEY_MAX];
         GB_border_mode_t border_mode;
-        GB_sgb_border_t borrowed_border;
         bool tried_loading_sgb_border;
         bool has_sgb_border;
                
@@ -639,10 +636,7 @@ struct GB_gameboy_internal_s {
             unsigned pos;
         } *rewind_sequences; // lasts about 4 seconds
         size_t rewind_pos;
-               
-        /* SGB - saved and allocated optionally */
-        GB_sgb_t *sgb;
-        
+                       
         double sgb_intro_jingle_phases[7];
         double sgb_intro_sweep_phase;
         double sgb_intro_sweep_previous_sample;
@@ -657,7 +651,6 @@ struct GB_gameboy_internal_s {
         bool turbo;
         bool turbo_dont_skip;
         bool disable_rendering;
-        uint8_t boot_rom[0x900];
         bool vblank_just_occured; // For slow operations involving syscalls; these should only run once per vblank
         uint8_t cycles_since_run; // How many cycles have passed since the last call to GB_run(), in 8MHz units
         double clock_multiplier;
@@ -667,6 +660,9 @@ struct GB_gameboy_internal_s {
                
         /* Temporary state */
         bool wx_just_changed;
+               
+        /* For SmaeBoy-SameDuck source camptibility*/
+        const void *sgb;
    );
 };
     
@@ -685,9 +681,9 @@ __attribute__((__format__ (__printf__, fmtarg, firstvararg)))
 
 void GB_init(GB_gameboy_t *gb, GB_model_t model);
 bool GB_is_inited(GB_gameboy_t *gb);
-bool GB_is_cgb(GB_gameboy_t *gb);
-bool GB_is_sgb(GB_gameboy_t *gb); // Returns true if the model is SGB or SGB2
-bool GB_is_hle_sgb(GB_gameboy_t *gb); // Returns true if the model is SGB or SGB2 and the SFC/SNES side is HLE'd
+#define GB_is_cgb(x) false
+#define GB_is_sgb(x) false
+#define GB_is_hle_sgb(x) false
 GB_model_t GB_get_model(GB_gameboy_t *gb);
 void GB_free(GB_gameboy_t *gb);
 void GB_reset(GB_gameboy_t *gb);

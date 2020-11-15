@@ -12,16 +12,11 @@ void GB_update_joyp(GB_gameboy_t *gb)
     previous_state = gb->io_registers[GB_IO_JOYP] & 0xF;
     key_selection = (gb->io_registers[GB_IO_JOYP] >> 4) & 3;
     gb->io_registers[GB_IO_JOYP] &= 0xF0;
-    uint8_t current_player = gb->sgb? (gb->sgb->current_player & (gb->sgb->player_count - 1) & 3) : 0;
+    uint8_t current_player = 0;
     switch (key_selection) {
         case 3:
-            if (gb->sgb && gb->sgb->player_count > 1) {
-                gb->io_registers[GB_IO_JOYP] |= 0xF - current_player;
-            }
-            else {
-                /* Nothing is wired, all up */
-                gb->io_registers[GB_IO_JOYP] |= 0x0F;
-            }
+            /* Nothing is wired, all up */
+            gb->io_registers[GB_IO_JOYP] |= 0x0F;
             break;
 
         case 2:

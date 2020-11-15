@@ -36,10 +36,6 @@ int GB_save_state(GB_gameboy_t *gb, const char *path)
     if (!DUMP_SECTION(gb, f, rtc       )) goto error;
     if (!DUMP_SECTION(gb, f, video     )) goto error;
     
-    if (GB_is_hle_sgb(gb)) {
-        if (!dump_section(f, gb->sgb, sizeof(*gb->sgb))) goto error;
-    }
-    
     if (fwrite(gb->ram, 1, gb->ram_size, f) != gb->ram_size) {
         goto error;
     }
@@ -68,7 +64,6 @@ size_t GB_get_save_state_size(GB_gameboy_t *gb)
     + GB_SECTION_SIZE(apu       ) + sizeof(uint32_t)
     + GB_SECTION_SIZE(rtc       ) + sizeof(uint32_t)
     + GB_SECTION_SIZE(video     ) + sizeof(uint32_t)
-    + (GB_is_hle_sgb(gb)? sizeof(*gb->sgb) + sizeof(uint32_t) : 0)
     + gb->ram_size
     + gb->vram_size;
 }
@@ -98,10 +93,6 @@ void GB_save_state_to_buffer(GB_gameboy_t *gb, uint8_t *buffer)
     DUMP_SECTION(gb, buffer, apu       );
     DUMP_SECTION(gb, buffer, rtc       );
     DUMP_SECTION(gb, buffer, video     );
-    
-    if (GB_is_hle_sgb(gb)) {
-        buffer_dump_section(&buffer, gb->sgb, sizeof(*gb->sgb));
-    }
     
     
     buffer_write(gb->ram, gb->ram_size, &buffer);
@@ -250,10 +241,6 @@ int GB_load_state(GB_gameboy_t *gb, const char *path)
         errno = -1;
         goto error;
     }
-    
-    if (GB_is_hle_sgb(gb)) {
-        if (!read_section(f, gb->sgb, sizeof(*gb->sgb), false)) goto error;
-    }
         
     if (fread(gb->ram, 1, gb->ram_size, f) != gb->ram_size) {
         fclose(f);
@@ -363,10 +350,6 @@ int GB_load_state_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t le
     
     if (!verify_and_update_state_compatibility(gb, &save)) {
         return -1;
-    }
-    
-    if (GB_is_hle_sgb(gb)) {
-        if (!buffer_read_section(&buffer, &length, gb->sgb, sizeof(*gb->sgb), false)) return -1;
     }
         
     if (buffer_read(gb->ram, gb->ram_size, &buffer, &length) != gb->ram_size) {

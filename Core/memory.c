@@ -338,7 +338,7 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
             case GB_IO_BGPD:
             case GB_IO_OBPD:
             {
-                if (!gb->cgb_mode && gb->boot_rom_finished) {
+                if (!gb->cgb_mode) {
                     return 0xFF;
                 }
                 if (gb->cgb_palettes_blocked) {
@@ -580,7 +580,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 gb->io_registers[addr & 0xFF] = value;
                 return;
             case GB_IO_OPRI:
-                if ((!gb->boot_rom_finished || (gb->io_registers[GB_IO_KEY0] & 8)) && GB_is_cgb(gb)) {
+                if (((gb->io_registers[GB_IO_KEY0] & 8)) && GB_is_cgb(gb)) {
                     gb->io_registers[addr & 0xFF] = value;
                     gb->object_priority = (value & 1) ? GB_OBJECT_PRIORITY_X : GB_OBJECT_PRIORITY_INDEX;
                 }
@@ -695,18 +695,16 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                     GB_update_joyp(gb);
                 }
                 else if ((gb->io_registers[GB_IO_JOYP] & 0x30) != (value & 0x30)) {
-                    GB_sgb_write(gb, value);
                     gb->io_registers[GB_IO_JOYP] = (value & 0xF0) | (gb->io_registers[GB_IO_JOYP] & 0x0F);
                     GB_update_joyp(gb);
                 }
                 return;
 
             case GB_IO_BANK:
-                gb->boot_rom_finished = true;
                 return;
 
             case GB_IO_KEY0:
-                if (GB_is_cgb(gb) && !gb->boot_rom_finished) {
+                if (GB_is_cgb(gb)) {
                     gb->cgb_mode = !(value & 0xC); /* The real "contents" of this register aren't quite known yet. */
                     gb->io_registers[GB_IO_KEY0] = value;
                 }
@@ -751,7 +749,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 return;
             case GB_IO_BGPD:
             case GB_IO_OBPD:
-                if (!gb->cgb_mode && gb->boot_rom_finished) {
+                if (!gb->cgb_mode) {
                     /* Todo: Due to the behavior of a broken Game & Watch Gallery 2 ROM on a real CGB. A proper test ROM
                        is required. */
                     return;

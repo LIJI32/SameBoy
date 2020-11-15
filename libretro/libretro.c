@@ -23,12 +23,6 @@
 #include <Core/gb.h>
 #include "libretro.h"
 
-#ifdef _WIN32
-static const char slash = '\\';
-#else
-static const char slash = '/';
-#endif
-
 #define MAX_VIDEO_WIDTH 256
 #define MAX_VIDEO_HEIGHT 224
 #define MAX_VIDEO_PIXELS (MAX_VIDEO_WIDTH * MAX_VIDEO_HEIGHT)
@@ -104,8 +98,6 @@ char retro_game_path[4096];
 
 GB_gameboy_t gameboy[2];
 
-extern const unsigned char dmg_boot[], cgb_boot[], agb_boot[], sgb_boot[], sgb2_boot[];
-extern const unsigned dmg_boot_length, cgb_boot_length, agb_boot_length, sgb_boot_length, sgb2_boot_length;
 bool vblank1_occurred = false, vblank2_occurred = false;
 
 static void fallback_log(enum retro_log_level level, const char *fmt, ...)
@@ -224,9 +216,7 @@ static retro_environment_t environ_cb;
 static const struct retro_variable vars_single[] = {
     { "sameduck_color_correction_mode", "Color correction; emulate hardware|preserve brightness|reduce contrast|off|correct curves" },
     { "sameduck_high_pass_filter_mode", "High-pass filter; accurate|remove dc offset|off" },
-    { "sameduck_model", "Emulated model (Restart game); Auto|Game Boy|Game Boy Color|Game Boy Advance|Super Game Boy|Super Game Boy 2" },
-    { "sameduck_border", "Display border; Super Game Boy only|always|never" },
-    { "sameduck_rumble", "Enable rumble; rumble-enabled games|all games|never" },
+    { "sameduck_rumble", "Enable rumble; all games|never" },
     { NULL }
 };
 
@@ -235,15 +225,11 @@ static const struct retro_variable vars_dual[] = {
     { "sameduck_link", "Link cable emulation; enabled|disabled" },
     /*{ "sameduck_ir",   "Infrared Sensor Emulation; disabled|enabled" },*/
     { "sameduck_screen_layout", "Screen layout; top-down|left-right" },
-    { "sameduck_audio_output", "Audio output; Game Boy #1|Game Boy #2" },
-    { "sameduck_model_1", "Emulated model for Game Boy #1 (Restart game); Auto|Game Boy|Game Boy Color|Game Boy Advance" },
-    { "sameduck_model_2", "Emulated model for Game Boy #2 (Restart game); Auto|Game Boy|Game Boy Color|Game Boy Advance" },
-    { "sameduck_color_correction_mode_1", "Color correction for Game Boy #1; emulate hardware|preserve brightness|reduce contrast|off|correct curves" },
-    { "sameduck_color_correction_mode_2", "Color correction for Game Boy #2; emulate hardware|preserve brightness|reduce contrast|off|correct curves" },
-    { "sameduck_high_pass_filter_mode_1", "High-pass filter for Game Boy #1; accurate|remove dc offset|off" },
-    { "sameduck_high_pass_filter_mode_2", "High-pass filter for Game Boy #2; accurate|remove dc offset|off" },
-    { "sameduck_rumble_1", "Enable rumble for Game Boy #1; rumble-enabled games|all games|never" },
-    { "sameduck_rumble_2", "Enable rumble for Game Boy #2; rumble-enabled games|all games|never" },
+    { "sameduck_audio_output", "Audio output; Mega Duck #1|Mega Duck #2" },
+    { "sameduck_high_pass_filter_mode_1", "High-pass filter for Mega Duck #1; accurate|remove dc offset|off" },
+    { "sameduck_high_pass_filter_mode_2", "High-pass filter for Mega Duck #2; accurate|remove dc offset|off" },
+    { "sameduck_rumble_1", "Enable rumble for Mega Duck #1; all games|never" },
+    { "sameduck_rumble_2", "Enable rumble for Mega Duck #2; all games|never" },
     { NULL }
 };
 
@@ -263,7 +249,7 @@ static const struct retro_subsystem_rom_info gb_roms[] = {
 };
 
 static const struct retro_subsystem_info subsystems[] = {
-    { "2 Player Game Boy Link", "gb_link_2p", gb_roms, 2, RETRO_GAME_TYPE_GAMEBOY_LINK_2P },
+    { "2 Player Mega Duck Link", "gb_link_2p", gb_roms, 2, RETRO_GAME_TYPE_GAMEBOY_LINK_2P },
     { NULL },
 };
 
@@ -360,52 +346,6 @@ static void set_link_cable_state(bool state)
     }
 }
 
-static void boot_rom_load(GB_gameboy_t *gb, GB_boot_rom_t type)
-{
-    const char *model_name = (char *[]){
-        [GB_BOOT_ROM_DMG0] = "dmg0",
-        [GB_BOOT_ROM_DMG] = "dmg",
-        [GB_BOOT_ROM_MGB] = "mgb",
-        [GB_BOOT_ROM_SGB] = "sgb",
-        [GB_BOOT_ROM_SGB2] = "sgb2",
-        [GB_BOOT_ROM_CGB0] = "cgb0",
-        [GB_BOOT_ROM_CGB] = "cgb",
-        [GB_BOOT_ROM_AGB] = "agb",
-    }[type];
-    
-    const uint8_t *boot_code = (const unsigned char *[])
-    {
-        [GB_BOOT_ROM_DMG0] = dmg_boot, // dmg0 not implemented yet
-        [GB_BOOT_ROM_DMG] = dmg_boot,
-        [GB_BOOT_ROM_MGB] = dmg_boot, // mgb not implemented yet
-        [GB_BOOT_ROM_SGB] = sgb_boot,
-        [GB_BOOT_ROM_SGB2] = sgb2_boot,
-        [GB_BOOT_ROM_CGB0] = cgb_boot, // cgb0 not implemented yet
-        [GB_BOOT_ROM_CGB] = cgb_boot,
-        [GB_BOOT_ROM_AGB] = agb_boot,
-    }[type];
-    
-    unsigned boot_length = (unsigned []){
-        [GB_BOOT_ROM_DMG0] = dmg_boot_length, // dmg0 not implemented yet
-        [GB_BOOT_ROM_DMG] = dmg_boot_length,
-        [GB_BOOT_ROM_MGB] = dmg_boot_length, // mgb not implemented yet
-        [GB_BOOT_ROM_SGB] = sgb_boot_length,
-        [GB_BOOT_ROM_SGB2] = sgb2_boot_length,
-        [GB_BOOT_ROM_CGB0] = cgb_boot_length, // cgb0 not implemented yet
-        [GB_BOOT_ROM_CGB] = cgb_boot_length,
-        [GB_BOOT_ROM_AGB] = agb_boot_length,
-    }[type];
-    
-    char buf[256];
-    snprintf(buf, sizeof(buf), "%s%c%s_boot.bin", retro_system_directory, slash, model_name);
-    log_cb(RETRO_LOG_INFO, "Initializing as model: %s\n", model_name);
-    log_cb(RETRO_LOG_INFO, "Loading boot image: %s\n", buf);
-
-    if (GB_load_boot_rom(gb, buf)) {
-        GB_load_boot_rom_from_buffer(gb, boot_code, boot_length);
-    }
-}
-
 static void retro_set_memory_maps(void)
 {
     struct retro_memory_descriptor descs[11];
@@ -490,8 +430,6 @@ static void init_for_current_model(unsigned id)
     else {
         GB_init(&gameboy[i], libretro_to_internal_model[effective_model]);
     }
-
-    GB_set_boot_rom_load_callback(&gameboy[i], boot_rom_load);
 
     /* When running multiple devices they are assumed to use the same resolution */
 

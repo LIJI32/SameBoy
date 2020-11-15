@@ -448,20 +448,6 @@ static bool handle_pending_command(void)
 
 static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type)
 {
-    bool error = false;
-    start_capturing_logs();
-    static const char *const names[] = {
-        [GB_BOOT_ROM_DMG0] = "dmg0_boot.bin",
-        [GB_BOOT_ROM_DMG] = "dmg_boot.bin",
-        [GB_BOOT_ROM_MGB] = "mgb_boot.bin",
-        [GB_BOOT_ROM_SGB] = "sgb_boot.bin",
-        [GB_BOOT_ROM_SGB2] = "sgb2_boot.bin",
-        [GB_BOOT_ROM_CGB0] = "cgb0_boot.bin",
-        [GB_BOOT_ROM_CGB] = "cgb_boot.bin",
-        [GB_BOOT_ROM_AGB] = "agb_boot.bin",
-    };
-    GB_load_boot_rom(gb, resource_path(names[type]));
-    end_capturing_logs(true, error);
 }
 
 static void run(void)

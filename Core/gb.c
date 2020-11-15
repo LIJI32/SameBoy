@@ -108,44 +108,9 @@ static char *default_async_input_callback(GB_gameboy_t *gb)
 }
 #endif
 
-static void load_default_border(GB_gameboy_t *gb)
-{
-    if (gb->has_sgb_border) return;
-    
-    #define LOAD_BORDER() do { \
-        memcpy(gb->borrowed_border.map, tilemap, sizeof(tilemap));\
-        memcpy(gb->borrowed_border.palette, palette, sizeof(palette));\
-        \
-        /* Expand tileset */\
-        for (unsigned tile = 0; tile < sizeof(tiles) / 32; tile++) {\
-            for (unsigned y = 0; y < 8; y++) {\
-                for (unsigned x = 0; x < 8; x++) {\
-                    gb->borrowed_border.tiles[tile * 8 * 8 + y * 8 + x] =\
-                    (tiles[tile * 32 + y * 2 +  0] & (1 << (7 ^ x)) ? 1 : 0) |\
-                    (tiles[tile * 32 + y * 2 +  1] & (1 << (7 ^ x)) ? 2 : 0) |\
-                    (tiles[tile * 32 + y * 2 + 16] & (1 << (7 ^ x)) ? 4 : 0) |\
-                    (tiles[tile * 32 + y * 2 + 17] & (1 << (7 ^ x)) ? 8 : 0);\
-                }\
-            }\
-        }\
-    } while (false);
-    
-    if (gb->model == GB_MODEL_AGB) {
-        #include "graphics/agb_border.inc"
-        LOAD_BORDER();
-    }
-    else if (GB_is_cgb(gb)) {
-        #include "graphics/cgb_border.inc"
-        LOAD_BORDER();
-    }
-    else {
-        #include "graphics/dmg_border.inc"
-        LOAD_BORDER();
-    }
-}
-
 void GB_init(GB_gameboy_t *gb, GB_model_t model)
 {
+    model = GB_MODEL_DMG_B;
     memset(gb, 0, sizeof(*gb));
     gb->model = model;
     if (GB_is_cgb(gb)) {
@@ -169,7 +134,6 @@ void GB_init(GB_gameboy_t *gb, GB_model_t model)
     }
     
     GB_reset(gb);
-    load_default_border(gb);
 }
 
 GB_model_t GB_get_model(GB_gameboy_t *gb)
@@ -192,9 +156,6 @@ void GB_free(GB_gameboy_t *gb)
     if (gb->breakpoints) {
         free(gb->breakpoints);
     }
-    if (gb->sgb) {
-        free(gb->sgb);
-    }
     if (gb->nontrivial_jump_state) {
         free(gb->nontrivial_jump_state);
     }
@@ -212,62 +173,11 @@ void GB_free(GB_gameboy_t *gb)
 
 int GB_load_boot_rom(GB_gameboy_t *gb, const char *path)
 {
-    FILE *f = fopen(path, "rb");
-    if (!f) {
-        GB_log(gb, "Could not open boot ROM: %s.\n", strerror(errno));
-        return errno;
-    }
-    fread(gb->boot_rom, sizeof(gb->boot_rom), 1, f);
-    fclose(f);
     return 0;
 }
 
 void GB_load_boot_rom_from_buffer(GB_gameboy_t *gb, const unsigned char *buffer, size_t size)
 {
-    if (size > sizeof(gb->boot_rom)) {
-        size = sizeof(gb->boot_rom);
-    }
-    memset(gb->boot_rom, 0xFF, sizeof(gb->boot_rom));
-    memcpy(gb->boot_rom, buffer, size);
-}
-
-void GB_borrow_sgb_border(GB_gameboy_t *gb)
-{
-    if (GB_is_sgb(gb)) return;
-    if (gb->border_mode != GB_BORDER_ALWAYS) return;
-    if (gb->tried_loading_sgb_border) return;
-    gb->tried_loading_sgb_border = true;
-    if (gb->rom && gb->rom[0x146] != 3) return; // Not an SGB game, nothing to borrow
-    if (!gb->boot_rom_load_callback) return; // Can't borrow a border without this callback
-    GB_gameboy_t sgb;
-    GB_init(&sgb, GB_MODEL_SGB);
-    sgb.rom = gb->rom;
-    sgb.rom_size = gb->rom_size;
-    sgb.turbo = true;
-    sgb.turbo_dont_skip = true;
-    // sgb.disable_rendering = true;
-    
-    /* Load the boot ROM using the existing gb object */
-    typeof(gb->boot_rom) boot_rom_backup;
-    memcpy(boot_rom_backup, gb->boot_rom, sizeof(gb->boot_rom));
-    gb->boot_rom_load_callback(gb, GB_BOOT_ROM_SGB);
-    memcpy(sgb.boot_rom, gb->boot_rom, sizeof(gb->boot_rom));
-    memcpy(gb->boot_rom, boot_rom_backup, sizeof(gb->boot_rom));
-    sgb.sgb->intro_animation = -1;
-    
-    for (unsigned i = 600; i--;) {
-        GB_run_frame(&sgb);
-        if (sgb.sgb->border_animation) {
-            gb->has_sgb_border = true;
-            memcpy(&gb->borrowed_border, &sgb.sgb->pending_border, sizeof(gb->borrowed_border));
-            gb->borrowed_border.palette[0] = sgb.sgb->effective_palettes[0];
-            break;
-        }
-    }
-    
-    sgb.rom = NULL;
-    sgb.rom_size = 0;
-    GB_free(&sgb);
 }
 
 int GB_load_rom(GB_gameboy_t *gb, const char *path)
@@ -579,18 +489,6 @@ void GB_load_battery(GB_gameboy_t *gb, const char *path)
 uint8_t GB_run(GB_gameboy_t *gb)
 {
     gb->vblank_just_occured = false;
-
-    if (gb->sgb && gb->sgb->intro_animation < 140) {
-        /* On the SGB, the GB is halted after finishing the boot ROM.
-           Then, after the boot animation is almost done, it's reset.
-           Since the SGB HLE does not perform any header validity checks,
-           we just halt the CPU (with hacky code) until the correct time.
-           This ensures the Nintendo logo doesn't flash on screen, and
-           the game does "run in background" while the animation is playing. */
-        GB_display_run(gb, 228);
-        gb->cycles_since_last_sync += 228;
-        return 228;
-    }
     
     GB_debugger_run(gb);
     gb->cycles_since_run = 0;
@@ -772,21 +670,6 @@ bool GB_is_inited(GB_gameboy_t *gb)
     return gb->magic == state_magic();
 }
 
-bool GB_is_cgb(GB_gameboy_t *gb)
-{
-    return (gb->model & GB_MODEL_FAMILY_MASK) == GB_MODEL_CGB_FAMILY;
-}
-
-bool GB_is_sgb(GB_gameboy_t *gb)
-{
-    return (gb->model & ~GB_MODEL_PAL_BIT & ~GB_MODEL_NO_SFC_BIT) == GB_MODEL_SGB || (gb->model & ~GB_MODEL_NO_SFC_BIT) == GB_MODEL_SGB2;
-}
-
-bool GB_is_hle_sgb(GB_gameboy_t *gb)
-{
-    return (gb->model & ~GB_MODEL_PAL_BIT) == GB_MODEL_SGB || gb->model == GB_MODEL_SGB2;
-}
-
 void GB_set_turbo_mode(GB_gameboy_t *gb, bool on, bool no_frame_skip)
 {
     gb->turbo = on;
@@ -962,32 +845,7 @@ static void reset_ram(GB_gameboy_t *gb)
 
 static void request_boot_rom(GB_gameboy_t *gb)
 {
-    if (gb->boot_rom_load_callback) {
-        GB_boot_rom_t type = 0;
-        switch (gb->model) {
-            case GB_MODEL_DMG_B:
-                type = GB_BOOT_ROM_DMG;
-                break;
-            case GB_MODEL_SGB_NTSC:
-            case GB_MODEL_SGB_PAL:
-            case GB_MODEL_SGB_NTSC_NO_SFC:
-            case GB_MODEL_SGB_PAL_NO_SFC:
-                type = GB_BOOT_ROM_SGB;
-                break;
-            case GB_MODEL_SGB2:
-            case GB_MODEL_SGB2_NO_SFC:
-                type = GB_BOOT_ROM_SGB2;
-                break;
-            case GB_MODEL_CGB_C:
-            case GB_MODEL_CGB_E:
-                type = GB_BOOT_ROM_CGB;
-                break;
-            case GB_MODEL_AGB:
-                type = GB_BOOT_ROM_AGB;
-                break;
-        }
-        gb->boot_rom_load_callback(gb, type);
-    }
+
 }
 
 void GB_reset(GB_gameboy_t *gb)
@@ -1027,28 +885,6 @@ void GB_reset(GB_gameboy_t *gb)
     
     gb->accessed_oam_row = -1;
     
-    
-    if (GB_is_hle_sgb(gb)) {
-        if (!gb->sgb) {
-            gb->sgb = malloc(sizeof(*gb->sgb));
-        }
-        memset(gb->sgb, 0, sizeof(*gb->sgb));
-        memset(gb->sgb_intro_jingle_phases, 0, sizeof(gb->sgb_intro_jingle_phases));
-        gb->sgb_intro_sweep_phase = 0;
-        gb->sgb_intro_sweep_previous_sample = 0;
-        gb->sgb->intro_animation = -10;
-        
-        gb->sgb->player_count = 1;
-        GB_sgb_load_default_data(gb);
-
-    }
-    else {
-        if (gb->sgb) {
-            free(gb->sgb);
-            gb->sgb = NULL;
-        }
-    }
-    
     /* Todo: Ugly, fixme, see comment in the timer state machine */
     gb->div_state = 3;
 
@@ -1065,6 +901,7 @@ void GB_reset(GB_gameboy_t *gb)
 
 void GB_switch_model_and_reset(GB_gameboy_t *gb, GB_model_t model)
 {
+    model = GB_MODEL_DMG_B;
     gb->model = model;
     if (GB_is_cgb(gb)) {
         gb->ram = realloc(gb->ram, gb->ram_size = 0x1000 * 8);
@@ -1076,7 +913,6 @@ void GB_switch_model_and_reset(GB_gameboy_t *gb, GB_model_t model)
     }
     GB_rewind_free(gb);
     GB_reset(gb);
-    load_default_border(gb);
 }
 
 void *GB_get_direct_access(GB_gameboy_t *gb, GB_direct_access_t access, size_t *size, uint16_t *bank)
@@ -1119,9 +955,9 @@ void *GB_get_direct_access(GB_gameboy_t *gb, GB_direct_access_t access, size_t *
             *bank = 0;
             return &gb->io_registers;
         case GB_DIRECT_ACCESS_BOOTROM:
-            *size = GB_is_cgb(gb)? sizeof(gb->boot_rom) : 0x100;
+            *size = 0;
             *bank = 0;
-            return &gb->boot_rom;
+            return NULL;
         case GB_DIRECT_ACCESS_OAM:
             *size = sizeof(gb->oam);
             *bank = 0;
@@ -1196,7 +1032,7 @@ unsigned GB_get_screen_height(GB_gameboy_t *gb)
 
 unsigned GB_get_player_count(GB_gameboy_t *gb)
 {
-    return GB_is_hle_sgb(gb)? gb->sgb->player_count : 1;
+    return 1;
 }
 
 void GB_set_update_input_hint_callback(GB_gameboy_t *gb, GB_update_input_hint_callback_t callback)

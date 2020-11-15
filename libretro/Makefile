@@ -324,22 +324,6 @@ CFLAGS   += -D__LIBRETRO__ $(fpic) $(INCFLAGS) -std=gnu11 -D_GNU_SOURCE -D_USE_M
 
 all: $(TARGET)
 
-$(CORE_DIR)/libretro/%_boot.c: $(CORE_DIR)/build/bin/BootROMs/%_boot.bin
-	echo "/* AUTO-GENERATED */" > $@
-	echo "const unsigned char $(notdir $(@:%.c=%))[] = {" >> $@
-ifneq ($(findstring Haiku,$(shell uname -s)),)
-	# turns out od is posix, hexdump is not hence is less portable
-	# this is still rather ugly and could be done better I guess
-	od -A none -t x1 -v $< | sed -e 's/^\ /0x/' -e 's/\ /,\ 0x/g' -e 's/$$/,/g' | tr '\n' ' ' >> $@
-else
-	hexdump -v -e '/1 "0x%02x, "' $< >> $@
-endif
-	echo "};" >> $@
-	echo "const unsigned $(notdir $(@:%.c=%))_length = sizeof($(notdir $(@:%.c=%)));" >> $@
-
-$(CORE_DIR)/build/bin/BootROMs/%_boot.bin:
-	$(MAKE) -C $(CORE_DIR) $(patsubst $(CORE_DIR)/%,%,$@)
-
 $(TARGET): $(OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 ifeq ($(STATIC_LINKING), 1)

@@ -324,56 +324,6 @@ static void return_to_root_menu(unsigned index)
     scroll = 0;
 }
 
-static void cycle_model(unsigned index)
-{
-    
-    configuration.model++;
-    if (configuration.model == MODEL_MAX) {
-        configuration.model = 0;
-    }
-    pending_command = GB_SDL_RESET_COMMAND;
-}
-
-static void cycle_model_backwards(unsigned index)
-{
-    if (configuration.model == 0) {
-        configuration.model = MODEL_MAX;
-    }
-    configuration.model--;
-    pending_command = GB_SDL_RESET_COMMAND;
-}
-
-const char *current_model_string(unsigned index)
-{
-    return (const char *[]){"Game Boy", "Game Boy Color", "Game Boy Advance", "Super Game Boy"}
-        [configuration.model];
-}
-
-static void cycle_sgb_revision(unsigned index)
-{
-    
-    configuration.sgb_revision++;
-    if (configuration.sgb_revision == SGB_MAX) {
-        configuration.sgb_revision = 0;
-    }
-    pending_command = GB_SDL_RESET_COMMAND;
-}
-
-static void cycle_sgb_revision_backwards(unsigned index)
-{
-    if (configuration.sgb_revision == 0) {
-        configuration.sgb_revision = SGB_MAX;
-    }
-    configuration.sgb_revision--;
-    pending_command = GB_SDL_RESET_COMMAND;
-}
-
-const char *current_sgb_revision_string(unsigned index)
-{
-    return (const char *[]){"Super Game Boy NTSC", "Super Game Boy PAL", "Super Game Boy 2"}
-    [configuration.sgb_revision];
-}
-
 static const uint32_t rewind_lengths[] = {0, 10, 30, 60, 60 * 2, 60 * 5, 60 * 10};
 static const char *rewind_strings[] = {"Disabled",
                                        "10 Seconds",
@@ -421,8 +371,6 @@ const char *current_rewind_string(unsigned index)
 }
 
 static const struct menu_item emulation_menu[] = {
-    {"Emulated Model:", cycle_model, current_model_string, cycle_model_backwards},
-    {"SGB Revision:", cycle_sgb_revision, current_sgb_revision_string, cycle_sgb_revision_backwards},
     {"Rewind Length:", cycle_rewind, current_rewind_string, cycle_rewind_backwards},
     {"Back", return_to_root_menu},
     {NULL,}
@@ -447,22 +395,10 @@ const char *current_default_scale(unsigned index)
         [configuration.default_scale - 1];
 }
 
-const char *current_color_correction_mode(unsigned index)
-{
-    return (const char *[]){"Disabled", "Correct Color Curves", "Emulate Hardware", "Preserve Brightness", "Reduce Contrast"}
-        [configuration.color_correction_mode];
-}
-
 const char *current_palette(unsigned index)
 {
     return (const char *[]){"Greyscale", "Lime (Game Boy)", "Olive (Pocket)", "Teal (Light)"}
         [configuration.dmg_palette];
-}
-
-const char *current_border_mode(unsigned index)
-{
-    return (const char *[]){"SGB Only", "Never", "Always"}
-        [configuration.border_mode];
 }
 
 void cycle_scaling(unsigned index)
@@ -513,26 +449,6 @@ void cycle_default_scale_backwards(unsigned index)
     update_viewport();
 }
 
-static void cycle_color_correction(unsigned index)
-{
-    if (configuration.color_correction_mode == GB_COLOR_CORRECTION_REDUCE_CONTRAST) {
-        configuration.color_correction_mode = GB_COLOR_CORRECTION_DISABLED;
-    }
-    else {
-        configuration.color_correction_mode++;
-    }
-}
-
-static void cycle_color_correction_backwards(unsigned index)
-{
-    if (configuration.color_correction_mode == GB_COLOR_CORRECTION_DISABLED) {
-        configuration.color_correction_mode = GB_COLOR_CORRECTION_REDUCE_CONTRAST;
-    }
-    else {
-        configuration.color_correction_mode--;
-    }
-}
-
 static void cycle_palette(unsigned index)
 {
     if (configuration.dmg_palette == 3) {
@@ -550,26 +466,6 @@ static void cycle_palette_backwards(unsigned index)
     }
     else {
         configuration.dmg_palette--;
-    }
-}
-
-static void cycle_border_mode(unsigned index)
-{
-    if (configuration.border_mode == GB_BORDER_ALWAYS) {
-        configuration.border_mode = GB_BORDER_SGB;
-    }
-    else {
-        configuration.border_mode++;
-    }
-}
-
-static void cycle_border_mode_backwards(unsigned index)
-{
-    if (configuration.border_mode == GB_BORDER_SGB) {
-        configuration.border_mode = GB_BORDER_ALWAYS;
-    }
-    else {
-        configuration.border_mode--;
     }
 }
 
@@ -683,10 +579,8 @@ static const struct menu_item graphics_menu[] = {
     {"Scaling Mode:", cycle_scaling, current_scaling_mode, cycle_scaling_backwards},
     {"Default Window Scale:", cycle_default_scale, current_default_scale, cycle_default_scale_backwards},
     {"Scaling Filter:", cycle_filter, current_filter_name, cycle_filter_backwards},
-    {"Color Correction:", cycle_color_correction, current_color_correction_mode, cycle_color_correction_backwards},
     {"Frame Blending:", cycle_blending_mode, blending_mode_string, cycle_blending_mode_backwards},
-    {"Mono Palette:", cycle_palette, current_palette, cycle_palette_backwards},
-    {"Display Border:", cycle_border_mode, current_border_mode, cycle_border_mode_backwards},
+    {"Palette:", cycle_palette, current_palette, cycle_palette_backwards},
     {"Back", return_to_root_menu},
     {NULL,}
 };
@@ -896,27 +790,22 @@ static void detect_joypad_layout(unsigned index)
 
 static void cycle_rumble_mode(unsigned index)
 {
-    if (configuration.rumble_mode == GB_RUMBLE_ALL_GAMES) {
-        configuration.rumble_mode = GB_RUMBLE_DISABLED;
+    if (configuration.rumble_mode == GB_RUMBLE_DISABLED) {
+        configuration.rumble_mode = GB_RUMBLE_ALL_GAMES;
     }
     else {
-        configuration.rumble_mode++;
+        configuration.rumble_mode = GB_RUMBLE_DISABLED;
     }
 }
 
 static void cycle_rumble_mode_backwards(unsigned index)
 {
-    if (configuration.rumble_mode == GB_RUMBLE_DISABLED) {
-        configuration.rumble_mode = GB_RUMBLE_ALL_GAMES;
-    }
-    else {
-        configuration.rumble_mode--;
-    }
+    cycle_rumble_mode(index);
 }
 
 const char *current_rumble_mode(unsigned index)
 {
-    return (const char *[]){"Disabled", "Rumble Game Paks Only", "All Games"}
+    return (const char *[]){"Disabled", "Rumble Game Paks Only", "Enabled"}
     [configuration.rumble_mode];
 }
 
@@ -1333,7 +1222,7 @@ void run_gui(bool is_running)
             switch (gui_state) {
                 case SHOWING_DROP_MESSAGE:
                     draw_text_centered(pixels, width, height, 8 + y_offset, "Press ESC for menu", gui_palette_native[3], gui_palette_native[0], false);
-                    draw_text_centered(pixels, width, height, 116 + y_offset, "Drop a GB or GBC", gui_palette_native[3], gui_palette_native[0], false);
+                    draw_text_centered(pixels, width, height, 116 + y_offset, "Drop a BIN", gui_palette_native[3], gui_palette_native[0], false);
                     draw_text_centered(pixels, width, height, 128 + y_offset, "file to play", gui_palette_native[3], gui_palette_native[0], false);
                     break;
                 case SHOWING_MENU:

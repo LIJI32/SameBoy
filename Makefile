@@ -188,9 +188,8 @@ endif
 
 cocoa: $(BIN)/SameDuck.app
 quicklook: $(BIN)/SameDuck.qlgenerator
-sdl: $(SDL_TARGET) $(BIN)/SDL/dmg_boot.bin $(BIN)/SDL/cgb_boot.bin $(BIN)/SDL/agb_boot.bin $(BIN)/SDL/sgb_boot.bin $(BIN)/SDL/sgb2_boot.bin $(BIN)/SDL/LICENSE $(BIN)/SDL/registers.sym $(BIN)/SDL/background.bmp $(BIN)/SDL/Shaders
-bootroms: $(BIN)/BootROMs/agb_boot.bin $(BIN)/BootROMs/cgb_boot.bin $(BIN)/BootROMs/dmg_boot.bin $(BIN)/BootROMs/sgb_boot.bin $(BIN)/BootROMs/sgb2_boot.bin
-tester: $(TESTER_TARGET) $(BIN)/tester/dmg_boot.bin $(BIN)/tester/cgb_boot.bin $(BIN)/tester/agb_boot.bin $(BIN)/tester/sgb_boot.bin $(BIN)/tester/sgb2_boot.bin
+sdl: $(SDL_TARGET) $(BIN)/SDL/LICENSE $(BIN)/SDL/registers.sym $(BIN)/SDL/background.bmp $(BIN)/SDL/Shaders
+tester: $(TESTER_TARGET)
 all: cocoa sdl tester libretro
 
 # Get a list of our source files and their respective object file targets
@@ -267,11 +266,6 @@ $(BIN)/SameDuck.app: $(BIN)/SameDuck.app/Contents/MacOS/SameDuck \
                      Cocoa/License.html \
                      Cocoa/Info.plist \
                      Misc/registers.sym \
-                     $(BIN)/SameDuck.app/Contents/Resources/dmg_boot.bin \
-                     $(BIN)/SameDuck.app/Contents/Resources/cgb_boot.bin \
-                     $(BIN)/SameDuck.app/Contents/Resources/agb_boot.bin \
-                     $(BIN)/SameDuck.app/Contents/Resources/sgb_boot.bin \
-                     $(BIN)/SameDuck.app/Contents/Resources/sgb2_boot.bin \
                      $(patsubst %.xib,%.nib,$(addprefix $(BIN)/SameDuck.app/Contents/Resources/Base.lproj/,$(shell cd Cocoa;ls *.xib))) \
                      $(BIN)/SameDuck.qlgenerator \
                      Shaders
@@ -298,8 +292,7 @@ $(BIN)/SameDuck.app/Contents/Resources/Base.lproj/%.nib: Cocoa/%.xib
 
 $(BIN)/SameDuck.qlgenerator: $(BIN)/SameDuck.qlgenerator/Contents/MacOS/SameDuckQL \
                              $(shell ls QuickLook/*.png) \
-                             QuickLook/Info.plist \
-                             $(BIN)/SameDuck.qlgenerator/Contents/Resources/cgb_boot_fast.bin
+                             QuickLook/Info.plist
 	$(MKDIR) -p $(BIN)/SameDuck.qlgenerator/Contents/Resources
 	cp QuickLook/*.png $(BIN)/SameDuck.qlgenerator/Contents/Resources/
 	sed s/@VERSION/$(VERSION)/ < QuickLook/Info.plist > $(BIN)/SameDuck.qlgenerator/Contents/Info.plist
@@ -309,12 +302,6 @@ $(BIN)/SameDuck.qlgenerator: $(BIN)/SameDuck.qlgenerator/Contents/MacOS/SameDuck
 $(BIN)/SameDuck.qlgenerator/Contents/MacOS/SameDuckQL: $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -Wl,-exported_symbols_list,QuickLook/exports.sym -bundle -framework Cocoa -framework Quicklook
-
-# cgb_boot_fast.bin is not a standard boot ROM, we don't expect it to exist in the user-provided
-# boot ROM directory.
-$(BIN)/SameDuck.qlgenerator/Contents/Resources/cgb_boot_fast.bin: $(BIN)/BootROMs/cgb_boot_fast.bin
-	-@$(MKDIR) -p $(dir $@)
-	cp -f $^ $@
 	
 # SDL Port
 
@@ -366,18 +353,6 @@ $(BIN)/tester/sameduck_tester.exe: $(CORE_OBJECTS) $(SDL_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) -Wl,/subsystem:console
 
-$(BIN)/SDL/%.bin: $(BOOTROMS_DIR)/%.bin
-	-@$(MKDIR) -p $(dir $@)
-	cp -f $^ $@
-
-$(BIN)/tester/%.bin: $(BOOTROMS_DIR)/%.bin
-	-@$(MKDIR) -p $(dir $@)
-	cp -f $^ $@
-
-$(BIN)/SameDuck.app/Contents/Resources/%.bin: $(BOOTROMS_DIR)/%.bin
-	-@$(MKDIR) -p $(dir $@)
-	cp -f $^ $@
-
 $(BIN)/SDL/LICENSE: LICENSE
 	-@$(MKDIR) -p $(dir $@)
 	cp -f $^ $@
@@ -393,29 +368,6 @@ $(BIN)/SDL/background.bmp: SDL/background.bmp
 $(BIN)/SDL/Shaders: Shaders
 	-@$(MKDIR) -p $@
 	cp -rf Shaders/*.fsh $@
-
-# Boot ROMs
-
-$(OBJ)/%.2bpp: %.png
-	-@$(MKDIR) -p $(dir $@)
-	rgbgfx -h -u -o $@ $<
-
-$(OBJ)/BootROMs/SameDuckLogo.pb12: $(OBJ)/BootROMs/SameDuckLogo.2bpp $(PB12_COMPRESS)
-	$(realpath $(PB12_COMPRESS)) < $< > $@
-	
-$(PB12_COMPRESS): BootROMs/pb12.c
-	$(NATIVE_CC) -std=c99 -Wall -Werror $< -o $@
-
-$(BIN)/BootROMs/agb_boot.bin: BootROMs/cgb_boot.asm
-$(BIN)/BootROMs/cgb_boot_fast.bin: BootROMs/cgb_boot.asm
-$(BIN)/BootROMs/sgb2_boot: BootROMs/sgb_boot.asm
-
-$(BIN)/BootROMs/%.bin: BootROMs/%.asm $(OBJ)/BootROMs/SameDuckLogo.pb12
-	-@$(MKDIR) -p $(dir $@)
-	rgbasm -i $(OBJ)/BootROMs/ -i BootROMs/ -o $@.tmp $<
-	rgblink -o $@.tmp2 $@.tmp
-	dd if=$@.tmp2 of=$@ count=1 bs=$(if $(findstring dmg,$@)$(findstring sgb,$@),256,2304) 2> $(NULL)
-	@rm $@.tmp $@.tmp2
 
 # Libretro Core (uses its own build system)
 libretro:

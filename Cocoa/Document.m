@@ -546,17 +546,6 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
 
 - (void) loadBootROM: (GB_boot_rom_t)type
 {
-    static NSString *const names[] = {
-        [GB_BOOT_ROM_DMG0] = @"dmg0_boot",
-        [GB_BOOT_ROM_DMG] = @"dmg_boot",
-        [GB_BOOT_ROM_MGB] = @"mgb_boot",
-        [GB_BOOT_ROM_SGB] = @"sgb_boot",
-        [GB_BOOT_ROM_SGB2] = @"sgb2_boot",
-        [GB_BOOT_ROM_CGB0] = @"cgb0_boot",
-        [GB_BOOT_ROM_CGB] = @"cgb_boot",
-        [GB_BOOT_ROM_AGB] = @"agb_boot",
-    };
-    GB_load_boot_rom(&gb, [[self bootROMPathForName:names[type]] UTF8String]);
 }
 
 - (IBAction)reset:(id)sender

@@ -316,31 +316,6 @@
                                 </menu>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="5GS-tt-E0a"/>
-                            <menuItem title="Game Boy" tag="1" id="g7C-LA-VAr">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <connections>
-                                    <action selector="reset:" target="-1" id="rxG-cz-s1S"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem title="Super Game Boy" tag="4" id="vc7-yy-ARW">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <connections>
-                                    <action selector="reset:" target="-1" id="E4M-QG-ua9"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem title="Game Boy Color" tag="2" id="hdG-Bl-8nJ">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <connections>
-                                    <action selector="reset:" target="-1" id="xAz-cr-0u2"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem title="Game Boy Advance" tag="3" id="7jw-B1-tf5">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <connections>
-                                    <action selector="reset:" target="-1" id="xQk-4e-kd7"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem isSeparatorItem="YES" id="DPb-Sh-5tg"/>
                             <menuItem title="Mute Sound" keyEquivalent="m" id="1UK-8n-QPP">
                                 <connections>
                                     <action selector="mute:" target="-1" id="YE5-mi-Yzd"/>
@@ -377,9 +352,9 @@
                                     <action selector="disconnectAllAccessories:" target="-1" id="5hY-9U-nRn"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Game Link Cable &amp; Infrared" id="V4S-Fo-xJK">
+                            <menuItem title="Game Link Cable" id="V4S-Fo-xJK">
                                 <modifierMask key="keyEquivalentModifierMask"/>
-                                <menu key="submenu" title="Game Link Cable &amp; Infrared" id="6sJ-Wz-QLj">
+                                <menu key="submenu" title="Game Link Cable" id="6sJ-Wz-QLj">
                                     <connections>
                                         <outlet property="delegate" destination="Voe-Tx-rLC" id="PMY-5j-25T"/>
                                     </connections>
@@ -392,12 +367,6 @@
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="connectPrinter:" target="-1" id="tl1-CL-tAw"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem title="Workboy" id="lo9-CX-BJj">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <connections>
-                                    <action selector="connectWorkboy:" target="-1" id="6vS-bq-wAX"/>
                                 </connections>
                             </menuItem>
                         </items>
