@@ -1,4 +1,4 @@
-; SameBoy CGB bootstrap ROM
+; SameDuck CGB bootstrap ROM
 ; Todo: use friendly names for HW registers instead of magic numbers
 SECTION "BootCode", ROM0[$0]
 Start:
@@ -103,7 +103,7 @@ ELSE
 .notspecial
     pop af
 
-    add d ; d = 3 for SameBoy logo, d = 1 for Nintendo logo
+    add d ; d = 3 for SameDuck logo, d = 1 for Nintendo logo
     dec c
     jr nz, .tilemapRowLoop
     sub 44
@@ -490,7 +490,7 @@ ENDM
     palette_comb 4, 3, 28
     palette_comb 28, 3, 6
     palette_comb 4, 28, 29
-    ; SameBoy "Exclusives"
+    ; SameDuck "Exclusives"
     palette_comb 30, 30, 30 ; CGA
     palette_comb 31, 31, 31 ; DMG LCD
     palette_comb 28, 4, 1
@@ -527,7 +527,7 @@ Palettes:
     dw $0000, $4200, $037F, $7FFF
     dw $7FFF, $7E8C, $7C00, $0000
     dw $7FFF, $1BEF, $6180, $0000
-    ; SameBoy "Exclusives"
+    ; SameDuck "Exclusives"
     dw $7FFF, $7FEA, $7D5F, $0000 ; CGA 1
     dw $4778, $3290, $1D87, $0861 ; DMG LCD
 
@@ -544,7 +544,7 @@ KeyCombinationPalettes:
     db 7  * 3  ; Left + B
     db 28 * 3  ; Up + B
     db 49 * 3  ; Down + B
-    ; SameBoy "Exclusives"
+    ; SameDuck "Exclusives"
     db 51 * 3 ; Right + A + B
     db 52 * 3 ; Left + A + B
     db 53 * 3 ; Up + A + B
@@ -553,8 +553,8 @@ KeyCombinationPalettes:
 TrademarkSymbol:
     db $3c,$42,$b9,$a5,$b9,$a5,$42,$3c
 
-SameBoyLogo:
-    incbin "SameBoyLogo.pb12"
+SameDuckLogo:
+    incbin "SameDuckLogo.pb12"
 
 
 AnimationColors:
@@ -660,13 +660,13 @@ ReadCGBLogoHalfTile:
 ; LoadTileset using PB12 codec, 2020 Jakub Kądziołka
 ; (based on PB8 codec, 2019 Damian Yerrick)
 
-SameBoyLogo_dst = $8080
-SameBoyLogo_length = (128 * 24) / 64
+SameDuckLogo_dst = $8080
+SameDuckLogo_length = (128 * 24) / 64
 
 LoadTileset:
-    ld hl, SameBoyLogo
-    ld de, SameBoyLogo_dst - 1
-    ld c, SameBoyLogo_length
+    ld hl, SameDuckLogo
+    ld de, SameDuckLogo_dst - 1
+    ld c, SameDuckLogo_length
 .refill
     ; Register map for PB12 decompression
     ; HL: source address in boot ROM
@@ -677,7 +677,7 @@ LoadTileset:
     ; bypassing A and avoiding spilling registers to the stack.
     ld b, [hl]
     dec b
-    jr z, .sameboyLogoEnd
+    jr z, .SameDuckLogoEnd
     inc b
     inc hl
 
@@ -729,7 +729,7 @@ LoadTileset:
     jr .refill
 
 ; End PB12 decoding.  The rest uses HL as the destination
-.sameboyLogoEnd
+.SameDuckLogoEnd
     ld h, d
     ld l, $80
 

@@ -12,7 +12,7 @@ static OSStatus render(CGContextRef cgContext, CFURLRef url, bool showBorder)
     static dispatch_once_t onceToken;
     if (showBorder) {
         dispatch_once(&onceToken, ^{
-            bundle = [NSBundle bundleWithIdentifier:@"com.github.liji32.sameboy.previewer"];
+            bundle = [NSBundle bundleWithIdentifier:@"com.github.liji32.sameduck.previewer"];
             template = [[NSImage alloc] initWithContentsOfFile:[bundle pathForResource:@"CartridgeTemplate" ofType:@"png"]];
             templateUniversal = [[NSImage alloc] initWithContentsOfFile:[bundle pathForResource:@"UniversalCartridgeTemplate" ofType:@"png"]];
             templateColor = [[NSImage alloc] initWithContentsOfFile:[bundle pathForResource:@"ColorCartridgeTemplate" ofType:@"png"]];

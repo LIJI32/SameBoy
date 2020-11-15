@@ -158,7 +158,7 @@ static bool verify_and_update_state_compatibility(GB_gameboy_t *gb, GB_gameboy_t
     }
     
     if (gb->version != save->version) {
-        GB_log(gb, "The save state is for a different version of SameBoy.\n");
+        GB_log(gb, "The save state is for a different version of SameDuck.\n");
         return false;
     }
     

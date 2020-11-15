@@ -11,20 +11,18 @@
 			<string>QLGenerator</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.github.liji32.sameboy.gb</string>
-				<string>com.github.liji32.sameboy.gbc</string>
-				<string>com.github.liji32.sameboy.isx</string>
+				<string>com.github.liji32.sameduck.bin</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>SameBoyQL</string>
+	<string>SameDuckQL</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.github.liji32.sameboy.previewer</string>
+	<string>com.github.liji32.sameduck.previewer</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>SameBoy</string>
+	<string>SameDuck</string>
 	<key>CFBundleShortVersionString</key>
 	<string>Version @VERSION</string>
 	<key>CFBundleSignature</key>

@@ -251,12 +251,12 @@ void GB_load_cheats(GB_gameboy_t *gb, const char *path)
     fread(&magic, sizeof(magic), 1, f);
     fread(&struct_size, sizeof(struct_size), 1, f);
     if (magic != CHEAT_MAGIC && magic != __builtin_bswap32(CHEAT_MAGIC)) {
-        GB_log(gb, "The file is not a SameBoy cheat database");
+        GB_log(gb, "The file is not a SameDuck cheat database");
         return;
     }
     
     if (struct_size != sizeof(GB_cheat_t)) {
-        GB_log(gb, "This cheat database is not compatible with this version of SameBoy");
+        GB_log(gb, "This cheat database is not compatible with this version of SameDuck");
         return;
     }
     

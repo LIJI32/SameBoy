@@ -51,7 +51,7 @@ endif
 
 CORE_DIR     = ../
 
-TARGET_NAME  = sameboy
+TARGET_NAME  = sameduck
 LIBM		    = -lm
 
 ifeq ($(ARCHFLAGS),)

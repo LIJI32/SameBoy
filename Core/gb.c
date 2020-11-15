@@ -537,7 +537,7 @@ typedef union {
     struct __attribute__((packed)) {
         GB_rtc_time_t rtc_real;
         time_t last_rtc_second; /* Platform specific endianess and size */
-    } sameboy_legacy;
+    } sameduck_legacy;
     struct {
         /* Used by VBA versions with 32-bit timestamp*/
         GB_vba_rtc_time_t rtc_real, rtc_latched;

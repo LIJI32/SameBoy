@@ -8,7 +8,7 @@ char *do_open_rom_dialog(void)
         NSWindow *key = [NSApp keyWindow];
         NSOpenPanel *dialog = [NSOpenPanel openPanel];
         dialog.title = @"Open ROM";
-        dialog.allowedFileTypes = @[@"gb", @"gbc", @"sgb", @"isx"];
+        dialog.allowedFileTypes = @[@"bin"];
         [dialog runModal];
         [key makeKeyAndOrderFront:nil];
         NSString *ret = [[[dialog URLs] firstObject] path];

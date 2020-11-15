@@ -311,7 +311,7 @@ static const struct menu_item paused_menu[] = {
     {"Keyboard", enter_controls_menu},
     {"Joypad", enter_joypad_menu},
     {"Help", item_help},
-    {"Quit SameBoy", item_exit},
+    {"Quit SameDuck", item_exit},
     {NULL,}
 };
 
@@ -1337,7 +1337,7 @@ void run_gui(bool is_running)
                     draw_text_centered(pixels, width, height, 128 + y_offset, "file to play", gui_palette_native[3], gui_palette_native[0], false);
                     break;
                 case SHOWING_MENU:
-                    draw_text_centered(pixels, width, height, 8 + y_offset, "SameBoy", gui_palette_native[3], gui_palette_native[0], false);
+                    draw_text_centered(pixels, width, height, 8 + y_offset, "SameDuck", gui_palette_native[3], gui_palette_native[0], false);
                     unsigned i = 0, y = 24;
                     for (const struct menu_item *item = current_menu; item->string; item++, i++) {
                         if (i == current_selection) {

@@ -1,5 +1,6 @@
 #include <AVFoundation/AVFoundation.h>
 #include <CoreAudio/CoreAudio.h>
+#include <objc/runtime.h>
 #include <Core/gb.h>
 #include "GBAudioClient.h"
 #include "Document.h"
@@ -10,8 +11,7 @@
 #include "GBCheatWindowController.h"
 #include "GBTerminalTextFieldCell.h"
 #include "BigSurToolbar.h"
-
-/* Todo: The general Objective-C coding style conflicts with SameBoy's. This file needs a cleanup. */
+/* Todo: The general Objective-C coding style conflicts with SameDuck's. This file needs a cleanup. */
 /* Todo: Split into category files! This is so messy!!! */
 
 enum model {
@@ -2009,5 +2009,25 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
 - (GB_gameboy_t *)gb
 {
     return &gb;
+}
+
+
+static NSArray <NSString *> *_openableTypes()
+{
+    return @[@"bin"];
+}
+
+static Class documentClassForType()
+{
+    return [Document class];
+}
+
++ (void)load
+{
+    method_setImplementation(class_getInstanceMethod([NSDocumentController class],
+                                                     @selector(documentClassForType:)), (IMP)documentClassForType);
+    method_setImplementation(class_getInstanceMethod([NSDocumentController class],
+                                                     @selector(_openableTypes)), (IMP)_openableTypes);
+
 }
 @end

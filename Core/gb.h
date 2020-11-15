@@ -303,7 +303,7 @@ struct GB_gameboy_internal_s {
 #endif
     GB_SECTION(header,
         /* The magic makes sure a state file is:
-            - Indeed a SameBoy state file.
+            - Indeed a SameDuck state file.
             - Has the same endianess has the current platform. */
         volatile uint32_t magic;
         /* The version field makes sure we don't load save state files with a completely different structure.

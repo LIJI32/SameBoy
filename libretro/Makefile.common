@@ -6,7 +6,6 @@ SOURCES_C   := $(CORE_DIR)/Core/gb.c \
                $(CORE_DIR)/Core/sgb.c \
                $(CORE_DIR)/Core/apu.c \
                $(CORE_DIR)/Core/memory.c \
-               $(CORE_DIR)/Core/mbc.c \
                $(CORE_DIR)/Core/timing.c \
                $(CORE_DIR)/Core/display.c \
                $(CORE_DIR)/Core/symbol_hash.c \

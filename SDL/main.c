@@ -607,7 +607,7 @@ int main(int argc, char **argv)
 #endif
 #define str(x) #x
 #define xstr(x) str(x)
-    fprintf(stderr, "SameBoy v" xstr(VERSION) "\n");
+    fprintf(stderr, "SameDuck v" xstr(VERSION) "\n");
     
     bool fullscreen = get_arg_flag("--fullscreen", &argc, argv);
 
@@ -626,7 +626,7 @@ int main(int argc, char **argv)
     
     strcpy(prefs_path, resource_path("prefs.bin"));
     if (access(prefs_path, R_OK | W_OK) != 0) {
-        char *prefs_dir = SDL_GetPrefPath("", "SameBoy");
+        char *prefs_dir = SDL_GetPrefPath("", "SameDuck");
         snprintf(prefs_path, sizeof(prefs_path) - 1, "%sprefs.bin", prefs_dir);
         SDL_free(prefs_dir);
     }
@@ -663,7 +663,7 @@ int main(int argc, char **argv)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-    window = SDL_CreateWindow("SameBoy v" xstr(VERSION), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+    window = SDL_CreateWindow("SameDuck v" xstr(VERSION), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                               160 * configuration.default_scale, 144 * configuration.default_scale, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     SDL_SetWindowMinimumSize(window, 160, 144);
     
