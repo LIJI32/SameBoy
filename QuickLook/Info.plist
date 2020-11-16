@@ -11,7 +11,7 @@
 			<string>QLGenerator</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.github.liji32.sameduck.bin</string>
+				<string>com.apple.macbinary-archive</string>
 			</array>
 		</dict>
 	</array>

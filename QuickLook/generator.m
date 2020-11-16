@@ -6,25 +6,19 @@ static OSStatus render(CGContextRef cgContext, CFURLRef url, bool showBorder)
 {
     /* Load the template NSImages when generating the first thumbnail */
     static NSImage *template = nil;
-    static NSImage *templateUniversal = nil;
-    static NSImage *templateColor = nil;
     static NSBundle *bundle = nil;
     static dispatch_once_t onceToken;
     if (showBorder) {
         dispatch_once(&onceToken, ^{
             bundle = [NSBundle bundleWithIdentifier:@"com.github.liji32.sameduck.previewer"];
             template = [[NSImage alloc] initWithContentsOfFile:[bundle pathForResource:@"CartridgeTemplate" ofType:@"png"]];
-            templateUniversal = [[NSImage alloc] initWithContentsOfFile:[bundle pathForResource:@"UniversalCartridgeTemplate" ofType:@"png"]];
-            templateColor = [[NSImage alloc] initWithContentsOfFile:[bundle pathForResource:@"ColorCartridgeTemplate" ofType:@"png"]];
         });
     }
     uint32_t bitmap[160*144];
-    uint8_t cgbFlag = 0;
     
     /* The cgb_boot_fast boot ROM skips the boot animation */
     if (get_image_for_rom([[(__bridge NSURL *)url path] UTF8String],
-                          [[bundle pathForResource:@"cgb_boot_fast" ofType:@"bin"] UTF8String],
-                          bitmap, &cgbFlag)) {
+                          bitmap)) {
         return -1;
     }
     
@@ -54,32 +48,15 @@ static OSStatus render(CGContextRef cgContext, CFURLRef url, bool showBorder)
     NSImage *screenshot = [[NSImage alloc] initWithCGImage:iref size:NSMakeSize(160, 144)];
     /* Draw the screenshot */
     if (showBorder) {
-        [screenshot drawInRect:NSMakeRect(192, 150, 640, 576)];
+        [screenshot drawInRect:NSMakeRect(192, 280, 640, 576)];
     }
     else {
         [screenshot drawInRect:NSMakeRect(0, 0, 640, 576)];
     }
     
     if (showBorder) {
-        /* Use the CGB flag to determine the cartridge "look":
-         - DMG cartridges are grey
-         - CGB cartridges are transparent
-         - CGB cartridges that support DMG systems are black
-         */
-        NSImage *effectiveTemplate = nil;
-        switch (cgbFlag) {
-            case 0xC0:
-                effectiveTemplate = templateColor;
-                break;
-            case 0x80:
-                effectiveTemplate = templateUniversal;
-                break;
-            default:
-                effectiveTemplate = template;
-        }
-        
         /* Mask it with the template (The middle part of the template image is transparent) */
-        [effectiveTemplate drawInRect:(NSRect){{0, 0}, template.size}];
+        [template drawInRect:(NSRect){{0, 0}, template.size}];
     }
     
     CGColorSpaceRelease(colorSpaceRef);

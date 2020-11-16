@@ -19,10 +19,6 @@
 			<string>Mega Duck Game</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>com.github.liji32.sameduck.bin</string>
-			</array>
 			<key>LSTypeIsPackage</key>
 			<integer>0</integer>
 			<key>NSDocumentClass</key>
@@ -57,28 +53,6 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>UTExportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-			</array>
-			<key>UTTypeDescription</key>
-			<string>Mega Duck Game</string>
-			<key>UTTypeIconFile</key>
-			<string>Cartridge</string>
-			<key>UTTypeIdentifier</key>
-			<string>com.github.liji32.sameduck.bin</string>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>bin</string>
-				</array>
-			</dict>
-		</dict>
-	</array>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 </dict>

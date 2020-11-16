@@ -9,7 +9,7 @@
 #include "gui.h"
 #include "font.h"
 
-static const SDL_Color gui_palette[4] = {{8, 24, 16,}, {57, 97, 57,}, {132, 165, 99}, {198, 222, 140}};
+static const SDL_Color gui_palette[4] = {{26, 42, 39}, {57, 83, 75}, {99, 137, 128}, {152, 190, 180}};
 static uint32_t gui_palette_native[4];
 
 SDL_Window *window = NULL;

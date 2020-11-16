@@ -1999,24 +1999,4 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
 {
     return &gb;
 }
-
-
-static NSArray <NSString *> *_openableTypes()
-{
-    return @[@"bin"];
-}
-
-static Class documentClassForType()
-{
-    return [Document class];
-}
-
-+ (void)load
-{
-    method_setImplementation(class_getInstanceMethod([NSDocumentController class],
-                                                     @selector(documentClassForType:)), (IMP)documentClassForType);
-    method_setImplementation(class_getInstanceMethod([NSDocumentController class],
-                                                     @selector(_openableTypes)), (IMP)_openableTypes);
-
-}
 @end

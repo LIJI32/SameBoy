@@ -45,15 +45,13 @@ static uint32_t rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
     return (b << 16) | (g << 8) | (r) | 0xFF000000;
 }
 
-int get_image_for_rom(const char *filename, const char *boot_path, uint32_t *output, uint8_t *cgb_flag)
+int get_image_for_rom(const char *filename, uint32_t *output)
 {
     GB_gameboy_t gb;
     GB_init(&gb, GB_MODEL_CGB_E);
-    if (GB_load_boot_rom(&gb, boot_path)) {
-        GB_free(&gb);
-        return 1;
-    }
-        
+    
+    static const GB_palette_t palette = {{{26, 42, 39}, {57, 83, 75}, {99, 137, 128}, {152, 190, 180}, {152, 190, 180}}};
+    GB_set_palette(&gb, &palette);
     GB_set_vblank_callback(&gb, (GB_vblank_callback_t) vblank);
     GB_set_pixels_output(&gb, output);
     GB_set_rgb_encode_callback(&gb, rgb_encode);
@@ -88,9 +86,6 @@ int get_image_for_rom(const char *filename, const char *boot_path, uint32_t *out
     local_data.frames = 0;
     GB_set_rendering_disabled(&gb, true);
     GB_set_turbo_mode(&gb, true, true);
-    
-    *cgb_flag = GB_read_memory(&gb, 0x143) & 0xC0;
-
     
     while (local_data.running) {
         GB_run(&gb);
