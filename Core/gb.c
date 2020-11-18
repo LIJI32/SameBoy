@@ -991,7 +991,7 @@ uint64_t GB_run_frame(GB_gameboy_t *gb)
     return gb->cycles_since_last_sync * 1000000000LL / 2 / GB_get_clock_rate(gb); /* / 2 because we use 8MHz units */
 }
 
-void GB_set_pixels_output(GB_gameboy_t *gb, uint32_t *output)
+void GB_set_pixels_output(GB_gameboy_t *gb, GB_output_color_t *output)
 {
     gb->screen = output;
 }

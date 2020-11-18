@@ -39,7 +39,7 @@ typedef enum {
 } GB_tileset_type_t;
 
 typedef struct {
-    uint32_t image[128];
+    GB_output_color_t image[128];
     uint8_t x, y, tile, flags;
     uint16_t oam_addr;
     bool obscured_by_line_limit;
@@ -53,10 +53,10 @@ typedef enum {
     GB_COLOR_CORRECTION_REDUCE_CONTRAST,
 } GB_color_correction_mode_t;
 
-void GB_draw_tileset(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette_type, uint8_t palette_index);
-void GB_draw_tilemap(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette_type, uint8_t palette_index, GB_map_type_t map_type, GB_tileset_type_t tileset_type);
+void GB_draw_tileset(GB_gameboy_t *gb, GB_output_color_t *dest, GB_palette_type_t palette_type, uint8_t palette_index);
+void GB_draw_tilemap(GB_gameboy_t *gb, GB_output_color_t *dest, GB_palette_type_t palette_type, uint8_t palette_index, GB_map_type_t map_type, GB_tileset_type_t tileset_type);
 uint8_t GB_get_oam_info(GB_gameboy_t *gb, GB_oam_info_t *dest, uint8_t *sprite_height);
-uint32_t GB_convert_rgb15(GB_gameboy_t *gb, uint16_t color, bool for_border);
+GB_output_color_t GB_convert_rgb15(GB_gameboy_t *gb, uint16_t color, bool for_border);
 void GB_set_color_correction_mode(GB_gameboy_t *gb, GB_color_correction_mode_t mode);
 bool GB_is_odd_frame(GB_gameboy_t *gb);
 #endif /* display_h */

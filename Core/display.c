@@ -131,7 +131,7 @@ static void display_vblank(GB_gameboy_t *gb)
     if (!gb->disable_rendering  && ((!(gb->io_registers[GB_IO_LCDC] & 0x80) || is_ppu_stopped) || gb->cgb_repeated_a_frame)) {
         /* LCD is off, set screen to white or black (if LCD is on in stop mode) */
         if (!GB_is_sgb(gb)) {
-            uint32_t color = 0;
+            GB_output_color_t color = 0;
             if (GB_is_cgb(gb)) {
                 color = GB_convert_rgb15(gb, 0x7FFF, false);
             }
@@ -157,7 +157,7 @@ static void display_vblank(GB_gameboy_t *gb)
     
     if (gb->border_mode == GB_BORDER_ALWAYS && !GB_is_sgb(gb)) {
         GB_borrow_sgb_border(gb);
-        uint32_t border_colors[16 * 4];
+        GB_output_color_t border_colors[16 * 4];
         
         if (!gb->has_sgb_border && GB_is_cgb(gb) && gb->model != GB_MODEL_AGB) {
             static uint16_t colors[] = {
@@ -188,7 +188,7 @@ static void display_vblank(GB_gameboy_t *gb)
                 for (unsigned y = 0; y < 8; y++) {
                     for (unsigned x = 0; x < 8; x++) {
                         uint8_t color = gb->borrowed_border.tiles[(tile & 0xFF) * 64 + (x ^ flip_x) + (y ^ flip_y) * 8] & 0xF;
-                        uint32_t *output = gb->screen + tile_x * 8 + x + (tile_y * 8 + y) * 256;
+                        GB_output_color_t *output = gb->screen + tile_x * 8 + x + (tile_y * 8 + y) * 256;
                         if (color == 0) {
                             *output = border_colors[0];
                         }
@@ -229,7 +229,7 @@ static inline uint8_t scale_channel_with_curve_sgb(uint8_t x)
 }
 
 
-uint32_t GB_convert_rgb15(GB_gameboy_t *gb, uint16_t color, bool for_border)
+GB_output_color_t GB_convert_rgb15(GB_gameboy_t *gb, uint16_t color, bool for_border)
 {
     uint8_t r = (color) & 0x1F;
     uint8_t g = (color >> 5) & 0x1F;
@@ -471,7 +471,7 @@ static void render_pixel_if_possible(GB_gameboy_t *gb)
     }
 
     uint8_t icd_pixel = 0;
-    uint32_t *dest = NULL;
+    GB_output_color_t *dest = NULL;
     if (!gb->sgb) {
         if (gb->border_mode != GB_BORDER_ALWAYS) {
             dest = gb->screen + gb->lcd_x + gb->current_line * WIDTH;
@@ -1130,7 +1130,7 @@ abort_fetching_object:
             
             while (gb->lcd_x != 160 && !gb->disable_rendering && gb->screen && !gb->sgb) {
                 /* Oh no! The PPU and LCD desynced! Fill the rest of the line whith white. */
-                uint32_t *dest = NULL;
+                GB_output_color_t *dest = NULL;
                 if (gb->border_mode != GB_BORDER_ALWAYS) {
                     dest = gb->screen + gb->lcd_x + gb->current_line * WIDTH;
                 }
@@ -1302,10 +1302,10 @@ abort_fetching_object:
     }
 }
 
-void GB_draw_tileset(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette_type, uint8_t palette_index)
+void GB_draw_tileset(GB_gameboy_t *gb, GB_output_color_t *dest, GB_palette_type_t palette_type, uint8_t palette_index)
 {
-    uint32_t none_palette[4];
-    uint32_t *palette = NULL;
+    GB_output_color_t none_palette[4];
+    GB_output_color_t *palette = NULL;
     
     switch (GB_is_cgb(gb)? palette_type : GB_PALETTE_NONE) {
         default:
@@ -1352,10 +1352,10 @@ void GB_draw_tileset(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette
     }
 }
 
-void GB_draw_tilemap(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette_type, uint8_t palette_index, GB_map_type_t map_type, GB_tileset_type_t tileset_type)
+void GB_draw_tilemap(GB_gameboy_t *gb, GB_output_color_t *dest, GB_palette_type_t palette_type, uint8_t palette_index, GB_map_type_t map_type, GB_tileset_type_t tileset_type)
 {
-    uint32_t none_palette[4];
-    uint32_t *palette = NULL;
+    GB_output_color_t none_palette[4];
+    GB_output_color_t *palette = NULL;
     uint16_t map = 0x1800;
     
     switch (GB_is_cgb(gb)? palette_type : GB_PALETTE_NONE) {

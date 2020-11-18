@@ -7,7 +7,7 @@
 #define GB_PRINTER_DATA_SIZE 0x280
 
 typedef void (*GB_print_image_callback_t)(GB_gameboy_t *gb,
-                                          uint32_t *image,
+                                          GB_output_color_t *image,
                                           uint8_t height,
                                           uint8_t top_margin,
                                           uint8_t bottom_margin,
