@@ -263,7 +263,8 @@ $(OBJ)/%.m.o: %.m
 # Cocoa Port
 
 $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
-                    $(shell ls Cocoa/*.icns Cocoa/*.png) \
+                    $(shell ls Cocoa/*.icns) \
+                    $(shell ls Cocoa/Assets.xcassets/*.imageset/*.\(json|png\)) \
                     Cocoa/License.html \
                     Cocoa/Info.plist \
                     Misc/registers.sym \
@@ -276,13 +277,14 @@ $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
                     $(BIN)/SameBoy.qlgenerator \
                     Shaders
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Resources
-	cp Cocoa/*.icns Cocoa/*.png Misc/registers.sym $(BIN)/SameBoy.app/Contents/Resources/
+	cp Cocoa/*.icns Misc/registers.sym $(BIN)/SameBoy.app/Contents/Resources/
 	sed s/@VERSION/$(VERSION)/ < Cocoa/Info.plist > $(BIN)/SameBoy.app/Contents/Info.plist
 	cp Cocoa/License.html $(BIN)/SameBoy.app/Contents/Resources/Credits.html
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Resources/Shaders
 	cp Shaders/*.fsh Shaders/*.metal $(BIN)/SameBoy.app/Contents/Resources/Shaders
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Library/QuickLook/
 	cp -rf $(BIN)/SameBoy.qlgenerator $(BIN)/SameBoy.app/Contents/Library/QuickLook/
+	actool --output-format human-readable-text --notices --warnings --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 10.9 --platform macosx --compile $(BIN)/SameBoy.app/Contents/Resources Cocoa/Assets.xcassets
 
 $(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(CORE_OBJECTS) $(COCOA_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
