@@ -264,7 +264,9 @@ $(OBJ)/%.m.o: %.m
 
 $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
                     $(shell ls Cocoa/*.icns) \
-                    $(shell ls Cocoa/Assets.xcassets/*.imageset/*.\(json|png\)) \
+                    $(shell ls Cocoa/Assets.xcassets/*.imageset/*.json) \
+                    $(shell ls Cocoa/Assets.xcassets/*.imageset/*.png) \
+                    Cocoa/Assets.xcassets/AccentColor.colorset/Contents.json \
                     Cocoa/License.html \
                     Cocoa/Info.plist \
                     Misc/registers.sym \
@@ -284,7 +286,7 @@ $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
 	cp Shaders/*.fsh Shaders/*.metal $(BIN)/SameBoy.app/Contents/Resources/Shaders
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Library/QuickLook/
 	cp -rf $(BIN)/SameBoy.qlgenerator $(BIN)/SameBoy.app/Contents/Library/QuickLook/
-	actool --output-format human-readable-text --notices --warnings --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 10.9 --platform macosx --compile $(BIN)/SameBoy.app/Contents/Resources Cocoa/Assets.xcassets
+	actool --output-format human-readable-text --notices --warnings --enable-on-demand-resources NO --development-region en --accent-color AccentColor --target-device mac --minimum-deployment-target 10.9 --platform macosx --compile $(BIN)/SameBoy.app/Contents/Resources Cocoa/Assets.xcassets
 
 $(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(CORE_OBJECTS) $(COCOA_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
