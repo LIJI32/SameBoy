@@ -52,7 +52,7 @@
 __attribute__((objc_subclassing_restricted))
 @interface CallbackBridge: NSObject
 
-/** Sets user data on gb to self and connects all applicable callbacks the delegate. */
+/** Sets user data on gb to self and connects all applicable callbacks to the delegate. */
 - (nonnull instancetype)initWithGB:(GB_gameboy_t *_Nonnull)gb delegate:(nonnull id<CallbackBridgeDelegate>)delegate;
 - (nonnull instancetype)init NS_UNAVAILABLE;
 
@@ -64,7 +64,7 @@ __attribute__((objc_subclassing_restricted))
 - (void)connectPrinter;
 
 /**
- Connects the link cable for both gb and the partnerGB to the delegate.
+ Connects the link cable for both gb and partnerGB to the delegate.
 
  The delegate must implement both linkCableBitStart: and linkCableBitEnd or this method will assert.
  */
