@@ -25,13 +25,13 @@
  */
 - (void)vblank;
 
-- (void)log:(const char * _Nonnull)log withAttributes:(GB_log_attributes)attributes;
-- (char * _Nullable)getDebuggerInput;
-- (char * _Nullable)getAsyncDebuggerInput;
+- (void)log:(nonnull const char *)log withAttributes:(GB_log_attributes)attributes;
+- (nonnull char *)getDebuggerInput;
+- (nonnull char *)getAsyncDebuggerInput;
 - (uint8_t)cameraGetPixelAtX:(uint8_t)x andY:(uint8_t)y;
 - (void)cameraRequestUpdate;
-- (void)gotNewSample:(GB_sample_t * _Nonnull)sample;
-- (void)printImage:(uint32_t * _Nonnull)image
+- (void)gotNewSample:(nonnull GB_sample_t *)sample;
+- (void)printImage:(nonnull uint32_t *)image
             height:(unsigned)height
          topMargin:(unsigned)topMargin
       bottomMargin:(unsigned)bottomMargin
@@ -53,7 +53,7 @@ __attribute__((objc_subclassing_restricted))
 @interface CallbackBridge: NSObject
 
 /** Sets user data on gb to self and connects all applicable callbacks to the delegate. */
-- (nonnull instancetype)initWithGB:(GB_gameboy_t *_Nonnull)gb delegate:(nonnull id<CallbackBridgeDelegate>)delegate;
+- (nonnull instancetype)initWithGB:(nonnull GB_gameboy_t *)gb delegate:(nonnull id<CallbackBridgeDelegate>)delegate;
 - (nonnull instancetype)init NS_UNAVAILABLE;
 
 /**
@@ -68,7 +68,7 @@ __attribute__((objc_subclassing_restricted))
 
  The delegate must implement both linkCableBitStart: and linkCableBitEnd or this method will assert.
  */
-- (void)connectLinkCableWithPartner:(GB_gameboy_t *_Nonnull)partnerGB;
+- (void)connectLinkCableWithPartner:(nonnull GB_gameboy_t *)partnerGB;
 
 /**
  The object that implements the relevant callbacks.
