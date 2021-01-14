@@ -2,6 +2,7 @@
 #include <CoreAudio/CoreAudio.h>
 #include <Core/gb.h>
 #include "GBAudioClient.h"
+#include "CallbackBridge.h"
 #include "Document.h"
 #include "AppDelegate.h"
 #include "HexFiend/HexFiend.h"
@@ -22,9 +23,9 @@ enum model {
     MODEL_SGB,
 };
 
-@interface Document ()
+@interface Document () <CallbackBridgeDelegate>
 {
-    
+
     NSMutableAttributedString *pending_console_output;
     NSRecursiveLock *console_output_lock;
     NSTimer *console_output_timer;
@@ -73,80 +74,17 @@ enum model {
     Document *slave;
     signed linkOffset;
     bool linkCableBit;
+
+    CallbackBridge *callbackBridge;
 }
 
 @property GBAudioClient *audioClient;
-- (void) vblank;
-- (void) log: (const char *) log withAttributes: (GB_log_attributes) attributes;
-- (char *) getDebuggerInput;
-- (char *) getAsyncDebuggerInput;
-- (void) cameraRequestUpdate;
-- (uint8_t) cameraGetPixelAtX:(uint8_t)x andY:(uint8_t)y;
-- (void) printImage:(uint32_t *)image height:(unsigned) height
-          topMargin:(unsigned) topMargin bottomMargin: (unsigned) bottomMargin
-           exposure:(unsigned) exposure;
-- (void) gotNewSample:(GB_sample_t *)sample;
-- (void) rumbleChanged:(double)amp;
-- (void) loadBootROM:(GB_boot_rom_t)type;
-- (void)linkCableBitStart:(bool)bit;
-- (bool)linkCableBitEnd;
-- (void)infraredStateChanged:(bool)state;
 
 @end
-
-static void boot_rom_load(GB_gameboy_t *gb, GB_boot_rom_t type)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    [self loadBootROM: type];
-}
-
-static void vblank(GB_gameboy_t *gb)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    [self vblank];
-}
-
-static void consoleLog(GB_gameboy_t *gb, const char *string, GB_log_attributes attributes)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    [self log:string withAttributes: attributes];
-}
-
-static char *consoleInput(GB_gameboy_t *gb)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    return [self getDebuggerInput];
-}
-
-static char *asyncConsoleInput(GB_gameboy_t *gb)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    char *ret = [self getAsyncDebuggerInput];
-    return ret;
-}
 
 static uint32_t rgbEncode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
 {
     return (r << 0) | (g << 8) | (b << 16) | 0xFF000000;
-}
-
-static void cameraRequestUpdate(GB_gameboy_t *gb)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    [self cameraRequestUpdate];
-}
-
-static uint8_t cameraGetPixel(GB_gameboy_t *gb, uint8_t x, uint8_t y)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    return [self cameraGetPixelAtX:x andY:y];
-}
-
-static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
-                       uint8_t top_margin, uint8_t bottom_margin, uint8_t exposure)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    [self printImage:image height:height topMargin:top_margin bottomMargin:bottom_margin exposure:exposure];
 }
 
 static void setWorkboyTime(GB_gameboy_t *gb, time_t t)
@@ -157,37 +95,6 @@ static void setWorkboyTime(GB_gameboy_t *gb, time_t t)
 static time_t getWorkboyTime(GB_gameboy_t *gb)
 {
     return time(NULL) - [[NSUserDefaults standardUserDefaults] integerForKey:@"GBWorkboyTimeOffset"];
-}
-
-static void audioCallback(GB_gameboy_t *gb, GB_sample_t *sample)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    [self gotNewSample:sample];
-}
-
-static void rumbleCallback(GB_gameboy_t *gb, double amp)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    [self rumbleChanged:amp];
-}
-
-
-static void linkCableBitStart(GB_gameboy_t *gb, bool bit_to_send)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    [self linkCableBitStart:bit_to_send];
-}
-
-static bool linkCableBitEnd(GB_gameboy_t *gb)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    return [self linkCableBitEnd];
-}
-
-static void infraredStateChanged(GB_gameboy_t *gb, bool on)
-{
-    Document *self = (__bridge Document *)GB_get_user_data(gb);
-    [self infraredStateChanged:on];
 }
 
 
@@ -279,25 +186,17 @@ static void infraredStateChanged(GB_gameboy_t *gb, bool on)
 - (void) initCommon
 {
     GB_init(&gb, [self internalModel]);
-    GB_set_user_data(&gb, (__bridge void *)(self));
-    GB_set_boot_rom_load_callback(&gb, (GB_boot_rom_load_callback_t)boot_rom_load);
-    GB_set_vblank_callback(&gb, (GB_vblank_callback_t) vblank);
-    GB_set_log_callback(&gb, (GB_log_callback_t) consoleLog);
-    GB_set_input_callback(&gb, (GB_input_callback_t) consoleInput);
-    GB_set_async_input_callback(&gb, (GB_input_callback_t) asyncConsoleInput);
+
+    callbackBridge = [[CallbackBridge alloc] initWithGB:&gb delegate:self];
+
     GB_set_color_correction_mode(&gb, (GB_color_correction_mode_t) [[NSUserDefaults standardUserDefaults] integerForKey:@"GBColorCorrection"]);
     GB_set_light_temperature(&gb, [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBLightTemperature"]);
     GB_set_interference_volume(&gb, [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBInterferenceVolume"]);
     GB_set_border_mode(&gb, (GB_border_mode_t) [[NSUserDefaults standardUserDefaults] integerForKey:@"GBBorderMode"]);
     [self updatePalette];
     GB_set_rgb_encode_callback(&gb, rgbEncode);
-    GB_set_camera_get_pixel_callback(&gb, cameraGetPixel);
-    GB_set_camera_update_request_callback(&gb, cameraRequestUpdate);
     GB_set_highpass_filter_mode(&gb, (GB_highpass_mode_t) [[NSUserDefaults standardUserDefaults] integerForKey:@"GBHighpassFilter"]);
     GB_set_rewind_length(&gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBRewindLength"]);
-    GB_apu_set_sample_callback(&gb, audioCallback);
-    GB_set_rumble_callback(&gb, rumbleCallback);
-    GB_set_infrared_callback(&gb, infraredStateChanged);
     [self updateRumbleMode];
 }
 
@@ -1820,7 +1719,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     [self disconnectLinkCable];
     [self performAtomicBlock:^{
         accessory = GBAccessoryPrinter;
-        GB_connect_printer(&gb, printImage);
+        [callbackBridge connectPrinter];
     }];
 }
 
@@ -1994,10 +1893,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     linkOffset = 0;
     partner->accessory = GBAccessoryLinkCable;
     accessory = GBAccessoryLinkCable;
-    GB_set_serial_transfer_bit_start_callback(&gb, linkCableBitStart);
-    GB_set_serial_transfer_bit_start_callback(&partner->gb, linkCableBitStart);
-    GB_set_serial_transfer_bit_end_callback(&gb, linkCableBitEnd);
-    GB_set_serial_transfer_bit_end_callback(&partner->gb, linkCableBitEnd);
+    [callbackBridge connectLinkCableWithPartner:&partner->gb];
     if (wasRunning) {
         [self start];
     }
