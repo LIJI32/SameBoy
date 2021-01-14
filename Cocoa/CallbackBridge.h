@@ -12,7 +12,7 @@
 /**
  Tells the receiver to load the given boot rom type.
 
- The receiver is expected to invoke GB_load_boot_rom with the appropriate boot rom path.
+ The receiver is expected to invoke GB_load_boot_rom with the appropriate boot rom path for the given type.
  */
 - (void)loadBootROM:(GB_boot_rom_t)type;
 
