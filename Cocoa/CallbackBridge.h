@@ -16,6 +16,13 @@
  */
 - (void)loadBootROM:(GB_boot_rom_t)type;
 
+/**
+ Informs the receiver that a new audio sample was received.
+
+ The provided sample should be appended to an audio buffer for playback.
+ */
+- (void)gotNewSample:(nonnull GB_sample_t *)sample;
+
 @optional
 
 /**
@@ -39,7 +46,6 @@
 - (nullable NSString *)getAsyncDebuggerInput;
 - (uint8_t)cameraGetPixelAtX:(uint8_t)x andY:(uint8_t)y;
 - (void)cameraRequestUpdate;
-- (void)gotNewSample:(nonnull GB_sample_t *)sample;
 - (void)printImage:(nonnull uint32_t *)image
             height:(unsigned)height
          topMargin:(unsigned)topMargin

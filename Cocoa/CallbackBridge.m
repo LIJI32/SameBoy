@@ -102,6 +102,7 @@ static void infraredStateChanged(GB_gameboy_t *gb, bool on)
         // Required callbacks.
         GB_set_user_data(gb, (__bridge void *)(self));
         GB_set_boot_rom_load_callback(gb, (GB_boot_rom_load_callback_t)boot_rom_load);
+        GB_apu_set_sample_callback(gb, audioCallback);
 
         // Optional callbacks.
         if ([delegate respondsToSelector:@selector(vblank)]) {
@@ -121,9 +122,6 @@ static void infraredStateChanged(GB_gameboy_t *gb, bool on)
         }
         if ([delegate respondsToSelector:@selector(cameraRequestUpdate)]) {
             GB_set_camera_update_request_callback(gb, cameraRequestUpdate);
-        }
-        if ([delegate respondsToSelector:@selector(gotNewSample:)]) {
-            GB_apu_set_sample_callback(gb, audioCallback);
         }
         if ([delegate respondsToSelector:@selector(rumbleChanged:)]) {
             GB_set_rumble_callback(gb, rumbleCallback);
