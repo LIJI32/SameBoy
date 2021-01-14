@@ -26,8 +26,17 @@
 - (void)vblank;
 
 - (void)log:(nonnull const char *)log withAttributes:(GB_log_attributes)attributes;
-- (nullable char *)getDebuggerInput;
-- (nullable char *)getAsyncDebuggerInput;
+
+/**
+ Asks the receiver for the next debugger input.
+
+ This is a blocking invocation; until it returns, the emulator will be paused on a background thread.
+
+ Returning nil will cause emulation to continue, and this method will not be invoked again until GB_debugger_break is
+ invoked on the GB_gameboy_t again.
+ */
+- (nullable NSString *)getDebuggerInput;
+- (nullable NSString *)getAsyncDebuggerInput;
 - (uint8_t)cameraGetPixelAtX:(uint8_t)x andY:(uint8_t)y;
 - (void)cameraRequestUpdate;
 - (void)gotNewSample:(nonnull GB_sample_t *)sample;

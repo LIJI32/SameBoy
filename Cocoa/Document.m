@@ -1002,7 +1002,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     [console_output_lock unlock];
 }
 
-- (char *) getDebuggerInput
+- (NSString *) getDebuggerInput
 {
     [self updateSideView];
     [self log:">"];
@@ -1020,12 +1020,12 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
         }
     });
     if ((id) input == [NSNull null]) {
-        return NULL;
+        return nil;
     }
-    return strdup([input UTF8String]);
+    return input;
 }
 
-- (char *) getAsyncDebuggerInput
+- (NSString *) getAsyncDebuggerInput
 {
     [has_debugger_input lock];
     NSString *input = [debugger_input_queue firstObject];
@@ -1034,9 +1034,9 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     }
     [has_debugger_input unlockWithCondition:[debugger_input_queue count] != 0];
     if ((id)input == [NSNull null]) {
-        return NULL;
+        return nil;
     }
-    return input? strdup([input UTF8String]): NULL;
+    return input;
 }
 
 - (IBAction)saveState:(id)sender

@@ -20,17 +20,24 @@ static void consoleLog(GB_gameboy_t *gb, const char *string, GB_log_attributes a
     [self.delegate log:string withAttributes: attributes];
 }
 
-static char *consoleInput(GB_gameboy_t *gb)
+static const char *consoleInput(GB_gameboy_t *gb)
 {
     CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
-    return [self.delegate getDebuggerInput];
+    NSString *string = [self.delegate getDebuggerInput];
+    if (string == nil) {
+      return NULL;
+    }
+    return strdup(string.UTF8String);
 }
 
-static char *asyncConsoleInput(GB_gameboy_t *gb)
+char *asyncConsoleInput(GB_gameboy_t *gb)
 {
     CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
-    char *ret = [self.delegate getAsyncDebuggerInput];
-    return ret;
+    NSString *string = [self.delegate getAsyncDebuggerInput];
+    if (string == nil) {
+      return NULL;
+    }
+    return strdup(string.UTF8String);
 }
 
 static uint8_t cameraGetPixel(GB_gameboy_t *gb, uint8_t x, uint8_t y)
