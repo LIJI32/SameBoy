@@ -26,8 +26,8 @@
 - (void)vblank;
 
 - (void)log:(nonnull const char *)log withAttributes:(GB_log_attributes)attributes;
-- (nonnull char *)getDebuggerInput;
-- (nonnull char *)getAsyncDebuggerInput;
+- (nullable char *)getDebuggerInput;
+- (nullable char *)getAsyncDebuggerInput;
 - (uint8_t)cameraGetPixelAtX:(uint8_t)x andY:(uint8_t)y;
 - (void)cameraRequestUpdate;
 - (void)gotNewSample:(nonnull GB_sample_t *)sample;
