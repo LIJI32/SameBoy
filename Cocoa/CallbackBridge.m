@@ -107,22 +107,22 @@ static void infraredStateChanged(GB_gameboy_t *gb, bool on)
             GB_set_input_callback(gb, (GB_input_callback_t)consoleInput);
         }
         if ([delegate respondsToSelector:@selector(getAsyncDebuggerInput)]) {
-        GB_set_async_input_callback(gb, (GB_input_callback_t)asyncConsoleInput);
+            GB_set_async_input_callback(gb, (GB_input_callback_t)asyncConsoleInput);
         }
         if ([delegate respondsToSelector:@selector(cameraGetPixelAtX:andY:)]) {
-        GB_set_camera_get_pixel_callback(gb, cameraGetPixel);
+            GB_set_camera_get_pixel_callback(gb, cameraGetPixel);
         }
         if ([delegate respondsToSelector:@selector(cameraRequestUpdate)]) {
-        GB_set_camera_update_request_callback(gb, cameraRequestUpdate);
+            GB_set_camera_update_request_callback(gb, cameraRequestUpdate);
         }
         if ([delegate respondsToSelector:@selector(gotNewSample:)]) {
-        GB_apu_set_sample_callback(gb, audioCallback);
+            GB_apu_set_sample_callback(gb, audioCallback);
         }
         if ([delegate respondsToSelector:@selector(rumbleChanged:)]) {
-        GB_set_rumble_callback(gb, rumbleCallback);
+            GB_set_rumble_callback(gb, rumbleCallback);
         }
         if ([delegate respondsToSelector:@selector(infraredStateChanged:)]) {
-        GB_set_infrared_callback(gb, infraredStateChanged);
+            GB_set_infrared_callback(gb, infraredStateChanged);
         }
     }
     return self;
