@@ -89,11 +89,13 @@ static void infraredStateChanged(GB_gameboy_t *gb, bool on)
     [self.delegate infraredStateChanged:on];
 }
 
-@implementation GBCallbackBridge {
+@implementation GBCallbackBridge
+{
     GB_gameboy_t *_gb;
 }
 
-- (instancetype)initWithGameboy:(GB_gameboy_t *)gb delegate:(id<GBCallbackBridgeDelegate>)delegate {
+- (instancetype)initWithGameboy:(GB_gameboy_t *)gb delegate:(id<GBCallbackBridgeDelegate>)delegate
+{
     self = [super init];
     if (self) {
         _gb = gb;
@@ -135,12 +137,14 @@ static void infraredStateChanged(GB_gameboy_t *gb, bool on)
     return self;
 }
 
-- (void)connectPrinter {
+- (void)connectPrinter
+{
     assert([_delegate respondsToSelector:@selector(printImage:height:topMargin:bottomMargin:exposure:)]);
     GB_connect_printer(_gb, printImage);
 }
 
-- (void)connectLinkCableWithPartner:(GB_gameboy_t *)partnerGB {
+- (void)connectLinkCableWithPartner:(GB_gameboy_t *)partnerGB
+{
     assert([_delegate respondsToSelector:@selector(linkCableBitStart:)]
            && [_delegate respondsToSelector:@selector(linkCableBitEnd)]);
     GB_set_serial_transfer_bit_start_callback(_gb, linkCableBitStart);
