@@ -16,13 +16,6 @@
  */
 - (void)loadBootROM:(GB_boot_rom_t)type;
 
-/**
- Informs the receiver that a new audio sample was received.
-
- The provided sample should be appended to an audio buffer for playback.
- */
-- (void)gotNewSample:(nonnull GB_sample_t *)sample;
-
 @optional
 
 /**
@@ -31,6 +24,15 @@
  The receiver will typically use this event to swap the pixel buffer using GB_set_pixels_output.
  */
 - (void)vblank;
+
+/**
+ Informs the receiver that a new audio sample was received.
+
+ The provided sample should be appended to an audio buffer for playback.
+
+ This method is required if a sample rate is provided by GB_set_sample_rate.
+ */
+- (void)gotNewSample:(nonnull GB_sample_t *)sample;
 
 - (void)log:(nonnull const char *)log withAttributes:(GB_log_attributes)attributes;
 
