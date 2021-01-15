@@ -1719,7 +1719,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     [self disconnectLinkCable];
     [self performAtomicBlock:^{
         accessory = GBAccessoryPrinter;
-        [callbackBridge connectPrinter];
+        GB_connect_printer(&gb, GBCallbackPrintImage);
     }];
 }
 

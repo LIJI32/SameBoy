@@ -2,6 +2,10 @@
 
 #include <Core/gb.h>
 
+/** GB_connect_printer can use this callback to invoke the delegate for an already connected GBCallbackBridge. */
+void GBCallbackPrintImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
+                          uint8_t top_margin, uint8_t bottom_margin, uint8_t exposure);
+
 /**
  GBCallbackBridgeDelegate is implemented by objects that intend to receive events from a GB_gameboy_t using a
  GBGBCallbackBridge.
@@ -73,13 +77,6 @@ __attribute__((objc_subclassing_restricted))
 - (nonnull instancetype)initWithGameboy:(nonnull GB_gameboy_t *)gb
                                delegate:(nonnull id<GBCallbackBridgeDelegate>)delegate;
 - (nonnull instancetype)init NS_UNAVAILABLE;
-
-/**
- Connects gb's printer to the delegate.
-
- The delegate must implement printImage:height:topMargin:bottomMargin:exposure: or this method will assert.
- */
-- (void)connectPrinter;
 
 /**
  Connects the link cable for both gb and partnerGB to the delegate.

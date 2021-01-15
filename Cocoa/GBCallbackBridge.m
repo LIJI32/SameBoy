@@ -2,6 +2,13 @@
 
 // MARK: - Callbacks
 
+void GBCallbackPrintImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
+                          uint8_t top_margin, uint8_t bottom_margin, uint8_t exposure)
+{
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
+    [self.delegate printImage:image height:height topMargin:top_margin bottomMargin:bottom_margin exposure:exposure];
+}
+
 static void boot_rom_load(GB_gameboy_t *gb, GB_boot_rom_t type)
 {
     GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
@@ -50,13 +57,6 @@ static void cameraRequestUpdate(GB_gameboy_t *gb)
 {
     GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate cameraRequestUpdate];
-}
-
-static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
-                       uint8_t top_margin, uint8_t bottom_margin, uint8_t exposure)
-{
-    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
-    [self.delegate printImage:image height:height topMargin:top_margin bottomMargin:bottom_margin exposure:exposure];
 }
 
 static void audioCallback(GB_gameboy_t *gb, GB_sample_t *sample)
@@ -135,12 +135,6 @@ static void infraredStateChanged(GB_gameboy_t *gb, bool on)
         }
     }
     return self;
-}
-
-- (void)connectPrinter
-{
-    assert([_delegate respondsToSelector:@selector(printImage:height:topMargin:bottomMargin:exposure:)]);
-    GB_connect_printer(_gb, printImage);
 }
 
 - (void)connectLinkCableWithPartner:(GB_gameboy_t *)partnerGB
