@@ -3,7 +3,7 @@
 #include <Core/gb.h>
 
 /** GB_connect_printer can use this callback to invoke the delegate for an already connected GBCallbackBridge. */
-void GBCallbackPrintImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
+void GBCallbackPrintImage(GB_gameboy_t *_Nonnull gb, uint32_t *_Nonnull image, uint8_t height,
                           uint8_t top_margin, uint8_t bottom_margin, uint8_t exposure);
 
 /**
