@@ -93,7 +93,7 @@ static void infraredStateChanged(GB_gameboy_t *gb, bool on)
     GB_gameboy_t *_gb;
 }
 
-- (instancetype)initWithGB:(GB_gameboy_t *)gb delegate:(id<GBCallbackBridgeDelegate>)delegate {
+- (instancetype)initWithGameboy:(GB_gameboy_t *)gb delegate:(id<GBCallbackBridgeDelegate>)delegate {
     self = [super init];
     if (self) {
         _gb = gb;

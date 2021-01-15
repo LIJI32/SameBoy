@@ -70,7 +70,8 @@ __attribute__((objc_subclassing_restricted))
 @interface GBCallbackBridge: NSObject
 
 /** Sets user data on gb to self and connects all applicable callbacks to the delegate. */
-- (nonnull instancetype)initWithGB:(nonnull GB_gameboy_t *)gb delegate:(nonnull id<GBCallbackBridgeDelegate>)delegate;
+- (nonnull instancetype)initWithGameboy:(nonnull GB_gameboy_t *)gb
+                               delegate:(nonnull id<GBCallbackBridgeDelegate>)delegate;
 - (nonnull instancetype)init NS_UNAVAILABLE;
 
 /**

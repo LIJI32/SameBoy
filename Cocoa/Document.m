@@ -187,7 +187,7 @@ static time_t getWorkboyTime(GB_gameboy_t *gb)
 {
     GB_init(&gb, [self internalModel]);
 
-    callbackBridge = [[GBCallbackBridge alloc] initWithGB:&gb delegate:self];
+    callbackBridge = [[GBCallbackBridge alloc] initWithGameboy:&gb delegate:self];
 
     GB_set_color_correction_mode(&gb, (GB_color_correction_mode_t) [[NSUserDefaults standardUserDefaults] integerForKey:@"GBColorCorrection"]);
     GB_set_light_temperature(&gb, [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBLightTemperature"]);
