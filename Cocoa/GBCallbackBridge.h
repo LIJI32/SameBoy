@@ -3,10 +3,10 @@
 #include <Core/gb.h>
 
 /**
- CallbackBridgeDelegate is implemented by objects that intend to receive events from a GB_gameboy_t using a
- CallbackBridge.
+ GBCallbackBridgeDelegate is implemented by objects that intend to receive events from a GB_gameboy_t using a
+ GBGBCallbackBridge.
  */
-@protocol CallbackBridgeDelegate <NSObject>
+@protocol GBCallbackBridgeDelegate <NSObject>
 @required
 
 /**
@@ -59,16 +59,16 @@
 @end
 
 /**
- A CallbackBridge can be used to connect a GB_gameboy_t's callbacks to an Objective-C instance.
+ A GBCallbackBridge can be used to connect a GB_gameboy_t's callbacks to an Objective-C instance.
 
- An instance of this class is typically owned by the object that conforms to the CallbackBridgeDelegate protocol, and
+ An instance of this class is typically owned by the object that conforms to the GBCallbackBridgeDelegate protocol, and
  that same object is provided to this instance's init method as the delegate.
  */
 __attribute__((objc_subclassing_restricted))
-@interface CallbackBridge: NSObject
+@interface GBCallbackBridge: NSObject
 
 /** Sets user data on gb to self and connects all applicable callbacks to the delegate. */
-- (nonnull instancetype)initWithGB:(nonnull GB_gameboy_t *)gb delegate:(nonnull id<CallbackBridgeDelegate>)delegate;
+- (nonnull instancetype)initWithGB:(nonnull GB_gameboy_t *)gb delegate:(nonnull id<GBCallbackBridgeDelegate>)delegate;
 - (nonnull instancetype)init NS_UNAVAILABLE;
 
 /**
@@ -90,6 +90,6 @@ __attribute__((objc_subclassing_restricted))
 
  Setting this value after initialization is not presently supported.
  */
-@property (nonatomic, nullable, weak, readonly) id<CallbackBridgeDelegate> delegate;
+@property (nonatomic, nullable, weak, readonly) id<GBCallbackBridgeDelegate> delegate;
 
 @end

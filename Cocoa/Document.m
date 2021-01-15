@@ -2,7 +2,7 @@
 #include <CoreAudio/CoreAudio.h>
 #include <Core/gb.h>
 #include "GBAudioClient.h"
-#include "CallbackBridge.h"
+#include "GBCallbackBridge.h"
 #include "Document.h"
 #include "AppDelegate.h"
 #include "HexFiend/HexFiend.h"
@@ -23,7 +23,7 @@ enum model {
     MODEL_SGB,
 };
 
-@interface Document () <CallbackBridgeDelegate>
+@interface Document () <GBCallbackBridgeDelegate>
 {
 
     NSMutableAttributedString *pending_console_output;
@@ -75,7 +75,7 @@ enum model {
     signed linkOffset;
     bool linkCableBit;
 
-    CallbackBridge *callbackBridge;
+    GBCallbackBridge *callbackBridge;
 }
 
 @property GBAudioClient *audioClient;
@@ -187,7 +187,7 @@ static time_t getWorkboyTime(GB_gameboy_t *gb)
 {
     GB_init(&gb, [self internalModel]);
 
-    callbackBridge = [[CallbackBridge alloc] initWithGB:&gb delegate:self];
+    callbackBridge = [[GBCallbackBridge alloc] initWithGB:&gb delegate:self];
 
     GB_set_color_correction_mode(&gb, (GB_color_correction_mode_t) [[NSUserDefaults standardUserDefaults] integerForKey:@"GBColorCorrection"]);
     GB_set_light_temperature(&gb, [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBLightTemperature"]);

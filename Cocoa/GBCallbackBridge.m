@@ -1,28 +1,28 @@
-#import "CallbackBridge.h"
+#import "GBCallbackBridge.h"
 
 // MARK: - Callbacks
 
 static void boot_rom_load(GB_gameboy_t *gb, GB_boot_rom_t type)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate loadBootROM:type];
 }
 
 static void vblank(GB_gameboy_t *gb)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate vblank];
 }
 
 static void consoleLog(GB_gameboy_t *gb, const char *string, GB_log_attributes attributes)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate log:string withAttributes: attributes];
 }
 
 static const char *consoleInput(GB_gameboy_t *gb)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     NSString *string = [self.delegate getDebuggerInput];
     if (string == nil) {
       return NULL;
@@ -32,7 +32,7 @@ static const char *consoleInput(GB_gameboy_t *gb)
 
 char *asyncConsoleInput(GB_gameboy_t *gb)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     NSString *string = [self.delegate getAsyncDebuggerInput];
     if (string == nil) {
       return NULL;
@@ -42,58 +42,58 @@ char *asyncConsoleInput(GB_gameboy_t *gb)
 
 static uint8_t cameraGetPixel(GB_gameboy_t *gb, uint8_t x, uint8_t y)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     return [self.delegate cameraGetPixelAtX:x andY:y];
 }
 
 static void cameraRequestUpdate(GB_gameboy_t *gb)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate cameraRequestUpdate];
 }
 
 static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
                        uint8_t top_margin, uint8_t bottom_margin, uint8_t exposure)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate printImage:image height:height topMargin:top_margin bottomMargin:bottom_margin exposure:exposure];
 }
 
 static void audioCallback(GB_gameboy_t *gb, GB_sample_t *sample)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate gotNewSample:sample];
 }
 
 static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate rumbleChanged:amp];
 }
 
 static void linkCableBitStart(GB_gameboy_t *gb, bool bit_to_send)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate linkCableBitStart:bit_to_send];
 }
 
 static bool linkCableBitEnd(GB_gameboy_t *gb)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     return [self.delegate linkCableBitEnd];
 }
 
 static void infraredStateChanged(GB_gameboy_t *gb, bool on)
 {
-    CallbackBridge *self = (__bridge CallbackBridge *)GB_get_user_data(gb);
+    GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
     [self.delegate infraredStateChanged:on];
 }
 
-@implementation CallbackBridge {
+@implementation GBCallbackBridge {
     GB_gameboy_t *_gb;
 }
 
-- (instancetype)initWithGB:(GB_gameboy_t *)gb delegate:(id<CallbackBridgeDelegate>)delegate {
+- (instancetype)initWithGB:(GB_gameboy_t *)gb delegate:(id<GBCallbackBridgeDelegate>)delegate {
     self = [super init];
     if (self) {
         _gb = gb;
