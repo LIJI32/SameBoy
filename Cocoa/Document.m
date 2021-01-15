@@ -1893,7 +1893,8 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     linkOffset = 0;
     partner->accessory = GBAccessoryLinkCable;
     accessory = GBAccessoryLinkCable;
-    [callbackBridge connectLinkCableWithPartner:&partner->gb];
+    [callbackBridge enableSerialCallbacks];
+    [partner->callbackBridge enableSerialCallbacks];
     if (wasRunning) {
         [self start];
     }

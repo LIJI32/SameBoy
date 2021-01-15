@@ -73,17 +73,13 @@ void GBCallbackPrintImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
 __attribute__((objc_subclassing_restricted))
 @interface GBCallbackBridge: NSObject
 
-/** Sets user data on gb to self and connects all applicable callbacks to the delegate. */
+/** Immediately sets user data on gb to self and connects all implemented callbacks to the delegate. */
 - (nonnull instancetype)initWithGameboy:(nonnull GB_gameboy_t *)gb
                                delegate:(nonnull id<GBCallbackBridgeDelegate>)delegate;
 - (nonnull instancetype)init NS_UNAVAILABLE;
 
-/**
- Connects the link cable for both gb and partnerGB to the delegate.
-
- The delegate must implement both linkCableBitStart: and linkCableBitEnd or this method will assert.
- */
-- (void)connectLinkCableWithPartner:(nonnull GB_gameboy_t *)partnerGB;
+/** The delegate must implement both linkCableBitStart: and linkCableBitEnd or this method will assert. */
+- (void)enableSerialCallbacks;
 
 /**
  The object that implements the relevant callbacks.

@@ -137,14 +137,12 @@ static void infraredStateChanged(GB_gameboy_t *gb, bool on)
     return self;
 }
 
-- (void)connectLinkCableWithPartner:(GB_gameboy_t *)partnerGB
+- (void)enableSerialCallbacks
 {
     assert([_delegate respondsToSelector:@selector(linkCableBitStart:)]
            && [_delegate respondsToSelector:@selector(linkCableBitEnd)]);
     GB_set_serial_transfer_bit_start_callback(_gb, linkCableBitStart);
-    GB_set_serial_transfer_bit_start_callback(partnerGB, linkCableBitStart);
     GB_set_serial_transfer_bit_end_callback(_gb, linkCableBitEnd);
-    GB_set_serial_transfer_bit_end_callback(partnerGB, linkCableBitEnd);
 }
 
 @end
