@@ -38,7 +38,12 @@ void GBCallbackPrintImage(GB_gameboy_t *_Nonnull gb, uint32_t *_Nonnull image, u
  */
 - (void)gotNewSample:(nonnull GB_sample_t *)sample;
 
-- (void)log:(nonnull const char *)log withAttributes:(GB_log_attributes)attributes;
+/**
+ Informs the receiver that a log message has been generated.
+
+ The log message is typically appended to a console.
+ */
+- (void)log:(nonnull NSString *)log withAttributes:(GB_log_attributes)attributes;
 
 /**
  Asks the receiver for the next debugger input.

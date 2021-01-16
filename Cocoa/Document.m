@@ -1075,7 +1075,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
 
 - (void)log:(const char *)log
 {
-    [self log:log withAttributes:0];
+    [self log:@(log) withAttributes:0];
 }
 
 - (uint8_t) readMemory:(uint16_t)addr

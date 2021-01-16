@@ -21,9 +21,10 @@ static void vblank(GB_gameboy_t *gb)
     [self.delegate vblank];
 }
 
-static void consoleLog(GB_gameboy_t *gb, const char *string, GB_log_attributes attributes)
+static void consoleLog(GB_gameboy_t *gb, const char *cString, GB_log_attributes attributes)
 {
     GBCallbackBridge *self = (__bridge GBCallbackBridge *)GB_get_user_data(gb);
+    NSString *string = @(cString);
     [self.delegate log:string withAttributes: attributes];
 }
 
