@@ -13,7 +13,7 @@ char *do_open_rom_dialog(void)
         [key makeKeyAndOrderFront:nil];
         NSString *ret = [[[dialog URLs] firstObject] path];
         if (ret) {
-            return strdup(ret.UTF8String);
+            return strdup(ret.fileSystemRepresentation);
         }
         return NULL;
     }
@@ -31,7 +31,7 @@ char *do_open_folder_dialog(void)
         [key makeKeyAndOrderFront:nil];
         NSString *ret = [[[dialog URLs] firstObject] path];
         if (ret) {
-            return strdup(ret.UTF8String);
+            return strdup(ret.fileSystemRepresentation);
         }
         return NULL;
     }
