@@ -199,6 +199,7 @@ endif
 
 cocoa: $(BIN)/SameBoy.app
 quicklook: $(BIN)/SameBoy.qlgenerator
+thumbnailer: $(BIN)/Thumbnailer/sameboy-thumbnailer
 sdl: $(SDL_TARGET) $(BIN)/SDL/dmg_boot.bin $(BIN)/SDL/cgb_boot.bin $(BIN)/SDL/agb_boot.bin $(BIN)/SDL/sgb_boot.bin $(BIN)/SDL/sgb2_boot.bin $(BIN)/SDL/LICENSE $(BIN)/SDL/registers.sym $(BIN)/SDL/background.bmp $(BIN)/SDL/Shaders
 bootroms: $(BIN)/BootROMs/agb_boot.bin $(BIN)/BootROMs/cgb_boot.bin $(BIN)/BootROMs/dmg_boot.bin $(BIN)/BootROMs/sgb_boot.bin $(BIN)/BootROMs/sgb2_boot.bin
 tester: $(TESTER_TARGET) $(BIN)/tester/dmg_boot.bin $(BIN)/tester/cgb_boot.bin $(BIN)/tester/agb_boot.bin $(BIN)/tester/sgb_boot.bin $(BIN)/tester/sgb2_boot.bin
@@ -208,6 +209,7 @@ all: cocoa sdl tester libretro
 
 CORE_SOURCES := $(shell ls Core/*.c)
 SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG) SDL/audio/$(SDL_AUDIO_DRIVER).c
+THUMB_SOURCES := $(shell ls Thumbnailer/*.c Thumbnailer/png/*.c QuickLook/get_image_for_rom.c)
 TESTER_SOURCES := $(shell ls Tester/*.c)
 
 ifeq ($(PLATFORM),Darwin)
@@ -223,6 +225,7 @@ CORE_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(CORE_SOURCES))
 COCOA_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(COCOA_SOURCES))
 QUICKLOOK_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(QUICKLOOK_SOURCES))
 SDL_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(SDL_SOURCES))
+THUMB_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(THUMB_SOURCES))
 TESTER_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(TESTER_SOURCES))
 
 # Automatic dependency generation
@@ -257,6 +260,10 @@ $(OBJ)/Core/%.c.o: Core/%.c
 $(OBJ)/SDL/%.c.o: SDL/%.c
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) $(FAT_FLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -c $< -o $@
+
+$(OBJ)/Thumbnailer/%.c.o: Thumbnailer/%.c
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(CFLAGS) $(FAT_FLAGS) -c $< -o $@
 
 $(OBJ)/%.c.o: %.c
 	-@$(MKDIR) -p $(dir $@)
@@ -364,6 +371,26 @@ $(BIN)/SDL/SDL2.dll:
 	@$(eval MATCH := $(shell where $$LIB:SDL2.dll))
 	cp "$(MATCH)" $@
 
+# Thumbnailer
+$(OBJ)/Thumbnailer/%.c: $(BIN)/BootROMs/%.bin
+	-@$(MKDIR) -p $(dir $@)
+	xxd --include $< $@
+
+$(OBJ)/Thumbnailer/%.c: QuickLook/%.png
+	-@$(MKDIR) -p $(dir $@)
+	xxd --include $< $@
+
+$(BIN)/Thumbnailer/sameboy-thumbnailer: $(CORE_OBJECTS) $(THUMB_OBJECTS) \
+                            $(OBJ)/Thumbnailer/cgb_boot.c \
+                            $(OBJ)/Thumbnailer/CartridgeTemplate.c \
+                            $(OBJ)/Thumbnailer/ColorCartridgeTemplate.c \
+                            $(OBJ)/Thumbnailer/UniversalCartridgeTemplate.c
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) 
+ifeq ($(CONF), release)
+	$(STRIP) $@
+endif
+
 # Tester
 
 $(BIN)/tester/sameboy_tester: $(CORE_OBJECTS) $(TESTER_OBJECTS)
@@ -440,11 +467,12 @@ ifneq ($(FREEDESKTOP),)
 ICON_NAMES := apps/sameboy mimetypes/x-gameboy-rom mimetypes/x-gameboy-color-rom
 ICON_SIZES := 16x16 32x32 64x64 128x128 256x256 512x512
 ICONS := $(foreach name,$(ICON_NAMES), $(foreach size,$(ICON_SIZES),$(DESTDIR)$(PREFIX)/share/icons/hicolor/$(size)/$(name).png))
-install: sdl $(DESTDIR)$(PREFIX)/share/mime/packages/sameboy.xml $(ICONS) FreeDesktop/sameboy.desktop
+install: sdl thumbnailer $(DESTDIR)$(PREFIX)/share/mime/packages/sameboy.xml $(DESTDIR)$(PREFIX)/share/thumbnailers/sameboy.thumbnailer $(ICONS) FreeDesktop/sameboy.desktop
 	-@$(MKDIR) -p $(dir $(DESTDIR)$(PREFIX))
 	mkdir -p $(DESTDIR)$(DATA_DIR)/ $(DESTDIR)$(PREFIX)/bin/
 	cp -rf $(BIN)/SDL/* $(DESTDIR)$(DATA_DIR)/
 	mv $(DESTDIR)$(DATA_DIR)/sameboy $(DESTDIR)$(PREFIX)/bin/sameboy
+	cp -f $(BIN)/Thumbnailer/sameboy-thumbnailer $(DESTDIR)$(PREFIX)/bin/sameboy-thumbnailer
 ifeq ($(DESTDIR),)
 	-update-mime-database -n $(PREFIX)/share/mime
 	-xdg-desktop-menu install --novendor --mode system FreeDesktop/sameboy.desktop
@@ -471,6 +499,10 @@ $(DESTDIR)$(PREFIX)/share/icons/hicolor/%/mimetypes/x-gameboy-color-rom.png: Fre
 	cp -f $^ $@
         
 $(DESTDIR)$(PREFIX)/share/mime/packages/sameboy.xml: FreeDesktop/sameboy.xml
+	-@$(MKDIR) -p $(dir $@)
+	cp -f $^ $@
+
+$(DESTDIR)$(PREFIX)/share/thumbnailers/sameboy.thumbnailer: FreeDesktop/sameboy.thumbnailer
 	-@$(MKDIR) -p $(dir $@)
 	cp -f $^ $@
 endif
