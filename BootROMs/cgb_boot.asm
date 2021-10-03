@@ -190,10 +190,9 @@ ENDC
 IF !DEF(FAST)
     call DoIntroAnimation
 
-    ld a, 45
+    ld a, 24 ; frames to wait after playing the chime
     ldh [WaitLoopCounter], a
-; Wait ~0.75 seconds
-    ld b, a
+    ld b, 28 ; frames to wait before playing the chime
     call WaitBFrames
 
     ; Play first sound
