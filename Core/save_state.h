@@ -10,7 +10,7 @@
    as anonymous enums inside unions */
 #define GB_SECTION(name, ...) __attribute__ ((aligned (8))) __VA_ARGS__
 #else
-#define GB_SECTION(name, ...) union __attribute__ ((aligned (8))) {uint8_t name##_section_start; struct {__VA_ARGS__};}; uint8_t name##_section_end[0]
+#define GB_SECTION(name, ...) union __attribute__ ((aligned (8))) {uint8_t name##_section_start; struct {__VA_ARGS__};}; uint8_t name##_section_end[0];
 #define GB_SECTION_OFFSET(name) (offsetof(GB_gameboy_t, name##_section_start))
 #define GB_SECTION_SIZE(name) (offsetof(GB_gameboy_t, name##_section_end) - offsetof(GB_gameboy_t, name##_section_start))
 #define GB_GET_SECTION(gb, name) ((void*)&((gb)->name##_section_start))

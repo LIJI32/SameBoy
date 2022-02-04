@@ -327,6 +327,7 @@ static uint32_t color_to_int(NSColor *color)
                 self.updateProgressButton.enabled = true;
                 [self.updateProgressSpinner stopAnimation:nil];
             });
+            return;
         }
         
         unzipTask = [[NSTask alloc] init];

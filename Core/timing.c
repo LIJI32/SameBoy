@@ -108,23 +108,32 @@ void GB_timing_sync(GB_gameboy_t *gb)
 #endif
 
 #define IR_DECAY 31500
-#define IR_THRESHOLD 19900
-#define IR_MAX IR_THRESHOLD * 2 + IR_DECAY
+#define IR_WARMUP 19900
+#define IR_THRESHOLD 240
+#define IR_MAX IR_THRESHOLD * 2 + IR_DECAY + 268
 
 static void ir_run(GB_gameboy_t *gb, uint32_t cycles)
 {
-    if (gb->model == GB_MODEL_AGB) return;
-    if (gb->infrared_input || gb->cart_ir || (gb->io_registers[GB_IO_RP] & 1)) {
+    /* TODO: the way this thing works makes the CGB IR port behave inaccurately when used together with HUC1/3 IR ports*/
+    if ((gb->model > GB_MODEL_CGB_E || !gb->cgb_mode) && gb->cartridge_type->mbc_type != GB_HUC1 && gb->cartridge_type->mbc_type != GB_HUC3) return;
+    bool is_sensing = (gb->io_registers[GB_IO_RP] & 0xc0) == 0xc0 ||
+                       (gb->cartridge_type->mbc_type == GB_HUC1 && gb->huc1.ir_mode) ||
+                       (gb->cartridge_type->mbc_type == GB_HUC3 && gb->huc3.mode == 0xE);
+    if (is_sensing && (gb->infrared_input || gb->cart_ir || (gb->io_registers[GB_IO_RP] & 1))) {
         gb->ir_sensor += cycles;
         if (gb->ir_sensor > IR_MAX) {
             gb->ir_sensor = IR_MAX;
         }
         
-        gb->effective_ir_input = gb->ir_sensor >= IR_THRESHOLD && gb->ir_sensor <= IR_THRESHOLD + IR_DECAY;
+        gb->effective_ir_input = gb->ir_sensor >=  IR_WARMUP + IR_THRESHOLD && gb->ir_sensor <= IR_WARMUP + IR_THRESHOLD + IR_DECAY;
     }
     else {
-        if (gb->ir_sensor <= cycles) {
-            gb->ir_sensor = 0;
+        unsigned target = is_sensing? IR_WARMUP : 0;
+        if (gb->ir_sensor < target) {
+            gb->ir_sensor += cycles;
+        }
+        else if (gb->ir_sensor <= target + cycles) {
+            gb->ir_sensor = target;
         }
         else {
             gb->ir_sensor -= cycles;
@@ -165,13 +174,11 @@ void GB_set_internal_div_counter(GB_gameboy_t *gb, uint16_t value)
     /* TODO: Can switching to double speed mode trigger an event? */
     uint16_t apu_bit = gb->cgb_double_speed? 0x2000 : 0x1000;
     if (triggers & apu_bit) {
-        GB_apu_run(gb);
         GB_apu_div_event(gb);
     }
     else {
         uint16_t secondary_triggers = ~gb->div_counter & value;
         if (secondary_triggers & apu_bit) {
-            GB_apu_run(gb);
             GB_apu_div_secondary_event(gb);
         }
     }
@@ -203,10 +210,10 @@ static void timers_run(GB_gameboy_t *gb, uint8_t cycles)
 
 static void advance_serial(GB_gameboy_t *gb, uint8_t cycles)
 {
-    if (gb->printer.command_state || gb->printer.bits_received) {
+    if (unlikely(gb->printer_callback && (gb->printer.command_state || gb->printer.bits_received))) {
         gb->printer.idle_time += cycles;
     }
-    if (gb->serial_length == 0) {
+    if (likely(gb->serial_length == 0)) {
         gb->serial_cycles += cycles;
         return;
     }
@@ -270,7 +277,7 @@ void GB_set_rtc_multiplier(GB_gameboy_t *gb, double multiplier)
 
 static void rtc_run(GB_gameboy_t *gb, uint8_t cycles)
 {
-    if (gb->cartridge_type->mbc_type != GB_HUC3 && !gb->cartridge_type->has_rtc) return;
+    if (likely(gb->cartridge_type->mbc_type != GB_HUC3 && !gb->cartridge_type->has_rtc)) return;
     gb->rtc_cycles += cycles;
     time_t current_time = 0;
     uint32_t rtc_second_length = unlikely(gb->rtc_second_length)? gb->rtc_second_length : GB_get_unmultiplied_clock_rate(gb) * 2;
@@ -368,7 +375,7 @@ static void rtc_run(GB_gameboy_t *gb, uint8_t cycles)
 
 void GB_advance_cycles(GB_gameboy_t *gb, uint8_t cycles)
 {
-    if (gb->speed_switch_countdown) {
+    if (unlikely(gb->speed_switch_countdown)) {
         if (gb->speed_switch_countdown == cycles) {
             gb->cgb_double_speed ^= true;
             gb->speed_switch_countdown = 0;
@@ -386,14 +393,14 @@ void GB_advance_cycles(GB_gameboy_t *gb, uint8_t cycles)
     }
     gb->apu.pcm_mask[0] = gb->apu.pcm_mask[1] = 0xFF; // Sort of hacky, but too many cross-component interactions to do it right
     // Affected by speed boost
-    gb->dma_cycles += cycles;
+    gb->dma_cycles = cycles;
 
     timers_run(gb, cycles);
-    if (!gb->stopped) {
+    if (unlikely(!gb->stopped)) {
         advance_serial(gb, cycles); // TODO: Verify what happens in STOP mode
     }
 
-    if (gb->speed_switch_halt_countdown) {
+    if (unlikely(gb->speed_switch_halt_countdown)) {
         gb->speed_switch_halt_countdown -= cycles;
         if (gb->speed_switch_halt_countdown <= 0) {
             gb->speed_switch_halt_countdown = 0;
@@ -412,30 +419,28 @@ void GB_advance_cycles(GB_gameboy_t *gb, uint8_t cycles)
         gb->speed_switch_freeze = 0;
     }
 
-    if (!gb->cgb_double_speed) {
+    if (unlikely(!gb->cgb_double_speed)) {
         cycles <<= 1;
     }
     
     gb->absolute_debugger_ticks += cycles;
     
     // Not affected by speed boost
-    if (gb->io_registers[GB_IO_LCDC] & 0x80) {
+    if (likely(gb->io_registers[GB_IO_LCDC] & 0x80)) {
         gb->double_speed_alignment += cycles;
     }
-    gb->hdma_cycles += cycles;
-    gb->apu_output.sample_cycles += cycles;
+    gb->apu_output.sample_cycles += cycles * gb->apu_output.sample_rate;
     gb->cycles_since_last_sync += cycles;
     gb->cycles_since_run += cycles;
     
     gb->rumble_on_cycles += gb->rumble_strength & 3;
     gb->rumble_off_cycles += (gb->rumble_strength & 3) ^ 3;
         
-    if (!gb->stopped) { // TODO: Verify what happens in STOP mode
+    GB_apu_run(gb, false);
+    GB_display_run(gb, cycles, false);
+    if (unlikely(!gb->stopped)) { // TODO: Verify what happens in STOP mode
         GB_dma_run(gb);
-        GB_hdma_run(gb);
     }
-    GB_apu_run(gb);
-    GB_display_run(gb, cycles);
     ir_run(gb, cycles);
     rtc_run(gb, cycles);
 }

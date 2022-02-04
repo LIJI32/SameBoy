@@ -377,6 +377,7 @@
 {
     [[NSUserDefaults standardUserDefaults] setObject:@([sender doubleValue] / 256.0)
                                               forKey:@"GBVolume"];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"GBVolumeChanged" object:nil];
 }
 
 - (IBAction)franeBlendingModeChanged:(id)sender
@@ -560,7 +561,6 @@
         double max = 0;
         for (JOYAxis *axis in controller.axes) {
             if ((axis.value > 0.5 || (axis.equivalentButtonUsage == button.usage)) && axis.value >= max) {
-                max = axis.value;
                 mapping[@"AnalogUnderclock"] = @(axis.uniqueID);
                 break;
             }

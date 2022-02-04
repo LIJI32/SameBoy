@@ -1650,6 +1650,29 @@ static bool palettes(GB_gameboy_t *gb, char *arguments, char *modifiers, const d
     return true;
 }
 
+static bool dma(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    if (strlen(lstrip(arguments))) {
+        print_usage(gb, command);
+        return true;
+    }
+    
+    if (!GB_is_dma_active(gb)) {
+        GB_log(gb, "DMA is inactive\n");
+        return true;
+    }
+    
+    if (gb->dma_current_dest == 0xFF) {
+        GB_log(gb, "DMA warming up\n"); // Shouldn't actually happen, as it only lasts 2 T-cycles
+        return true;
+    }
+    
+    GB_log(gb, "Next DMA write: [$FE%02X] = [$%04X]\n", gb->dma_current_dest, gb->dma_current_src);
+    
+    return true;
+}
+
 static bool lcd(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
 {
     NO_MODIFIERS
@@ -1901,6 +1924,8 @@ static bool wave(GB_gameboy_t *gb, char *arguments, char *modifiers, const debug
 static bool undo(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
 {
     NO_MODIFIERS
+    STOPPED_ONLY
+    
     if (strlen(lstrip(arguments))) {
         print_usage(gb, command);
         return true;
@@ -1946,6 +1971,7 @@ static const debugger_command_t commands[] = {
         "a more (c)ompact one, or a one-(l)iner", "", "(f|c|l)", .modifiers_completer = wave_completer},
     {"lcd", 3, lcd, "Displays information about the current state of the LCD controller"},
     {"palettes", 3, palettes, "Displays the current CGB palettes"},
+    {"dma", 3, dma, "Displays the current OAM DMA status"},
     {"softbreak", 2, softbreak, "Enables or disables software breakpoints", "(on|off)", .argument_completer = on_off_completer},
     {"breakpoint", 1, breakpoint, "Add a new breakpoint at the specified address/expression" HELP_NEWLINE
                                   "Can also modify the condition of existing breakpoints." HELP_NEWLINE
@@ -2196,6 +2222,9 @@ bool GB_debugger_execute_command(GB_gameboy_t *gb, char *input)
     if (!input[0]) {
         return true;
     }
+    
+    GB_display_sync(gb);
+    GB_apu_run(gb, true);
 
     char *command_string = input;
     char *arguments = strchr(input, ' ');

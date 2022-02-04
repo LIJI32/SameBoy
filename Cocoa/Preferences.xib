@@ -326,11 +326,11 @@
             <point key="canvasLocation" x="-501" y="236.5"/>
         </customView>
         <customView id="ymk-46-SX7">
-            <rect key="frame" x="0.0" y="0.0" width="320" height="375"/>
+            <rect key="frame" x="0.0" y="0.0" width="320" height="427"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
             <subviews>
                 <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="w9w-yX-KxB">
-                    <rect key="frame" x="18" y="283" width="284" height="17"/>
+                    <rect key="frame" x="18" y="335" width="284" height="17"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Rewinding duration:" id="JaO-5h-ugl">
                         <font key="font" metaFont="system"/>
@@ -339,7 +339,7 @@
                     </textFieldCell>
                 </textField>
                 <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="o3Z-34-FJk">
-                    <rect key="frame" x="18" y="228" width="280" height="17"/>
+                    <rect key="frame" x="18" y="280" width="280" height="17"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Real Time Clock emulation:" id="Qoi-ub-YtI">
                         <font key="font" metaFont="system"/>
@@ -348,7 +348,7 @@
                     </textFieldCell>
                 </textField>
                 <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="MI2-ql-f6M">
-                    <rect key="frame" x="18" y="338" width="284" height="17"/>
+                    <rect key="frame" x="18" y="390" width="284" height="17"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Boot ROMs location:" id="nj0-Cb-gEA">
                         <font key="font" metaFont="system"/>
@@ -357,7 +357,7 @@
                     </textFieldCell>
                 </textField>
                 <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Wg8-hJ-df9">
-                    <rect key="frame" x="18" y="160" width="284" height="17"/>
+                    <rect key="frame" x="18" y="212" width="284" height="17"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Game Boy revision:" id="GIA-ep-SBi">
                         <font key="font" metaFont="system"/>
@@ -366,7 +366,7 @@
                     </textFieldCell>
                 </textField>
                 <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="LFw-Uk-cPR">
-                    <rect key="frame" x="30" y="127" width="262" height="26"/>
+                    <rect key="frame" x="30" y="179" width="262" height="26"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="DMG-CPU B" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" tag="2" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="aXT-sE-m5Z" id="FuX-Hc-uO7">
                         <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
@@ -385,7 +385,7 @@
                     </connections>
                 </popUpButton>
                 <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="MAq-1X-Gpo">
-                    <rect key="frame" x="16" y="50" width="284" height="17"/>
+                    <rect key="frame" x="16" y="102" width="284" height="17"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Game Boy Color revision:" id="edD-t7-vwk">
                         <font key="font" metaFont="system"/>
@@ -394,19 +394,19 @@
                     </textFieldCell>
                 </textField>
                 <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="dlD-sk-SHO">
-                    <rect key="frame" x="28" y="17" width="262" height="26"/>
+                    <rect key="frame" x="28" y="69" width="262" height="26"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
-                    <popUpButtonCell key="cell" type="push" title="CPU-CGB E" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" tag="517" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="3lF-1Q-2SS" id="Edt-1S-dXz">
+                    <popUpButtonCell key="cell" type="push" title="CPU CGB E" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" tag="517" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="3lF-1Q-2SS" id="Edt-1S-dXz">
                         <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
                         <font key="font" metaFont="menu"/>
                         <menu key="menu" autoenablesItems="NO" id="bbF-hB-Hv7">
                             <items>
-                                <menuItem title="CPU-CGB 0 (Experimental)" tag="512" id="2Uk-u3-6Gw"/>
-                                <menuItem title="CPU-CGB A" tag="513" enabled="NO" id="axv-yk-RWM"/>
-                                <menuItem title="CPU-CGB B (Experimental)" tag="514" id="NtJ-oo-IM2"/>
-                                <menuItem title="CPU-CGB C (Experimental)" tag="515" id="9YL-u8-12z"/>
-                                <menuItem title="CPU-CGB D" tag="516" id="c76-oF-fkU"/>
-                                <menuItem title="CPU-CGB E" state="on" tag="517" id="3lF-1Q-2SS"/>
+                                <menuItem title="CPU CGB 0 (Experimental)" tag="512" id="2Uk-u3-6Gw"/>
+                                <menuItem title="CPU CGB A (Experimental)" tag="513" id="axv-yk-RWM"/>
+                                <menuItem title="CPU CGB B (Experimental)" tag="514" id="NtJ-oo-IM2"/>
+                                <menuItem title="CPU CGB C (Experimental)" tag="515" id="9YL-u8-12z"/>
+                                <menuItem title="CPU CGB D" tag="516" id="c76-oF-fkU"/>
+                                <menuItem title="CPU CGB E" state="on" tag="517" id="3lF-1Q-2SS"/>
                             </items>
                         </menu>
                     </popUpButtonCell>
@@ -415,7 +415,7 @@
                     </connections>
                 </popUpButton>
                 <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tAa-0A-0fP">
-                    <rect key="frame" x="18" y="105" width="284" height="17"/>
+                    <rect key="frame" x="18" y="157" width="284" height="17"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Super Game Boy model:" id="d0g-rk-FK0">
                         <font key="font" metaFont="system"/>
@@ -424,11 +424,11 @@
                     </textFieldCell>
                 </textField>
                 <box verticalHuggingPriority="750" fixedFrame="YES" boxType="separator" translatesAutoresizingMaskIntoConstraints="NO" id="mdm-eW-ia1">
-                    <rect key="frame" x="12" y="183" width="296" height="5"/>
+                    <rect key="frame" x="12" y="235" width="296" height="5"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                 </box>
                 <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="dza-T7-RkX">
-                    <rect key="frame" x="28" y="72" width="262" height="26"/>
+                    <rect key="frame" x="28" y="124" width="262" height="26"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="Super Game Boy (NTSC)" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" tag="4" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="x5A-7f-ef9" id="2Mt-ci-bB0">
                         <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
@@ -446,7 +446,7 @@
                     </connections>
                 </popUpButton>
                 <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tFf-H1-XUL">
-                    <rect key="frame" x="30" y="199" width="262" height="22"/>
+                    <rect key="frame" x="30" y="251" width="262" height="22"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="Sync to system clock" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="arp-Qi-Xix" id="uRs-Ag-Sbw">
                         <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
@@ -465,7 +465,7 @@
                     </connections>
                 </popUpButton>
                 <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="wC4-aJ-mhQ">
-                    <rect key="frame" x="30" y="305" width="262" height="26"/>
+                    <rect key="frame" x="30" y="357" width="262" height="26"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="Use built-in boot ROMs" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="Tnm-SR-ZEm" id="T3Y-Ln-Onl">
                         <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
@@ -489,7 +489,7 @@
                     </popUpButtonCell>
                 </popUpButton>
                 <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="7fg-Ww-JjR">
-                    <rect key="frame" x="30" y="250" width="262" height="26"/>
+                    <rect key="frame" x="30" y="302" width="262" height="26"/>
                     <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                     <popUpButtonCell key="cell" type="push" title="Disabled" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="lxQ-4n-kEv" id="lvb-QF-0Ht">
                         <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
@@ -512,8 +512,32 @@
                         <action selector="rewindLengthChanged:" target="QvC-M9-y7g" id="5NQ-1T-RNc"/>
                     </connections>
                 </popUpButton>
+                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="5r5-qY-b8h">
+                    <rect key="frame" x="18" y="47" width="280" height="17"/>
+                    <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
+                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Game Boy Advance revision:" id="R5q-dJ-NvD">
+                        <font key="font" metaFont="system"/>
+                        <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                        <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                    </textFieldCell>
+                </textField>
+                <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="3Dl-S6-O7c">
+                    <rect key="frame" x="30" y="17" width="257" height="22"/>
+                    <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
+                    <popUpButtonCell key="cell" type="push" title="CPU AGB A" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" tag="519" imageScaling="proportionallyDown" inset="2" autoenablesItems="NO" selectedItem="8bk-wP-Cbr" id="EhC-I2-5Th">
+                        <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
+                        <font key="font" metaFont="menu"/>
+                        <menu key="menu" autoenablesItems="NO" id="b2b-jo-SrI">
+                            <items>
+                                <menuItem title="CPU AGB 0" tag="518" enabled="NO" id="75z-Yy-XaY"/>
+                                <menuItem title="CPU AGB A" state="on" tag="519" id="8bk-wP-Cbr"/>
+                                <menuItem title="CPU AGB B (Game Boy Advance SP)" tag="520" enabled="NO" id="jIE-v4-768"/>
+                            </items>
+                        </menu>
+                    </popUpButtonCell>
+                </popUpButton>
             </subviews>
-            <point key="canvasLocation" x="-501" y="667.5"/>
+            <point key="canvasLocation" x="-501" y="693.5"/>
         </customView>
         <customView id="Zn1-Y5-RbR">
             <rect key="frame" x="0.0" y="0.0" width="320" height="201"/>
@@ -854,7 +878,7 @@
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" heightSizable="YES"/>
                         <clipView key="contentView" ambiguous="YES" drawsBackground="NO" id="5Al-aC-tq8">
                             <rect key="frame" x="1" y="1" width="158" height="316"/>
-                            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                            <autoresizingMask key="autoresizingMask"/>
                             <subviews>
                                 <tableView focusRingType="none" verticalHuggingPriority="750" ambiguous="YES" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" selectionHighlightStyle="sourceList" columnResizing="NO" multipleSelection="NO" emptySelection="NO" autosaveColumns="NO" id="ZVn-bk-duk">
                                     <rect key="frame" x="0.0" y="0.0" width="158" height="316"/>

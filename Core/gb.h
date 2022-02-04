@@ -36,6 +36,8 @@
 #define GB_MODEL_PAL_BIT 0x40
 #define GB_MODEL_NO_SFC_BIT 0x80
 
+#define GB_REWIND_FRAMES_PER_KEY 255
+
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define GB_BIG_ENDIAN
 #elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -44,6 +46,17 @@
 #error Unable to detect endianess
 #endif
 
+#ifdef GB_BIG_ENDIAN
+#define GB_REGISTER_ORDER a, f, \
+                          b, c, \
+                          d, e, \
+                          h, l
+#else
+#define GB_REGISTER_ORDER f, a, \
+                          c, b, \
+                          e, d, \
+                          l, h
+#endif
 
 typedef struct {
     struct GB_color_s {
@@ -97,12 +110,15 @@ typedef enum {
     GB_MODEL_SGB2 = 0x101,
     GB_MODEL_SGB2_NO_SFC = GB_MODEL_SGB2 | GB_MODEL_NO_SFC_BIT,
     GB_MODEL_CGB_0 = 0x200,
-    // GB_MODEL_CGB_A = 0x201,
+    GB_MODEL_CGB_A = 0x201,
     GB_MODEL_CGB_B = 0x202,
     GB_MODEL_CGB_C = 0x203,
     GB_MODEL_CGB_D = 0x204,
     GB_MODEL_CGB_E = 0x205,
-    GB_MODEL_AGB = 0x206,
+    // GB_MODEL_AGB_0 = 0x206,
+    GB_MODEL_AGB_A = 0x207,
+    GB_MODEL_AGB = GB_MODEL_AGB_A,
+    //GB_MODEL_AGB_B = 0x208
 } GB_model_t;
 
 enum {
@@ -111,6 +127,7 @@ enum {
     GB_REGISTER_DE,
     GB_REGISTER_HL,
     GB_REGISTER_SP,
+    GB_REGISTER_PC,
     GB_REGISTERS_16_BIT /* Count */
 };
 
@@ -327,23 +344,14 @@ typedef union {
     uint16_t registers[GB_REGISTERS_16_BIT];
     struct {
         uint16_t af,
-        bc,
-        de,
-        hl,
-        sp;
+                 bc,
+                 de,
+                 hl,
+                 sp,
+                 pc;
     };
     struct {
-#ifdef GB_BIG_ENDIAN
-        uint8_t a, f,
-        b, c,
-        d, e,
-        h, l;
-#else
-        uint8_t f, a,
-        c, b,
-        e, d,
-        l, h;
-#endif
+        uint8_t GB_REGISTER_ORDER;
     };
 } GB_registers_t;
 
@@ -366,11 +374,10 @@ struct GB_gameboy_internal_s {
         /* The version field makes sure we don't load save state files with a completely different structure.
            This happens when struct fields are removed/resized in an backward incompatible manner. */
         uint32_t version;
-    );
+    )
 
     GB_SECTION(core_state,
         /* Registers */
-        uint16_t pc;
         union {
             uint16_t registers[GB_REGISTERS_16_BIT];
             struct {
@@ -378,20 +385,11 @@ struct GB_gameboy_internal_s {
                          bc,
                          de,
                          hl,
-                         sp;
+                         sp,
+                         pc;
             };
             struct {
-#ifdef GB_BIG_ENDIAN
-                uint8_t a, f,
-                        b, c,
-                        d, e,
-                        h, l;
-#else
-                uint8_t f, a,
-                        c, b,
-                        e, d,
-                        l, h;
-#endif
+                uint8_t GB_REGISTER_ORDER;
             };
         };
         uint8_t ime;
@@ -419,24 +417,24 @@ struct GB_gameboy_internal_s {
        int32_t ir_sensor;
        bool effective_ir_input;
        uint16_t address_bus;
-    );
+    )
 
     /* DMA and HDMA */
     GB_SECTION(dma,
         bool hdma_on;
         bool hdma_on_hblank;
         uint8_t hdma_steps_left;
-        int16_t hdma_cycles; // in 8MHz units
         uint16_t hdma_current_src, hdma_current_dest;
 
-        uint8_t dma_steps_left;
         uint8_t dma_current_dest;
+        uint8_t last_dma_read;
         uint16_t dma_current_src;
-        int16_t dma_cycles;
-        bool is_dma_restarting;
-        uint8_t last_opcode_read; /* Required to emulte HDMA reads from Exxx */
-        bool hdma_starting;
-    );
+        uint16_t dma_cycles;
+        int8_t dma_cycles_modulo;
+        bool dma_ppu_vram_conflict;
+        uint16_t dma_ppu_vram_conflict_addr;
+        uint8_t hdma_open_bus; /* Required to emulate HDMA reads from Exxx */
+    )
     
     /* MBC */
     GB_SECTION(mbc,
@@ -514,15 +512,13 @@ struct GB_gameboy_internal_s {
         uint8_t camera_registers[0x36];
         uint8_t rumble_strength;
         bool cart_ir;
-
-    );
-
+    )
 
     /* HRAM and HW Registers */
     GB_SECTION(hram,
         uint8_t hram[0xFFFF - 0xFF80];
         uint8_t io_registers[0x80];
-    );
+    )
 
     /* Timing */
     GB_SECTION(timing,
@@ -540,12 +536,14 @@ struct GB_gameboy_internal_s {
         /* For timing of the vblank callback */
         uint32_t cycles_since_vblank_callback;
         bool lcd_disabled_outside_of_vblank;
-    );
+        int32_t allowed_pending_cycles;
+        uint16_t mode3_batching_length;
+    )
 
     /* APU */
     GB_SECTION(apu,
         GB_apu_t apu;
-    );
+    )
 
     /* RTC */
     GB_SECTION(rtc,
@@ -553,7 +551,7 @@ struct GB_gameboy_internal_s {
         uint64_t last_rtc_second;
         uint32_t rtc_cycles;
         uint8_t tpp1_mr4;
-    );
+    )
 
     /* Video Display */
     GB_SECTION(video,
@@ -596,7 +594,10 @@ struct GB_gameboy_internal_s {
         bool wx166_glitch;
         bool wx_triggered;
         uint8_t visible_objs[10];
-        uint8_t obj_comparators[10];
+        uint8_t objects_x[10];
+        uint8_t objects_y[10];
+        uint8_t object_tile_data[2];
+        uint8_t object_flags;
         uint8_t n_visible_objs;
         uint8_t oam_search_index;
         uint8_t accessed_oam_row;
@@ -620,7 +621,7 @@ struct GB_gameboy_internal_s {
         uint16_t last_tile_index_address;
         bool cgb_repeated_a_frame;
         uint8_t data_for_sel_glitch;
-    );
+    )
 
     /* Unsaved data. This includes all pointers, as well as everything that shouldn't be on a save state */
     /* This data is reserved on reset and must come last in the struct */
@@ -665,6 +666,8 @@ struct GB_gameboy_internal_s {
         uint64_t cycles_since_last_sync; // In 8MHz units
         GB_rtc_mode_t rtc_mode;
         uint32_t rtc_second_length;
+        uint32_t clock_rate;
+        uint32_t unmultiplied_clock_rate;
 
         /* Audio */
         GB_apu_output_t apu_output;
@@ -738,7 +741,6 @@ struct GB_gameboy_internal_s {
         const char *undo_label;
 
         /* Rewind */
-#define GB_REWIND_FRAMES_PER_KEY 255
         size_t rewind_buffer_length;
         struct {
             uint8_t *key_state;
@@ -766,7 +768,7 @@ struct GB_gameboy_internal_s {
         bool disable_rendering;
         uint8_t boot_rom[0x900];
         bool vblank_just_occured; // For slow operations involving syscalls; these should only run once per vblank
-        uint8_t cycles_since_run; // How many cycles have passed since the last call to GB_run(), in 8MHz units
+        unsigned cycles_since_run; // How many cycles have passed since the last call to GB_run(), in 8MHz units
         double clock_multiplier;
         GB_rumble_mode_t rumble_mode;
         uint32_t rumble_on_cycles;
@@ -776,9 +778,12 @@ struct GB_gameboy_internal_s {
         bool wx_just_changed;
         bool tile_sel_glitch;
         bool disable_oam_corruption; // For safe memory reads
+        bool in_dma_read;
+        bool hdma_in_progress;
+        uint16_t addr_for_hdma_conflict;
                
         GB_gbs_header_t gbs_header;
-   );
+   )
 };
     
 #ifndef GB_INTERNAL
@@ -796,7 +801,7 @@ __attribute__((__format__ (__printf__, fmtarg, firstvararg)))
 
 void GB_init(GB_gameboy_t *gb, GB_model_t model);
 bool GB_is_inited(GB_gameboy_t *gb);
-bool GB_is_cgb(GB_gameboy_t *gb);
+bool GB_is_cgb(const GB_gameboy_t *gb);
 bool GB_is_cgb_in_cgb_mode(GB_gameboy_t *gb);
 bool GB_is_sgb(GB_gameboy_t *gb); // Returns true if the model is SGB or SGB2
 bool GB_is_hle_sgb(GB_gameboy_t *gb); // Returns true if the model is SGB or SGB2 and the SFC/SNES side is HLE'd
@@ -806,7 +811,7 @@ void GB_reset(GB_gameboy_t *gb);
 void GB_switch_model_and_reset(GB_gameboy_t *gb, GB_model_t model);
 
 /* Returns the time passed, in 8MHz ticks. */
-uint8_t GB_run(GB_gameboy_t *gb);
+unsigned GB_run(GB_gameboy_t *gb);
 /* Returns the time passed since the last frame, in nanoseconds */
 uint64_t GB_run_frame(GB_gameboy_t *gb);
 
@@ -874,6 +879,7 @@ void GB_set_execution_callback(GB_gameboy_t *gb, GB_execution_callback_t callbac
 void GB_set_lcd_line_callback(GB_gameboy_t *gb, GB_lcd_line_callback_t callback);
 
 void GB_set_palette(GB_gameboy_t *gb, const GB_palette_t *palette);
+const GB_palette_t *GB_get_palette(GB_gameboy_t *gb);
 
 /* These APIs are used when using internal clock */
 void GB_set_serial_transfer_bit_start_callback(GB_gameboy_t *gb, GB_serial_transfer_bit_start_callback_t callback);
@@ -916,6 +922,7 @@ uint32_t GB_get_rom_crc32(GB_gameboy_t *gb);
 
 #ifdef GB_INTERNAL
 internal void GB_borrow_sgb_border(GB_gameboy_t *gb);
+internal void GB_update_clock_rate(GB_gameboy_t *gb);
 #endif
     
 #endif /* GB_h */

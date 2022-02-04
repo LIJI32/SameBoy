@@ -354,6 +354,9 @@ static void enter_stop_mode(GB_gameboy_t *gb)
 static void leave_stop_mode(GB_gameboy_t *gb)
 {
     gb->stopped = false;
+    // TODO: verify this
+    gb->dma_cycles = 4;
+    GB_dma_run(gb);
     gb->oam_ppu_blocked = false;
     gb->vram_ppu_blocked = false;
     gb->cgb_palettes_ppu_blocked = false;
@@ -372,6 +375,9 @@ static void stop(GB_gameboy_t *gb, uint8_t opcode)
     bool interrupt_pending = (gb->interrupt_enable & gb->io_registers[GB_IO_IF] & 0x1F);
     // When entering with IF&IE, the 2nd byte of STOP is actually executed
     if (!exit_by_joyp) {
+        if (!immediate_exit) {
+            GB_dma_run(gb);
+        }
         enter_stop_mode(gb);
     }
     
@@ -414,6 +420,7 @@ static void stop(GB_gameboy_t *gb, uint8_t opcode)
     if (immediate_exit) {
         leave_stop_mode(gb);
         if (!interrupt_pending) {
+            GB_dma_run(gb);
             gb->halted = true;
             gb->just_halted = true;
         }
@@ -658,8 +665,8 @@ static bool condition_code(GB_gameboy_t *gb, uint8_t opcode)
             return !(gb->af & GB_CARRY_FLAG);
         case 3:
             return (gb->af & GB_CARRY_FLAG);
+        nodefault;
     }
-    __builtin_unreachable();
 
     return false;
 }
@@ -1004,7 +1011,6 @@ static void halt(GB_gameboy_t *gb, uint8_t opcode)
     gb->pending_cycles = 0;
     GB_advance_cycles(gb, 4);
     
-    gb->halted = true;
     /* Despite what some online documentations say, the HALT bug also happens on a CGB, in both CGB and DMG modes. */
     if (((gb->interrupt_enable & gb->io_registers[GB_IO_IF] & 0x1F) != 0)) {
         if (gb->ime) {
@@ -1015,6 +1021,9 @@ static void halt(GB_gameboy_t *gb, uint8_t opcode)
             gb->halted = false;
             gb->halt_bug = true;
         }
+    }
+    else {
+        gb->halted = true;
     }
     gb->just_halted = true;
 }
@@ -1571,10 +1580,6 @@ static opcode_t *opcodes[256] = {
 };
 void GB_cpu_run(GB_gameboy_t *gb)
 {
-    if (gb->hdma_on) {
-        GB_advance_cycles(gb, 4);
-        return;
-    }
     if (gb->stopped) {
         GB_timing_sync(gb);
         GB_advance_cycles(gb, 4);
@@ -1612,16 +1617,27 @@ void GB_cpu_run(GB_gameboy_t *gb)
     /* Wake up from HALT mode without calling interrupt code. */
     if (gb->halted && !effective_ime && interrupt_queue) {
         gb->halted = false;
+        if (gb->hdma_on_hblank && (gb->io_registers[GB_IO_STAT] & 3) == 0) {
+            gb->hdma_on = true;
+        }
+        gb->dma_cycles = 4;
+        GB_dma_run(gb);
         gb->speed_switch_halt_countdown = 0;
     }
     
     /* Call interrupt */
     else if (effective_ime && interrupt_queue) {
         gb->halted = false;
+        if (gb->hdma_on_hblank && (gb->io_registers[GB_IO_STAT] & 3) == 0) {
+            gb->hdma_on = true;
+        }
+        // TODO: verify the timing!
+        gb->dma_cycles = 4;
+        GB_dma_run(gb);
         gb->speed_switch_halt_countdown = 0;
         uint16_t call_addr = gb->pc;
         
-        gb->last_opcode_read = cycle_read(gb, gb->pc++);
+        cycle_read(gb, gb->pc++);
         cycle_oam_bug_pc(gb);
         gb->pc--;
         GB_trigger_oam_bug(gb, gb->sp); /* Todo: test T-cycle timing */
@@ -1660,22 +1676,19 @@ void GB_cpu_run(GB_gameboy_t *gb)
     }
     /* Run mode */
     else if (!gb->halted) {
-        gb->last_opcode_read = cycle_read(gb, gb->pc++);
+        uint8_t opcode = gb->hdma_open_bus = cycle_read(gb, gb->pc++);
+        if (unlikely(gb->hdma_on)) {
+            GB_hdma_run(gb);
+        }
         if (unlikely(gb->execution_callback)) {
-            gb->execution_callback(gb, gb->pc - 1, gb->last_opcode_read);
+            gb->execution_callback(gb, gb->pc - 1, opcode);
         }
         if (unlikely(gb->halt_bug)) {
             gb->pc--;
             gb->halt_bug = false;
         }
-        opcodes[gb->last_opcode_read](gb, gb->last_opcode_read);
+        opcodes[opcode](gb, opcode);
     }
     
     flush_pending_cycles(gb);
-
-    if (gb->hdma_starting) {
-        gb->hdma_starting = false;
-        gb->hdma_on = true;
-        gb->hdma_cycles = -8;
-    }
 }

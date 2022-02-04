@@ -77,6 +77,7 @@ void GB_update_mbc_mappings(GB_gameboy_t *gb)
                         gb->mbc_rom_bank++;
                     }
                     break;
+                nodefault;
             }
             break;
         case GB_MBC2:
@@ -121,6 +122,7 @@ void GB_update_mbc_mappings(GB_gameboy_t *gb)
             gb->mbc_ram_bank = gb->tpp1.ram_bank;
             gb->mbc_ram_enable = (gb->tpp1.mode == 2) || (gb->tpp1.mode == 3);
             break;
+        nodefault;
     }
 }
 

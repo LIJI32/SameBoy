@@ -121,7 +121,7 @@ static void load_default_border(GB_gameboy_t *gb)
     }
 #endif
     
-    if (gb->model == GB_MODEL_AGB) {
+    if (gb->model > GB_MODEL_CGB_E) {
         #include "graphics/agb_border.inc"
         LOAD_BORDER();
     }
@@ -1128,7 +1128,7 @@ exit:
     return;
 }
 
-uint8_t GB_run(GB_gameboy_t *gb)
+unsigned GB_run(GB_gameboy_t *gb)
 {
     gb->vblank_just_occured = false;
 
@@ -1139,7 +1139,7 @@ uint8_t GB_run(GB_gameboy_t *gb)
            we just halt the CPU (with hacky code) until the correct time.
            This ensures the Nintendo logo doesn't flash on screen, and
            the game does "run in background" while the animation is playing. */
-        GB_display_run(gb, 228);
+        GB_display_run(gb, 228, true);
         gb->cycles_since_last_sync += 228;
         return 228;
     }
@@ -1249,6 +1249,11 @@ void GB_set_palette(GB_gameboy_t *gb, const GB_palette_t *palette)
     update_dmg_palette(gb);
 }
 
+const GB_palette_t *GB_get_palette(GB_gameboy_t *gb)
+{
+    return gb->dmg_palette;
+}
+
 void GB_set_rgb_encode_callback(GB_gameboy_t *gb, GB_rgb_encode_callback_t callback)
 {
 
@@ -1327,7 +1332,7 @@ bool GB_is_inited(GB_gameboy_t *gb)
     return gb->magic == state_magic();
 }
 
-bool GB_is_cgb(GB_gameboy_t *gb)
+bool GB_is_cgb(const GB_gameboy_t *gb)
 {
     return gb->model >= GB_MODEL_CGB_0;
 }
@@ -1373,7 +1378,7 @@ static void reset_ram(GB_gameboy_t *gb)
     switch (gb->model) {
         case GB_MODEL_MGB:
         case GB_MODEL_CGB_E:
-        case GB_MODEL_AGB: /* Unverified */
+        case GB_MODEL_AGB_A: /* Unverified */
             for (unsigned i = 0; i < gb->ram_size; i++) {
                 gb->ram[i] = GB_random();
             }
@@ -1404,6 +1409,7 @@ static void reset_ram(GB_gameboy_t *gb)
             break;
 
         case GB_MODEL_CGB_0:
+        case GB_MODEL_CGB_A:
         case GB_MODEL_CGB_B:
         case GB_MODEL_CGB_C:
             for (unsigned i = 0; i < gb->ram_size; i++) {
@@ -1431,11 +1437,12 @@ static void reset_ram(GB_gameboy_t *gb)
     /* HRAM */
     switch (gb->model) {
         case GB_MODEL_CGB_0:
+        case GB_MODEL_CGB_A:
         case GB_MODEL_CGB_B:
         case GB_MODEL_CGB_C:
         case GB_MODEL_CGB_D:
         case GB_MODEL_CGB_E:
-        case GB_MODEL_AGB:
+        case GB_MODEL_AGB_A:
             for (unsigned i = 0; i < sizeof(gb->hram); i++) {
                 gb->hram[i] = GB_random();
             }
@@ -1463,12 +1470,13 @@ static void reset_ram(GB_gameboy_t *gb)
     /* OAM */
     switch (gb->model) {
         case GB_MODEL_CGB_0:
+        case GB_MODEL_CGB_A:
         case GB_MODEL_CGB_B:
         case GB_MODEL_CGB_C:
         case GB_MODEL_CGB_D: 
         case GB_MODEL_CGB_E:
-        case GB_MODEL_AGB:
-            /* Zero'd out by boot ROM anyway, extra OAM no accessible */
+        case GB_MODEL_AGB_A:
+            /* Zero'd out by boot ROM anyway */
             break;
             
         case GB_MODEL_DMG_B:
@@ -1496,11 +1504,12 @@ static void reset_ram(GB_gameboy_t *gb)
     /* Wave RAM */
     switch (gb->model) {
         case GB_MODEL_CGB_0:
+        case GB_MODEL_CGB_A:
         case GB_MODEL_CGB_B:
         case GB_MODEL_CGB_C:
         case GB_MODEL_CGB_D:
         case GB_MODEL_CGB_E:
-        case GB_MODEL_AGB:
+        case GB_MODEL_AGB_A:
             /* Initialized by CGB-A and newer, 0s in CGB-0 */
             break;
         case GB_MODEL_MGB: {
@@ -1573,13 +1582,14 @@ static void request_boot_rom(GB_gameboy_t *gb)
             case GB_MODEL_CGB_0:
                 type = GB_BOOT_ROM_CGB_0;
                 break;
+            case GB_MODEL_CGB_A:
             case GB_MODEL_CGB_B:
             case GB_MODEL_CGB_C:
             case GB_MODEL_CGB_D:
             case GB_MODEL_CGB_E:
                 type = GB_BOOT_ROM_CGB;
                 break;
-            case GB_MODEL_AGB:
+            case GB_MODEL_AGB_A:
                 type = GB_BOOT_ROM_AGB;
                 break;
         }
@@ -1591,6 +1601,7 @@ void GB_reset(GB_gameboy_t *gb)
 {
     uint32_t mbc_ram_size = gb->mbc_ram_size;
     GB_model_t model = gb->model;
+    GB_update_clock_rate(gb);
     uint8_t rtc_section[GB_SECTION_SIZE(rtc)];
     memcpy(rtc_section, GB_GET_SECTION(gb, rtc), sizeof(rtc_section));
     memset(gb, 0, (size_t)GB_GET_SECTION((GB_gameboy_t *) 0, unsaved));
@@ -1628,8 +1639,8 @@ void GB_reset(GB_gameboy_t *gb)
     gb->io_registers[GB_IO_DMA] = gb->io_registers[GB_IO_OBP0] = gb->io_registers[GB_IO_OBP1] = GB_is_cgb(gb)? 0x00 : 0xFF;
     
     gb->accessed_oam_row = -1;
-    
-    
+    gb->dma_current_dest = 0xa1;
+
     if (GB_is_hle_sgb(gb)) {
         if (!gb->sgb) {
             gb->sgb = malloc(sizeof(*gb->sgb));
@@ -1653,8 +1664,6 @@ void GB_reset(GB_gameboy_t *gb)
     
     GB_set_internal_div_counter(gb, 8);
 
-    GB_apu_update_cycles_per_sample(gb);
-    
     if (gb->nontrivial_jump_state) {
         free(gb->nontrivial_jump_state);
         gb->nontrivial_jump_state = NULL;
@@ -1758,25 +1767,34 @@ GB_registers_t *GB_get_registers(GB_gameboy_t *gb)
 void GB_set_clock_multiplier(GB_gameboy_t *gb, double multiplier)
 {
     gb->clock_multiplier = multiplier;
-    GB_apu_update_cycles_per_sample(gb);
+    GB_update_clock_rate(gb);
 }
 
 uint32_t GB_get_clock_rate(GB_gameboy_t *gb)
 {
-    return GB_get_unmultiplied_clock_rate(gb) * gb->clock_multiplier;
+    return gb->clock_rate;
 }
-
 
 uint32_t GB_get_unmultiplied_clock_rate(GB_gameboy_t *gb)
 {
-    if (gb->model & GB_MODEL_PAL_BIT) {
-        return SGB_PAL_FREQUENCY;
-    }
-    if ((gb->model & ~GB_MODEL_NO_SFC_BIT) == GB_MODEL_SGB) {
-        return SGB_NTSC_FREQUENCY;
-    }
-    return CPU_FREQUENCY;
+    return gb->unmultiplied_clock_rate;
 }
+
+void GB_update_clock_rate(GB_gameboy_t *gb)
+{
+    if (gb->model & GB_MODEL_PAL_BIT) {
+        gb->unmultiplied_clock_rate = SGB_PAL_FREQUENCY;
+    }
+    else if ((gb->model & ~GB_MODEL_NO_SFC_BIT) == GB_MODEL_SGB) {
+        gb->unmultiplied_clock_rate = SGB_NTSC_FREQUENCY;
+    }
+    else {
+        gb->unmultiplied_clock_rate = CPU_FREQUENCY;
+    }
+    
+    gb->clock_rate = gb->unmultiplied_clock_rate * gb->clock_multiplier;
+}
+
 void GB_set_border_mode(GB_gameboy_t *gb, GB_border_mode_t border_mode)
 {
     if (gb->border_mode > GB_BORDER_ALWAYS) return;

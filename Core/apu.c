@@ -21,7 +21,7 @@ static void refresh_channel(GB_gameboy_t *gb, unsigned index, unsigned cycles_of
 
 bool GB_apu_is_DAC_enabled(GB_gameboy_t *gb, unsigned index)
 {
-    if (gb->model >= GB_MODEL_AGB) {
+    if (gb->model > GB_MODEL_CGB_E) {
         /* On the AGB, mixing is done digitally, so there are no per-channel
            DACs. Instead, all channels are summed digital regardless of
            whatever the DAC state would be on a CGB or earlier model. */
@@ -40,6 +40,8 @@ bool GB_apu_is_DAC_enabled(GB_gameboy_t *gb, unsigned index)
 
         case GB_NOISE:
             return gb->io_registers[GB_IO_NR42] & 0xF8;
+            
+        nodefault;
     }
 
     return false;
@@ -58,13 +60,20 @@ static uint8_t agb_bias_for_channel(GB_gameboy_t *gb, unsigned index)
             return 0;
         case GB_NOISE:
             return gb->apu.noise_channel.current_volume;
+            
+        nodefault;
     }
     return 0;
 }
 
 static void update_sample(GB_gameboy_t *gb, unsigned index, int8_t value, unsigned cycles_offset)
 {
-    if (gb->model >= GB_MODEL_AGB) {
+    if (gb->model > GB_MODEL_CGB_E && index == GB_WAVE) {
+        /* For some reason, channel 3 is inverted on the AGB */
+        value ^= 0xF;
+    }
+        
+    if (gb->model > GB_MODEL_CGB_E) {
         /* On the AGB, because no analog mixing is done, the behavior of NR51 is a bit different.
            A channel that is not connected to a terminal is idenitcal to a connected channel
            playing PCM sample 0. */
@@ -73,11 +82,6 @@ static void update_sample(GB_gameboy_t *gb, unsigned index, int8_t value, unsign
         if (gb->apu_output.sample_rate) {
             unsigned right_volume = (gb->io_registers[GB_IO_NR50] & 7) + 1;
             unsigned left_volume = ((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1;
-            
-            if (index == GB_WAVE) {
-                /* For some reason, channel 3 is inverted on the AGB */
-                value ^= 0xF;
-            }
             
             GB_sample_t output;
             uint8_t bias = agb_bias_for_channel(gb, index);
@@ -104,6 +108,8 @@ static void update_sample(GB_gameboy_t *gb, unsigned index, int8_t value, unsign
         
         return;
     }
+    
+    if (value == 0 && gb->apu.samples[index] == 0) return;
     
     if (!GB_apu_is_DAC_enabled(gb, index)) {
         value = gb->apu.samples[index];
@@ -139,7 +145,7 @@ static signed interference(GB_gameboy_t *gb)
     /* These aren't scientifically measured, but based on ear based on several recordings */
     signed ret = 0;
     if (gb->halted) {
-        if (gb->model != GB_MODEL_AGB) {
+        if (gb->model <= GB_MODEL_CGB_E) {
             ret -= MAX_CH_AMP / 5;
         }
         else {
@@ -148,7 +154,7 @@ static signed interference(GB_gameboy_t *gb)
     }
     if (gb->io_registers[GB_IO_LCDC] & 0x80) {
         ret += MAX_CH_AMP / 7;
-        if ((gb->io_registers[GB_IO_STAT] & 3) == 3 && gb->model != GB_MODEL_AGB) {
+        if ((gb->io_registers[GB_IO_STAT] & 3) == 3 && gb->model <= GB_MODEL_CGB_E) {
             ret += MAX_CH_AMP / 14;
         }
         else if ((gb->io_registers[GB_IO_STAT] & 3) == 1) {
@@ -160,7 +166,7 @@ static signed interference(GB_gameboy_t *gb)
         ret += MAX_CH_AMP / 10;
     }
     
-    if (GB_is_cgb(gb) && gb->model < GB_MODEL_AGB && (gb->io_registers[GB_IO_RP] & 1)) {
+    if (GB_is_cgb(gb) && gb->model <= GB_MODEL_CGB_E && (gb->io_registers[GB_IO_RP] & 1)) {
         ret += MAX_CH_AMP / 10;
     }
     
@@ -180,7 +186,7 @@ static void render(GB_gameboy_t *gb)
     unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
         double multiplier = CH_STEP;
         
-        if (gb->model < GB_MODEL_AGB) {
+        if (gb->model <= GB_MODEL_CGB_E) {
             if (!GB_apu_is_DAC_enabled(gb, i)) {
                 gb->apu_output.dac_discharge[i] -= ((double) DAC_DECAY_SPEED) / gb->apu_output.sample_rate;
                 if (gb->apu_output.dac_discharge[i] < 0) {
@@ -277,7 +283,12 @@ static void render(GB_gameboy_t *gb)
 
 static void update_square_sample(GB_gameboy_t *gb, unsigned index)
 {
-    if (gb->apu.square_channels[index].sample_surpressed) return;
+    if (gb->apu.square_channels[index].sample_surpressed) {
+        if (gb->model > GB_MODEL_CGB_E) {
+            update_sample(gb, index, gb->apu.samples[index], 0);
+        }
+        return;
+    }
 
     uint8_t duty = gb->io_registers[index == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
     update_sample(gb, index,
@@ -469,6 +480,7 @@ static void trigger_sweep_calculation(GB_gameboy_t *gb)
 
 void GB_apu_div_event(GB_gameboy_t *gb)
 {
+    GB_apu_run(gb, true);
     if (!gb->apu.global_enable) return;
     if (gb->apu.skip_div_event == GB_SKIP_DIV_EVENT_SKIP) {
         gb->apu.skip_div_event = GB_SKIP_DIV_EVENT_SKIPPED;
@@ -521,7 +533,7 @@ void GB_apu_div_event(GB_gameboy_t *gb)
         if (gb->apu.wave_channel.length_enabled) {
             if (gb->apu.wave_channel.pulse_length) {
                 if (!--gb->apu.wave_channel.pulse_length) {
-                    if (gb->apu.is_active[GB_WAVE] && gb->model == GB_MODEL_AGB) {
+                    if (gb->apu.is_active[GB_WAVE] && gb->model > GB_MODEL_CGB_E) {
                         if (gb->apu.wave_channel.sample_countdown == 0) {
                             gb->apu.wave_channel.current_sample_byte =
                                 gb->io_registers[GB_IO_WAV_START + (((gb->apu.wave_channel.current_sample_index + 1) & 0xF) >> 1)];
@@ -556,6 +568,8 @@ void GB_apu_div_event(GB_gameboy_t *gb)
 
 void GB_apu_div_secondary_event(GB_gameboy_t *gb)
 {
+    GB_apu_run(gb, true);
+    if (!gb->apu.global_enable) return;
     unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
         uint8_t nrx2 = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR12 : GB_IO_NR22];
         if (gb->apu.is_active[i] && gb->apu.square_channels[i].volume_countdown == 0) {
@@ -591,15 +605,26 @@ static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
     }
 }
 
-void GB_apu_run(GB_gameboy_t *gb)
+void GB_apu_run(GB_gameboy_t *gb, bool force)
 {
+    uint32_t clock_rate = GB_get_clock_rate(gb) * 2;
+    if (!force ||
+        (gb->apu.apu_cycles > 0x1000) ||
+        (gb->apu_output.sample_cycles >= clock_rate) ||
+        (gb->apu.square_sweep_calculate_countdown || gb->apu.channel_1_restart_hold) ||
+        (gb->model <= GB_MODEL_CGB_E && (gb->apu.wave_channel.bugged_read_countdown || (gb->apu.wave_channel.enable && gb->apu.wave_channel.pulsed)))) {
+        force = true;
+    }
+    if (!force) {
+        return;
+    }
     /* Convert 4MHZ to 2MHz. apu_cycles is always divisable by 4. */
-    uint8_t cycles = gb->apu.apu_cycles >> 2;
+    uint16_t cycles = gb->apu.apu_cycles >> 2;
     gb->apu.apu_cycles = 0;
     if (!cycles) return;
     
     if (unlikely(gb->apu.wave_channel.bugged_read_countdown)) {
-        uint8_t cycles_left = cycles;
+        uint16_t cycles_left = cycles;
         while (cycles_left) {
             cycles_left--;
             if (--gb->apu.wave_channel.bugged_read_countdown == 0) {
@@ -627,7 +652,7 @@ void GB_apu_run(GB_gameboy_t *gb)
                 /* Split it into two */
                 cycles -= gb->apu.noise_channel.dmg_delayed_start;
                 gb->apu.apu_cycles = gb->apu.noise_channel.dmg_delayed_start * 4;
-                GB_apu_run(gb);
+                GB_apu_run(gb, true);
             }
         }
         /* To align the square signal to 1MHz */
@@ -669,7 +694,7 @@ void GB_apu_run(GB_gameboy_t *gb)
 
         unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
             if (gb->apu.is_active[i]) {
-                uint8_t cycles_left = cycles;
+                uint16_t cycles_left = cycles;
                 while (unlikely(cycles_left > gb->apu.square_channels[i].sample_countdown)) {
                     cycles_left -= gb->apu.square_channels[i].sample_countdown + 1;
                     gb->apu.square_channels[i].sample_countdown = (gb->apu.square_channels[i].sample_length ^ 0x7FF) * 2 + 1;
@@ -690,7 +715,7 @@ void GB_apu_run(GB_gameboy_t *gb)
 
         gb->apu.wave_channel.wave_form_just_read = false;
         if (gb->apu.is_active[GB_WAVE]) {
-            uint8_t cycles_left = cycles;
+            uint16_t cycles_left = cycles;
             while (unlikely(cycles_left > gb->apu.wave_channel.sample_countdown)) {
                 cycles_left -= gb->apu.wave_channel.sample_countdown + 1;
                 gb->apu.wave_channel.sample_countdown = gb->apu.wave_channel.sample_length ^ 0x7FF;
@@ -706,8 +731,8 @@ void GB_apu_run(GB_gameboy_t *gb)
                 gb->apu.wave_channel.wave_form_just_read = false;
             }
         }
-        else if (gb->apu.wave_channel.enable && gb->apu.wave_channel.pulsed && gb->model < GB_MODEL_AGB) {
-            uint8_t cycles_left = cycles;
+        else if (gb->apu.wave_channel.enable && gb->apu.wave_channel.pulsed && gb->model <= GB_MODEL_CGB_E) {
+            uint16_t cycles_left = cycles;
             while (unlikely(cycles_left > gb->apu.wave_channel.sample_countdown)) {
                 cycles_left -= gb->apu.wave_channel.sample_countdown + 1;
                 gb->apu.wave_channel.sample_countdown = gb->apu.wave_channel.sample_length ^ 0x7FF;
@@ -729,13 +754,14 @@ void GB_apu_run(GB_gameboy_t *gb)
         
         // The noise channel can step even if inactive on the DMG
         if (gb->apu.is_active[GB_NOISE] || !GB_is_cgb(gb)) {
-            uint8_t cycles_left = cycles;
+            uint16_t cycles_left = cycles;
             unsigned divisor = (gb->io_registers[GB_IO_NR43] & 0x07) << 2;
             if (!divisor) divisor = 2;
             if (gb->apu.noise_channel.counter_countdown == 0) {
                 gb->apu.noise_channel.counter_countdown = divisor;
             }
-            while (unlikely(cycles_left >= gb->apu.noise_channel.counter_countdown)) {
+            // This while doesn't get an unlikely because the noise channel steps frequently enough
+            while (cycles_left >= gb->apu.noise_channel.counter_countdown) {
                 cycles_left -= gb->apu.noise_channel.counter_countdown;
                 gb->apu.noise_channel.counter_countdown = divisor + gb->apu.noise_channel.delta;
                 gb->apu.noise_channel.delta = 0;
@@ -765,8 +791,8 @@ void GB_apu_run(GB_gameboy_t *gb)
     if (gb->apu_output.sample_rate) {
         gb->apu_output.cycles_since_render += cycles;
 
-        if (gb->apu_output.sample_cycles >= gb->apu_output.cycles_per_sample) {
-            gb->apu_output.sample_cycles -= gb->apu_output.cycles_per_sample;
+        if (gb->apu_output.sample_cycles >= clock_rate) {
+            gb->apu_output.sample_cycles -= clock_rate;
             render(gb);
         }
     }
@@ -790,6 +816,7 @@ void GB_apu_init(GB_gameboy_t *gb)
 
 uint8_t GB_apu_read(GB_gameboy_t *gb, uint8_t reg)
 {
+    GB_apu_run(gb, true);
     if (reg == GB_IO_NR52) {
         uint8_t value = 0;
         for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
@@ -822,7 +849,7 @@ uint8_t GB_apu_read(GB_gameboy_t *gb, uint8_t reg)
         if (!GB_is_cgb(gb) && !gb->apu.wave_channel.wave_form_just_read) {
             return 0xFF;
         }
-        if (gb->model == GB_MODEL_AGB) {
+        if (gb->model > GB_MODEL_CGB_E) {
             return 0xFF;
         }
         reg = GB_IO_WAV_START + gb->apu.wave_channel.current_sample_index / 2;
@@ -879,7 +906,7 @@ static inline uint16_t effective_channel4_counter(GB_gameboy_t *gb)
         case GB_MODEL_SGB2:
         case GB_MODEL_SGB2_NO_SFC:
         case GB_MODEL_CGB_0:
-            // case GB_MODEL_CGB_A:
+        case GB_MODEL_CGB_A:
         case GB_MODEL_CGB_C:
             if (effective_counter & 8) {
                 effective_counter |= 0xE; // Sometimes F on some instances
@@ -937,7 +964,7 @@ static inline uint16_t effective_channel4_counter(GB_gameboy_t *gb)
                 effective_counter |= 0x10;
             }
             break;
-        case GB_MODEL_AGB:
+        case GB_MODEL_AGB_A:
             /* TODO: AGBs are not affected, but AGSes are. They don't seem to follow a simple
                pattern like the other revisions. */
             /* For the most part, AGS seems to do:
@@ -952,6 +979,7 @@ static inline uint16_t effective_channel4_counter(GB_gameboy_t *gb)
 
 void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
 {
+    GB_apu_run(gb, true);
     if (!gb->apu.global_enable && reg != GB_IO_NR52 && reg < GB_IO_WAV_START && (GB_is_cgb(gb) ||
                                                                                 (
                                                                                 reg != GB_IO_NR11 &&
@@ -964,7 +992,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
     }
 
     if (reg >= GB_IO_WAV_START && reg <= GB_IO_WAV_END && gb->apu.is_active[GB_WAVE]) {
-        if ((!GB_is_cgb(gb) && !gb->apu.wave_channel.wave_form_just_read) || gb->model == GB_MODEL_AGB) {
+        if ((!GB_is_cgb(gb) && !gb->apu.wave_channel.wave_form_just_read) || gb->model > GB_MODEL_CGB_E) {
             return;
         }
         reg = GB_IO_WAV_START + gb->apu.wave_channel.current_sample_index / 2;
@@ -979,7 +1007,9 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
             /* These registers affect the output of all 4 channels (but not the output of the PCM registers).*/
             /* We call update_samples with the current value so the APU output is updated with the new outputs */
             for (unsigned i = GB_N_CHANNELS; i--;) {
-                update_sample(gb, i, gb->apu.samples[i], 0);
+                int8_t sample = gb->apu.samples[i];
+                gb->apu.samples[i] = 0x10; // Invalidate to force update
+                update_sample(gb, i, sample, 0);
             }
             break;
         case GB_IO_NR52: {
@@ -1196,7 +1226,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 gb->apu.wave_channel.pulsed = false;
                 if (gb->apu.is_active[GB_WAVE]) {
                     // Todo: I assume this happens on pre-CGB models; test this with an audible test
-                    if (gb->apu.wave_channel.sample_countdown == 0 && gb->model < GB_MODEL_AGB) {
+                    if (gb->apu.wave_channel.sample_countdown == 0 && gb->model <= GB_MODEL_CGB_E) {
                         gb->apu.wave_channel.current_sample_byte = gb->io_registers[GB_IO_WAV_START + (gb->pc & 0xF)];
                     }
                     else if (gb->apu.wave_channel.wave_form_just_read && gb->model <= GB_MODEL_CGB_C) {
@@ -1462,8 +1492,6 @@ void GB_set_sample_rate(GB_gameboy_t *gb, unsigned sample_rate)
     if (sample_rate) {
         gb->apu_output.highpass_rate = pow(0.999958,  GB_get_clock_rate(gb) / (double)sample_rate);
     }
-    gb->apu_output.rate_set_in_clocks = false;
-    GB_apu_update_cycles_per_sample(gb);
 }
 
 void GB_set_sample_rate_by_clocks(GB_gameboy_t *gb, double cycles_per_sample)
@@ -1473,10 +1501,8 @@ void GB_set_sample_rate_by_clocks(GB_gameboy_t *gb, double cycles_per_sample)
         GB_set_sample_rate(gb, 0);
         return;
     }
-    gb->apu_output.cycles_per_sample = cycles_per_sample;
     gb->apu_output.sample_rate = GB_get_clock_rate(gb) / cycles_per_sample * 2;
     gb->apu_output.highpass_rate = pow(0.999958, cycles_per_sample);
-    gb->apu_output.rate_set_in_clocks = true;
 }
 
 void GB_apu_set_sample_callback(GB_gameboy_t *gb, GB_sample_callback_t callback)
@@ -1487,14 +1513,6 @@ void GB_apu_set_sample_callback(GB_gameboy_t *gb, GB_sample_callback_t callback)
 void GB_set_highpass_filter_mode(GB_gameboy_t *gb, GB_highpass_mode_t mode)
 {
     gb->apu_output.highpass_mode = mode;
-}
-
-void GB_apu_update_cycles_per_sample(GB_gameboy_t *gb)
-{
-    if (gb->apu_output.rate_set_in_clocks) return;
-    if (gb->apu_output.sample_rate) {
-        gb->apu_output.cycles_per_sample = 2 * GB_get_clock_rate(gb) / (double)gb->apu_output.sample_rate; /* 2 * because we use 8MHz units */
-    }
 }
 
 void GB_set_interference_volume(GB_gameboy_t *gb, double volume)

@@ -177,11 +177,12 @@ ifeq ($(PLATFORM),Darwin)
 LDFLAGS += -Wl,-exported_symbols_list,$(NULL)
 STRIP := strip -x
 endif
-ifneq ($(PLATFORM),windows32)
+ifeq ($(PLATFORM),windows32)
+LDFLAGS +=  -fuse-ld=lld
+endif
 LDFLAGS += -flto
 CFLAGS += -flto
 LDFLAGS += -Wno-lto-type-mismatch # For GCC's LTO
-endif
 
 else
 $(error Invalid value for CONF: $(CONF). Use "debug", "release" or "native_release")
@@ -199,7 +200,7 @@ endif
 
 cocoa: $(BIN)/SameBoy.app
 quicklook: $(BIN)/SameBoy.qlgenerator
-sdl: $(SDL_TARGET) $(BIN)/SDL/dmg_boot.bin $(BIN)/SDL/cgb0_boot.bin $(BIN)/SDL/cgb_boot.bin $(BIN)/SDL/agb_boot.bin $(BIN)/SDL/sgb_boot.bin $(BIN)/SDL/sgb2_boot.bin $(BIN)/SDL/LICENSE $(BIN)/SDL/registers.sym $(BIN)/SDL/background.bmp $(BIN)/SDL/Shaders
+sdl: $(SDL_TARGET) $(BIN)/SDL/dmg_boot.bin $(BIN)/SDL/mgb_boot.bin $(BIN)/SDL/cgb0_boot.bin $(BIN)/SDL/cgb_boot.bin $(BIN)/SDL/agb_boot.bin $(BIN)/SDL/sgb_boot.bin $(BIN)/SDL/sgb2_boot.bin $(BIN)/SDL/LICENSE $(BIN)/SDL/registers.sym $(BIN)/SDL/background.bmp $(BIN)/SDL/Shaders
 bootroms: $(BIN)/BootROMs/agb_boot.bin $(BIN)/BootROMs/cgb_boot.bin $(BIN)/BootROMs/cgb0_boot.bin $(BIN)/BootROMs/dmg_boot.bin $(BIN)/BootROMs/sgb_boot.bin $(BIN)/BootROMs/sgb2_boot.bin
 tester: $(TESTER_TARGET) $(BIN)/tester/dmg_boot.bin $(BIN)/tester/cgb_boot.bin $(BIN)/tester/agb_boot.bin $(BIN)/tester/sgb_boot.bin $(BIN)/tester/sgb2_boot.bin
 all: cocoa sdl tester libretro

@@ -7,13 +7,6 @@ Start:
 
 ; Clear memory VRAM
     call ClearMemoryPage8000
-    ld a, 2
-    ld c, $70
-    ld [c], a
-; Clear RAM Bank 2 (Like the original boot ROM)
-    ld h, $D0
-    call ClearMemoryPage
-    ld [c], a
 
 ; Clear OAM
     ld h, $fe
@@ -220,8 +213,11 @@ ENDC
 IF DEF(AGB)
     ld b, 1
 ENDC
+    jr BootGame
 
-; Will be filled with NOPs
+HDMAData:
+    db $D0, $00, $98, $A0, $12
+    db $D0, $00, $80, $00, $40
 
 SECTION "BootGame", ROM0[$fe]
 BootGame:
@@ -835,8 +831,6 @@ IF !DEF(FAST)
     res 2, b
 .redNotMaxed
 
-    ; add de, bc
-    ; ld [hli], de
     ld a, e
     add c
     ld [hli], a
@@ -854,11 +848,18 @@ IF !DEF(FAST)
     dec b
     jr nz, .fadeLoop
 ENDC
-    ld a, 1
+    ld a, 2
+    ldh [$70], a
+    ; Clear RAM Bank 2 (Like the original boot ROM)
+    ld hl, $D000
+    call ClearMemoryPage
+    inc a
     call ClearVRAMViaHDMA
     call _ClearVRAMViaHDMA
     call ClearVRAMViaHDMA ; A = $40, so it's bank 0
-    ld a, $ff
+    xor a
+    ldh [$70], a
+    cpl
     ldh [$00], a
 
     ; Final values for CGB mode
@@ -1070,6 +1071,7 @@ ClearVRAMViaHDMA:
     ldh [$4F], a
     ld hl, HDMAData
 _ClearVRAMViaHDMA:
+    call WaitFrame ; Wait for vblank
     ld c, $51
     ld b, 5
 .loop
@@ -1222,10 +1224,6 @@ LoadDMGTilemap:
 .tilemapDone
     pop af
     ret
-
-HDMAData:
-    db $88, $00, $98, $A0, $12
-    db $88, $00, $80, $00, $40
 
 BootEnd:
 IF BootEnd > $900

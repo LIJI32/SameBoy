@@ -57,7 +57,7 @@ typedef void (*GB_sample_callback_t)(GB_gameboy_t *gb, GB_sample_t *sample);
 typedef struct
 {
     bool global_enable;
-    uint8_t apu_cycles;
+    uint16_t apu_cycles;
 
     uint8_t samples[GB_N_CHANNELS];
     bool is_active[GB_N_CHANNELS];
@@ -143,8 +143,7 @@ typedef enum {
 typedef struct {
     unsigned sample_rate;
 
-    double sample_cycles; // In 8 MHz units
-    double cycles_per_sample;
+    unsigned sample_cycles; // Counts by sample_rate until it reaches the clock frequency
 
     // Samples are NOT normalized to MAX_CH_AMP * 4 at this stage!
     unsigned cycles_since_render;
@@ -159,7 +158,6 @@ typedef struct {
     
     GB_sample_callback_t sample_callback;
     
-    bool rate_set_in_clocks;
     double interference_volume;
     double interference_highpass;
 } GB_apu_output_t;
@@ -177,8 +175,7 @@ internal uint8_t GB_apu_read(GB_gameboy_t *gb, uint8_t reg);
 internal void GB_apu_div_event(GB_gameboy_t *gb);
 internal void GB_apu_div_secondary_event(GB_gameboy_t *gb);
 internal void GB_apu_init(GB_gameboy_t *gb);
-internal void GB_apu_run(GB_gameboy_t *gb);
-internal void GB_apu_update_cycles_per_sample(GB_gameboy_t *gb);
+internal void GB_apu_run(GB_gameboy_t *gb, bool force);
 #endif
 
 #endif /* apu_h */

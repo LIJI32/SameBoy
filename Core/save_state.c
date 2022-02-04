@@ -318,11 +318,12 @@ static bool verify_and_update_state_compatibility(GB_gameboy_t *gb, GB_gameboy_t
         case GB_MODEL_SGB2: return true;
         case GB_MODEL_SGB2_NO_SFC: return true;
         case GB_MODEL_CGB_0: return true;
+        case GB_MODEL_CGB_A: return true;
         case GB_MODEL_CGB_B: return true;
         case GB_MODEL_CGB_C: return true;
         case GB_MODEL_CGB_D: return true;
         case GB_MODEL_CGB_E: return true;
-        case GB_MODEL_AGB: return true;
+        case GB_MODEL_AGB_A: return true;
     }
     if ((gb->model & GB_MODEL_FAMILY_MASK) == (save->model & GB_MODEL_FAMILY_MASK)) {
         save->model = gb->model;
@@ -383,6 +384,7 @@ static void sanitize_state(GB_gameboy_t *gb)
         }
         gb->sgb->current_player &= gb->sgb->player_count - 1;
     }
+    GB_update_clock_rate(gb);
 }
 
 static bool dump_section(virtual_file_t *file, const void *src, uint32_t size)
@@ -569,11 +571,12 @@ static int save_state_internal(GB_gameboy_t *gb, virtual_file_t *file, bool appe
             bess_core.full_model = BE32('S2  '); break;
  
         case GB_MODEL_CGB_0: bess_core.full_model = BE32('CC0 '); break;
+        case GB_MODEL_CGB_A: bess_core.full_model = BE32('CCA '); break;
         case GB_MODEL_CGB_B: bess_core.full_model = BE32('CCB '); break;
         case GB_MODEL_CGB_C: bess_core.full_model = BE32('CCC '); break;
         case GB_MODEL_CGB_D: bess_core.full_model = BE32('CCD '); break;
         case GB_MODEL_CGB_E: bess_core.full_model = BE32('CCE '); break;
-        case GB_MODEL_AGB: bess_core.full_model = BE32('CA  '); break; // SameBoy doesn't emulate a specific AGB revision yet
+        case GB_MODEL_AGB_A: bess_core.full_model = BE32('CAA '); break;
     }
     
     bess_core.pc = LE16(gb->pc);

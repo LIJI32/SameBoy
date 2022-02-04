@@ -22,7 +22,7 @@
         case 1:
             r = 1 - t;
             g = 1;
-            b = 0;
+            break;
         case 2:
             g = 1;
             b = t;

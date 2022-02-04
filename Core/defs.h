@@ -17,6 +17,9 @@
 #define unrolled
 #endif
 
+#define unreachable() __builtin_unreachable();
+#define nodefault default: unreachable()
+
 #ifdef GB_BIG_ENDIAN
 #define LE16(x) __builtin_bswap16(x)
 #define LE32(x) __builtin_bswap32(x)
