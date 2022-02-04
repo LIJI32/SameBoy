@@ -141,15 +141,15 @@ void update_viewport(void)
     int logical_width, logical_height;
     SDL_GetWindowSize(window, &logical_width, &logical_height);
     factor = win_width / logical_width;
-    
+
     double x_factor = win_width / (double) GB_get_screen_width(&gb);
     double y_factor = win_height / (double) GB_get_screen_height(&gb);
-    
+
     if (configuration.scaling_mode == GB_SDL_SCALING_INTEGER_FACTOR) {
         x_factor = (unsigned)(x_factor);
         y_factor = (unsigned)(y_factor);
     }
-    
+
     if (configuration.scaling_mode != GB_SDL_SCALING_ENTIRE_WINDOW) {
         if (x_factor > y_factor) {
             x_factor = y_factor;
@@ -158,13 +158,13 @@ void update_viewport(void)
             y_factor = x_factor;
         }
     }
-    
+
     unsigned new_width = x_factor * GB_get_screen_width(&gb);
     unsigned new_height = y_factor * GB_get_screen_height(&gb);
-    
+
     rect = (SDL_Rect){(win_width  - new_width) / 2, (win_height - new_height) /2,
         new_width, new_height};
-    
+
     if (renderer) {
         SDL_RenderSetViewport(renderer, &rect);
     }
@@ -183,9 +183,9 @@ static void draw_char(uint32_t *buffer, unsigned width, unsigned height, unsigne
     if (ch < ' ' || ch > font_max) {
         ch = '?';
     }
-    
+
     uint8_t *data = &font[(ch - ' ') * GLYPH_WIDTH * GLYPH_HEIGHT];
-    
+
     for (unsigned y = GLYPH_HEIGHT; y--;) {
         for (unsigned x = GLYPH_WIDTH; x--;) {
             if (*(data++) && buffer >= mask_top && buffer < mask_bottom) {
@@ -212,11 +212,11 @@ static void draw_unbordered_text(uint32_t *buffer, unsigned width, unsigned heig
             string++;
             continue;
         }
-        
+
         if (x > width - GLYPH_WIDTH) {
             break;
         }
-        
+
         draw_char(&buffer[(signed)(x + width * y)], width, height, *string, color, &buffer[width * y_offset], &buffer[width * (is_osd? GB_get_screen_height(&gb) : y_offset + 144)]);
         x += GLYPH_WIDTH;
         string++;
@@ -268,7 +268,7 @@ static void draw_text_centered(uint32_t *buffer, unsigned width, unsigned height
             draw_text(buffer, width, height, x - GLYPH_WIDTH, y, LEFT_ARROW_STRING, color, border, false);
             draw_text(buffer, width, height, width - x, y, RIGHT_ARROW_STRING, color, border, false);
             break;
-            
+
         case DECORATION_NONE:
             break;
     }
@@ -367,9 +367,15 @@ static void return_to_root_menu(unsigned index)
     recalculate_menu_height();
 }
 
+void return_to_root_menu_joybutton(){
+
+    return_to_root_menu(0);
+
+}
+
 static void cycle_model(unsigned index)
 {
-    
+
     configuration.model++;
     if (configuration.model == MODEL_MAX) {
         configuration.model = 0;
@@ -394,7 +400,7 @@ const char *current_model_string(unsigned index)
 
 static void cycle_sgb_revision(unsigned index)
 {
-    
+
     configuration.sgb_revision++;
     if (configuration.sgb_revision == SGB_MAX) {
         configuration.sgb_revision = 0;
@@ -727,13 +733,13 @@ static void cycle_filter(unsigned index)
             break;
         }
     }
-    
+
 
     i += 1;
     if (i >= sizeof(shaders) / sizeof(shaders[0])) {
         i -= sizeof(shaders) / sizeof(shaders[0]);
     }
-    
+
     strcpy(configuration.filter, shaders[i].file_name);
     free_shader(&shader);
     if (!init_shader_with_name(&shader, configuration.filter)) {
@@ -750,12 +756,12 @@ static void cycle_filter_backwards(unsigned index)
             break;
         }
     }
-    
+
     i -= 1;
     if (i >= sizeof(shaders) / sizeof(shaders[0])) {
         i = sizeof(shaders) / sizeof(shaders[0]) - 1;
     }
-    
+
     strcpy(configuration.filter, shaders[i].file_name);
     free_shader(&shader);
     if (!init_shader_with_name(&shader, configuration.filter)) {
@@ -772,11 +778,11 @@ static const char *current_filter_name(unsigned index)
             break;
         }
     }
-    
+
     if (i == sizeof(shaders) / sizeof(shaders[0])) {
         i = 0;
     }
-    
+
     return shaders[i].display_name;
 }
 
@@ -979,7 +985,7 @@ const char *current_joypad_name(unsigned index)
     const char *orig_name = joystick? SDL_JoystickName(joystick) : NULL;
     if (!orig_name) return "Not Found";
     unsigned i = 0;
-    
+
     // SDL returns a name with repeated and trailing spaces
     while (*orig_name && i < sizeof(name) - 2) {
         if (orig_name[0] != ' ' || orig_name[1] != ' ') {
@@ -991,7 +997,7 @@ const char *current_joypad_name(unsigned index)
         i--;
     }
     name[i] = 0;
-    
+
     return name;
 }
 
@@ -1001,12 +1007,12 @@ static void cycle_joypads(unsigned index)
     if (joypad_index >= SDL_NumJoysticks()) {
         joypad_index = 0;
     }
-    
+
     if (haptic) {
         SDL_HapticClose(haptic);
         haptic = NULL;
     }
-    
+
     if (controller) {
         SDL_GameControllerClose(controller);
         controller = NULL;
@@ -1031,12 +1037,12 @@ static void cycle_joypads_backwards(unsigned index)
     if (joypad_index >= SDL_NumJoysticks()) {
         joypad_index = SDL_NumJoysticks() - 1;
     }
-    
+
     if (haptic) {
         SDL_HapticClose(haptic);
         haptic = NULL;
     }
-    
+
     if (controller) {
         SDL_GameControllerClose(controller);
         controller = NULL;
@@ -1155,22 +1161,22 @@ void run_gui(bool is_running)
 {
     SDL_ShowCursor(SDL_ENABLE);
     connect_joypad();
-    
+
     /* Draw the background screen */
     static SDL_Surface *converted_background = NULL;
     if (!converted_background) {
         SDL_Surface *background = SDL_LoadBMP(resource_path("background.bmp"));
-        
+
         /* Create a blank background if background.bmp could not be loaded */
         if (!background) {
             background = SDL_CreateRGBSurface(0, 160, 144, 8, 0, 0, 0, 0);
         }
-        
+
         SDL_SetPaletteColors(background->format->palette, gui_palette, 0, 4);
         converted_background = SDL_ConvertSurface(background, pixel_format, 0);
         SDL_LockSurface(converted_background);
         SDL_FreeSurface(background);
-        
+
         for (unsigned i = 4; i--; ) {
             gui_palette_native[i] = SDL_MapRGB(pixel_format, gui_palette[i].r, gui_palette[i].g, gui_palette[i].b);
         }
@@ -1181,13 +1187,13 @@ void run_gui(bool is_running)
     unsigned x_offset = (width - 160) / 2;
     unsigned y_offset = (height - 144) / 2;
     uint32_t pixels[width * height];
-    
+
     if (width != 160 || height != 144) {
         for (unsigned i = 0; i < width * height; i++) {
             pixels[i] = gui_palette_native[0];
         }
     }
-    
+
     SDL_Event event = {0,};
     gui_state = is_running? SHOWING_MENU : SHOWING_DROP_MESSAGE;
     bool should_render = true;
@@ -1214,17 +1220,17 @@ void run_gui(bool is_running)
                     else if (gui_state == SHOWING_MENU) {
                         signed x = (event.button.x - rect.x / factor) * width / (rect.w / factor) - x_offset;
                         signed y = (event.button.y - rect.y / factor) * height / (rect.h / factor) - y_offset;
-                        
+
                         if (strcmp("CRT", configuration.filter) == 0) {
                             y = y * 8 / 7;
                             y -= 144 / 16;
                         }
                         y += scroll;
-                        
+
                         if (x < 0 || x >= 160 || y < 24) {
                             continue;
                         }
-                        
+
                         unsigned item_y = 24;
                         unsigned index = 0;
                         for (const struct menu_item *item = current_menu; item->string; item++, index++) {
@@ -1241,9 +1247,9 @@ void run_gui(bool is_running)
                                 item_y += 24;
                             }
                         }
-                        
+
                         if (!current_menu[index].string) continue;
-                        
+
                         current_selection = index;
                         event.type = SDL_KEYDOWN;
                         if (current_menu[index].backwards_handler) {
@@ -1261,7 +1267,7 @@ void run_gui(bool is_running)
                     if (button == JOYPAD_BUTTON_A) {
                         event.key.keysym.scancode = SDL_SCANCODE_RETURN;
                     }
-                    else if (button == JOYPAD_BUTTON_MENU) {
+                    else if (button == JOYPAD_BUTTON_MENU || button == JOYPAD_BUTTON_B) {
                         event.key.keysym.scancode = SDL_SCANCODE_ESCAPE;
                     }
                     else if (button == JOYPAD_BUTTON_UP) event.key.keysym.scancode = SDL_SCANCODE_UP;
@@ -1287,7 +1293,7 @@ void run_gui(bool is_running)
                     }
                     break;
                }
-                    
+
                 case SDL_JOYAXISMOTION: {
                     static bool axis_active[2] = {false, false};
                     joypad_axis_t axis = get_joypad_axis(event.jaxis.axis);
@@ -1301,7 +1307,7 @@ void run_gui(bool is_running)
                             axis_active[0] = true;
                             event.type = SDL_KEYDOWN;
                             event.key.keysym.scancode = SDL_SCANCODE_LEFT;
-                            
+
                         }
                         else if (axis_active[0] && event.jaxis.value < JOYSTICK_LOW && event.jaxis.value > -JOYSTICK_LOW) {
                             axis_active[0] = false;
@@ -1334,7 +1340,7 @@ void run_gui(bool is_running)
                     pending_command = GB_SDL_QUIT_COMMAND;
                     return;
                 }
-                
+
             }
             case SDL_WINDOWEVENT: {
                 if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
@@ -1368,7 +1374,7 @@ void run_gui(bool is_running)
                 }
                 break;
             }
-                
+
             case SDL_JOYAXISMOTION: {
                 if (gui_state == WAITING_FOR_JBUTTON &&
                     joypad_configuration_progress == JOYPAD_BUTTONS_MAX &&
@@ -1385,14 +1391,14 @@ void run_gui(bool is_running)
                             configuration.joypad_axises[JOYPAD_AXISES_Y] = joypad_axis_temp;
                             configuration.joypad_axises[JOYPAD_AXISES_X] = event.jaxis.axis;
                         }
-                        
+
                         gui_state = SHOWING_MENU;
                         should_render = true;
                     }
                 }
                 break;
             }
-                
+
             case SDL_MOUSEWHEEL: {
                 if (menu_height > 144) {
                     scroll -= event.wheel.y;
@@ -1408,7 +1414,7 @@ void run_gui(bool is_running)
                 }
                 break;
             }
-                
+
 
             case SDL_KEYDOWN:
                 if (gui_state == WAITING_FOR_KEY) {
@@ -1450,7 +1456,7 @@ void run_gui(bool is_running)
                         configuration.joypad_axises[1] = -1;
                     }
                     joypad_configuration_progress++;
-                    
+
                     if (joypad_configuration_progress > JOYPAD_BUTTONS_MAX) {
                         gui_state = SHOWING_MENU;
                     }
@@ -1525,7 +1531,7 @@ void run_gui(bool is_running)
                 }
                 break;
         }
-        
+
         if (should_render) {
             should_render = false;
             rerender:
@@ -1537,7 +1543,7 @@ void run_gui(bool is_running)
                     memcpy(pixels + x_offset + width * (y + y_offset), ((uint32_t *)converted_background->pixels) + 160 * y, 160 * 4);
                 }
             }
-            
+
             switch (gui_state) {
                 case SHOWING_DROP_MESSAGE:
                     draw_text_centered(pixels, width, height, 8 + y_offset, "Press ESC for menu", gui_palette_native[3], gui_palette_native[0], false);
@@ -1572,7 +1578,7 @@ void run_gui(bool is_running)
                             draw_text_centered(pixels, width, height, y + y_offset, line, gui_palette_native[3], gui_palette_native[0],
                                                i == current_selection ? DECORATION_SELECTION : DECORATION_NONE);
                             y += 12;
-                            
+
                         }
                         else {
                             draw_text_centered(pixels, width, height, y + y_offset, item->string, gui_palette_native[3], gui_palette_native[0],
@@ -1608,7 +1614,7 @@ void run_gui(bool is_running)
                             else {
                                 pixel[0] = pixel[1]= gui_palette_native[1];
                             }
-                            
+
                         }
                     }
                     break;
@@ -1643,7 +1649,7 @@ void run_gui(bool is_running)
                     draw_text_centered(pixels, width, height, 104 + y_offset, "Press Enter to skip", gui_palette_native[3], gui_palette_native[0], DECORATION_NONE);
                     break;
             }
-            
+
             render_texture(pixels, NULL);
 #ifdef _WIN32
             /* Required for some Windows 10 machines, god knows why */
