@@ -267,9 +267,6 @@ static void handle_events(GB_gameboy_t *gb)
                 else if (button == JOYPAD_BUTTON_MENU && event.type == SDL_JOYBUTTONDOWN) {
                     open_menu();
                 }
-                else if (button == JOYPAD_BUTTON_B && event.type == SDL_JOYBUTTONDOWN){
-                    return_to_root_menu();
-                }
             }
                 break;
 

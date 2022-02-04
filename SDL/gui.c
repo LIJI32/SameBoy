@@ -367,12 +367,6 @@ static void return_to_root_menu(unsigned index)
     recalculate_menu_height();
 }
 
-void return_to_root_menu_joybutton(){
-
-    return_to_root_menu(0);
-
-}
-
 static void cycle_model(unsigned index)
 {
 
