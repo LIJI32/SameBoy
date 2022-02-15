@@ -165,7 +165,7 @@ static void command_ready(GB_gameboy_t *gb)
             return;
         }
         memcpy(&gb->sgb->received_header[index * 14], &gb->sgb->command[2], 14);
-        if (gb->sgb->command[0] == 0xfb) {
+        if (gb->sgb->command[0] == 0xFB) {
             if (gb->sgb->received_header[0x42] != 3 || gb->sgb->received_header[0x47] != 0x33) {
                 gb->sgb->disable_commands = true;
                 for (unsigned i = 0; i < sizeof(palette_assignments) / sizeof(palette_assignments[0]); i++) {

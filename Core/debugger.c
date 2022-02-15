@@ -1752,7 +1752,7 @@ static bool apu(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugg
     }
 
     GB_log(gb, "SO1 (left output):  volume %u,", gb->io_registers[GB_IO_NR50] & 0x07);
-    if (gb->io_registers[GB_IO_NR51] & 0x0f) {
+    if (gb->io_registers[GB_IO_NR51] & 0x0F) {
         for (uint8_t channel = 0, mask = 0x01; channel < GB_N_CHANNELS; channel++, mask <<= 1) {
             if (gb->io_registers[GB_IO_NR51] & mask) {
                 GB_log(gb, " CH%u", channel + 1);
@@ -1765,7 +1765,7 @@ static bool apu(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugg
     GB_log(gb, "%s\n", gb->io_registers[GB_IO_NR50] & 0x80 ? " VIN": "");
 
     GB_log(gb, "SO2 (right output): volume %u,", gb->io_registers[GB_IO_NR50] & 0x70 >> 4);
-    if (gb->io_registers[GB_IO_NR51] & 0xf0) {
+    if (gb->io_registers[GB_IO_NR51] & 0xF0) {
         for (uint8_t channel = 0, mask = 0x10; channel < GB_N_CHANNELS; channel++, mask <<= 1) {
             if (gb->io_registers[GB_IO_NR51] & mask) {
                 GB_log(gb, " CH%u", channel + 1);
@@ -1833,7 +1833,7 @@ static bool apu(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugg
            gb->apu.wave_channel.shift);
 
     GB_log(gb, "    Current sample length: %u APU ticks (next in %u ticks)\n",
-        gb->apu.wave_channel.sample_length ^ 0x7ff,
+        gb->apu.wave_channel.sample_length ^ 0x7FF,
         gb->apu.wave_channel.sample_countdown);
 
     if (gb->apu.wave_channel.length_enabled) {
@@ -1901,9 +1901,9 @@ static bool wave(GB_gameboy_t *gb, char *arguments, char *modifiers, const debug
                 break;
         }
     }
-    mask = (0xf << (shift_amount - 1)) & 0xf;
+    mask = (0xF << (shift_amount - 1)) & 0xF;
 
-    for (int8_t cur_val = 0xf & mask; cur_val >= 0; cur_val -= shift_amount) {
+    for (int8_t cur_val = 0xF & mask; cur_val >= 0; cur_val -= shift_amount) {
         for (uint8_t i = 0; i < 32; i++) {
             uint8_t sample = i & 1?
             (gb->io_registers[GB_IO_WAV_START + i / 2] & 0xF) :

@@ -544,7 +544,7 @@ static int save_state_internal(GB_gameboy_t *gb, virtual_file_t *file, bool appe
         goto error;
     }
     
-    if (file->write(file, gb->rom + 0x14e, 2) != 2) {
+    if (file->write(file, gb->rom + 0x14E, 2) != 2) {
         goto error;
     }
     

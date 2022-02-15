@@ -794,7 +794,7 @@ mainloop(char *(*completer)(const char *substring, uintptr_t *context))
                         move_word(true);
                         complete_context = completion_length = 0;
                         break;
-                    case MOD_ALT(0x7f): // ALT+Backspace
+                    case MOD_ALT(0x7F): // ALT+Backspace
                         delete_word(false);
                         complete_context = completion_length = 0;
                         break;

@@ -129,9 +129,9 @@ void GB_update_mbc_mappings(GB_gameboy_t *gb)
 void GB_configure_cart(GB_gameboy_t *gb)
 {
     gb->cartridge_type = &GB_cart_defs[gb->rom[0x147]];
-    if (gb->rom[0x147] == 0xbc &&
-        gb->rom[0x149] == 0xc1 &&
-        gb->rom[0x14a] == 0x65) {
+    if (gb->rom[0x147] == 0xBC &&
+        gb->rom[0x149] == 0xC1 &&
+        gb->rom[0x14A] == 0x65) {
         static const GB_cartridge_t tpp1 = {GB_TPP1, GB_STANDARD_MBC, true, true, true, true};
         gb->cartridge_type = &tpp1;
         gb->tpp1.rom_bank = 1;

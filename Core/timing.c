@@ -116,7 +116,7 @@ static void ir_run(GB_gameboy_t *gb, uint32_t cycles)
 {
     /* TODO: the way this thing works makes the CGB IR port behave inaccurately when used together with HUC1/3 IR ports*/
     if ((gb->model > GB_MODEL_CGB_E || !gb->cgb_mode) && gb->cartridge_type->mbc_type != GB_HUC1 && gb->cartridge_type->mbc_type != GB_HUC3) return;
-    bool is_sensing = (gb->io_registers[GB_IO_RP] & 0xc0) == 0xc0 ||
+    bool is_sensing = (gb->io_registers[GB_IO_RP] & 0xC0) == 0xC0 ||
                        (gb->cartridge_type->mbc_type == GB_HUC1 && gb->huc1.ir_mode) ||
                        (gb->cartridge_type->mbc_type == GB_HUC3 && gb->huc3.mode == 0xE);
     if (is_sensing && (gb->infrared_input || gb->cart_ir || (gb->io_registers[GB_IO_RP] & 1))) {

@@ -2,7 +2,7 @@
 
 static inline double scale_channel(uint8_t x)
 {
-    x &= 0x1f;
+    x &= 0x1F;
     return x / 31.0;
 }
 

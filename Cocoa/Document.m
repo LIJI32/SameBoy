@@ -1795,7 +1795,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
         uint8_t *vram = GB_get_direct_access(&gb, GB_DIRECT_ACCESS_VRAM, NULL, NULL);
         
         if (map_type == GB_MAP_9C00 || (map_type == GB_MAP_AUTO && lcdc & 0x08)) {
-            map_base = 0x1c00;
+            map_base = 0x1C00;
         }
         
         if (tileset_type == GB_TILESET_AUTO) {
@@ -1870,9 +1870,9 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
                                         height:oamHeight
                                          scale:16.0/oamHeight];
             case 1:
-                return @((unsigned)oamInfo[row].x - 8);
+                return @((signed)((unsigned)oamInfo[row].x - 8));
             case 2:
-                return @((unsigned)oamInfo[row].y - 16);
+                return @((signed)((unsigned)oamInfo[row].y - 16));
             case 3:
                 return [NSString stringWithFormat:@"$%02x", oamInfo[row].tile];
             case 4:

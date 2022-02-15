@@ -161,7 +161,7 @@ enum {
 
     /* Missing */
 
-    GB_IO_IF         = 0x0f, // Interrupt Flag (R/W)
+    GB_IO_IF         = 0x0F, // Interrupt Flag (R/W)
 
     /* Sound */
     GB_IO_NR10       = 0x10, // Channel 1 Sweep register (R/W)
@@ -174,11 +174,11 @@ enum {
     GB_IO_NR22       = 0x17, // Channel 2 Volume Envelope (R/W)
     GB_IO_NR23       = 0x18, // Channel 2 Frequency lo data (W)
     GB_IO_NR24       = 0x19, // Channel 2 Frequency hi data (R/W)
-    GB_IO_NR30       = 0x1a, // Channel 3 Sound on/off (R/W)
-    GB_IO_NR31       = 0x1b, // Channel 3 Sound Length
-    GB_IO_NR32       = 0x1c, // Channel 3 Select output level (R/W)
-    GB_IO_NR33       = 0x1d, // Channel 3 Frequency's lower data (W)
-    GB_IO_NR34       = 0x1e, // Channel 3 Frequency's higher data (R/W)
+    GB_IO_NR30       = 0x1A, // Channel 3 Sound on/off (R/W)
+    GB_IO_NR31       = 0x1B, // Channel 3 Sound Length
+    GB_IO_NR32       = 0x1C, // Channel 3 Select output level (R/W)
+    GB_IO_NR33       = 0x1D, // Channel 3 Frequency's lower data (W)
+    GB_IO_NR34       = 0x1E, // Channel 3 Frequency's higher data (R/W)
     /* NR40 does not exist */
     GB_IO_NR41       = 0x20, // Channel 4 Sound Length (R/W)
     GB_IO_NR42       = 0x21, // Channel 4 Volume Envelope (R/W)
@@ -191,7 +191,7 @@ enum {
     /* Missing */
 
     GB_IO_WAV_START  = 0x30, // Wave pattern start
-    GB_IO_WAV_END    = 0x3f, // Wave pattern end
+    GB_IO_WAV_END    = 0x3F, // Wave pattern end
 
     /* Graphics */
     GB_IO_LCDC       = 0x40, // LCD Control (R/W)
@@ -204,17 +204,17 @@ enum {
     GB_IO_BGP        = 0x47, // BG Palette Data (R/W) - Non CGB Mode Only
     GB_IO_OBP0       = 0x48, // Object Palette 0 Data (R/W) - Non CGB Mode Only
     GB_IO_OBP1       = 0x49, // Object Palette 1 Data (R/W) - Non CGB Mode Only
-    GB_IO_WY         = 0x4a, // Window Y Position (R/W)
-    GB_IO_WX         = 0x4b, // Window X Position minus 7 (R/W)
+    GB_IO_WY         = 0x4A, // Window Y Position (R/W)
+    GB_IO_WX         = 0x4B, // Window X Position minus 7 (R/W)
     // Controls DMG mode and PGB mode
-    GB_IO_KEY0 = 0x4c,
+    GB_IO_KEY0 = 0x4C,
 
     /* General CGB features */
-    GB_IO_KEY1       = 0x4d, // CGB Mode Only - Prepare Speed Switch
+    GB_IO_KEY1       = 0x4D, // CGB Mode Only - Prepare Speed Switch
 
     /* Missing */
 
-    GB_IO_VBK        = 0x4f, // CGB Mode Only - VRAM Bank
+    GB_IO_VBK        = 0x4F, // CGB Mode Only - VRAM Bank
     GB_IO_BANK       = 0x50, // Write to disable the BIOS mapping
 
     /* CGB DMA */
@@ -229,16 +229,17 @@ enum {
 
     /* Missing */
 
-    /* CGB Paletts */
+    /* CGB Palettes */
     GB_IO_BGPI       = 0x68, // CGB Mode Only - Background Palette Index
     GB_IO_BGPD       = 0x69, // CGB Mode Only - Background Palette Data
-    GB_IO_OBPI       = 0x6a, // CGB Mode Only - Object Palette Index
-    GB_IO_OBPD       = 0x6b, // CGB Mode Only - Object Palette Data
-    GB_IO_OPRI       = 0x6c, // Affects object priority (X based or index based)
+    GB_IO_OBPI       = 0x6A, // CGB Mode Only - Object Palette Index
+    GB_IO_OBPD       = 0x6B, // CGB Mode Only - Object Palette Data
+    GB_IO_OPRI       = 0x6C, // Affects object priority (X based or index based)
 
     /* Missing */
 
     GB_IO_SVBK       = 0x70, // CGB Mode Only - WRAM Bank
+    GB_IO_PSM        = 0x71, // Palette Selection Mode, controls the PSW and key combo
     GB_IO_PSWX       = 0x72, // X position of the palette switching window
     GB_IO_PSWY       = 0x73, // Y position of the palette switching window
     GB_IO_PSW        = 0x74, // Key combo to trigger the palette switching window
@@ -410,7 +411,7 @@ struct GB_gameboy_internal_s {
         /* Misc state */
         bool infrared_input;
         GB_printer_t printer;
-        uint8_t extra_oam[0xff00 - 0xfea0];
+        uint8_t extra_oam[0xFF00 - 0xFEA0];
         uint32_t ram_size; // Different between CGB and DMG
         GB_workboy_t workboy;
                
@@ -597,7 +598,12 @@ struct GB_gameboy_internal_s {
         uint8_t objects_x[10];
         uint8_t objects_y[10];
         uint8_t object_tile_data[2];
-        uint8_t object_flags;
+        uint8_t mode2_y_bus;
+        // They're the same bus
+        union {
+            uint8_t mode2_x_bus;
+            uint8_t object_flags;
+        };
         uint8_t n_visible_objs;
         uint8_t oam_search_index;
         uint8_t accessed_oam_row;

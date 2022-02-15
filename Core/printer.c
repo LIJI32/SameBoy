@@ -22,8 +22,8 @@ static void handle_command(GB_gameboy_t *gb)
                 gb->printer.status = 6; /* Printing */
                 uint32_t image[gb->printer.image_offset];
                 uint8_t palette = gb->printer.command_data[2];
-                uint32_t colors[4] = {gb->rgb_encode_callback(gb, 0xff, 0xff, 0xff),
-                                      gb->rgb_encode_callback(gb, 0xaa, 0xaa, 0xaa),
+                uint32_t colors[4] = {gb->rgb_encode_callback(gb, 0xFF, 0xFF, 0xFF),
+                                      gb->rgb_encode_callback(gb, 0xAA, 0xAA, 0xAA),
                                       gb->rgb_encode_callback(gb, 0x55, 0x55, 0x55),
                                       gb->rgb_encode_callback(gb, 0x00, 0x00, 0x00)};
                 for (unsigned i = 0; i < gb->printer.image_offset; i++) {

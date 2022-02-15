@@ -519,7 +519,7 @@ static void ld_da8_a(GB_gameboy_t *gb, uint8_t opcode, uint16_t *pc)
 {
     (*pc)++;
     uint8_t addr = GB_read_memory(gb, (*pc)++);
-    const char *symbol = GB_debugger_name_for_address(gb, 0xff00 + addr);
+    const char *symbol = GB_debugger_name_for_address(gb, 0xFF00 + addr);
     if (symbol) {
         GB_log(gb, "LDH [%s & $FF], a ; =$%02x\n", symbol, addr);
     }
@@ -532,7 +532,7 @@ static void ld_a_da8(GB_gameboy_t *gb, uint8_t opcode, uint16_t *pc)
 {
     (*pc)++;
     uint8_t addr = GB_read_memory(gb, (*pc)++);
-    const char *symbol = GB_debugger_name_for_address(gb, 0xff00 + addr);
+    const char *symbol = GB_debugger_name_for_address(gb, 0xFF00 + addr);
     if (symbol) {
         GB_log(gb, "LDH a, [%s & $FF] ; =$%02x\n", symbol, addr);
     }

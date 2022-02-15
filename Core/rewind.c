@@ -17,7 +17,7 @@ static uint8_t *state_compress(const uint8_t *prev, const uint8_t *data, size_t 
     
     while (uncompressed_size) {
         if (prev_mode) {
-            if (*data == *prev && COUNTER != 0xffff) {
+            if (*data == *prev && COUNTER != 0xFFFF) {
                 COUNTER++;
                 data++;
                 prev++;
@@ -35,7 +35,7 @@ static uint8_t *state_compress(const uint8_t *prev, const uint8_t *data, size_t 
             }
         }
         else {
-            if (*data != *prev && COUNTER != 0xffff) {
+            if (*data != *prev && COUNTER != 0xFFFF) {
                 COUNTER++;
                 DATA = *data;
                 data_pos++;

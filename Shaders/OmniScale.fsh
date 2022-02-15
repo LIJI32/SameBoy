@@ -63,28 +63,28 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
     if (is_different(w7, w4)) pattern |= 1 << 6;
     if (is_different(w8, w4)) pattern |= 1 << 7;
 
-    if ((P(0xbf,0x37) || P(0xdb,0x13)) && is_different(w1, w5)) {
+    if ((P(0xBF,0x37) || P(0xDB,0x13)) && is_different(w1, w5)) {
         return mix(w4, w3, 0.5 - p.x);
     }
-    if ((P(0xdb,0x49) || P(0xef,0x6d)) && is_different(w7, w3)) {
+    if ((P(0xDB,0x49) || P(0xEF,0x6D)) && is_different(w7, w3)) {
         return mix(w4, w1, 0.5 - p.y);
     }
-    if ((P(0x0b,0x0b) || P(0xfe,0x4a) || P(0xfe,0x1a)) && is_different(w3, w1)) {
+    if ((P(0x0B,0x0B) || P(0xFE,0x4A) || P(0xFE,0x1A)) && is_different(w3, w1)) {
         return w4;
     }
-    if ((P(0x6f,0x2a) || P(0x5b,0x0a) || P(0xbf,0x3a) || P(0xdf,0x5a) ||
-         P(0x9f,0x8a) || P(0xcf,0x8a) || P(0xef,0x4e) || P(0x3f,0x0e) ||
-         P(0xfb,0x5a) || P(0xbb,0x8a) || P(0x7f,0x5a) || P(0xaf,0x8a) ||
-         P(0xeb,0x8a)) && is_different(w3, w1)) {
+    if ((P(0x6F,0x2A) || P(0x5B,0x0A) || P(0xBF,0x3A) || P(0xDF,0x5A) ||
+         P(0x9F,0x8A) || P(0xCF,0x8A) || P(0xEF,0x4E) || P(0x3F,0x0E) ||
+         P(0xFB,0x5A) || P(0xBB,0x8A) || P(0x7F,0x5A) || P(0xAF,0x8A) ||
+         P(0xEB,0x8A)) && is_different(w3, w1)) {
         return mix(w4, mix(w4, w0, 0.5 - p.x), 0.5 - p.y);
     }
-    if (P(0x0b,0x08)) {
+    if (P(0x0B,0x08)) {
         return mix(mix(w0 * 0.375 + w1 * 0.25 + w4 * 0.375, w4 * 0.5 + w1 * 0.5, p.x * 2.0), w4, p.y * 2.0);
     }
-    if (P(0x0b,0x02)) {
+    if (P(0x0B,0x02)) {
         return mix(mix(w0 * 0.375 + w3 * 0.25 + w4 * 0.375, w4 * 0.5 + w3 * 0.5, p.y * 2.0), w4, p.x * 2.0);
     }
-    if (P(0x2f,0x2f)) {
+    if (P(0x2F,0x2F)) {
         float dist = length(p - vec2(0.5));
         float pixel_size = length(1.0 / (output_resolution / input_resolution));
         if (dist < 0.5 - pixel_size / 2) {
@@ -103,7 +103,7 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
         }
         return mix(w4, r, (dist - 0.5 + pixel_size / 2) / pixel_size);
     }
-    if (P(0xbf,0x37) || P(0xdb,0x13)) {
+    if (P(0xBF,0x37) || P(0xDB,0x13)) {
         float dist = p.x - 2.0 * p.y;
         float pixel_size = length(1.0 / (output_resolution / input_resolution)) * sqrt(5.0);
         if (dist > pixel_size / 2) {
@@ -115,7 +115,7 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
         }
         return mix(r, w1, (dist + pixel_size / 2) / pixel_size);
     }
-    if (P(0xdb,0x49) || P(0xef,0x6d)) {
+    if (P(0xDB,0x49) || P(0xEF,0x6D)) {
         float dist = p.y - 2.0 * p.x;
         float pixel_size = length(1.0 / (output_resolution / input_resolution)) * sqrt(5.0);
         if (p.y - 2.0 * p.x > pixel_size / 2) {
@@ -127,7 +127,7 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
         }
         return mix(r, w3, (dist + pixel_size / 2) / pixel_size);
     }
-    if (P(0xbf,0x8f) || P(0x7e,0x0e)) {
+    if (P(0xBF,0x8F) || P(0x7E,0x0E)) {
         float dist = p.x + 2.0 * p.y;
         float pixel_size = length(1.0 / (output_resolution / input_resolution)) * sqrt(5.0);
 
@@ -150,7 +150,7 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
         return mix(r, w4, (dist + pixel_size / 2 - 1.0) / pixel_size);
     }
 
-    if (P(0x7e,0x2a) || P(0xef,0xab)) {
+    if (P(0x7E,0x2A) || P(0xEF,0xAB)) {
         float dist = p.y + 2.0 * p.x;
         float pixel_size = length(1.0 / (output_resolution / input_resolution)) * sqrt(5.0);
 
@@ -174,22 +174,22 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
         return mix(r, w4, (dist + pixel_size / 2 - 1.0) / pixel_size);
     }
 
-    if (P(0x1b,0x03) || P(0x4f,0x43) || P(0x8b,0x83) || P(0x6b,0x43)) {
+    if (P(0x1B,0x03) || P(0x4F,0x43) || P(0x8B,0x83) || P(0x6B,0x43)) {
         return mix(w4, w3, 0.5 - p.x);
     }
 
-    if (P(0x4b,0x09) || P(0x8b,0x89) || P(0x1f,0x19) || P(0x3b,0x19)) {
+    if (P(0x4B,0x09) || P(0x8B,0x89) || P(0x1F,0x19) || P(0x3B,0x19)) {
         return mix(w4, w1, 0.5 - p.y);
     }
 
-    if (P(0xfb,0x6a) || P(0x6f,0x6e) || P(0x3f,0x3e) || P(0xfb,0xfa) ||
-        P(0xdf,0xde) || P(0xdf,0x1e)) {
+    if (P(0xFB,0x6A) || P(0x6F,0x6E) || P(0x3F,0x3E) || P(0xFB,0xFA) ||
+        P(0xDF,0xDE) || P(0xDF,0x1E)) {
         return mix(w4, w0, (1.0 - p.x - p.y) / 2.0);
     }
 
-    if (P(0x4f,0x4b) || P(0x9f,0x1b) || P(0x2f,0x0b) ||
-        P(0xbe,0x0a) || P(0xee,0x0a) || P(0x7e,0x0a) || P(0xeb,0x4b) ||
-        P(0x3b,0x1b)) {
+    if (P(0x4F,0x4B) || P(0x9F,0x1B) || P(0x2F,0x0B) ||
+        P(0xBE,0x0A) || P(0xEE,0x0A) || P(0x7E,0x0A) || P(0xEB,0x4B) ||
+        P(0x3B,0x1B)) {
         float dist = p.x + p.y;
         float pixel_size = length(1.0 / (output_resolution / input_resolution));
 
@@ -212,11 +212,11 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
         return mix(r, w4, (dist + pixel_size / 2 - 0.5) / pixel_size);
     }
 
-    if (P(0x0b,0x01)) {
+    if (P(0x0B,0x01)) {
         return mix(mix(w4, w3, 0.5 - p.x), mix(w1, (w1 + w3) / 2.0, 0.5 - p.x), 0.5 - p.y);
     }
 
-    if (P(0x0b,0x00)) {
+    if (P(0x0B,0x00)) {
         return mix(mix(w4, w3, 0.5 - p.x), mix(w1, w0, 0.5 - p.x), 0.5 - p.y);
     }
 

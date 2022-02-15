@@ -87,17 +87,17 @@ static void update_sample(GB_gameboy_t *gb, unsigned index, int8_t value, unsign
             uint8_t bias = agb_bias_for_channel(gb, index);
             
             if (gb->io_registers[GB_IO_NR51] & (1 << index)) {
-                output.right = (0xf - value * 2 + bias) * right_volume;
+                output.right = (0xF - value * 2 + bias) * right_volume;
             }
             else {
-                output.right = 0xf * right_volume;
+                output.right = 0xF * right_volume;
             }
             
             if (gb->io_registers[GB_IO_NR51] & (0x10 << index)) {
-                output.left = (0xf - value * 2 + bias) * left_volume;
+                output.left = (0xF - value * 2 + bias) * left_volume;
             }
             else {
-                output.left = 0xf * left_volume;
+                output.left = 0xF * left_volume;
             }
             
             if (*(uint32_t *)&(gb->apu_output.current_sample[index]) != *(uint32_t *)&output) {
@@ -127,7 +127,7 @@ static void update_sample(GB_gameboy_t *gb, unsigned index, int8_t value, unsign
         if (gb->io_registers[GB_IO_NR51] & (0x10 << index)) {
             left_volume = ((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1;
         }
-        GB_sample_t output = {(0xf - value * 2) * left_volume, (0xf - value * 2) * right_volume};
+        GB_sample_t output = {(0xF - value * 2) * left_volume, (0xF - value * 2) * right_volume};
         if (*(uint32_t *)&(gb->apu_output.current_sample[index]) != *(uint32_t *)&output) {
             refresh_channel(gb, index, cycles_offset);
             gb->apu_output.current_sample[index] = output;
@@ -1058,9 +1058,9 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         case GB_IO_NR11:
         case GB_IO_NR21: {
             unsigned index = reg == GB_IO_NR21? GB_SQUARE_2: GB_SQUARE_1;
-            gb->apu.square_channels[index].pulse_length = (0x40 - (value & 0x3f));
+            gb->apu.square_channels[index].pulse_length = (0x40 - (value & 0x3F));
             if (!gb->apu.global_enable) {
-                value &= 0x3f;
+                value &= 0x3F;
             }
             break;
         }
@@ -1322,7 +1322,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         /* Noise Channel */
 
         case GB_IO_NR41: {
-            gb->apu.noise_channel.pulse_length = (0x40 - (value & 0x3f));
+            gb->apu.noise_channel.pulse_length = (0x40 - (value & 0x3F));
             break;
         }
 
