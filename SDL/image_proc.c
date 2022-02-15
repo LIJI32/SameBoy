@@ -1,5 +1,11 @@
 #include "image_proc.h"
 
+/*
+    Please remove or modify the gate in line 50
+    if screenshot capabilities for windows/mac are added
+
+*/
+
 
 SDL_Surface *surface = NULL;
 char save_bmp_filename[50] = {'\0'};
@@ -39,6 +45,11 @@ void generate_image_filename(GB_gameboy_t *gb){
 }
 
 void generate_BMPimage(GB_gameboy_t *gb, void *current_pixel_buffer, void *secondary_pixel_buffer){
+
+        #ifndef __linux__
+            return; // gate non-linux
+        #endif // __linux__
+
 
         uint32_t tempbuff[224 * 256];
         void *save_buffer = NULL;
