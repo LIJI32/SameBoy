@@ -595,7 +595,7 @@ static void inc_lr(GB_gameboy_t *gb, uint8_t opcode)
     uint8_t value;
     register_id = (opcode >> 4) + 1;
 
-    value = (gb->registers[register_id] & 0xFF) + 1;
+    value = (gb->registers[register_id] + 1) & 0xFF;
     gb->registers[register_id] = (gb->registers[register_id] & 0xFF00) | value;
 
     gb->af &= ~(GB_SUBTRACT_FLAG | GB_ZERO_FLAG | GB_HALF_CARRY_FLAG);
@@ -614,7 +614,7 @@ static void dec_lr(GB_gameboy_t *gb, uint8_t opcode)
     uint8_t value;
     register_id = (opcode >> 4) + 1;
 
-    value = (gb->registers[register_id] & 0xFF) - 1;
+    value = (gb->registers[register_id] - 1) & 0xFF;
     gb->registers[register_id] = (gb->registers[register_id] & 0xFF00) | value;
 
     gb->af &= ~(GB_ZERO_FLAG | GB_HALF_CARRY_FLAG);
