@@ -29,7 +29,7 @@
 ; If all of these are already defined, don't do it again.
 
     IF !DEF(HARDWARE_INC)
-HARDWARE_INC SET 1
+HARDWARE_INC = 1
 
 rev_Check_hardware_inc : MACRO
 ;NOTE: REVISION NUMBER CHANGES MUST BE ADDED

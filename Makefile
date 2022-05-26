@@ -68,7 +68,10 @@ endif
 
 # Find libraries with pkg-config if available.
 ifneq (, $(shell which pkg-config))
+# But not on macOS, it's annoying
+ifneq ($(PLATFORM),Darwin)
 PKG_CONFIG := pkg-config
+endif
 endif
 
 ifeq ($(PLATFORM),windows32)
