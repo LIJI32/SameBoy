@@ -426,6 +426,7 @@ static void init_for_current_model(unsigned id)
 
     if (GB_is_inited(&gameboy[i])) {
         GB_switch_model_and_reset(&gameboy[i], libretro_to_internal_model[effective_model]);
+        retro_set_memory_maps();
     }
     else {
         GB_init(&gameboy[i], libretro_to_internal_model[effective_model]);
