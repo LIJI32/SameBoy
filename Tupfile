@@ -1,0 +1,2 @@
+include_rules
+: Core/*.o SDL/*.o OpenDialog/*.o | <build> |> $(CC) $(LDFLAGS) %f -o %o |> sameboy.out

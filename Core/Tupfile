@@ -1,0 +1,2 @@
+include_rules
+: foreach *.c |> $(CC) $(CFLAGS) $(INCLUDES) -c %f -o %o |> %B.o <build>

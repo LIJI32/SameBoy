@@ -1,0 +1,18 @@
+CC = clang 
+
+INCLUDES += -D_REENTRANT -I/nix/store/hgqk7zhwpjsif7w67ajmlrpzzp6x9w1n-SDL2-2.0.20-dev/include/SDL2
+
+CFLAGS += -std=gnu11 -DGB_INTERNAL
+# These must come before the -Wno- flags
+CFLAGS  += -g -Werror -Wall -Werror -Wall -Wno-unknown-warning -Wno-unknown-warning-option -Wno-missing-braces
+CFLAGS += -Wno-nonnull -Wno-unused-result -Wno-strict-aliasing -Wno-multichar -Wno-int-in-bool-context -Wno-format-truncation
+
+# Needed for vasprintf in `gc.c` line 25
+CFLAGS += -D_GNU_SOURCE
+# IDK why yet. but needed in save_state.c
+CFLAGS += -DGB_VERSION='"0.15"'
+#IDK as well
+CFLAGS += -D_USE_MATH_DEFINES
+
+LDFLAGS += -lc -lm -ldl
+LDFLAGS += -L/nix/store/91r4hjai8afp7ppbn6m3k405j6jzfmap-SDL2-2.0.20/lib -Wl,-rpath,/nix/store/91r4hjai8afp7ppbn6m3k405j6jzfmap-SDL2-2.0.20/lib -Wl,--enable-new-dtags -lSDL2 -lpthread -L/nix/store/w6i2fmpssap9ybjjm2ypzck0524qki9b-libglvnd-1.4.0/lib -lOpenGL

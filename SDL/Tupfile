@@ -1,0 +1,7 @@
+include_rules
+
+# don’t do ../Core because the header gets imported as <Core/gb.h> not <gb.h>
+INCLUDES += -I..
+
+: foreach *.c |> $(CC) $(CFLAGS) $(INCLUDES) -c %f -o %o |> %B.o <build>
+: audio/sdl.c |> $(CC) $(CFLAGS) $(INCLUDES) -c %f -o %o |> %B.o <build>

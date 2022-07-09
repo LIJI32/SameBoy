@@ -1,0 +1,2 @@
+include_rules
+: gtk.c |> $(CC) $(CFLAGS) $(INCLUDES) -c %f -o %o |> %B.o <build>
