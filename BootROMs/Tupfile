@@ -1,0 +1,17 @@
+
+# pb12 will be a tool to compress 2bpp files
+: pb12.c |> clang -std=c99 -Wall -Werror %f -o %o |> %B <tooling>
+: foreach *.png |> rgbgfx -h -u -o %o %f |> %B.2bpp
+: foreach *.2bpp | <tooling> |> ./pb12 < %f > %o |> %B.pb12 <graphics>
+
+# I don’t know honestly. See Makefile line 427
+: foreach *.asm | <graphics> |> rgbasm -o %o %f |> %B.tmp
+: foreach *.tmp  |> rgblink -o %o %f |> %B.tmp2
+
+# Here dd is used to strip the binaries.
+# `bs` sets the base size of one block in bytes
+# `count=1` tells dd to to only take one block from the input,
+# making the output either 256 or 2304 bytes
+: foreach *dmg*.tmp2 |> dd if=%f of=%o count=1 bs=256 2> /dev/null |> ../%B.bin
+: foreach *sgb*.tmp2 |> dd if=%f of=%o count=1 bs=256 2> /dev/null |> ../%B.bin
+: foreach *.tmp2 ^dmg ^sgb |> dd if=%f of=%o count=1 bs=2304 2> /dev/null |> ../%B.bin
