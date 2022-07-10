@@ -1,0 +1,1 @@
+: foreach *.fsh |> !tup_preserve |>

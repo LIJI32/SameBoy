@@ -1,2 +1,5 @@
 include_rules
 : Core/*.o SDL/*.o OpenDialog/*.o | <build> |> $(CC) $(LDFLAGS) %f -o %o |> sameboy.out
+: SDL/background.bmp |> cp %f . |> background.bmp
+: Misc/registers.sym |> cp %f . |> registers.sym
+: foreach BootROMs/*.bin |> cp %f . |> %B.bin
