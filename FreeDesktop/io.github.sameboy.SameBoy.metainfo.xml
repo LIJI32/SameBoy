@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='utf-8'?>
+<component type="desktop">
+  <id>io.github.sameboy.SameBoy</id>
+  <name>SameBoy</name>
+  <summary>Game Boy and Game Boy Color emulator</summary>
+  <developer_name>Lior Halphon</developer_name>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>SameBoy is an open source Game Boy (DMG) and Game Boy Color (CGB) emulator,
+written in portable C. It has an SDL frontend and a libretro core.
+It also includes a text-based debugger with an expression evaluator.</p>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image type="source">https://dashboard.snapcraft.io/site_media/appmedia/2020/03/Bildschirmfoto_von_2020-03-16_01-01-41.png</image>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://dashboard.snapcraft.io/site_media/appmedia/2020/03/Bildschirmfoto_von_2020-03-16_00-58-39_sAm4YZR.png</image>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://dashboard.snapcraft.io/site_media/appmedia/2020/03/Bildschirmfoto_von_2020-03-16_01-00-07.png</image>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://dashboard.snapcraft.io/site_media/appmedia/2020/03/Bildschirmfoto_von_2020-03-16_01-02-12.png</image>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="v0.15.5" date="2022-08-24" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.15.5</url>
+    </release>
+    <release version="v0.15.4" date="2022-07-31" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.15.4</url>
+    </release>
+    <release version="v0.15.3" date="2022-07-25" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.15.3</url>
+    </release>
+    <release version="v0.15.2" date="2022-07-24" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.15.2</url>
+    </release>
+    <release version="v0.15.1" date="2022-07-08" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.15.1</url>
+    </release>
+    <release version="v0.15" date="2022-07-02" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.15</url>
+    </release>
+    <release version="v0.14.7" date="2021-10-30" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.14.7</url>
+    </release>
+    <release version="v0.14.6" date="2021-10-20" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.14.6</url>
+    </release>
+    <release version="v0.14.5" date="2021-08-01" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.14.5</url>
+    </release>
+    <release version="v0.14.4" date="2021-07-30" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.14.4</url>
+    </release>
+    <release version="v0.14.3" date="2021-04-17" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.14.3</url>
+    </release>
+    <release version="v0.14.2" date="2021-03-01" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.14.2</url>
+    </release>
+    <release version="v0.14.1" date="2021-02-28" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.14.1</url>
+    </release>
+    <release version="v0.14" date="2021-02-27" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.14</url>
+    </release>
+    <release version="v0.13.6" date="2020-08-22" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.13.6</url>
+    </release>
+    <release version="v0.13.5" date="2020-08-06" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.13.5</url>
+    </release>
+    <release version="v0.13.4" date="2020-08-05" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.13.4</url>
+    </release>
+    <release version="v0.13.3" date="2020-06-24" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.13.3</url>
+    </release>
+    <release version="v0.13.2" date="2020-06-11" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.13.2</url>
+    </release>
+    <release version="v0.13.1" date="2020-06-03" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.13.1</url>
+    </release>
+    <release version="v0.13" date="2020-05-31" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.13</url>
+    </release>
+    <release version="v0.12.3" date="2020-01-02" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.12.3</url>
+    </release>
+    <release version="v0.12.2" date="2019-09-14" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.12.2</url>
+    </release>
+    <release version="v0.12.1" date="2019-06-22" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.12.1</url>
+    </release>
+    <release version="v0.12" date="2019-06-21" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.12</url>
+    </release>
+    <release version="v0.11.2" date="2018-11-03" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.11.2</url>
+    </release>
+    <release version="v0.11.1" date="2018-07-11" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.11.1</url>
+    </release>
+    <release version="v0.11" date="2018-06-29" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.11</url>
+    </release>
+    <release version="v0.10.1" date="2018-02-02" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.10.1</url>
+    </release>
+    <release version="v0.10" date="2017-12-30" type="stable">
+      <url>https://github.com/LIJI32/SameBoy/releases/tag/v0.10</url>
+    </release>
+  </releases>
+  <url type="homepage">https://sameboy.github.io/</url>
+  <url type="bugtracker">https://github.com/LIJI32/SameBoy/issues</url>
+  <content_rating type="oars-1.1"/>
+</component>
