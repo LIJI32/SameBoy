@@ -467,7 +467,7 @@ $(BIN)/SDL/Palettes: Misc/Palettes
 
 $(OBJ)/%.2bpp: %.png
 	-@$(MKDIR) -p $(dir $@)
-	rgbgfx -h -u -o $@ $<
+	rgbgfx -Z -u -c embedded -o $@ $<
 
 $(OBJ)/BootROMs/SameBoyLogo.pb12: $(OBJ)/BootROMs/SameBoyLogo.2bpp $(PB12_COMPRESS)
 	$(realpath $(PB12_COMPRESS)) < $< > $@
