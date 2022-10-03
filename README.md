@@ -42,7 +42,7 @@ SameBoy requires the following tools and libraries to build:
  * make
  * macOS Cocoa port: macOS SDK and Xcode (For command line tools and ibtool)
  * SDL port: libsdl2
- * [rgbds](https://github.com/gbdev/rgbds/releases/), for boot ROM compilation
+ * [rgbds](https://github.com/gbdev/rgbds/releases/) v0.6.0 or later, for boot ROM compilation
 
 On Windows, SameBoy also requires:
  * Visual Studio (For headers, etc.)
