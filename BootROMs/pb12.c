@@ -87,7 +87,7 @@ int main()
         prev[1] = byte;
         if (bits >= 8) {
             uint8_t outctl = control >> (bits - 8);
-            assert(outctl != 1);
+            assert(outctl != 1); // That's the end byte
             write_all(STDOUT_FILENO, &outctl, 1);
             write_all(STDOUT_FILENO, literals, literals_size);
             bits -= 8;
