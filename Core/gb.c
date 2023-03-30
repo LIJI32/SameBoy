@@ -353,19 +353,21 @@ int GB_load_rom_from_bin(GB_gameboy_t *gb, const char *path)
     GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     
     FILE *f = fopen(path, "rb");
+    size_t bin_size;
     if (!f) {
         GB_log(gb, "Could not open ROM: %s.\n", strerror(errno));
         return errno;
     }
     fseek(f, 0, SEEK_END);
-    gb->rom_size = rounded_rom_size(ftell(f));
+    bin_size = ftell(f);
+    gb->rom_size = rounded_rom_size(bin_size);
     fseek(f, 0, SEEK_SET);
     if (gb->rom) {
         free(gb->rom);
     }
     gb->rom = malloc(gb->rom_size);
     memset(gb->rom, 0xFF, gb->rom_size); /* Pad with 0xFFs */
-    fread(gb->rom, 1, gb->rom_size, f);
+    fread(gb->rom, 1, bin_size, f);
     fclose(f);
     init_new_rom(gb);
     return 0;
@@ -391,7 +393,7 @@ int GB_load_rom_from_zip(GB_gameboy_t *gb, const char *path)
     }
     gb->rom = malloc(gb->rom_size);
     memset(gb->rom, 0xFF, gb->rom_size);
-    unzReadCurrentFile(z, gb->rom, gb->rom_size);
+    unzReadCurrentFile(z, gb->rom, file_info.uncompressed_size);
     unzCloseCurrentFile(z);
     unzClose(z);
     init_new_rom(gb);
