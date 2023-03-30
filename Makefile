@@ -191,12 +191,22 @@ REREGISTER_LDFLAGS := $(LDFLAGS) -lobjc -framework CoreServices -framework Found
 LDFLAGS += -lobjc -framework UIKit -framework Foundation -framework CoreGraphics -framework Metal -framework MetalKit -framework AudioToolbox -framework AVFoundation -framework QuartzCore -framework CoreMotion -framework CoreVideo -framework CoreMedia -framework CoreImage -weak_framework CoreHaptics 
 CODESIGN := codesign -fs -
 else
+
+# Try to detect MacOS SDK
 ifeq ($(PLATFORM),Darwin)
 SYSROOT := $(shell xcodebuild -sdk macosx -version Path 2> $(NULL))
+
+# User doesn't have XCode
 ifeq ($(SYSROOT),)
-SYSROOT := /Library/Developer/CommandLineTools/SDKs/$(shell ls /Library/Developer/CommandLineTools/SDKs/ | grep 10 | tail -n 1)
+SYSROOT := $(shell xcrun --show-sdk-path) 
 endif
-ifeq ($(SYSROOT),/Library/Developer/CommandLineTools/SDKs/)
+
+# Let's see if we found command-line tools
+# findstring (https://www.gnu.org/software/make/manual/html_node/Text-Functions.html#index-findstring)
+# can be used to construct a "substring" like function for Make
+# So the comparison here is if findstring returns "" upon comparing
+# /Library/Developer/CommandLineTools/SDKs and $(SYSROOT), SYSROOT does not contain
+ifeq (,$(findstring /Library/Developer/CommandLineTools/SDKs,$(SYSROOT)))
 $(error Could not find a macOS SDK)
 endif
 
