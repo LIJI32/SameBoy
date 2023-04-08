@@ -173,7 +173,7 @@ endif
 ifneq ($(ENABLE_MINIZIP),0)
 MINIZIP_CPPFLAGS := -DGB_HAS_MINIZIP
 ifeq (,$(PKG_CONFIG))
-MINIZIP_LDFLAGS := -lminizip
+MINIZIP_LDFLAGS := -lminizip -lz
 else
 MINIZIP_LDFLAGS := $(shell $(PKG_CONFIG) --libs minizip)
 endif
