@@ -10,7 +10,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef HAVE_MINIZIP
+#ifdef GB_HAS_MINIZIP
 #include <minizip/unzip.h>
 #endif
 
@@ -335,7 +335,7 @@ static void init_new_rom(GB_gameboy_t *gb)
 
 int GB_load_rom(GB_gameboy_t *gb, const char *path)
 {
-#ifdef HAVE_MINIZIP
+#ifdef GB_HAS_MINIZIP
     size_t path_len = strlen(path);
     const char *ext;
     if (path_len > 4) {
@@ -373,7 +373,7 @@ int GB_load_rom_from_bin(GB_gameboy_t *gb, const char *path)
     return 0;
 }
 
-#ifdef HAVE_MINIZIP
+#ifdef GB_HAS_MINIZIP
 int GB_load_rom_from_zip(GB_gameboy_t *gb, const char *path)
 {
     GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
