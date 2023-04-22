@@ -215,7 +215,7 @@ endif
 ifeq ($(CONF),debug)
 CFLAGS += -g
 else ifeq ($(CONF), release)
-CFLAGS += -O3 -DNDEBUG
+CFLAGS += -O2 -DNDEBUG
 STRIP := strip
 CODESIGN := true
 ifeq ($(PLATFORM),Darwin)
