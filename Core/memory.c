@@ -624,12 +624,12 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
                 if (!GB_is_cgb(gb)) return 0xFF;
                 GB_apu_run(gb, true);
                 return ((gb->apu.is_active[GB_SQUARE_2] ? (gb->apu.samples[GB_SQUARE_2] << 4) : 0) |
-                        (gb->apu.is_active[GB_SQUARE_1] ? (gb->apu.samples[GB_SQUARE_1]) : 0)) & (gb->model <= GB_MODEL_CGB_C? gb->apu.pcm_mask[0] : 0xFF);
+                        (gb->apu.is_active[GB_SQUARE_1] ? (gb->apu.samples[GB_SQUARE_1]) : 0)) & ((gb->model <= GB_MODEL_CGB_C)? gb->apu.pcm_mask[0] : 0xFF);
             case GB_IO_PCM34:
                 if (!GB_is_cgb(gb)) return 0xFF;
                 GB_apu_run(gb, true);
                 return ((gb->apu.is_active[GB_NOISE] ? (gb->apu.samples[GB_NOISE] << 4) : 0) |
-                        (gb->apu.is_active[GB_WAVE] ? (gb->apu.samples[GB_WAVE]) : 0))  & (gb->model <= GB_MODEL_CGB_C? gb->apu.pcm_mask[1] : 0xFF);
+                        (gb->apu.is_active[GB_WAVE] ? (gb->apu.samples[GB_WAVE]) : 0))  & ((gb->model <= GB_MODEL_CGB_C)? gb->apu.pcm_mask[1] : 0xFF);
             case GB_IO_JOYP:
                 gb->joyp_accessed = true;
                 GB_timing_sync(gb);
@@ -692,7 +692,7 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
                     return 0xFF;
                 }
                 uint8_t index_reg = (addr & 0xFF) - 1;
-                return ((addr & 0xFF) == GB_IO_BGPD?
+                return (((addr & 0xFF) == GB_IO_BGPD)?
                        gb->background_palettes_data :
                        gb->object_palettes_data)[gb->io_registers[index_reg] & 0x3F];
             }
@@ -1550,7 +1550,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                         switch (((gb->io_registers[GB_IO_JOYP] & 0x30) >> 4) |
                                 ((value & 0x30) >> 2)) {
                             case 0x4: delay = 48; break;
-                            case 0x6: delay = gb->model == GB_MODEL_MGB? 56 : 48; break;
+                            case 0x6: delay = (gb->model == GB_MODEL_MGB)? 56 : 48; break;
                             case 0x8: delay = 24; break;
                             case 0x9: delay = 24; break;
                             case 0xC: delay = 48; break;
@@ -1700,7 +1700,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                     GB_serial_master_edge(gb);
                 }
                 gb->io_registers[GB_IO_SC] = value | (~0x83);
-                gb->serial_mask = gb->cgb_mode && (value & 2)? 4 : 0x80;
+                gb->serial_mask = (gb->cgb_mode && (value & 2))? 4 : 0x80;
                 if ((value & 0x80) && (value & 0x1) ) {
                     if (gb->serial_transfer_bit_start_callback) {
                         gb->serial_transfer_bit_start_callback(gb, gb->io_registers[GB_IO_SB] & 0x80);

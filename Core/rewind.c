@@ -176,7 +176,7 @@ bool GB_rewind_pop(GB_gameboy_t *gb)
         gb->rewind_disable_invalidation = false;
         free(gb->rewind_sequences[gb->rewind_pos].key_state);
         gb->rewind_sequences[gb->rewind_pos].key_state = NULL;
-        gb->rewind_pos = gb->rewind_pos == 0? gb->rewind_buffer_length - 1 : gb->rewind_pos - 1;
+        gb->rewind_pos = (gb->rewind_pos == 0)? gb->rewind_buffer_length - 1 : gb->rewind_pos - 1;
         return true;
     }
     

@@ -860,7 +860,7 @@ static void advance_fetcher_state_machine(GB_gameboy_t *gb, unsigned *cycles)
             }
             uint8_t y_flip = 0;
             uint16_t tile_address = 0;
-            uint8_t y = gb->model > GB_MODEL_CGB_C ? gb->fetcher_y : fetcher_y(gb);
+            uint8_t y = (gb->model > GB_MODEL_CGB_C) ? gb->fetcher_y : fetcher_y(gb);
             
             /* Todo: Verified for DMG (Tested: SGB2), CGB timing is wrong. */
             if (gb->io_registers[GB_IO_LCDC] & GB_LCDC_TILE_SEL) {
@@ -902,7 +902,7 @@ static void advance_fetcher_state_machine(GB_gameboy_t *gb, unsigned *cycles)
             }
 
             uint16_t tile_address = 0;
-            uint8_t y = gb->model > GB_MODEL_CGB_C ? gb->fetcher_y : fetcher_y(gb);
+            uint8_t y = (gb->model > GB_MODEL_CGB_C) ? gb->fetcher_y : fetcher_y(gb);
             
             if (gb->io_registers[GB_IO_LCDC] & GB_LCDC_TILE_SEL) {
                 tile_address = gb->current_tile * 0x10;
@@ -1167,7 +1167,7 @@ object_buffer_pointer++\
         if (check_window && gb->io_registers[GB_IO_WX] == pixels + 7) {
 activate_window:
             check_window = false;
-            map = gb->io_registers[GB_IO_LCDC] & GB_LCDC_WIN_MAP? 0x1C00 : 0x1800;
+            map = (gb->io_registers[GB_IO_LCDC] & GB_LCDC_WIN_MAP)? 0x1C00 : 0x1800;
             tile_x = -1;
             y = ++gb->window_y;
             break;
@@ -1308,7 +1308,7 @@ object_buffer_pointer++\
         if (check_window && gb->io_registers[GB_IO_WX] == pixels + 7) {
         activate_window:
             check_window = false;
-            map = gb->io_registers[GB_IO_LCDC] & GB_LCDC_WIN_MAP? 0x1C00 : 0x1800;
+            map = (gb->io_registers[GB_IO_LCDC] & GB_LCDC_WIN_MAP)? 0x1C00 : 0x1800;
             tile_x = -1;
             y = ++gb->window_y;
             break;
@@ -1838,7 +1838,7 @@ void GB_display_run(GB_gameboy_t *gb, unsigned cycles, bool force)
                                             gb->object_tile_data[1],
                                             palette,
                                             gb->object_flags & 0x80,
-                                            gb->object_priority == GB_OBJECT_PRIORITY_INDEX? gb->visible_objs[gb->n_visible_objs - 1] : 0,
+                                            (gb->object_priority == GB_OBJECT_PRIORITY_INDEX)? gb->visible_objs[gb->n_visible_objs - 1] : 0,
                                             gb->object_flags & 0x20);
 
                     gb->data_for_sel_glitch = gb->vram_ppu_blocked? 0xFF : gb->vram[gb->object_low_line_address + 1];
@@ -2020,7 +2020,7 @@ skip_slow_mode_3:
             
             /* 3640 is just a few cycles less than 4 lines, no clue where the
                AGB constant comes from (These are measured and confirmed)  */
-            gb->frame_repeat_countdown = LINES * LINE_LENGTH * 2 + (gb->model > GB_MODEL_CGB_E? 5982 : 3640); // 8MHz units
+            gb->frame_repeat_countdown = LINES * LINE_LENGTH * 2 + ((gb->model > GB_MODEL_CGB_E)? 5982 : 3640); // 8MHz units
             if (gb->display_cycles < gb->frame_repeat_countdown) {
                 gb->frame_repeat_countdown -= gb->display_cycles;
             }
@@ -2096,7 +2096,7 @@ void GB_draw_tileset(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette
                 continue;
             }
             uint16_t tile = (x % 128) / 8 + y / 8 * 16;
-            uint16_t tile_address = tile * 0x10 + (x >= 128? 0x2000 : 0);
+            uint16_t tile_address = tile * 0x10 + ((x >= 128)? 0x2000 : 0);
             uint8_t pixel = (((gb->vram[tile_address + (y & 7) * 2    ] >> ((~x)&7)) & 1 ) |
                              ((gb->vram[tile_address + (y & 7) * 2 + 1] >> ((~x)&7)) & 1) << 1);
             
@@ -2106,7 +2106,7 @@ void GB_draw_tileset(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette
                 }
                 else if (!gb->cgb_mode) {
                     if (palette_type == GB_PALETTE_OAM) {
-                        pixel = ((gb->io_registers[palette_index == 0? GB_IO_OBP0 : GB_IO_OBP1] >> (pixel << 1)) & 3);
+                        pixel = ((gb->io_registers[(palette_index == 0)? GB_IO_OBP0 : GB_IO_OBP1] >> (pixel << 1)) & 3);
                     }
                 }
             }
@@ -2208,7 +2208,7 @@ uint8_t GB_get_oam_info(GB_gameboy_t *gb, GB_oam_info_t *dest, uint8_t *object_h
                 oam_to_dest_index[i] = ++count;
                 info->x = object->x;
                 info->y = object->y;
-                info->tile = *object_height == 16? object->tile & 0xFE : object->tile;
+                info->tile = (*object_height == 16)? object->tile & 0xFE : object->tile;
                 info->flags = object->flags;
                 info->obscured_by_line_limit = false;
                 info->oam_addr = 0xFE00 + i * sizeof(*object);

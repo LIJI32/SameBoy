@@ -434,7 +434,7 @@ void GB_sgb_write(GB_gameboy_t *gb, uint8_t value)
     }
     if (gb->sgb->disable_commands) return;
     
-    uint16_t command_size = (gb->sgb->command[0] & 7 ?: 1) * SGB_PACKET_SIZE * 8;
+    uint16_t command_size = ((gb->sgb->command[0] & 7) ?: 1) * SGB_PACKET_SIZE * 8;
     if ((gb->sgb->command[0] & 0xF1) == 0xF1) {
         command_size = SGB_PACKET_SIZE * 8;
     }
