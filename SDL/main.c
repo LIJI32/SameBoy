@@ -1041,8 +1041,13 @@ int main(int argc, char **argv)
         exit(1);
     }
     
-    if (argc == 2 && access(argv[1], F_OK) == 0) {
+    if (argc == 2) {
+      if (access(argv[1], F_OK) == 0) {
         filename = argv[1];
+      } else {
+        fprintf(stderr, "File not found: %s\n", argv[1]);
+        exit(1);
+      }
     }
 
     signal(SIGINT, debugger_interrupt);
