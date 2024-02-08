@@ -1041,7 +1041,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     
-    if (argc == 2) {
+    if (argc == 2 && access(argv[1], F_OK) == 0) {
         filename = argv[1];
     }
 
