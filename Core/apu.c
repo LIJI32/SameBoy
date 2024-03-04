@@ -100,7 +100,8 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
                 output.left = output.right = 0;
             }
             
-            if (*(uint32_t *)&(gb->apu_output.current_sample[index]) != *(uint32_t *)&output) {
+            if ((gb->apu_output.current_sample[index].left != output.left) ||
+                (gb->apu_output.current_sample[index].right != output.right)) {
                 refresh_channel(gb, index, cycles_offset);
                 gb->apu_output.current_sample[index] = output;
             }
@@ -131,7 +132,8 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
         if (likely(!gb->apu_output.channel_muted[index])) {
             output = (GB_sample_t){(0xF - value * 2) * left_volume, (0xF - value * 2) * right_volume};
         }
-        if (*(uint32_t *)&(gb->apu_output.current_sample[index]) != *(uint32_t *)&output) {
+        if ((gb->apu_output.current_sample[index].left != output.left) ||
+            (gb->apu_output.current_sample[index].right != output.right)) {
             refresh_channel(gb, index, cycles_offset);
             gb->apu_output.current_sample[index] = output;
         }
