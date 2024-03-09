@@ -865,7 +865,7 @@ static void render_jingle(GB_gameboy_t *gb, size_t count)
     assert(gb->apu_output.sample_callback);
     
     if (gb->sgb->intro_animation < 0) {
-        GB_sample_t sample = {0, 0};
+        GB_sample_t sample = {{0, 0}};
         for (unsigned i = 0; i < count; i++) {
             gb->apu_output.sample_callback(gb, &sample);
         }
