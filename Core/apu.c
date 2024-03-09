@@ -127,9 +127,9 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
         if (gb->io_registers[GB_IO_NR51] & (0x10 << index)) {
             left_volume = ((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1;
         }
-        GB_sample_t output = {0, 0};
+        GB_sample_t output = {{0, 0}};
         if (likely(!gb->apu_output.channel_muted[index])) {
-            output = (GB_sample_t){(0xF - value * 2) * left_volume, (0xF - value * 2) * right_volume};
+            output = (GB_sample_t){{(0xF - value * 2) * left_volume, (0xF - value * 2) * right_volume}};
         }
         if (gb->apu_output.current_sample[index].packed != output.packed) {
             refresh_channel(gb, index, cycles_offset);
@@ -184,7 +184,7 @@ static signed interference(GB_gameboy_t *gb)
 
 static void render(GB_gameboy_t *gb)
 {
-    GB_sample_t output = {0, 0};
+    GB_sample_t output = {{0, 0}};
 
     unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
         double multiplier = CH_STEP;
@@ -221,7 +221,7 @@ static void render(GB_gameboy_t *gb)
                             / gb->apu_output.cycles_since_render;
             output.right += (signed long) gb->apu_output.summed_samples[i].right * multiplier
                             / gb->apu_output.cycles_since_render;
-            gb->apu_output.summed_samples[i] = (GB_sample_t){0, 0};
+            gb->apu_output.summed_samples[i] = (GB_sample_t){{0, 0}};
         }
         gb->apu_output.last_update[i] = 0;
     }
@@ -230,8 +230,8 @@ static void render(GB_gameboy_t *gb)
     if (gb->sgb && gb->sgb->intro_animation < GB_SGB_INTRO_ANIMATION_LENGTH) return;
 
     GB_sample_t filtered_output = gb->apu_output.highpass_mode?
-        (GB_sample_t) {output.left - gb->apu_output.highpass_diff.left,
-                       output.right - gb->apu_output.highpass_diff.right} :
+        (GB_sample_t) {{output.left - gb->apu_output.highpass_diff.left,
+                       output.right - gb->apu_output.highpass_diff.right}} :
         output;
 
     switch (gb->apu_output.highpass_mode) {
