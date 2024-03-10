@@ -109,6 +109,7 @@ char *do_open_rom_dialog(void)
     gtk_file_filter_add_pattern(filter, "*.gbc");
     gtk_file_filter_add_pattern(filter, "*.sgb");
     gtk_file_filter_add_pattern(filter, "*.isx");
+    gtk_file_filter_add_pattern(filter, "*.zip");
     gtk_file_filter_set_name(filter, "Game Boy ROMs");
     gtk_file_chooser_add_filter(dialog, filter);
     
