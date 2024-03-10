@@ -1050,7 +1050,10 @@ int main(int argc, char **argv)
     signal(SIGUSR1, debugger_reset);
 #endif
 
-    SDL_Init(SDL_INIT_EVERYTHING & ~SDL_INIT_AUDIO);
+    if (SDL_Init(SDL_INIT_EVERYTHING & ~SDL_INIT_AUDIO) < 0) {
+        fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
+    }
+
     if ((console_supported = CON_start(completer))) {
         CON_set_repeat_empty(true);
         CON_printf("SameBoy v" GB_VERSION "\n");
