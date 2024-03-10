@@ -1,3 +1,5 @@
+#!/bin/sh
+
 set -e
 
 ./build/bin/tester/sameboy_tester --jobs 5 \
@@ -7,7 +9,7 @@ set -e
 --dmg --length 45 .github/actions/dmg_sound-2.gb \
 --dmg --length 20 .github/actions/oam_bug-2.gb
 
-mv .github/actions/dmg{,-mode}-acid2.bmp
+mv .github/actions/dmg-acid2.bmp .github/actions/dmg-mode-acid2.bmp
 
 ./build/bin/tester/sameboy_tester \
 --dmg --length 10  .github/actions/dmg-acid2.gb 
