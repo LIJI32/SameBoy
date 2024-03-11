@@ -16,22 +16,22 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
     vec4 r2 = mix(q12, q22, s.x);
     
     vec2 pos = fract(position * input_resolution);
-    vec2 sub_pos = pos * 6;
+    vec2 sub_pos = pos * 6.0;
 
     float multiplier = 1.0;
     
     if (sub_pos.y < 1.0) {
-        multiplier *= sub_pos.y * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
+        multiplier *= sub_pos.y * SCANLINE_DEPTH + (1.0 - SCANLINE_DEPTH);
     }
     else if (sub_pos.y > 5.0) {
-        multiplier *= (6.0 - sub_pos.y) * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
+        multiplier *= (6.0 - sub_pos.y) * SCANLINE_DEPTH + (1.0 - SCANLINE_DEPTH);
     }
     
     if (sub_pos.x < 1.0) {
-        multiplier *= sub_pos.x * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
+        multiplier *= sub_pos.x * SCANLINE_DEPTH + (1.0 - SCANLINE_DEPTH);
     }
     else if (sub_pos.x > 5.0) {
-        multiplier *= (6.0 - sub_pos.x) * SCANLINE_DEPTH + (1 - SCANLINE_DEPTH);
+        multiplier *= (6.0 - sub_pos.x) * SCANLINE_DEPTH + (1.0 - SCANLINE_DEPTH);
     }
 
     vec4 pre_shadow = mix(texture(image, position) * multiplier, mix(r1, r2, s.y), BLOOM);

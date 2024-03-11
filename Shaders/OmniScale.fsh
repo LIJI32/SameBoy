@@ -87,7 +87,7 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
     if (P(0x2F,0x2F)) {
         float dist = length(p - vec2(0.5));
         float pixel_size = length(1.0 / (output_resolution / input_resolution));
-        if (dist < 0.5 - pixel_size / 2) {
+        if (dist < 0.5 - pixel_size / 2.0) {
             return w4;
         }
         vec4 r;
@@ -98,40 +98,40 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
             r = mix(mix(w1 * 0.375 + w0 * 0.25 + w3 * 0.375, w3, p.y * 2.0), w1, p.x * 2.0);
         }
 
-        if (dist > 0.5 + pixel_size / 2) {
+        if (dist > 0.5 + pixel_size / 2.0) {
             return r;
         }
-        return mix(w4, r, (dist - 0.5 + pixel_size / 2) / pixel_size);
+        return mix(w4, r, (dist - 0.5 + pixel_size / 2.0) / pixel_size);
     }
     if (P(0xBF,0x37) || P(0xDB,0x13)) {
         float dist = p.x - 2.0 * p.y;
         float pixel_size = length(1.0 / (output_resolution / input_resolution)) * sqrt(5.0);
-        if (dist > pixel_size / 2) {
+        if (dist > pixel_size / 2.0) {
             return w1;
         }
         vec4 r = mix(w3, w4, p.x + 0.5);
-        if (dist < -pixel_size / 2) {
+        if (dist < -pixel_size / 2.0) {
             return r;
         }
-        return mix(r, w1, (dist + pixel_size / 2) / pixel_size);
+        return mix(r, w1, (dist + pixel_size / 2.0) / pixel_size);
     }
     if (P(0xDB,0x49) || P(0xEF,0x6D)) {
         float dist = p.y - 2.0 * p.x;
         float pixel_size = length(1.0 / (output_resolution / input_resolution)) * sqrt(5.0);
-        if (p.y - 2.0 * p.x > pixel_size / 2) {
+        if (p.y - 2.0 * p.x > pixel_size / 2.0) {
             return w3;
         }
         vec4 r = mix(w1, w4, p.x + 0.5);
-        if (dist < -pixel_size / 2) {
+        if (dist < -pixel_size / 2.0) {
             return r;
         }
-        return mix(r, w3, (dist + pixel_size / 2) / pixel_size);
+        return mix(r, w3, (dist + pixel_size / 2.0) / pixel_size);
     }
     if (P(0xBF,0x8F) || P(0x7E,0x0E)) {
         float dist = p.x + 2.0 * p.y;
         float pixel_size = length(1.0 / (output_resolution / input_resolution)) * sqrt(5.0);
 
-        if (dist > 1.0 + pixel_size / 2) {
+        if (dist > 1.0 + pixel_size / 2.0) {
             return w4;
         }
 
@@ -143,18 +143,18 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
             r = mix(mix(w1 * 0.375 + w0 * 0.25 + w3 * 0.375, w3, p.y * 2.0), w1, p.x * 2.0);
         }
 
-        if (dist < 1.0 - pixel_size / 2) {
+        if (dist < 1.0 - pixel_size / 2.0) {
             return r;
         }
 
-        return mix(r, w4, (dist + pixel_size / 2 - 1.0) / pixel_size);
+        return mix(r, w4, (dist + pixel_size / 2.0 - 1.0) / pixel_size);
     }
 
     if (P(0x7E,0x2A) || P(0xEF,0xAB)) {
         float dist = p.y + 2.0 * p.x;
         float pixel_size = length(1.0 / (output_resolution / input_resolution)) * sqrt(5.0);
 
-        if (p.y + 2.0 * p.x > 1.0 + pixel_size / 2) {
+        if (p.y + 2.0 * p.x > 1.0 + pixel_size / 2.0) {
             return w4;
         }
 
@@ -167,11 +167,11 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
             r = mix(mix(w1 * 0.375 + w0 * 0.25 + w3 * 0.375, w3, p.y * 2.0), w1, p.x * 2.0);
         }
 
-        if (dist < 1.0 - pixel_size / 2) {
+        if (dist < 1.0 - pixel_size / 2.0) {
             return r;
         }
 
-        return mix(r, w4, (dist + pixel_size / 2 - 1.0) / pixel_size);
+        return mix(r, w4, (dist + pixel_size / 2.0 - 1.0) / pixel_size);
     }
 
     if (P(0x1B,0x03) || P(0x4F,0x43) || P(0x8B,0x83) || P(0x6B,0x43)) {
@@ -193,7 +193,7 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
         float dist = p.x + p.y;
         float pixel_size = length(1.0 / (output_resolution / input_resolution));
 
-        if (dist > 0.5 + pixel_size / 2) {
+        if (dist > 0.5 + pixel_size / 2.0) {
             return w4;
         }
 
@@ -205,11 +205,11 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
             r = mix(mix(w1 * 0.375 + w0 * 0.25 + w3 * 0.375, w3, p.y * 2.0), w1, p.x * 2.0);
         }
 
-        if (dist < 0.5 - pixel_size / 2) {
+        if (dist < 0.5 - pixel_size / 2.0) {
             return r;
         }
 
-        return mix(r, w4, (dist + pixel_size / 2 - 0.5) / pixel_size);
+        return mix(r, w4, (dist + pixel_size / 2.0 - 0.5) / pixel_size);
     }
 
     if (P(0x0B,0x01)) {
@@ -223,7 +223,7 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
     float dist = p.x + p.y;
     float pixel_size = length(1.0 / (output_resolution / input_resolution));
 
-    if (dist > 0.5 + pixel_size / 2) {
+    if (dist > 0.5 + pixel_size / 2.0) {
         return w4;
     }
 
@@ -252,10 +252,10 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
 
     if (diagonal_bias <= 0) {
         vec4 r = mix(w1, w3, p.y - p.x + 0.5);
-        if (dist < 0.5 - pixel_size / 2) {
+        if (dist < 0.5 - pixel_size / 2.0) {
             return r;
         }
-        return mix(r, w4, (dist + pixel_size / 2 - 0.5) / pixel_size);
+        return mix(r, w4, (dist + pixel_size / 2.0 - 0.5) / pixel_size);
     }
     
     return w4;

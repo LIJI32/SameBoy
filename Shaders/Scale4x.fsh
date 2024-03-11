@@ -33,8 +33,8 @@ STATIC vec4 scale2x(sampler2D image, vec2 position, vec2 input_resolution, vec2 
 
 STATIC vec4 scale2x_wrapper(sampler2D t, vec2 pos, vec2 offset, vec2 input_resolution, vec2 output_resolution)
 {
-    vec2 origin = (floor(pos * input_resolution * 2)) + vec2(0.5, 0.5);
-    return scale2x(t, (origin + offset) / input_resolution / 2, input_resolution, output_resolution);
+    vec2 origin = (floor(pos * input_resolution * 2.0)) + vec2(0.5, 0.5);
+    return scale2x(t, (origin + offset) / input_resolution / 2.0, input_resolution, output_resolution);
 }
 
 STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 output_resolution)
