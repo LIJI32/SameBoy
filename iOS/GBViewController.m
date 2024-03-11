@@ -120,9 +120,6 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     [self addDefaultObserver:^(id newValue) {
         GB_set_light_temperature(gb, [newValue doubleValue]);
     } forKey:@"GBLightTemperature"];
-    [self addDefaultObserver:^(id newValue) {
-        GB_set_interference_volume(gb, [newValue doubleValue]);
-    } forKey:@"GBInterferenceVolume"];
     GB_set_border_mode(gb, GB_BORDER_NEVER);
     __weak typeof(self) weakSelf = self;
     [self addDefaultObserver:^(id newValue) {
