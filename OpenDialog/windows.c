@@ -1,3 +1,4 @@
+#define COBJMACROS
 #include <windows.h>
 #include <shlobj.h>
 #include <stdio.h>
@@ -40,16 +41,20 @@ char *do_open_rom_dialog(void)
     return NULL;
 }
 
-char *do_open_folder_dialog(void)
+static char *do_legacy_open_folder_dialog(void)
 {
     char *ret = NULL;
     BROWSEINFOW dialog;
 
     memset(&dialog, 0, sizeof(dialog));
-    dialog.ulFlags = BIF_USENEWUI | BIF_RETURNONLYFSDIRS;
+    dialog.ulFlags = BIF_NEWDIALOGSTYLE | BIF_EDITBOX | BIF_RETURNONLYFSDIRS;
     dialog.lpszTitle = L"Select Boot ROMs Folder";
 
-    HRESULT hrOleInit = OleInitialize(NULL);
+    HRESULT hrCoInit = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+    if (hrCoInit == RPC_E_CHANGED_MODE) {
+        dialog.ulFlags &= ~BIF_NEWDIALOGSTYLE;
+    }
+
     LPITEMIDLIST list = SHBrowseForFolderW(&dialog);
     if (list) {
         wchar_t filename[MAX_PATH];
@@ -59,7 +64,61 @@ char *do_open_folder_dialog(void)
         CoTaskMemFree((void *)list);
     }
 
-    if (SUCCEEDED(hrOleInit)) OleUninitialize();
+    if (SUCCEEDED(hrCoInit)) CoUninitialize();
+    return ret;
+}
+
+char *do_open_folder_dialog(void)
+{
+    HRESULT hr;
+    char *ret = NULL;
+    IFileOpenDialog *dialog = NULL;
+    IShellItem *result = NULL;
+
+    HRESULT hrCoInit = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+
+    hr = CoCreateInstance(&CLSID_FileOpenDialog, NULL, CLSCTX_ALL, &IID_IFileOpenDialog, (LPVOID *)&dialog);
+    if (FAILED(hr)) {
+        ret = do_legacy_open_folder_dialog();
+        goto end;
+    }
+
+    hr = IFileOpenDialog_SetOptions(dialog, FOS_NOCHANGEDIR | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_NOREADONLYRETURN);
+    if (FAILED(hr)) {
+        ret = do_legacy_open_folder_dialog();
+        goto end;
+    }
+
+    hr = IFileOpenDialog_SetTitle(dialog, L"Select Boot ROMs Folder");
+    if (FAILED(hr)) {
+        ret = do_legacy_open_folder_dialog();
+        goto end;
+    }
+
+    hr = IFileOpenDialog_Show(dialog, NULL);
+    if (FAILED(hr)) {
+        /* failure might come from cancellation, don't show the legacy dialog if that is the case */
+        if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
+            ret = do_legacy_open_folder_dialog();
+        }
+
+        goto end;
+    }
+
+    hr = IFileOpenDialog_GetResult(dialog, &result);
+    if (SUCCEEDED(hr)) {
+        wchar_t *path;
+        hr = IShellItem_GetDisplayName(result, SIGDN_FILESYSPATH, &path);
+        if (SUCCEEDED(hr)) {
+            ret = wc_to_utf8_alloc(path);
+            CoTaskMemFree((void *)path);
+        }
+    }
+
+end:
+    if (result) IShellItem_Release(result);
+    if (dialog) IFileOpenDialog_Release(dialog);
+    if (SUCCEEDED(hrCoInit)) CoUninitialize();
     return ret;
 }
 
