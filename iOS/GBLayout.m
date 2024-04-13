@@ -1,9 +1,18 @@
 #define GBLayoutInternal
 #import "GBLayout.h"
 
-@interface UIApplication()
-- (double)statusBarHeightForOrientation:(UIInterfaceOrientation)orientation ignoreHidden:(bool)ignoreHidden;
-@end
+double StatusBarHeight(void)
+{
+    double ret = 0;
+    @autoreleasepool {
+        UIWindow *window = [[UIWindow alloc] init];
+        [window makeKeyAndVisible];
+        UIEdgeInsets insets = window.safeAreaInsets;
+        ret = MAX(MAX(insets.left, insets.right), MAX(insets.top, insets.bottom));
+        [window setHidden:true];
+    }
+    return ret;
+}
 
 @implementation GBLayout
 - (instancetype)init
@@ -17,8 +26,8 @@
     if (_resolution.width > _resolution.height) {
         _resolution = (CGSize){_resolution.height, _resolution.width};
     }
-    _minY = [[UIApplication sharedApplication] statusBarHeightForOrientation:UIInterfaceOrientationPortrait
-                                                                ignoreHidden:true] * _factor;
+    
+    _minY = StatusBarHeight() * _factor;
     _cutout = _minY <= 24 * _factor? 0 : _minY;
     
     if ([UIApplication sharedApplication].windows[0].safeAreaInsets.bottom) {

@@ -2,6 +2,8 @@
 #import <UIKit/UIKit.h>
 #import <AudioToolbox/AudioToolbox.h>
 
+#ifndef APPSTORE
+
 @implementation GBHapticManagerLegacy
 
 - (void)doTapHaptic
@@ -25,3 +27,5 @@
     }
 }
 @end
+
+#endif

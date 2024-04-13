@@ -173,15 +173,15 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+    _horizontalLayout = [[GBHorizontalLayout alloc] init];
+    _verticalLayout = [[GBVerticalLayout alloc] init];
+
     _window = [[UIWindow alloc] init];
     _window.rootViewController = self;
     [_window makeKeyAndVisible];
     
     _window.backgroundColor = [UIColor colorWithRed:174 / 255.0 green:176 / 255.0 blue:180 / 255.0 alpha:1.0];
-    
-    _horizontalLayout = [[GBHorizontalLayout alloc] init];
-    _verticalLayout = [[GBVerticalLayout alloc] init];
-    
+        
     _backgroundView = [[GBBackgroundView alloc] init];
     [_window addSubview:_backgroundView];
     self.view = _backgroundView;
@@ -257,6 +257,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)verifyEntitlements
 {
+#ifndef APPSTORE
     /*
         Make sure SameBoy is properly signed. If the bundle identifier the Info.plist file does not match the bundle
         identifier in the application-identifier entitlement, iOS will not allow SameBoy to open files.
@@ -265,8 +266,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     void *libxpc = dlopen("/usr/lib/system/libxpc.dylib", RTLD_NOW);
     
     extern xpc_object_t xpc_copy_entitlements_for_self$(void);
-    extern void xpc_release$ (xpc_object_t *object);
-    extern const char *xpc_dictionary_get_string$ (xpc_object_t *object, const char *key);
+    extern void xpc_release$(xpc_object_t *object);
+    extern const char *xpc_dictionary_get_string$(xpc_object_t *object, const char *key);
     
     typeof(xpc_copy_entitlements_for_self$) *xpc_copy_entitlements_for_self = dlsym(libxpc, "xpc_copy_entitlements_for_self");
     typeof(xpc_release$) *xpc_release = dlsym(libxpc, "xpc_release");
@@ -304,6 +305,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                                                  handler:nil]];
         [self presentViewController:alert animated:true completion:nil];
     }
+#endif
 }
 
 - (void)saveStateToFile:(NSString *)file

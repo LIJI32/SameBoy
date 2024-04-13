@@ -33,7 +33,9 @@
             _engine.playsHapticsOnly = true;
             _engine.autoShutdownEnabled = true;
     }
+#ifndef APPSTORE
     if (!_engine) return [[GBHapticManagerLegacy alloc] init];
+#endif
     return self;
 }
 
