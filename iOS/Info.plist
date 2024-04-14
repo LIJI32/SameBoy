@@ -174,5 +174,15 @@
 		<integer>1</integer>
 		<integer>2</integer>
 	</array>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>iPhoneOS</string>
+    </array>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string>
+    </array>
+    <key>DTPlatformName</key>
+    <string>iphoneos</string>
 </dict>
 </plist>

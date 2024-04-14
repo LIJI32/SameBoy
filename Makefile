@@ -143,6 +143,14 @@ override CONF := release
 FAT_FLAGS += -arch x86_64 -arch arm64
 endif
 
+IOS_MIN := 11.0
+
+ifeq ($(CONF),appstore)
+override CONF := release
+CFLAGS += -DAPPSTORE
+IOS_MIN := 13.0
+endif
+
 # Support out-of-PATH RGBDS
 RGBASM  := $(RGBDS)rgbasm
 RGBLINK := $(RGBDS)rgblink
@@ -239,11 +247,11 @@ SYSROOT := $(shell xcodebuild -sdk iphoneos -version Path 2> $(NULL))
 ifeq ($(SYSROOT),)
 $(error Could not find an iOS SDK)
 endif
-CFLAGS += -arch arm64 -miphoneos-version-min=11.0 -isysroot $(SYSROOT) -IAppleCommon -DGB_DISABLE_DEBUGGER
+CFLAGS += -arch arm64 -miphoneos-version-min=$(IOS_MIN) -isysroot $(SYSROOT) -IAppleCommon -DGB_DISABLE_DEBUGGER
 CORE_FILTER += Core/debugger.c Core/sm83_disassembler.c Core/symbol_hash.c
 LDFLAGS += -arch arm64
 OCFLAGS += -x objective-c -fobjc-arc -Wno-deprecated-declarations -isysroot $(SYSROOT)
-LDFLAGS += -miphoneos-version-min=11.0  -isysroot $(SYSROOT)
+LDFLAGS += -miphoneos-version-min=$(IOS_MIN)  -isysroot $(SYSROOT)
 IOS_INSTALLER_LDFLAGS := $(LDFLAGS) -lobjc -framework CoreServices -framework Foundation
 LDFLAGS += -lobjc -framework UIKit -framework Foundation -framework CoreGraphics -framework Metal -framework MetalKit -framework AudioToolbox -framework AVFoundation -framework QuartzCore -framework CoreMotion -framework CoreVideo -framework CoreMedia -framework CoreImage -framework UserNotifications -weak_framework CoreHaptics 
 CODESIGN := codesign -fs -
