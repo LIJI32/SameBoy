@@ -8,7 +8,7 @@ double StatusBarHeight(void)
         UIWindow *window = [[UIWindow alloc] init];
         [window makeKeyAndVisible];
         UIEdgeInsets insets = window.safeAreaInsets;
-        ret = MAX(MAX(insets.left, insets.right), MAX(insets.top, insets.bottom));
+        ret = MAX(MAX(insets.left, insets.right), MAX(insets.top, insets.bottom)) ?: 20;
         [window setHidden:true];
     }
     return ret;
