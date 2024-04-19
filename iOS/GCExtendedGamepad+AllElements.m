@@ -15,9 +15,10 @@
         if (self.buttonMenu) ret[@(GBUsageButtonMenu)] = self.buttonMenu;
         if (self.buttonOptions) ret[@(GBUsageButtonOptions)] = self.buttonOptions;
     }
-    if (@available(iOS 14.0, *)) {
+    // Can't be used
+    /* if (@available(iOS 14.0, *)) {
         if (self.buttonHome) ret[@(GBUsageButtonHome)] = self.buttonHome;
-    }
+    } */
     if (self.leftThumbstick) ret[@(GBUsageLeftThumbstick)] = self.leftThumbstick;
     if (self.rightThumbstick) ret[@(GBUsageRightThumbstick)] = self.rightThumbstick;
     if (self.leftShoulder) ret[@(GBUsageLeftShoulder)] = self.leftShoulder;

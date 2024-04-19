@@ -16,25 +16,6 @@
 #import <CoreMotion/CoreMotion.h>
 #import <dlfcn.h>
 
-typedef enum {
-    GBRight,
-    GBLeft,
-    GBUp,
-    GBDown,
-    GBA,
-    GBB,
-    GBSelect,
-    GBStart,
-    GBTurbo,
-    GBRewind,
-    GBUnderclock,
-    GBHotkey1, // Todo
-    GBHotkey2, // Todo
-    GBJoypadButtonCount,
-    GBButtonCount =  GBUnderclock + 1,
-    GBGameBoyButtonCount = GBStart + 1,
-} GBButton;
-
 @implementation GBViewController
 {
     GB_gameboy_t _gb;
@@ -310,37 +291,6 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     }
 }
 
-- (GBButton)controller:(GCController *)controller convertUsageToButton:(GBControllerUsage)usage
-{
-    bool isSony = false;
-    if (@available(iOS 14.5, *)) {
-        if ([controller.extendedGamepad isKindOfClass:[GCDualSenseGamepad class]]) {
-            isSony = true;
-        }
-    }
-    if (@available(iOS 14.0, *)) {
-        if ([controller.extendedGamepad isKindOfClass:[GCDualShockGamepad class]]) {
-            isSony = true;
-        }
-    }
-    
-    
-    switch (usage) {
-        case GBUsageButtonA: return isSony? GBB : GBA;
-        case GBUsageButtonB: return isSony? GBA : GBB;
-        case GBUsageButtonX: return isSony? GBSelect : GBStart;
-        case GBUsageButtonY: return isSony? GBStart : GBSelect;
-        case GBUsageButtonMenu: return GBStart;
-        case GBUsageButtonOptions: return GBSelect;
-        case GBUsageButtonHome: return GBStart;
-        case GBUsageLeftShoulder: return GBRewind;
-        case GBUsageRightShoulder: return GBTurbo;
-        case GBUsageLeftTrigger: return GBUnderclock;
-        case GBUsageRightTrigger: return GBTurbo;
-        default: return -1;
-    }
-}
-
 - (void)updateLastController:(GCController *)controller
 {
     if (_lastController == controller) return;
@@ -352,7 +302,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
     [self updateLastController:controller];
     
-    GBButton gbButton = [self controller:controller convertUsageToButton:usage];
+    GBButton gbButton = [GBSettingsViewController controller:controller convertUsageToButton:usage];
     static const double analogThreshold = 0.0625;
     switch (gbButton) {
         case GBRight:
