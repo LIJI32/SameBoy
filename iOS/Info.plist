@@ -188,6 +188,15 @@ APPSTORE END -->
     </array>
     <key>UIRequiresFullScreen</key>
     <true/>
+    <key>GCSupportedGameControllers</key>
+    <array>
+        <dict>
+            <key>ProfileName</key>
+            <string>ExtendedGamepad</string>
+        </dict>
+    </array>
+    <key>GCSupportsControllerUserInteraction</key>
+    <true/>
 <!-- APPSTORE START
     <key>MinimumOSVersion</key>
     <string>@IOS_MIN</string>

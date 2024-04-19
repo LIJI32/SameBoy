@@ -1,4 +1,4 @@
-typedef enum : NSUInteger {
+typedef enum {
     GBRight,
     GBLeft,
     GBUp,
