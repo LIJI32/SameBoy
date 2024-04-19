@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <errno.h>
+#include <limits.h>
 #include <OpenDialog/open_dialog.h>
 #include <SDL.h>
 #include <Core/gb.h>
@@ -689,7 +690,7 @@ static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type)
     };
     bool use_built_in = true;
     if (configuration.bootrom_path[0]) {
-        static char path[4096];
+        static char path[PATH_MAX + 1];
         snprintf(path, sizeof(path), "%s/%s", configuration.bootrom_path, names[type]);
         use_built_in = GB_load_boot_rom(gb, path);
     }
@@ -890,7 +891,7 @@ restart:
     }
 }
 
-static char prefs_path[1024] = {0, };
+static char prefs_path[PATH_MAX + 1] = {0, };
 
 static void save_configuration(void)
 {

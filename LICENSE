@@ -1,3 +1,6 @@
+  All files and directories in this repository, except for the iOS and HexFiend
+  directories, are licensed under the Expat License:
+  
 Expat License
 
 Copyright (c) 2015-2024 Lior Halphon
@@ -19,3 +22,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+  
+  The files contained under the iOS directory in this repository are subject to
+  this addition condition:
+  
+  A written permission from Lior Halphon is required to distribute copies or
+  substantial portions of the Software in a digital marketplace, such as
+  Apple's App Store.

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include "utils.h"
 
 static const char *resource_folder(void)
@@ -18,7 +19,7 @@ static const char *resource_folder(void)
 
 char *resource_path(const char *filename)
 {
-    static char path[1024];
+    static char path[PATH_MAX + 1];
    
     snprintf(path, sizeof(path), "%s%s", resource_folder(), filename);
 #ifdef DATA_DIR
