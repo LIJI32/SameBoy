@@ -317,7 +317,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             break;
         case GBTurbo:
             if (button.value > analogThreshold) {
-                [self setRunMode:GBRunModeTurbo];
+                [self setRunMode:GBRunModeTurbo ignoreDynamicSpeed:!button.isAnalog];
                 if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
                     GB_set_clock_multiplier(&_gb, (button.value - analogThreshold) / (1 - analogThreshold) * 3 + 1);
                 }
@@ -328,7 +328,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             break;
         case GBRewind:
             if (button.value > analogThreshold) {
-                [self setRunMode:GBRunModeRewind];
+                [self setRunMode:GBRunModeRewind ignoreDynamicSpeed:!button.isAnalog];
                 if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
                     GB_set_clock_multiplier(&_gb, (button.value - analogThreshold) / (1 - analogThreshold) * 4);
                 }
@@ -340,7 +340,6 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         case GBUnderclock:
             if (button.value > analogThreshold) {
                 if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
-                    [self setRunMode:GBRunModeTurbo];
                     GB_set_clock_multiplier(&_gb, 1 - ((button.value - analogThreshold) / (1 - analogThreshold) * 0.75));
                 }
                 else {
@@ -349,7 +348,6 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             }
             else {
                 GB_set_clock_multiplier(&_gb, 1.0);
-                [self setRunMode:GBRunModeNormal];
             }
             break;
         default: break;
@@ -975,7 +973,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     return [GBROMManager sharedManager].currentROM != nil;
 }
 
-- (void)setRunMode:(GBRunMode)runMode
+- (void)setRunMode:(GBRunMode)runMode ignoreDynamicSpeed:(bool)ignoreDynamicSpeed
 {
     if (runMode == GBRunModeRewind && _rewindOver) {
         runMode = GBRunModePaused;
@@ -993,7 +991,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         _rewindOver = false;
     }
     
-    if (_runMode == GBRunModeNormal || ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
+    if (_runMode == GBRunModeNormal || !([[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"] && !ignoreDynamicSpeed)) {
         if (_runMode == GBRunModeTurbo) {
             double multiplier = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboSpeed"];
             GB_set_turbo_mode(&_gb, multiplier == 1, false);
@@ -1004,6 +1002,11 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
             GB_set_clock_multiplier(&_gb, 1.0);
         }
     }
+}
+
+- (void)setRunMode:(GBRunMode)runMode
+{
+    [self setRunMode:runMode ignoreDynamicSpeed:true];
 }
 
 - (AVCaptureDevice *)captureDevice
