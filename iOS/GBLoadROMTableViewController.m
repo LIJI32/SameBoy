@@ -1,5 +1,10 @@
 #import "GBLoadROMTableViewController.h"
 #import "GBROMManager.h"
+#import "GBViewController.h"
+#import <objc/runtime.h>
+
+@interface GBLoadROMTableViewController() <UIDocumentPickerDelegate>
+@end
 
 @implementation GBLoadROMTableViewController
 {
@@ -15,16 +20,22 @@
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-    return 1;
+    return 2;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
+    if (section == 1) return 1;
     return [GBROMManager sharedManager].allROMs.count;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (indexPath.section == 1) {
+        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        cell.textLabel.text = @"Import ROM files";
+        return cell;
+    }
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
     NSString *rom = [GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]];
     cell.textLabel.text = rom;
@@ -51,6 +62,8 @@
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (indexPath.section == 1) return [super tableView:tableView heightForRowAtIndexPath:indexPath];
+
     return 60;
 }
 
@@ -61,15 +74,68 @@
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
-    return @"Import ROMs by opening them in SameBoy using the Files app or a web browser, or by sending them over with AirDrop";
+    if (section == 0) return nil;
+
+    return @"You can also import ROM files by opening them in SameBoy using the Files app or a web browser, or by sending them over with AirDrop.";
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (indexPath.section == 1) {
+        UIViewController *parent = self.presentingViewController;
+        [self.presentingViewController dismissViewControllerAnimated:true completion:^{
+            UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"com.github.liji32.sameboy.gb",
+                                                                                                                     @"com.github.liji32.sameboy.gbc",
+                                                                                                                     @"com.github.liji32.sameboy.isx",
+                                                                                                                     @"public.gbrom"]
+                                                                                                            inMode:UIDocumentPickerModeImport];
+            picker.allowsMultipleSelection = true;
+            if (@available(iOS 13.0, *)) {
+                picker.shouldShowFileExtensions = true;
+            }
+            picker.delegate = self;
+            objc_setAssociatedObject(picker, @selector(delegate), self, OBJC_ASSOCIATION_RETAIN);
+            [parent presentViewController:picker animated:true completion:nil];
+        }];
+        return;
+    }
     [GBROMManager sharedManager].currentROM = [GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]];
     [self.presentingViewController dismissViewControllerAnimated:true completion:^{
         [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
     }];
+}
+
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray <NSURL *>*)urls
+{
+    if (urls.count == 1) {
+        NSURL *url = urls.firstObject;
+        NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
+        if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
+            [GBROMManager sharedManager].currentROM = potentialROM;
+        }
+        else {
+            [url startAccessingSecurityScopedResource];
+            [GBROMManager sharedManager].currentROM =
+            [[GBROMManager sharedManager] importROM:url.path
+                                       keepOriginal:true];
+            [url stopAccessingSecurityScopedResource];
+        }
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
+    }
+    else {
+        for (NSURL *url in urls) {
+            NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
+            if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
+                // That's an already imported ROM
+                continue;
+            }
+            [url startAccessingSecurityScopedResource];
+            [[GBROMManager sharedManager] importROM:url.path
+                                       keepOriginal:true];
+            [url stopAccessingSecurityScopedResource];
+        }
+        [(GBViewController *)[UIApplication sharedApplication].keyWindow.rootViewController openLibrary];
+    }
 }
 
 - (UIModalPresentationStyle)modalPresentationStyle
@@ -79,6 +145,8 @@
 
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (indexPath.section == 1) return;
+
     if (editingStyle != UITableViewCellEditingStyleDelete) return;
     NSString *rom = [GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]];
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Delete ROM “%@”?", rom]
@@ -102,6 +170,8 @@
 
 - (void)renameRow:(NSIndexPath *)indexPath
 {
+    if (indexPath.section == 1) return;
+    
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
     UITextField *field = [[UITextField alloc] initWithFrame:cell.textLabel.frame];
     field.font = cell.textLabel.font;
@@ -140,11 +210,18 @@
     _renamingPath = nil;
 }
 
+- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return indexPath.section == 0;
+}
+
 // Leave these ROM management to iOS 13.0 and up for now
 - (UIContextMenuConfiguration *)tableView:(UITableView *)tableView
 contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
                                     point:(CGPoint)point API_AVAILABLE(ios(13.0))
 {
+    if (indexPath.section == 1) return nil;
+    
     return [UIContextMenuConfiguration configurationWithIdentifier:nil
                                                    previewProvider:nil
                                                     actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggestedActions) {
