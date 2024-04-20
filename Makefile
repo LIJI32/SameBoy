@@ -441,6 +441,7 @@ $(BIN)/SameBoy-iOS.app: $(BIN)/SameBoy-iOS.app/SameBoy \
                         $(BIN)/SameBoy-iOS.app/agb_boot.bin \
                         $(BIN)/SameBoy-iOS.app/sgb_boot.bin \
                         $(BIN)/SameBoy-iOS.app/sgb2_boot.bin \
+						$(BIN)/SameBoy-iOS.app/LaunchScreen.storyboardc \
                         Shaders
 	$(MKDIR) -p $(BIN)/SameBoy-iOS.app
 	cp iOS/*.png $(BIN)/SameBoy-iOS.app
@@ -499,6 +500,9 @@ endif
 $(BIN)/SameBoy.app/Contents/Resources/%.nib: Cocoa/%.xib
 	ibtool --target-device mac --minimum-deployment-target 10.9 --compile $@ $^ 2>&1 | cat -
 	
+$(BIN)/SameBoy-iOS.app/%.storyboardc: iOS/%.storyboard
+	ibtool --target-device iphone --target-device ipad --minimum-deployment-target $(IOS_MIN) --compile $@ $^ 2>&1 | cat -
+
 # Quick Look generator
 
 $(BIN)/SameBoy.qlgenerator: $(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL \
