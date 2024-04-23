@@ -88,6 +88,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
     CGPoint _screenSwipeOrigin;
     bool _screenSwiped;
     bool _inDynamicSpeedMode;
+    bool _previewMode;
     
     UIImageView *_dpadView;
     UIImageView *_dpadShadowView;
@@ -104,10 +105,21 @@ static GB_key_mask_t angleToKeyMask(double angle)
     GB_key_mask_t _lastMask;
 }
 
-- (instancetype)init
+- (void)reloadThemeImages
+{
+    _aButtonView.image      = [_layout.theme imageNamed:@"buttonA"];
+    _bButtonView.image      = [_layout.theme imageNamed:@"buttonB"];
+    _startButtonView.image  = [_layout.theme imageNamed:@"button2"];
+    _selectButtonView.image = [_layout.theme imageNamed:@"button2"];
+    self.usesSwipePad = self.usesSwipePad;
+}
+
+- (instancetype)initWithLayout:(GBLayout *)layout;
 {
     self = [super initWithImage:nil];
     if (!self) return nil;
+    
+    _layout = layout;
     _touches = [NSMutableSet set];
     
     _screenLabel = [[UILabel alloc] initWithFrame:CGRectZero];
@@ -119,13 +131,14 @@ static GB_key_mask_t angleToKeyMask(double angle)
     _screenLabel.numberOfLines = 0;
     [self addSubview:_screenLabel];
     
-    _dpadView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"dpad"]];
+    _dpadView = [[UIImageView alloc] initWithImage:[_layout.theme imageNamed:@"dpad"]];
+    _aButtonView = [[UIImageView alloc] initWithImage:[_layout.theme imageNamed:@"buttonA"]];
+    _bButtonView = [[UIImageView alloc] initWithImage:[_layout.theme imageNamed:@"buttonB"]];
+    _startButtonView = [[UIImageView alloc] initWithImage:[_layout.theme imageNamed:@"button2"]];
+    _selectButtonView = [[UIImageView alloc] initWithImage:[_layout.theme imageNamed:@"button2"]];
+    
     _dpadShadowView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"dpadShadow"]];
     _dpadShadowView.hidden = true;
-    _aButtonView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"button"]];
-    _bButtonView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"button"]];
-    _startButtonView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"button2"]];
-    _selectButtonView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"button2"]];
     _gbView = [[GBViewMetal alloc] initWithFrame:CGRectZero];
     
     [self addSubview:_dpadView];
@@ -168,6 +181,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
+    if (_previewMode) return;
     static const double dpadRadius = 75;
     CGPoint dpadLocation = _layout.dpadLocation;
     double factor = [UIScreen mainScreen].scale;
@@ -246,6 +260,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
 
 - (void)touchesChanged
 {
+    if (_previewMode) return;
     if (!GB_is_inited(_gbView.gb)) return;
     GB_key_mask_t mask = 0;
     double factor = [UIScreen mainScreen].scale;
@@ -345,10 +360,10 @@ static GB_key_mask_t angleToKeyMask(double angle)
         }
     }
     if (mask != _lastMask) {
-        _aButtonView.image      = [UIImage imageNamed:(mask & GB_KEY_A_MASK)?      @"buttonPressed"  : @"button"];
-        _bButtonView.image      = [UIImage imageNamed:(mask & GB_KEY_B_MASK)?      @"buttonPressed"  : @"button"];
-        _startButtonView.image  = [UIImage imageNamed:(mask & GB_KEY_START_MASK) ? @"button2Pressed" : @"button2"];
-        _selectButtonView.image = [UIImage imageNamed:(mask & GB_KEY_SELECT_MASK)? @"button2Pressed" : @"button2"];
+        _aButtonView.image      = [_layout.theme imageNamed:(mask & GB_KEY_A_MASK)?      @"buttonAPressed" : @"buttonA"];
+        _bButtonView.image      = [_layout.theme imageNamed:(mask & GB_KEY_B_MASK)?      @"buttonBPressed" : @"buttonB"];
+        _startButtonView.image  = [_layout.theme imageNamed:(mask & GB_KEY_START_MASK) ? @"button2Pressed" : @"button2"];
+        _selectButtonView.image = [_layout.theme imageNamed:(mask & GB_KEY_SELECT_MASK)? @"button2Pressed" : @"button2"];
         
         bool hidden = false;
         bool diagonal = false;
@@ -425,7 +440,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
 - (void)setUsesSwipePad:(bool)usesSwipePad
 {
     _usesSwipePad = usesSwipePad;
-    _dpadView.image = [UIImage imageNamed:usesSwipePad? @"swipepad" : @"dpad"];
+    _dpadView.image = [_layout.theme imageNamed:usesSwipePad? @"swipepad" : @"dpad"];
 }
 
 - (void)displayOverlayWithImage:(NSString *)imageName orTitle:(NSString *)title
@@ -517,6 +532,18 @@ static GB_key_mask_t angleToKeyMask(double angle)
     [self.viewController stop];
     [self.viewController loadStateFromFile:self.swipeStateFile];
     [self.viewController start];
+}
+
+- (void)enterPreviewMode:(bool)showLabel
+{
+    if (showLabel) {
+        _screenLabel.text = [NSString stringWithFormat:@"Previewing Theme “%@”", _layout.theme.name];
+    }
+    else {
+        [_screenLabel removeFromSuperview];
+        _screenLabel = nil;
+    }
+    _previewMode = true;
 }
 
 @end

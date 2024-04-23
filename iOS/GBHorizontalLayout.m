@@ -3,9 +3,9 @@
 
 @implementation GBHorizontalLayout
 
-- (instancetype)init
+- (instancetype)initWithTheme:(GBTheme *)theme
 {
-    self = [super init];
+    self = [super initWithTheme:theme];
     if (!self) return nil;
     
     CGSize resolution = {self.resolution.height - self.cutout, self.resolution.width};
@@ -89,16 +89,25 @@
                                      (self.aLocation.y + self.bLocation.y) / 2};
 
     
-    UIGraphicsBeginImageContextWithOptions(resolution, true, 1);
+    if (theme.renderingPreview) {
+        UIGraphicsBeginImageContextWithOptions((CGSize){resolution.width / 8, resolution.height / 8}, true, 1);
+        CGContextScaleCTM(UIGraphicsGetCurrentContext(), 1 / 8.0, 1 / 8.0);
+    }
+    else {
+        UIGraphicsBeginImageContextWithOptions(resolution, true, 1);
+    }
     [self drawBackground];
     [self drawScreenBezels];
-    if (drawSameBoyLogo) {
-        double bezelBottom = screenRect.origin.y + screenRect.size.height + screenBorderWidth;
-        double freeSpace = resolution.height - bezelBottom;
-        [self drawLogoInVerticalRange:(NSRange){bezelBottom + screenBorderWidth * 2, freeSpace - screenBorderWidth * 4}];
-    }
     
-    [self drawLabels];
+    [self drawThemedLabelsWithBlock:^{
+        if (drawSameBoyLogo) {
+            double bezelBottom = screenRect.origin.y + screenRect.size.height + screenBorderWidth;
+            double freeSpace = resolution.height - bezelBottom;
+            [self drawLogoInVerticalRange:(NSRange){bezelBottom + screenBorderWidth * 2, freeSpace - screenBorderWidth * 4}];
+        }
+        
+        [self drawLabels];
+    }];
     
     self.background = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -112,4 +121,10 @@
     }
     return CGRectMake(0, 0, self.background.size.width / self.factor, self.background.size.height / self.factor);
 }
+
+- (CGSize)size
+{
+    return (CGSize){self.resolution.height, self.resolution.width};
+}
+
 @end

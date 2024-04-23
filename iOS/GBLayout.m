@@ -1,24 +1,43 @@
 #define GBLayoutInternal
 #import "GBLayout.h"
 
-double StatusBarHeight(void)
+static double StatusBarHeight(void)
 {
-    double ret = 0;
-    @autoreleasepool {
-        UIWindow *window = [[UIWindow alloc] init];
-        [window makeKeyAndVisible];
-        UIEdgeInsets insets = window.safeAreaInsets;
-        ret = MAX(MAX(insets.left, insets.right), MAX(insets.top, insets.bottom)) ?: 20;
-        [window setHidden:true];
-    }
+    static double ret = 0;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        @autoreleasepool {
+            UIWindow *window = [[UIWindow alloc] init];
+            [window makeKeyAndVisible];
+            UIEdgeInsets insets = window.safeAreaInsets;
+            ret = MAX(MAX(insets.left, insets.right), MAX(insets.top, insets.bottom)) ?: 20;
+            [window setHidden:true];
+        }
+    });
+    return ret;
+}
+
+static bool HasHomeBar(void)
+{
+    static bool ret = false;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        ret = [UIApplication sharedApplication].windows[0].safeAreaInsets.bottom;
+    });
     return ret;
 }
 
 @implementation GBLayout
-- (instancetype)init
+{
+    bool _isRenderingMask;
+}
+
+- (instancetype)initWithTheme:(GBTheme *)theme
 {
     self = [super init];
     if (!self) return nil;
+    
+    _theme = theme;
     _factor = [UIScreen mainScreen].scale;
     _resolution = [UIScreen mainScreen].bounds.size;
     _resolution.width *= _factor;
@@ -30,7 +49,7 @@ double StatusBarHeight(void)
     _minY = StatusBarHeight() * _factor;
     _cutout = _minY <= 24 * _factor? 0 : _minY;
     
-    if ([UIApplication sharedApplication].windows[0].safeAreaInsets.bottom) {
+    if (HasHomeBar()) {
         _homeBar =  21 * _factor;
     }
     
@@ -45,21 +64,11 @@ double StatusBarHeight(void)
     return CGRectMake(0, 0, self.background.size.width / self.factor, self.background.size.height / self.factor);
 }
 
-- (UIColor *)brandColor
-{
-    static dispatch_once_t onceToken;
-    static UIColor *ret = nil;
-    dispatch_once(&onceToken, ^{
-        ret = [UIColor colorWithRed:0 / 255.0 green:70 / 255.0 blue:141 / 255.0 alpha:1.0];
-    });
-    return ret;
-}
-
 - (void)drawBackground
 {
     CGContextRef context = UIGraphicsGetCurrentContext();
-    CGColorRef top = [UIColor colorWithRed:192 / 255.0 green:195 / 255.0 blue:199 / 255.0 alpha:1.0].CGColor;
-    CGColorRef bottom = [UIColor colorWithRed:174 / 255.0 green:176 / 255.0 blue:180 / 255.0 alpha:1.0].CGColor;
+    CGColorRef top = _theme.backgroundGradientTop.CGColor;
+    CGColorRef bottom = _theme.backgroundGradientBottom.CGColor;
     CGColorRef colors[] = {top, bottom};
     CFArrayRef colorsArray = CFArrayCreate(NULL, (const void **)colors, 2, &kCFTypeArrayCallBacks);
     
@@ -68,19 +77,32 @@ double StatusBarHeight(void)
     CGContextDrawLinearGradient(context,
                                 gradient,
                                 (CGPoint){0, 0},
-                                (CGPoint){0, CGBitmapContextGetHeight(context)},
+                                (CGPoint){0, self.size.height},
                                 0);
 
     CFRelease(gradient);
     CFRelease(colorsArray);
     CFRelease(colorspace);
+    
+    UIImage *texture = _theme.texture;
+    if (texture) {
+        unsigned screenWidth = self.size.width;
+        unsigned screenHeight = self.size.height;
+        unsigned textureWidth = texture.size.width * texture.scale;
+        unsigned textureHeight = texture.size.height * texture.scale;
+        for (unsigned y = 0; y < screenHeight; y += textureHeight) {
+            for (unsigned x = 0; x < screenWidth; x += textureWidth) {
+                [texture drawInRect:CGRectMake(x, y, textureWidth, textureHeight)];
+            }
+        }
+    }
 }
 
 - (void)drawScreenBezels
 {
     CGContextRef context = UIGraphicsGetCurrentContext();
-    CGColorRef top = [UIColor colorWithWhite:53 / 255.0 alpha:1.0].CGColor;
-    CGColorRef bottom = [UIColor colorWithWhite:45 / 255.0 alpha:1.0].CGColor;
+    CGColorRef top = _theme.bezelsGradientTop.CGColor;
+    CGColorRef bottom = _theme.bezelsGradientBottom.CGColor;
     CGColorRef colors[] = {top, bottom};
     CFArrayRef colorsArray = CFArrayCreate(NULL, (const void **)colors, 2, &kCFTypeArrayCallBacks);
     
@@ -92,8 +114,8 @@ double StatusBarHeight(void)
     bezelRect.size.height += borderWidth * 2;
     UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:bezelRect cornerRadius:borderWidth];
     CGContextSaveGState(context);
-    CGContextSetShadowWithColor(context, (CGSize){0,}, borderWidth / 2, [UIColor colorWithWhite:0 alpha:1.0].CGColor);
-    [[UIColor colorWithWhite:0 alpha:0.25] setFill];
+    CGContextSetShadowWithColor(context, (CGSize){0, _factor}, _factor, [UIColor colorWithWhite:1 alpha:0.25].CGColor);
+    [_theme.backgroundGradientBottom setFill];
     [path fill];
     [path addClip];
     
@@ -105,10 +127,17 @@ double StatusBarHeight(void)
                                 (CGPoint){bezelRect.origin.x, bezelRect.origin.y + bezelRect.size.height},
                                 0);
     
+    CGContextSetShadowWithColor(context, (CGSize){0, _factor}, _factor, [UIColor colorWithWhite:0 alpha:0.25].CGColor);
+    
+    path.usesEvenOddFillRule = true;
+    [path appendPath:[UIBezierPath bezierPathWithRect:(CGRect){{0, 0}, self.size}]];
+    [path fill];
+    
+    
     CGContextRestoreGState(context);
     
     CGContextSaveGState(context);
-    CGContextSetShadowWithColor(context, (CGSize){0,}, borderWidth / 2, [UIColor colorWithWhite:0 alpha:0.25].CGColor);
+    CGContextSetShadowWithColor(context, (CGSize){0, 0}, borderWidth / 4, [UIColor colorWithWhite:0 alpha:0.125].CGColor);
     
     [[UIColor blackColor] setFill];
     UIRectFill(self.screenRect);
@@ -125,15 +154,83 @@ double StatusBarHeight(void)
     
     CGRect rect = CGRectMake(0,
                              range.location - range.length / 3,
-                             CGBitmapContextGetWidth(UIGraphicsGetCurrentContext()), range.length * 2);
+                             self.size.width, range.length * 2);
     NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
     style.alignment = NSTextAlignmentCenter;
     [@"SAMEBOY" drawInRect:rect
             withAttributes:@{
                 NSFontAttributeName: font,
-                NSForegroundColorAttributeName:self.brandColor,
+                NSForegroundColorAttributeName:_isRenderingMask? [UIColor whiteColor] : _theme.brandColor,
                 NSParagraphStyleAttributeName: style,
             }];
+}
+
+- (void)drawThemedLabelsWithBlock:(void (^)(void))block
+{
+    // Start with a normal normal pass
+    block();
+
+    if (!_theme.embossLabels){
+        // No emboss, done
+        return;
+    }
+    
+    CGContextRef mainContext = UIGraphicsGetCurrentContext();
+
+    
+    // Create a mask
+    UIGraphicsBeginImageContextWithOptions((CGSize){
+        CGBitmapContextGetWidth(mainContext),
+        CGBitmapContextGetHeight(mainContext)
+    }, true, 1);
+    
+    if (_theme.renderingPreview) {
+        CGContextScaleCTM(UIGraphicsGetCurrentContext(), 1 / 8.0, 1 / 8.0);
+    }
+    
+    _isRenderingMask = true;
+    block();
+    _isRenderingMask = false;
+
+    UIImage *mask = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    // Create an inverted mask
+    CGRect rect = (CGRect){{0, 0}, mask.size};
+    UIGraphicsBeginImageContextWithOptions(rect.size, false, mask.scale);
+    [_theme.backgroundGradientBottom setFill];
+    UIRectFill(rect);
+    CGContextClipToMask(UIGraphicsGetCurrentContext(), rect, mask.CGImage);
+    CGContextClearRect(UIGraphicsGetCurrentContext(), rect);
+    UIImage *invertedMask = UIGraphicsGetImageFromCurrentImageContext();
+    
+    CGContextSaveGState(mainContext);
+    if (_theme.renderingPreview) {
+        CGContextScaleCTM(UIGraphicsGetCurrentContext(), 8.0, 8.0);
+    }
+    CGContextTranslateCTM(mainContext, 0, rect.size.height);
+    CGContextScaleCTM(mainContext, 1.0, -1.0);
+    CGContextClipToMask(mainContext, rect, mask.CGImage);
+        UIGraphicsEndImageContext();
+    
+    // Draws with an inner shadow
+    CGContextSetShadowWithColor(mainContext, (CGSize){0, _factor}, _factor, [UIColor colorWithWhite:0 alpha:0.25].CGColor);
+    [invertedMask drawAtPoint:(CGPoint){0, 0}];
+
+    CGContextRestoreGState(mainContext);
+    
+    
+    CGContextSaveGState(mainContext);
+    if (_theme.renderingPreview) {
+        CGContextScaleCTM(UIGraphicsGetCurrentContext(), 8.0, 8.0);
+    }
+    CGContextClipToMask(mainContext, rect, invertedMask.CGImage);
+
+    CGContextSetShadowWithColor(mainContext, (CGSize){0, _factor}, _factor, [UIColor colorWithWhite:1.0 alpha:0.25].CGColor);
+    
+    block();
+    CGContextRestoreGState(mainContext);
+
 }
 
 - (void)drawRotatedLabel:(NSString *)label withFont:(UIFont *)font origin:(CGPoint)origin distance:(double)distance
@@ -150,7 +247,7 @@ double StatusBarHeight(void)
     [label drawInRect:CGRectMake(-256, distance, 512, 256)
             withAttributes:@{
                 NSFontAttributeName: font,
-                NSForegroundColorAttributeName:self.brandColor,
+                NSForegroundColorAttributeName:_isRenderingMask? [UIColor whiteColor] : _theme.brandColor,
                 NSParagraphStyleAttributeName: style,
             }];
     CGContextRestoreGState(context);
@@ -175,5 +272,10 @@ double StatusBarHeight(void)
         return buttonsDelta;
     }
     return (CGSize){maxDistance, floor(sqrt(100 * 100 * self.factor * self.factor - maxDistance * maxDistance))};
+}
+
+- (CGSize)size
+{
+    return _resolution;
 }
 @end

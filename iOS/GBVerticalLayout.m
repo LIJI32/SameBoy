@@ -3,9 +3,9 @@
 
 @implementation GBVerticalLayout
 
-- (instancetype)init
+- (instancetype)initWithTheme:(GBTheme *)theme
 {
-    self = [super init];
+    self = [super initWithTheme:theme];
     if (!self) return nil;
     
     CGSize resolution = self.resolution;
@@ -59,16 +59,24 @@
     double controlsTop = self.dpadLocation.y - 80 * self.factor;
     double middleSpace = self.bLocation.x - buttonRadius - (self.dpadLocation.x + 80 * self.factor);
     
-    UIGraphicsBeginImageContextWithOptions(resolution, true, 1);
+    if (theme.renderingPreview) {
+        UIGraphicsBeginImageContextWithOptions((CGSize){resolution.width / 8, resolution.height / 8}, true, 1);
+        CGContextScaleCTM(UIGraphicsGetCurrentContext(), 1 / 8.0, 1 / 8.0);
+    }
+    else {
+        UIGraphicsBeginImageContextWithOptions(resolution, true, 1);
+    }
     [self drawBackground];
     [self drawScreenBezels];
     
-    if (controlsTop - controlAreaStart > 24 * self.factor + screenBorderWidth * 2 ||
-        middleSpace > 160 * self.factor) {
-        [self drawLogoInVerticalRange:(NSRange){controlAreaStart + screenBorderWidth, 24 * self.factor}];
-    }
-    
-    [self drawLabels];    
+    [self drawThemedLabelsWithBlock:^{
+        if (controlsTop - controlAreaStart > 24 * self.factor + screenBorderWidth * 2 ||
+            middleSpace > 160 * self.factor) {
+            [self drawLogoInVerticalRange:(NSRange){controlAreaStart + screenBorderWidth, 24 * self.factor}];
+        }
+        
+        [self drawLabels];
+    }];
     
     self.background = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();

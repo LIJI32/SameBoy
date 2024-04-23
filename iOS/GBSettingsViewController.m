@@ -1,6 +1,7 @@
 #import "GBSettingsViewController.h"
 #import "GBTemperatureSlider.h"
 #import "GBViewBase.h"
+#import "GBThemesViewController.h"
 #import "GCExtendedGamepad+AllElements.h"
 #import <objc/runtime.h>
 
@@ -18,6 +19,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
 {
     NSArray<NSDictionary *> *_structure;
     UINavigationController *_detailsNavigation;
+    NSArray<NSArray<GBTheme *> *> *_themes; // For prewarming
 }
 
 + (const GB_palette_t *)paletteForTheme:(NSString *)theme
@@ -418,6 +420,12 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                         @"submenu": controlsMenu,
                         @"image": [UIImage imageNamed:@"controlsSettings"],
                     },
+                    @{
+                        @"title": @"Themes",
+                        @"type": typeSubmenu,
+                        @"class": [GBThemesViewController class],
+                        @"image": [UIImage imageNamed:@"themeSettings"],
+                    },
             ]
         }
     ];
@@ -427,6 +435,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
 + (UIViewController *)settingsViewControllerWithLeftButton:(UIBarButtonItem *)button
 {
     GBSettingsViewController *root = [[self alloc] initWithStructure:[self rootStructure] title:@"Settings" style:UITableViewStyleGrouped];
+    [root preloadThemePreviews];
     UINavigationController *controller = [[UINavigationController alloc] initWithRootViewController:root];
     [controller.visibleViewController.navigationItem setLeftBarButtonItem:button];
     if ([UIDevice currentDevice].userInterfaceIdiom != UIUserInterfaceIdiomPad) {
@@ -817,9 +826,17 @@ static id ValueForItem(NSDictionary *item)
                 style = UITableViewStyleInsetGrouped;
             }
         }
-        GBSettingsViewController *submenu = [[GBSettingsViewController alloc] initWithStructure:item[@"submenu"]
-                                                                                          title:item[@"title"]
-                                                                                          style:style];
+        UITableViewController *submenu = nil;
+        
+        if (item[@"class"]) {
+            submenu = [(UITableViewController *)[item[@"class"] alloc] initWithStyle:style];
+            submenu.title = item[@"title"];
+        }
+        else {
+            submenu = [[GBSettingsViewController alloc] initWithStructure:item[@"submenu"]
+                                                                    title:item[@"title"]
+                                                                    style:style];
+        }
         if (_detailsNavigation) {
             [_detailsNavigation setViewControllers:@[submenu] animated:false];
         }
@@ -863,6 +880,38 @@ static id ValueForItem(NSDictionary *item)
 {
     [super viewWillAppear:animated];
     [self.tableView reloadData];
+}
+
+- (void)preloadThemePreviews
+{
+    /* These take some time to render, preload them when loading the root controller */
+    _themes = [GBThemesViewController themes];
+    double time = 0;
+    for (NSArray *section in _themes) {
+        for (GBTheme *theme in section) {
+            /* Sadly they can't be safely rendered outside the main thread, but we can
+               queue each of them individually to not block the main quote for too long. */
+            time += 0.1;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, time * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                [theme verticalPreview];
+                [theme horizontalPreview];
+            });
+        }
+    }
+}
+
++ (GBTheme *)themeNamed:(NSString *)name
+{
+    NSArray *themes = [GBThemesViewController themes];
+    for (NSArray *section in themes) {
+        for (GBTheme *theme in section) {
+            if ([theme.name isEqualToString:name]) {
+                return theme;
+            }
+        }
+    }
+    
+    return [themes.firstObject firstObject];
 }
 
 @end

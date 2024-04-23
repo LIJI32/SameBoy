@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <Core/gb.h>
 #import "GCExtendedGamepad+AllElements.h"
+#import "GBTheme.h"
 
 typedef enum {
     GBRight,
@@ -26,4 +27,5 @@ typedef enum {
 + (UIViewController *)settingsViewControllerWithLeftButton:(UIBarButtonItem *)button;
 + (const GB_palette_t *)paletteForTheme:(NSString *)theme;
 + (GBButton)controller:(GCController *)controller convertUsageToButton:(GBControllerUsage)usage;
++ (GBTheme *)themeNamed:(NSString *)name;
 @end

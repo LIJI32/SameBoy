@@ -23,6 +23,8 @@ int main(int argc, char * argv[])
             @"GBTurboSpeed": @1,
             @"GBRewindSpeed": @1,
             @"GBDynamicSpeed": @NO,
+            
+            @"GBInterfaceTheme": @"SameBoy",
                         
             @"GBCurrentTheme": @"Lime (Game Boy)",
             // Default themes
