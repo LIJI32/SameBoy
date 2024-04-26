@@ -440,6 +440,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
 - (void)setUsesSwipePad:(bool)usesSwipePad
 {
     _usesSwipePad = usesSwipePad;
+    _dpadView.image = nil; // Some bug in UIImage seems to trigger without this?
     _dpadView.image = [_layout.theme imageNamed:usesSwipePad? @"swipepad" : @"dpad"];
 }
 
