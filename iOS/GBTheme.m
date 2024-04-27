@@ -38,6 +38,15 @@
     [invocation invoke];
 }
 
+- (instancetype)self
+{
+    if (GB_likely(!_target)) {
+        _target = _constructor();
+        _constructor = nil;
+    }
+    return _target;
+}
+
 @end
 
 #define MakeColor(r, g, b) [UIColor colorWithRed:(r) / 255.0 green:(g) / 255.0 blue:(b) / 255.0 alpha:1.0]
@@ -103,6 +112,30 @@
     return self;
 }
 
+- (void)setupBackgroundWithColor:(uint32_t)color
+{
+    uint8_t r = color >> 16;
+    uint8_t g = color >> 8;
+    uint8_t b = color;
+    
+    _backgroundGradientTop = MakeColor(r, g, b);
+    _backgroundGradientBottom = [UIColor colorWithRed:pow(r / 255.0, 1.125) green:pow(g / 255.0, 1.125) blue:pow(b / 255.0, 1.125) alpha:1.0];
+}
+
+- (void)setupButtonsWithColor:(UIColor *)color
+{
+    _imageOverrides = @{
+        @"button": [GBTheme recolorImage:[UIImage imageNamed:@"button"] withColor:color],
+        @"buttonPressed": [GBTheme recolorImage:[UIImage imageNamed:@"buttonPressed"] withColor:color],
+        
+        @"dpad": [GBTheme recolorImage:[UIImage imageNamed:@"dpad-tint"] withColor:color],
+        @"swipepad": [GBTheme recolorImage:[UIImage imageNamed:@"swipepad-tint"] withColor:color],
+        
+        @"button2": [GBTheme recolorImage:[UIImage imageNamed:@"button2-tint"] withColor:color],
+        @"button2Pressed": [GBTheme recolorImage:[UIImage imageNamed:@"button2Pressed-tint"] withColor:color],
+    };
+}
+
 - (instancetype)initDarkTheme
 {
     self = [super init];
@@ -120,30 +153,7 @@
     return self;
 }
 
-- (void)setupBackgroundWithColor:(uint32_t)color
-{
-    uint8_t r = color >> 16;
-    uint8_t g = color >> 8;
-    uint8_t b = color;
-    
-    _backgroundGradientTop = MakeColor(r, g, b);
-    _backgroundGradientBottom = [UIColor colorWithRed:pow(r / 255.0, 1.125) green:pow(g / 255.0, 1.125) blue:pow(b / 255.0, 1.125) alpha:1.0];
-}
-
-- (void)setupButtonsWithColor:(UIColor *)color
-{
-    _imageOverrides = @{
-        @"button": [GBTheme recolorImage:[UIImage imageNamed:@"button"] withColor:color],
-        @"buttonPressed": [GBTheme recolorImage:[UIImage imageNamed:@"buttonPressed"] withColor:color],
-                
-        @"dpad": [GBTheme recolorImage:[UIImage imageNamed:@"dpad-tint"] withColor:color],
-        @"swipepad": [GBTheme recolorImage:[UIImage imageNamed:@"swipepad-tint"] withColor:color],
-        
-        @"button2": [GBTheme recolorImage:[UIImage imageNamed:@"button2-tint"] withColor:color],
-        @"button2Pressed": [GBTheme recolorImage:[UIImage imageNamed:@"button2Pressed-tint"] withColor:color],
-    };
-}
-
+#ifdef APPSTORE
 - (instancetype)initDMGTheme
 {
     self = [super init];
@@ -350,6 +360,7 @@
     
     return self;
 }
+#endif
 
 - (instancetype)init
 {
@@ -358,7 +369,7 @@
 
 - (UIImage *)imageNamed:(NSString *)name
 {
-    UIImage *ret = _imageOverrides[name] ?: [UIImage imageNamed:name];
+    UIImage *ret = _imageOverrides[name].self ?: [UIImage imageNamed:name];
     if (!ret) {
         if  ([name isEqual:@"buttonA"] || [name isEqual:@"buttonB"]) {
             return [self imageNamed:@"button"];

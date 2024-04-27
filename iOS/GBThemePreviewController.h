@@ -2,6 +2,6 @@
 #import "GBTheme.h"
 
 @interface GBThemePreviewController : UIViewController
-- (instancetype)initWithTheme:(GBTheme *)theme;
+- (instancetype)initWithTheme:(GBTheme *)theme isPaid:(bool)paid;
 @end
 

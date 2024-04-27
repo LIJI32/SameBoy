@@ -2,19 +2,25 @@
 #import "GBVerticalLayout.h"
 #import "GBHorizontalLayout.h"
 #import "GBBackgroundView.h"
+#ifdef APPSTORE
+#import "GBSubscriptionManager.h"
+#import "GBSubscriptionViewController.h"
+#endif
 
 @implementation GBThemePreviewController
 {
     GBHorizontalLayout *_horizontalLayout;
     GBVerticalLayout *_verticalLayout;
     GBBackgroundView *_backgroundView;
+    bool _isPaid;
 }
 
-- (instancetype)initWithTheme:(GBTheme *)theme
+- (instancetype)initWithTheme:(GBTheme *)theme isPaid:(bool)paid
 {
     self = [super init];
     _horizontalLayout = [[GBHorizontalLayout alloc] initWithTheme:theme];
     _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];
+    _isPaid = paid;
     return self;
 }
 
@@ -53,12 +59,34 @@
                                                                    message:nil
                                                             preferredStyle:[UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad?
                                               UIAlertControllerStyleAlert : UIAlertControllerStyleActionSheet];
-    [alert  addAction:[UIAlertAction actionWithTitle:@"Apply Theme"
-                                               style:UIAlertActionStyleDefault
-                                             handler:^(UIAlertAction *action) {
-        [[NSUserDefaults standardUserDefaults] setObject:_verticalLayout.theme.name forKey:@"GBInterfaceTheme"];
-        [[self presentingViewController] dismissViewControllerAnimated:true completion:nil];
-    }]];
+#ifdef APPSTORE
+    if (_isPaid && GBSubscriptionManager.defaultManager.state == GBSubscriptionInactive) {
+        [alert  addAction:[UIAlertAction actionWithTitle:@"Support SameBoy to Unlock"
+                                                   style:UIAlertActionStyleDefault
+                                                 handler:^(UIAlertAction *action) {
+            UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:[GBSubscriptionViewController new]];
+            UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithTitle:@"Close"
+                                                                      style:UIBarButtonItemStylePlain
+                                                                     target:self
+                                                                     action:@selector(dismissViewController)];
+            [navController.visibleViewController.navigationItem setLeftBarButtonItem:close];
+            
+            [self presentViewController:navController animated:true completion:nil];
+        }]];
+    }
+#else
+    if (false) {
+        // Not subscription-only themes outside the App Store release
+    }
+#endif
+    else {
+        [alert  addAction:[UIAlertAction actionWithTitle:@"Apply Theme"
+                                                   style:UIAlertActionStyleDefault
+                                                 handler:^(UIAlertAction *action) {
+            [[NSUserDefaults standardUserDefaults] setObject:_verticalLayout.theme.name forKey:@"GBInterfaceTheme"];
+            [[self presentingViewController] dismissViewControllerAnimated:true completion:nil];
+        }]];
+    }
     [alert  addAction:[UIAlertAction actionWithTitle:@"Exit Preview"
                                                style:UIAlertActionStyleDefault
                                              handler:^(UIAlertAction *action) {
@@ -77,6 +105,11 @@
             }
         }
     }];
+}
+
+- (void)dismissViewController
+{
+    [self dismissViewControllerAnimated:true completion:nil];
 }
 
 - (void)dismissPopup

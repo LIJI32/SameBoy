@@ -1,4 +1,7 @@
 #import "GBAboutController.h"
+#ifdef APPSTORE
+#import "GBSubscriptionViewController.h"
+#endif
 
 @implementation GBAboutController
 {
@@ -82,7 +85,11 @@
     [_buttonsView addSubview:websiteButton];
     
     UIButton *sponsorButton = [[UIButton alloc] initWithFrame:CGRectMake(20, 45, 280, 37)];
+#ifdef APPSTORE
+    [sponsorButton setTitle:@"Support SameBoy" forState:UIControlStateNormal];
+#else
     [sponsorButton setTitle:@"Sponsor SameBoy" forState:UIControlStateNormal];
+#endif
     [sponsorButton setImage:[self buttonImageNamed:@"heart"] forState:UIControlStateNormal];
     sponsorButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleBottomMargin;
     [sponsorButton setTitleColor:sponsorButton.tintColor forState:UIControlStateNormal];
@@ -198,7 +205,18 @@
 
 - (void)openSponsor
 {
+#ifdef APPSTORE
+    UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:[GBSubscriptionViewController new]];
+    UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithTitle:@"Close"
+                                                              style:UIBarButtonItemStylePlain
+                                                             target:self
+                                                             action:@selector(dismissViewController)];
+    [navController.visibleViewController.navigationItem setLeftBarButtonItem:close];
+    
+    [self presentViewController:navController animated:true completion:nil];
+#else
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://github.com/sponsors/LIJI32"] options:nil completionHandler:nil];
+#endif
 }
 
 - (void)showLicense
@@ -236,5 +254,10 @@
 - (UIModalPresentationStyle)modalPresentationStyle
 {
     return UIModalPresentationFormSheet;
+}
+
+- (void)dismissViewController
+{
+    [self dismissViewControllerAnimated:true completion:nil];
 }
 @end

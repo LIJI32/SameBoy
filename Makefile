@@ -145,10 +145,13 @@ endif
 
 IOS_MIN := 11.0
 
+IOS_PNGS := $(shell ls iOS/*.png)
 ifeq ($(CONF),appstore)
 override CONF := release
 CFLAGS += -DAPPSTORE
+LDFLAGS += -framework StoreKit
 IOS_MIN := 13.0
+IOS_PNGS += $(shell ls iOS/AppStoreResources/*.png)
 endif
 
 # Support out-of-PATH RGBDS
@@ -431,7 +434,7 @@ $(OBJ)/%.m.o: %.m
 # iOS Port
 
 $(BIN)/SameBoy-iOS.app: $(BIN)/SameBoy-iOS.app/SameBoy \
-                        $(shell ls iOS/*.png) \
+                        $(IOS_PNGS) \
                         iOS/License.html \
                         iOS/Info.plist \
                         $(BIN)/SameBoy-iOS.app/dmg_boot.bin \
@@ -444,7 +447,7 @@ $(BIN)/SameBoy-iOS.app: $(BIN)/SameBoy-iOS.app/SameBoy \
 						$(BIN)/SameBoy-iOS.app/LaunchScreen.storyboardc \
                         Shaders
 	$(MKDIR) -p $(BIN)/SameBoy-iOS.app
-	cp iOS/*.png $(BIN)/SameBoy-iOS.app
+	cp $(IOS_PNGS) $(BIN)/SameBoy-iOS.app
 	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/;s/@IOS_MIN/$(IOS_MIN)/" < iOS/Info.plist > $(BIN)/SameBoy-iOS.app/Info.plist
 	sed "s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < iOS/License.html > $(BIN)/SameBoy-iOS.app/License.html
 	$(MKDIR) -p $(BIN)/SameBoy-iOS.app/Shaders

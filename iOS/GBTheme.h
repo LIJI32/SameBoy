@@ -9,9 +9,11 @@
 @property (readonly) UIColor *bezelsGradientTop;
 @property (readonly) UIColor *bezelsGradientBottom;
 
+#ifdef APPSTORE
 @property (readonly) bool embossLabels;
-
 @property (readonly) UIImage *texture;
+#endif
+
 @property (readonly) NSString *name;
 
 @property (readonly) bool renderingPreview; // Kind of a hack
@@ -22,6 +24,7 @@
 - (instancetype)initDefaultTheme;
 - (instancetype)initDarkTheme;
 
+#ifdef APPSTORE
 - (instancetype)initDMGTheme;
 - (instancetype)initPlayItLoudBlackTheme;
 - (instancetype)initPlayItLoudThemeWithColor:(uint32_t)color  andName:(NSString *)name;
@@ -32,5 +35,6 @@
 - (instancetype)initGameAndWatchTheme;
 - (instancetype)initSFCTheme;
 - (instancetype)initSNESTheme;
+#endif
 
 @end

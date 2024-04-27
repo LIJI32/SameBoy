@@ -12,6 +12,9 @@
 #import "GBAboutController.h"
 #import "GBSettingsViewController.h"
 #import "GBStatesViewController.h"
+#ifdef APPSTORE
+#import "GBSubscriptionManager.h"
+#endif
 #import <CoreMotion/CoreMotion.h>
 #import <dlfcn.h>
 
@@ -494,6 +497,11 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)applicationWillResignActive:(UIApplication *)application
 {
     [self stop];
+#ifdef APPSTORE
+    if (GBSubscriptionManager.defaultManager.usesPaidTheme && GBSubscriptionManager.defaultManager.state == GBSubscriptionInactive) {
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"GBInterfaceTheme"];
+    }
+#endif
 }
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)orientation duration:(NSTimeInterval)duration

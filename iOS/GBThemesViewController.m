@@ -1,5 +1,8 @@
 #import "GBThemesViewController.h"
 #import "GBThemePreviewController.h"
+#ifdef APPSTORE
+#import "GBSubscriptionManager.h"
+#endif
 #import "GBTheme.h"
 
 @interface GBThemesViewController ()
@@ -20,6 +23,7 @@
             [[GBTheme alloc] initDefaultTheme],
             [[GBTheme alloc] initDarkTheme],
         ],
+#ifdef APPSTORE
         @[
             [[GBTheme alloc] initDMGTheme],
             [[GBTheme alloc] initPlayItLoudBlackTheme],
@@ -48,6 +52,7 @@
             [[GBTheme alloc] initSFCTheme],
             [[GBTheme alloc] initSNESTheme],
         ],
+#endif
     ];
     cache = ret;
     return ret;
@@ -106,6 +111,52 @@
     [mask stroke];
     cell.imageView.image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
+    
+#ifdef APPSTORE
+    if (indexPath.section != 0 && GBSubscriptionManager.defaultManager.state == GBSubscriptionInactive) {
+        NSString *currencySymbol = [NSLocale currentLocale].currencySymbol;
+        NSString *currencyName = @{
+            @"$":  @"dollar",
+            @"¢":  @"cent",
+            @"¥":  @"yen",
+            @"£":  @"sterling",
+            @"₣":  @"franc",
+            @"ƒ":  @"florin",
+            @"₺":  @"turkishlira",
+            @"₽":  @"ruble",
+            @"€":  @"euro",
+            @"₫":  @"dong",
+            @"₹":  @"indianrupee",
+            @"₸":  @"tenge",
+            @"₧":  @"peseta",
+            @"₱":  @"peso",
+            @"₭":  @"kip",
+            @"₩":  @"won",
+            @"₤":  @"lira",
+            @"₳":  @"austral",
+            @"₴":  @"hryvnia",
+            @"₦":  @"naira",
+            @"₲":  @"guarani",
+            @"₡":  @"coloncurrency",
+            @"₵":  @"cedi",
+            @"₢":  @"cruzeiro",
+            @"₮":  @"tugrik",
+            @"₥":  @"mill",
+            @"₪":  @"sheqel",
+            @"₼":  @"manat",
+            @"₨":  @"rupee",
+            @"฿":  @"baht",
+            @"₾":  @"lari",
+            @"R$": @"brazilianreal",
+        }[currencySymbol] ?: @"dollar";
+        
+        UIImage *image = [UIImage systemImageNamed:[NSString stringWithFormat:@"%@sign.circle", currencyName]];
+        if (!image) {
+            image = [UIImage systemImageNamed:@"dollarsign.circle"];
+        }
+        cell.accessoryView = [[UIImageView alloc] initWithImage:image];
+    }
+#endif
         
     return cell;
 }
@@ -119,7 +170,7 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     GBTheme *theme = _themes[indexPath.section][indexPath.row];
-    GBThemePreviewController *preview = [[GBThemePreviewController alloc] initWithTheme:theme];
+    GBThemePreviewController *preview = [[GBThemePreviewController alloc] initWithTheme:theme isPaid:indexPath.section != 0];
     [self presentViewController:preview animated:true completion:nil];
 }
 

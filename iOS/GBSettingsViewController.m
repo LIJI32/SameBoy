@@ -2,6 +2,9 @@
 #import "GBTemperatureSlider.h"
 #import "GBViewBase.h"
 #import "GBThemesViewController.h"
+#ifdef APPSTORE
+#import "GBSubscriptionViewController.h"
+#endif
 #import "GCExtendedGamepad+AllElements.h"
 #import <objc/runtime.h>
 
@@ -426,6 +429,14 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                         @"class": [GBThemesViewController class],
                         @"image": [UIImage imageNamed:@"themeSettings"],
                     },
+#ifdef APPSTORE
+                    @{
+                        @"title": @"Subscription",
+                        @"type": typeSubmenu,
+                        @"class": [GBSubscriptionViewController class],
+                        @"image": [UIImage imageNamed:@"subscriptionSettings"],
+                    },
+#endif
             ]
         }
     ];
@@ -434,7 +445,11 @@ static NSString const *typeLightTemp = @"typeLightTemp";
 
 + (UIViewController *)settingsViewControllerWithLeftButton:(UIBarButtonItem *)button
 {
-    GBSettingsViewController *root = [[self alloc] initWithStructure:[self rootStructure] title:@"Settings" style:UITableViewStyleGrouped];
+    UITableViewStyle style = UITableViewStyleGrouped;
+    if (@available(iOS 13.0, *)) {
+        style = UITableViewStyleInsetGrouped;
+    }
+    GBSettingsViewController *root = [[self alloc] initWithStructure:[self rootStructure] title:@"Settings" style:style];
     [root preloadThemePreviews];
     UINavigationController *controller = [[UINavigationController alloc] initWithRootViewController:root];
     [controller.visibleViewController.navigationItem setLeftBarButtonItem:button];
@@ -580,10 +595,8 @@ static UIImage *ImageForController(GCController *controller)
     }
     
     UITableViewStyle style = UITableViewStyleGrouped;
-    if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-        if (@available(iOS 13.0, *)) {
-            style = UITableViewStyleInsetGrouped;
-        }
+    if (@available(iOS 13.0, *)) {
+        style = UITableViewStyleInsetGrouped;
     }
     
     GBSettingsViewController *submenu = [[GBSettingsViewController alloc] initWithStructure:@[@{@"items": items}]
@@ -616,10 +629,8 @@ static UIImage *ImageForController(GCController *controller)
     }
     if (items.count) {
         UITableViewStyle style = UITableViewStyleGrouped;
-        if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-            if (@available(iOS 13.0, *)) {
-                style = UITableViewStyleInsetGrouped;
-            }
+        if (@available(iOS 13.0, *)) {
+            style = UITableViewStyleInsetGrouped;
         }
         
         GBSettingsViewController *submenu = [[GBSettingsViewController alloc] initWithStructure:@[@{@"items": items}]
@@ -821,10 +832,8 @@ static id ValueForItem(NSDictionary *item)
     NSDictionary *item = [self itemForIndexPath:indexPath];
     if (item[@"type"] == typeSubmenu || item[@"type"] == typeOptionSubmenu) {
         UITableViewStyle style = UITableViewStyleGrouped;
-        if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-            if (@available(iOS 13.0, *)) {
-                style = UITableViewStyleInsetGrouped;
-            }
+        if (@available(iOS 13.0, *)) {
+            style = UITableViewStyleInsetGrouped;
         }
         UITableViewController *submenu = nil;
         

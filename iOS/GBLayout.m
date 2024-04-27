@@ -83,7 +83,7 @@ static bool HasHomeBar(void)
     CFRelease(gradient);
     CFRelease(colorsArray);
     CFRelease(colorspace);
-    
+#ifdef APPSTORE
     UIImage *texture = _theme.texture;
     if (texture) {
         unsigned screenWidth = self.size.width;
@@ -96,6 +96,7 @@ static bool HasHomeBar(void)
             }
         }
     }
+#endif
 }
 
 - (void)drawScreenBezels
@@ -169,7 +170,7 @@ static bool HasHomeBar(void)
 {
     // Start with a normal normal pass
     block();
-
+#ifdef APPSTORE
     if (!_theme.embossLabels){
         // No emboss, done
         return;
@@ -230,7 +231,7 @@ static bool HasHomeBar(void)
     
     block();
     CGContextRestoreGState(mainContext);
-
+#endif
 }
 
 - (void)drawRotatedLabel:(NSString *)label withFont:(UIFont *)font origin:(CGPoint)origin distance:(double)distance
