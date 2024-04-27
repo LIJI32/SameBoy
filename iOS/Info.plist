@@ -214,6 +214,8 @@ APPSTORE END -->
     <string>1420</string>
     <key>DTXcodeBuild</key>
     <string>14C18</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 APPSTORE END -->
 </dict>
 </plist>
