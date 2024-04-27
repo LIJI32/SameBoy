@@ -234,6 +234,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
             [self fadeOverlayOut];
         }
         if (!_screenSwiped) {
+            self.window.backgroundColor = nil;
             [self.window.rootViewController presentViewController:[GBMenuViewController menu] animated:true completion:nil];
         }
         if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBSwipeLock"]) {

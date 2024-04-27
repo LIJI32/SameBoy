@@ -21,6 +21,8 @@
 @property (readonly) UIImage *horizontalPreview;
 @property (readonly) UIImage *verticalPreview;
 
+@property (readonly) bool isDark;
+
 - (instancetype)initDefaultTheme;
 - (instancetype)initDarkTheme;
 

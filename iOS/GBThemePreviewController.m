@@ -117,4 +117,9 @@
     [self dismissViewControllerAnimated:true completion:nil];
 }
 
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+    return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
+}
+
 @end

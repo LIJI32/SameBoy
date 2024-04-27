@@ -362,6 +362,16 @@
 }
 #endif
 
+- (bool)isDark
+{
+    double r, g, b;
+    [_backgroundGradientTop getRed:&r green:&g blue:&b alpha:NULL];
+    if (r > 0.25) return false;
+    if (g > 0.25) return false;
+    if (b > 0.25) return false;
+    return true;
+}
+
 - (instancetype)init
 {
     return [self initDefaultTheme];

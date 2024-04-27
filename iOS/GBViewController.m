@@ -180,19 +180,20 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     _window.rootViewController = self;
     [_window makeKeyAndVisible];
     
-
-    
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-retain-cycles"
     [self addDefaultObserver:^(id newValue) {
         GBTheme *theme = [GBSettingsViewController themeNamed:newValue];
         _horizontalLayout = [[GBHorizontalLayout alloc] initWithTheme:theme];
         _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];
-        _window.backgroundColor = theme.backgroundGradientBottom;
         
         [self willRotateToInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation
                                           duration:0];
         [_backgroundView reloadThemeImages];
+        
+        /* Forces a refersh of the status bar color */
+        _window.hidden = true;
+        [_window makeKeyAndVisible];
     } forKey:@"GBInterfaceTheme"];
 #pragma clang diagnostic pop
     
@@ -513,6 +514,9 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     }
     _backgroundView.frame = [layout viewRectForOrientation:orientation];
     _backgroundView.layout = layout;
+    if (!self.presentedViewController) {
+        _window.backgroundColor = layout.theme.backgroundGradientBottom;
+    }
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations
@@ -549,6 +553,12 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             return false;
     }
 }
+
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+    return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
+}
+
 
 - (void)preRun
 {
