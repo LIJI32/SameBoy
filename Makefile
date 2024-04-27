@@ -299,6 +299,7 @@ endif
 # Don't use function outlining. I breaks Obj-C ARC optimizations and Apple never bothered to fix it. It also hardly has any effect on file size.
 ifeq ($(shell $(CC) -x c -c $(NULL) -o $(NULL) -Werror -mno-outline 2> $(NULL); echo $$?),0)
 FRONTEND_CFLAGS += -mno-outline
+LDFLAGS += -mno-outline
 endif
 
 STRIP := strip

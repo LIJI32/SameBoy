@@ -10,10 +10,10 @@ typedef enum {
 } GBSubscriptionState;
 
 @interface GBSubscriptionManager : NSObject
-@property (class, readonly) GBSubscriptionManager *defaultManager;
-@property (readonly) NSDictionary *activeSubscription;
-@property (readonly) NSDictionary *pendingSubscription;
-@property (readonly) NSDictionary *expiredSubscription;
-@property (readonly) GBSubscriptionState state;
-@property (readonly) bool usesPaidTheme;
+@property (direct, class, readonly) GBSubscriptionManager *defaultManager;
+@property (direct, readonly) NSDictionary *activeSubscription;
+@property (direct, readonly) NSDictionary *pendingSubscription;
+@property (direct, readonly) NSDictionary *expiredSubscription;
+@property (direct, readonly) GBSubscriptionState state;
+@property (direct, readonly) bool usesPaidTheme;
 @end

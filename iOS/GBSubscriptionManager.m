@@ -428,6 +428,7 @@ static NSDictionary *ParseReceipt(NSSet *der)
 }
 @end
 
+__attribute__((objc_direct_members))
 @implementation GBSubscriptionManager
 - (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions
 {

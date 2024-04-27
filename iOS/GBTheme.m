@@ -51,6 +51,7 @@
 
 #define MakeColor(r, g, b) [UIColor colorWithRed:(r) / 255.0 green:(g) / 255.0 blue:(b) / 255.0 alpha:1.0]
 
+__attribute__((objc_direct_members))
 @implementation GBTheme
 {
     NSDictionary<NSString *, UIImage *> *_imageOverrides;
@@ -370,11 +371,6 @@
     if (g > 0.25) return false;
     if (b > 0.25) return false;
     return true;
-}
-
-- (instancetype)init
-{
-    return [self initDefaultTheme];
 }
 
 - (UIImage *)imageNamed:(NSString *)name
