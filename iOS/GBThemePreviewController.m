@@ -119,7 +119,10 @@
 
 - (UIStatusBarStyle)preferredStatusBarStyle
 {
-    return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
+    if (@available(iOS 13.0, *)) {
+        return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
+    }
+    return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDefault;
 }
 
 @end

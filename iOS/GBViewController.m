@@ -281,14 +281,12 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     void *libxpc = dlopen("/usr/lib/system/libxpc.dylib", RTLD_NOW);
     
     extern xpc_object_t xpc_copy_entitlements_for_self$(void);
-    extern void xpc_release$(xpc_object_t *object);
     extern const char *xpc_dictionary_get_string$(xpc_object_t *object, const char *key);
     
     typeof(xpc_copy_entitlements_for_self$) *xpc_copy_entitlements_for_self = dlsym(libxpc, "xpc_copy_entitlements_for_self");
-    typeof(xpc_release$) *xpc_release = dlsym(libxpc, "xpc_release");
     typeof(xpc_dictionary_get_string$) *xpc_dictionary_get_string = dlsym(libxpc, "xpc_dictionary_get_string");
     
-    if (!xpc_copy_entitlements_for_self || !xpc_release || !xpc_dictionary_get_string) return;
+    if (!xpc_copy_entitlements_for_self || !xpc_dictionary_get_string) return;
     
     xpc_object_t entitlements = xpc_copy_entitlements_for_self();
     if (!entitlements) return;
@@ -298,7 +296,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     const char *_teamIdentifier = xpc_dictionary_get_string(entitlements, "com.apple.developer.team-identifier");
     NSString *teamIdentifier = _teamIdentifier? @(_teamIdentifier) : nil;
     
-    xpc_release(entitlements);
+    CFRelease(entitlements);
     
     if (!entIdentifier) { // No identifier. Installed using a jailbreak, we're fine.
         return;
@@ -556,7 +554,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (UIStatusBarStyle)preferredStatusBarStyle
 {
-    return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
+    if (@available(iOS 13.0, *)) {
+        return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
+    }
+    return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDefault;
 }
 
 

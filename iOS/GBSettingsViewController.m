@@ -544,6 +544,34 @@ static UIImage *ImageForController(GCController *controller)
     }
 }
 
+static NSString *LocalizedNameForElement(GCControllerElement *element, GBControllerUsage usage)
+{
+    if (@available(iOS 14.0, *)) {
+        return element.localizedName;
+    }
+    switch (usage) {
+        case GBUsageDpad: return @"D-Pad";
+        case GBUsageButtonA: return @"A";
+        case GBUsageButtonB: return @"B";
+        case GBUsageButtonX: return @"X";
+        case GBUsageButtonY: return @"Y";
+        case GBUsageButtonMenu: return @"Menu";
+        case GBUsageButtonOptions: return @"Options";
+        case GBUsageButtonHome: return @"Home";
+        case GBUsageLeftThumbstick: return @"Left Thumbstick";
+        case GBUsageRightThumbstick: return @"Right Thumbstick";
+        case GBUsageLeftShoulder: return @"Left Shoulder";
+        case GBUsageRightShoulder: return @"Right Shoulder";
+        case GBUsageLeftTrigger: return @"Left Trigger";
+        case GBUsageRightTrigger: return @"Right Trigger";
+        case GBUsageLeftThumbstickButton: return @"Left Thumbstick Button";
+        case GBUsageRightThumbstickButton: return @"Right Thumbstick Button";
+        case GBUsageTouchpadButton: return @"Touchpad Button";
+    }
+    
+    return @"Button";
+}
+
 - (void)configureGameController:(GCController *)controller
 {
     NSMutableArray *items = [NSMutableArray array];
@@ -567,7 +595,7 @@ static UIImage *ImageForController(GCController *controller)
 
         
         NSDictionary *item = @{
-            @"title": element.localizedName,
+            @"title": LocalizedNameForElement(element, usage.unsignedIntValue),
             @"type": typeOptionSubmenu,
             @"submenu": @[@{@"items": @[
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"None",        @"value": @(GBUnusedButton)},
@@ -584,7 +612,7 @@ static UIImage *ImageForController(GCController *controller)
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Slow-motion", @"value": @(GBUnderclock)},
             ]}],
         };
-        if (@available(iOS 13.0, *)) {
+        if (@available(iOS 14.0, *)) {
             UIImage *image = [[UIImage systemImageNamed:element.sfSymbolsName] imageWithTintColor:UIColor.labelColor renderingMode:UIImageRenderingModeAlwaysOriginal];
             if (image) {
                 item = [item mutableCopy];
