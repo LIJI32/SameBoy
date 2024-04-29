@@ -94,6 +94,7 @@ CPPP_FLAGS += -UGB_INTERNAL
 
 include version.mk
 COPYRIGHT_YEAR := $(shell grep -oE "20[2-9][0-9]" LICENSE)
+COMMITS := $(shell git rev-list --count HEAD 2> $(NULL) || echo 1)
 export VERSION
 CONF ?= debug
 
@@ -449,7 +450,7 @@ $(BIN)/SameBoy-iOS.app: $(BIN)/SameBoy-iOS.app/SameBoy \
                         Shaders
 	$(MKDIR) -p $(BIN)/SameBoy-iOS.app
 	cp $(IOS_PNGS) $(BIN)/SameBoy-iOS.app
-	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/;s/@IOS_MIN/$(IOS_MIN)/" < iOS/Info.plist > $(BIN)/SameBoy-iOS.app/Info.plist
+	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/;s/@IOS_MIN/$(IOS_MIN)/;s/@COMMITS/$(COMMITS)/" < iOS/Info.plist > $(BIN)/SameBoy-iOS.app/Info.plist
 	sed "s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < iOS/License.html > $(BIN)/SameBoy-iOS.app/License.html
 	$(MKDIR) -p $(BIN)/SameBoy-iOS.app/Shaders
 	cp Shaders/*.fsh Shaders/*.metal $(BIN)/SameBoy-iOS.app/Shaders
