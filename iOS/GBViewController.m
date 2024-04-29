@@ -191,9 +191,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                                           duration:0];
         [_backgroundView reloadThemeImages];
         
-        /* Forces a refersh of the status bar color */
-        _window.hidden = true;
-        [_window makeKeyAndVisible];
+        [self setNeedsStatusBarAppearanceUpdate];
     } forKey:@"GBInterfaceTheme"];
 #pragma clang diagnostic pop
     
@@ -486,6 +484,15 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             [self start];
         }
     }];
+}
+
+- (void)setNeedsUpdateOfSupportedInterfaceOrientations
+{
+    /* Hack. Some view controllers dismiss without calling the method above. */
+    [super setNeedsUpdateOfSupportedInterfaceOrientations];
+    if (!self.presentedViewController) {
+        [self start];
+    }
 }
 
 - (void)dismissViewController
