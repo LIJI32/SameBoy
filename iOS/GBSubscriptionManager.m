@@ -36,6 +36,7 @@
 
 + (instancetype)inputStreamWithData:(NSData *)data
 {
+    if (!data) data = [NSData data];
     GBTrackedStream *ret = [[self alloc] init];
     ret->_child = [NSInputStream inputStreamWithData:data];
     return ret;
@@ -88,7 +89,8 @@ static id ParseDERStream(GBTrackedStream *input)
     [input read:&tag maxLength:1];
     size_t length = 0;
     [input read:(uint8_t *)&length maxLength:1];
-    if (length >= 0x80) {
+    bool indeterminateLength = length == 0x80;
+    if (length > 0x80) {
         uint8_t count = length - 0x80;
         length = 0;
         while (count--) {
@@ -96,6 +98,7 @@ static id ParseDERStream(GBTrackedStream *input)
             [input read:(uint8_t *)&length maxLength:1];
         }
     }
+
     
     switch (tag) {
         case 2: // Integer
@@ -115,22 +118,37 @@ static id ParseDERStream(GBTrackedStream *input)
         case 5: // NULL
             if (length) @throw [NSException exceptionWithName:@"MalformedNULL" reason:nil userInfo:nil];
             return [NSNull null];
-        case 12:   // UTF8String
-        case 22: { // IA5String
+        case 0xC:   // UTF8String
+        case 0x16: { // IA5String
             NSMutableData *data = [NSMutableData dataWithLength:length];
             [input read:data.mutableBytes maxLength:length];
-            return [[NSString alloc] initWithData:data encoding:tag == 22? NSASCIIStringEncoding : NSUTF8StringEncoding];
+            return [[NSString alloc] initWithData:data encoding:tag == 0x16? NSASCIIStringEncoding : NSUTF8StringEncoding];
         }
+        case 0x24: // SEQUENCE???
         case 0x30: // SEQUENCE
         case 0x31: // SET
         {
             NSMutableArray *ret = [NSMutableArray array];
-            size_t end = input.position + length;
-            while (input.position < end) {
-                [ret addObject:ParseDERStream(input)];
+            if (indeterminateLength) {
+                while (true) {
+                    if (!input.hasBytesAvailable) break;
+                    GBGenericDERObject *object = ParseDERStream(input);
+                    if ([object isKindOfClass:[GBGenericDERObject class]] &&
+                        object.tag == 0 &&
+                        object.data.length == 0) {
+                        break;
+                    }
+                    [ret addObject:object];
+                }
             }
-            if (input.position != end) {
-                @throw [NSException exceptionWithName:@"Bad Length" reason:nil userInfo:nil];
+            else {
+                size_t end = input.position + length;
+                while (input.position < end) {
+                    [ret addObject:ParseDERStream(input)];
+                }
+                if (input.position != end) {
+                    @throw [NSException exceptionWithName:@"Bad Length" reason:nil userInfo:nil];
+                }
             }
             if (tag == 0x31) {
                 return [NSSet setWithArray:ret];
@@ -142,12 +160,27 @@ static id ParseDERStream(GBTrackedStream *input)
             ret->_tag = tag;
             if (tag & 0x80) {
                 ret->_children = [NSMutableArray array];
-                size_t end = input.position + length;
-                while (input.position < end) {
-                    [ret->_children addObject:ParseDERStream(input)];
+                if (indeterminateLength) {
+                    while (true) {
+                        if (!input.hasBytesAvailable) break;
+                        GBGenericDERObject *object = ParseDERStream(input);
+                        if ([object isKindOfClass:[GBGenericDERObject class]] &&
+                            object.tag == 0 &&
+                            object.data.length == 0) {
+                            break;
+                        }
+                        [ret->_children addObject:object];
+
+                    }
                 }
-                if (input.position != end) {
-                    @throw [NSException exceptionWithName:@"Bad Length" reason:nil userInfo:nil];
+                else {
+                    size_t end = input.position + length;
+                    while (input.position < end) {
+                        [ret->_children addObject:ParseDERStream(input)];
+                    }
+                    if (input.position != end) {
+                        @throw [NSException exceptionWithName:@"Bad Length" reason:nil userInfo:nil];
+                    }
                 }
             }
             else {
@@ -190,6 +223,9 @@ static NSData *VerifyAndExtractPKCS7(NSArray *data)
     __unused NSSet *certificateSet     = signedData[3];
     __unused NSSet *signerInfos        = signedData[4];
     
+    if (![encapContentInfo isKindOfClass:[NSArray class]]) return nil;
+    if (encapContentInfo.count != 2) return nil;
+
     identifier = encapContentInfo[0];
     if (![identifier isKindOfClass:[GBGenericDERObject class]]) return nil;
     if (identifier.tag != 6) return nil;
@@ -199,7 +235,15 @@ static NSData *VerifyAndExtractPKCS7(NSArray *data)
     if (![content isKindOfClass:[GBGenericDERObject class]]) return nil;
     if (content.tag != 0xa0) return nil;
     if (content.children.count != 1) return nil;
-    if (![content.children[0] isKindOfClass:[NSData class]]) return nil;
+    if (![content.children[0] isKindOfClass:[NSData class]]) {
+        // Sometimes this is an array???
+        NSArray *innerContent = content.children[0];
+        if (![innerContent isKindOfClass:[NSArray class]]) return nil;
+        if (innerContent.count != 1) return nil;
+        if (![innerContent[0] isKindOfClass:[NSData class]]) return nil;
+        
+        return innerContent[0];
+    }
     
     /* Todo: verify*/
     
