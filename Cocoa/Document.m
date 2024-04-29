@@ -2453,12 +2453,6 @@ enum GBWindowResizeAction
     NSImage *ret = nil;
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBFilterScreenshots"]) {
         ret = [_view renderToImage];
-        [ret lockFocus];
-        NSBitmapImageRep *bitmapRep = [[NSBitmapImageRep alloc] initWithFocusedViewRect:NSMakeRect(0, 0,
-                                                                                                   ret.size.width, ret.size.height)];
-        [ret unlockFocus];
-        ret = [[NSImage alloc] initWithSize:ret.size];
-        [ret addRepresentation:bitmapRep];
     }
     if (!ret) {
         ret = [Document imageFromData:[NSData dataWithBytesNoCopy:_view.currentBuffer
