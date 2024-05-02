@@ -35,6 +35,7 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
     }
 
     vec4 pre_shadow = mix(texture(image, position) * multiplier, mix(r1, r2, s.y), BLOOM);
+    pre_shadow.a = 1.0;
     pixel += vec2(-0.6, -0.8);
     
     q11 = texture(image, (floor(pixel) + 0.5) / input_resolution);
