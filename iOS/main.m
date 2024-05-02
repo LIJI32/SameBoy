@@ -20,6 +20,7 @@ int main(int argc, char * argv[])
             @"GBSGBModel": @(GB_MODEL_SGB2),
             @"GBRumbleMode": @(GB_RUMBLE_CARTRIDGE_ONLY),
             @"GBButtonHaptics": @YES,
+            @"GBHapticsStrength": @0.75,
             @"GBTurboSpeed": @1,
             @"GBRewindSpeed": @1,
             @"GBDynamicSpeed": @NO,

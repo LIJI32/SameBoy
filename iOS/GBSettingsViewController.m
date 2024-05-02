@@ -2,6 +2,7 @@
 #import "GBTemperatureSlider.h"
 #import "GBViewBase.h"
 #import "GBThemesViewController.h"
+#import "GBHapticManager.h"
 #ifdef APPSTORE
 #import "GBSubscriptionViewController.h"
 #endif
@@ -392,6 +393,11 @@ static NSString const *typeLightTemp = @"typeLightTemp";
         @{
             @"items": @[
                 @{@"type": typeCheck, @"pref": @"GBButtonHaptics", @"title": @"Enable Button Haptics"},
+                @{@"type": typeSlider, @"pref": @"GBHapticsStrength", @"min": @0.25, @"max": @1, @"minImage": @"waveform.weak", @"maxImage": @"waveform",
+                  @"previewBlock": ^void(void){
+                      [[GBHapticManager sharedManager] doTapHaptic];
+                  }
+                }
             ],
         },
     ];
@@ -823,21 +829,12 @@ static id ValueForItem(NSDictionary *item)
         slider.value = [[NSUserDefaults standardUserDefaults] floatForKey:item[@"pref"]];
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         
-        if (item[@"minImage"] && item[@"maxImage"]) {
-            if ([item[@"minImage"] isKindOfClass:[UIImage class]]) {
-                slider.minimumValueImage = item[@"minImage"];
+        if (@available(iOS 13.0, *)) {
+            if (item[@"minImage"] && item[@"maxImage"]) {
+                slider.minimumValueImage = [UIImage systemImageNamed:item[@"minImage"]] ?: [[UIImage imageNamed:item[@"minImage"]] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+                slider.maximumValueImage = [UIImage systemImageNamed:item[@"maxImage"]] ?: [[UIImage imageNamed:item[@"maxImage"]] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+                [GBSettingsViewController fixSliderTint:slider];
             }
-            else if (@available(iOS 13.0, *)) {
-                slider.minimumValueImage = [UIImage systemImageNamed:item[@"minImage"]];
-            }
-            
-            if ([item[@"maxImage"] isKindOfClass:[UIImage class]]) {
-                slider.maximumValueImage = item[@"maxImage"];
-            }
-            else if (@available(iOS 13.0, *)) {
-                slider.maximumValueImage = [UIImage systemImageNamed:item[@"maxImage"]];
-            }
-            [GBSettingsViewController fixSliderTint:slider];
         }
         
         id block = ^(){
@@ -846,6 +843,9 @@ static id ValueForItem(NSDictionary *item)
         objc_setAssociatedObject(cell, "RetainedBlock", block, OBJC_ASSOCIATION_RETAIN);
 
         [slider addTarget:block action:@selector(invoke) forControlEvents:UIControlEventValueChanged];
+        if (item[@"previewBlock"]) {
+            [slider addTarget:item[@"previewBlock"] action:@selector(invoke) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchDown];
+        }
     }
     
     if ([self followingItemForIndexPath:indexPath][@"type"] == typeSeparator) {

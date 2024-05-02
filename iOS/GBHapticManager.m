@@ -62,9 +62,9 @@
     if (_rumble) return;
 
     CHHapticPattern *pattern = [[CHHapticPattern alloc] initWithEvents:@[[self eventWithType:CHHapticEventTypeHapticTransient
-                                                                                    sharpness:0.25
-                                                                                    intensity:0.75
-                                                                                     duration:1.0]]
+                                                                                   sharpness:0.25
+                                                                                   intensity:[[NSUserDefaults standardUserDefaults] doubleForKey:@"GBHapticsStrength"]
+                                                                                    duration:1.0]]
                                                              parameters:nil
                                                                   error:nil];
     id<CHHapticPatternPlayer> player = [_engine createPlayerWithPattern:pattern error:nil];
