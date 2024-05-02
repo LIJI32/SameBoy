@@ -4,7 +4,30 @@
 #import "GBViewController.h"
 #import "GBROMManager.h"
 
+static NSString *const tips[] = {
+    @"Tip: AirDrop ROM files from a Mac or another device to play them.",
+    @"Tip: Swipe right on the Game Boy screen to fast forward emulation.",
+    @"Tip: The D-pad can be replaced with a Swipe-pad in Control Settings. Give it a try!",
+    @"Tip: Swipe left on the Game Boy screen to rewind.",
+    @"Tip: Enable Quick Save and Load in Control Settings to use save state gestures.",
+    @"Tip: The turbo and rewind speeds can be changed in Emulation Settings.",
+    @"Tip: Change turbo and rewind behavior to locking in Controls Settings.",
+    @"Tip: Single Touch A+B combo can be enabled in Controls Settings.",
+    @"Tip: Try different scaling filters in Display Settings.",
+    @"Tip: Dynamically control turbo and rewind speed by enabling Dynamic Control in Control Settings.",
+    @"Tip: Rumble can be enabled even for games without rumble support in Control Settings.",
+    @"Tip: Try different color palettes for monochrome models in Display Settings",
+    @"Did you know? The Game Boy uses an SM83 CPU.",
+    @"Did you know? The Game Boy Color has 6 different SoC revisions.",
+    @"Did you know? The Game Boy's frame rate is approximately 59.73 frames per second.",
+    @"Did you know? The original Super Game Boy runs slightly faster than other Game Boys.",
+};
+
 @implementation GBMenuViewController
+{
+    UILabel *_tipLabel;
+    UIVisualEffectView *_effectView;
+}
 
 + (instancetype)menu
 {
@@ -73,9 +96,53 @@
         };
         objc_setAssociatedObject(button, "RetainedBlock", block, OBJC_ASSOCIATION_RETAIN);
         [button addTarget:block action:@selector(invoke) forControlEvents:UIControlEventTouchUpInside];
-        
-
     }
+    
+    _effectView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleProminent]];
+    _effectView.layer.cornerRadius = 8;
+    _effectView.layer.masksToBounds = true;
+    [self.view.superview addSubview:_effectView];
+    _tipLabel = [[UILabel alloc] init];
+    unsigned tipIndex = [[NSUserDefaults standardUserDefaults] integerForKey:@"GBTipIndex"];
+    _tipLabel.text = tips[tipIndex % (sizeof(tips) / sizeof(tips[0]))];
+    if (@available(iOS 13.0, *)) {
+        _tipLabel.textColor = [UIColor labelColor];
+    }
+    _tipLabel.font = [UIFont systemFontOfSize:14];
+    _tipLabel.alpha = 0.8;
+    [[NSUserDefaults standardUserDefaults] setInteger:tipIndex + 1 forKey:@"GBTipIndex"];
+    _tipLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    _tipLabel.numberOfLines = 3;
+    [_effectView.contentView addSubview:_tipLabel];
+    [self layoutTip];
+    _effectView.alpha = 0;
+    [UIView animateWithDuration:0.25 animations:^{
+        _effectView.alpha = 1.0;
+    }];
+}
+
+- (void)layoutTip
+{
+    UIView *view = self.view.superview;
+    CGSize outerSize = view.frame.size;
+    CGSize size = [_tipLabel textRectForBounds:(CGRect){{0, 0},
+                                                        {outerSize.width - 32,
+                                                         outerSize.height - 32}}
+                        limitedToNumberOfLines:3].size;
+    size.width = ceil(size.width);
+    _tipLabel.frame = (CGRect){{8, 8}, size};
+    _effectView.frame = (CGRect) {
+        {round((outerSize.width - size.width - 16) / 2), view.window.safeAreaInsets.top + 12},
+        {size.width + 16, size.height + 16}
+    };
+}
+
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [UIView animateWithDuration:0.25 animations:^{
+        _effectView.alpha = 0;
+    }];
 }
 
 - (void)viewDidLayoutSubviews
@@ -83,6 +150,7 @@
     if (self.view.bounds.size.height < 88 * 2) {
         [self.view.heightAnchor constraintEqualToConstant:self.view.bounds.size.height + 88 * 2].active = true;
     }
+    [self layoutTip];
     [super viewDidLayoutSubviews];
 }
 
