@@ -66,7 +66,7 @@ static uint32_t color_to_int(NSColor *color)
                                                               @"GBFilter": @"NearestNeighbor",
                                                               @"GBColorCorrection": @(GB_COLOR_CORRECTION_MODERN_BALANCED),
                                                               @"GBHighpassFilter": @(GB_HIGHPASS_ACCURATE),
-                                                              @"GBRewindLength": @(10),
+                                                              @"GBRewindLength": @(120),
                                                               @"GBFrameBlendingMode": @([defaults boolForKey:@"DisableFrameBlending"]? GB_FRAME_BLENDING_MODE_DISABLED : GB_FRAME_BLENDING_MODE_ACCURATE),
                                                               
                                                               @"GBDMGModel": @(GB_MODEL_DMG_B),
