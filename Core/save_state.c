@@ -1347,10 +1347,12 @@ static int load_state_internal(GB_gameboy_t *gb, virtual_file_t *file)
         return errno ?: EIO;
     }
     
-    size_t orig_ram_size = gb->ram_size;
+    uint32_t ram_size = gb->ram_size;
+    uint32_t mbc_ram_size = gb->mbc_ram_size;
     memcpy(gb, &save, sizeof(save));
-    gb->ram_size = orig_ram_size;
-    
+    gb->ram_size = ram_size;
+    gb->mbc_ram_size = mbc_ram_size;
+
     sanitize_state(gb);
     GB_rewind_invalidate_for_backstepping(gb);
     return 0;
