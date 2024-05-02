@@ -16,11 +16,12 @@ static NSString *const tips[] = {
     @"Tip: Try different scaling filters in Display Settings.",
     @"Tip: Dynamically control turbo and rewind speed by enabling Dynamic Control in Control Settings.",
     @"Tip: Rumble can be enabled even for games without rumble support in Control Settings.",
-    @"Tip: Try different color palettes for monochrome models in Display Settings",
-    @"Did you know? The Game Boy uses an SM83 CPU.",
-    @"Did you know? The Game Boy Color has 6 different SoC revisions.",
+    @"Tip: Try different color palettes for monochrome models in Display Settings.",
+    @"Did you know? The Game Boy uses a Sharp SM83 CPU.",
+    @"Did you know? The Game Boy Color has 6 different hardware revisions.",
     @"Did you know? The Game Boy's frame rate is approximately 59.73 frames per second.",
     @"Did you know? The original Super Game Boy runs slightly faster than other Game Boys.",
+    @"Did you know? The Game Boy generates audio at a sample rate of over 2MHz!",
 };
 
 @implementation GBMenuViewController
