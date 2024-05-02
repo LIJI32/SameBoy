@@ -164,6 +164,11 @@ static bool HasHomeBar(void)
                 NSForegroundColorAttributeName:_isRenderingMask? [UIColor whiteColor] : _theme.brandColor,
                 NSParagraphStyleAttributeName: style,
             }];
+    
+    _logoRect = (CGRect){
+        {(self.size.width - _screenRect.size.width) / 2, rect.origin.y},
+        {_screenRect.size.width, rect.size.height}
+    };
 }
 
 - (void)drawThemedLabelsWithBlock:(void (^)(void))block

@@ -7,6 +7,7 @@
 
 @property (readonly) UIImage *background;
 @property (readonly) CGRect screenRect;
+@property (readonly) CGRect logoRect;
 @property (readonly) CGPoint dpadLocation;
 @property (readonly) CGPoint aLocation;
 @property (readonly) CGPoint bLocation;

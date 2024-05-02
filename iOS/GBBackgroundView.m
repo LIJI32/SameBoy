@@ -85,6 +85,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
     UITouch *_swipePadTouch;
     CGPoint _padSwipeOrigin;
     UITouch *_screenTouch;
+    UITouch *_logoTouch;
     CGPoint _screenSwipeOrigin;
     bool _screenSwiped;
     bool _inDynamicSpeedMode;
@@ -187,6 +188,13 @@ static GB_key_mask_t angleToKeyMask(double angle)
     double factor = [UIScreen mainScreen].scale;
     dpadLocation.x /= factor;
     dpadLocation.y /= factor;
+    CGRect logoRect = _layout.logoRect;
+    
+    logoRect.origin.x /= factor;
+    logoRect.origin.y /= factor;
+    logoRect.size.width /= factor;
+    logoRect.size.height /= factor;
+    
     for (UITouch *touch in touches) {
         CGPoint point = [touch locationInView:self];
         if (CGRectContainsPoint(self.gbView.frame, point) && !_screenTouch) {
@@ -208,8 +216,10 @@ static GB_key_mask_t angleToKeyMask(double angle)
                 }
             }
         }
-        
-        if (_usesSwipePad && !_swipePadTouch) {
+        else if (CGRectContainsPoint(logoRect, point) && !_logoTouch) {
+            _logoTouch = touch;
+        }
+        else if (_usesSwipePad && !_swipePadTouch) {
             if (fabs(point.x - dpadLocation.x) <= dpadRadius &&
                 fabs(point.y - dpadLocation.y) <= dpadRadius) {
                 _swipePadTouch = touch;
@@ -223,11 +233,11 @@ static GB_key_mask_t angleToKeyMask(double angle)
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
-    if ([touches containsObject:_swipePadTouch]) {
+    if (_swipePadTouch && [touches containsObject:_swipePadTouch]) {
         _swipePadTouch = nil;
     }
     
-    if ([touches containsObject:_screenTouch]) {
+    if (_screenTouch && [touches containsObject:_screenTouch]) {
         _screenTouch = nil;
         if (self.viewController.runMode == GBRunModePaused) {
             self.viewController.runMode = GBRunModeNormal;
@@ -243,6 +253,24 @@ static GB_key_mask_t angleToKeyMask(double angle)
                 [self fadeOverlayOut];
             }
         }
+    }
+    
+    if (_logoTouch && [touches containsObject:_logoTouch]) {
+        
+        double factor = [UIScreen mainScreen].scale;
+        CGRect logoRect = _layout.logoRect;
+        
+        logoRect.origin.x /= factor;
+        logoRect.origin.y /= factor;
+        logoRect.size.width /= factor;
+        logoRect.size.height /= factor;
+        
+        CGPoint point = [_logoTouch locationInView:self];
+        if (CGRectContainsPoint(logoRect, point)) {
+            self.window.backgroundColor = nil;
+            [self.window.rootViewController presentViewController:[GBMenuViewController menu] animated:true completion:nil];
+        }
+        _logoTouch = nil;
     }
 
     [_touches minusSet:touches];
