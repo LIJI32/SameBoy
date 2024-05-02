@@ -28,6 +28,7 @@
     bool _rewind;
     bool _rewindOver;
     bool _romLoaded;
+    bool _swappingROM;
     
     UIInterfaceOrientation _orientation;
     GBHorizontalLayout *_horizontalLayout;
@@ -343,6 +344,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)loadROM
 {
+    _swappingROM = true;
     [self stop];
     GBROMManager *romManager = [GBROMManager sharedManager];
     if (romManager.romFile) {
@@ -364,6 +366,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         _romLoaded = false;
     }
     _gbView.hidden = !_romLoaded;
+    _swappingROM = false;
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application
@@ -729,8 +732,10 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     [_audioClient stop];
     _audioClient = nil;
 
-    GB_save_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
-    [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
+    if (!_swappingROM) {
+        GB_save_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
+        [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
+    }
     [[GBHapticManager sharedManager] setRumbleStrength:0];
     [_motionManager stopAccelerometerUpdates];
     
