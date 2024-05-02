@@ -428,7 +428,21 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         }
         [controller addOption:items[i].title withCheckmark:items[i].checked action:^{
             GB_switch_model_and_reset(&_gb, model);
-            [self start];
+            if (model > GB_MODEL_CGB_E && ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBShownGBAWarning"]) {
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"SameBoy is not a Game Boy Advance Emulator"
+                                                                               message:@"SameBoy cannot play GBA games. Changing the model to Game Boy Advance lets you play Game Boy games as if on a Game Boy Advance in Game Boy Color mode."
+                                                                        preferredStyle:UIAlertControllerStyleAlert];
+                [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:^(UIAlertAction *action) {
+                    [self start];
+                    [[NSUserDefaults standardUserDefaults] setBool:true forKey:@"GBShownGBAWarning"];
+                }]];
+                [self presentViewController:alert animated:true completion:nil];
+            }
+            else {
+                [self start];
+            }
         }];
     }
     controller.title = @"Change Model";
