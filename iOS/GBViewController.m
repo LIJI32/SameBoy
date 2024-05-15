@@ -355,12 +355,12 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         else {
             _romLoaded = GB_load_rom(&_gb, romManager.romFile.fileSystemRepresentation) == 0;
         }
-        GB_rewind_reset(&_gb);
         if (_romLoaded) {
             GB_reset(&_gb);
             GB_load_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
             [self loadStateFromFile:[GBROMManager sharedManager].autosaveStateFile];
         }
+        GB_rewind_reset(&_gb);
     }
     else {
         _romLoaded = false;
