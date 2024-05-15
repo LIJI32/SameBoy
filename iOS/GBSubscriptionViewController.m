@@ -163,34 +163,36 @@
              NSParagraphStyleAttributeName: style,
          }];
          [string appendAttributedString:paragraph];
+         
+         style = style.mutableCopy;
+         style.paragraphSpacing = 0;
+         paragraph = [[NSAttributedString alloc] initWithString:@"\n\nAll subscription tiers offer access to all available themes. Choose the price that suits you best."
+                                                                         attributes:@{
+            NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
+            NSForegroundColorAttributeName: [UIColor labelColor],
+            NSParagraphStyleAttributeName: style,
+         }];
+         [string appendAttributedString:paragraph];
          label.attributedText = string;
-         return;
+         label.textColor = [UIColor labelColor];
+         label.lineBreakMode = NSLineBreakByWordWrapping;
+         label.numberOfLines = 0;
      }
-
-     
-    label.font = [UIFont preferredFontForTextStyle:UIFontTextStyleCallout];
-    label.text = @"Support SameBoy's development with a monthly subscription and gain access to exclusive themes.";
-    label.lineBreakMode = NSLineBreakByWordWrapping;
-    if (@available(iOS 13.0, *)) {
-        label.textColor = [UIColor labelColor];
-    }
-    else {
-        label.textColor = [UIColor blackColor];
-    }
 }
 
-- (void)tableView:(UITableView *)tableView willDisplayHeaderView:(UIView *)view forSection:(NSInteger)section
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
 {
-    if (section == 1) return;
-    UITableViewHeaderFooterView *header = (UITableViewHeaderFooterView *)view;
-    [self configureHeaderLabel:header.textLabel];
+    UILabel *label = [[UILabel alloc] init];
+    [self configureHeaderLabel:label];
+    return label;
+
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
     UILabel *label = [[UILabel alloc] init];
     [self configureHeaderLabel:label];
-    return [label textRectForBounds:(CGRect){{0,0}, {tableView.bounds.size.width - 32, INFINITY}} limitedToNumberOfLines:16].size.height + 24;
+    return ceil([label textRectForBounds:(CGRect){{0,0}, {tableView.bounds.size.width - 32, INFINITY}} limitedToNumberOfLines:16].size.height + 24);
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
@@ -207,6 +209,16 @@
     [string addAttributes:@{
         NSLinkAttributeName: [NSURL URLWithString:@"https://github.com/sponsors/LIJI32"],
     } range:[string.string rangeOfString:@"further support SameBoy's development on GitHub Sponsors"]];
+    
+    [string addAttributes:@{
+        NSLinkAttributeName: [NSURL URLWithString:@"https://sameboy.github.io/privacy/"],
+    } range:[string.string rangeOfString:@"Privacy Policy"]];
+    
+    [string addAttributes:@{
+        NSLinkAttributeName: [NSURL URLWithString:@"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"],
+    } range:[string.string rangeOfString:@"standard Apple Terms of Use (EULA)"]];
+
+    
     footer.textLabel.attributedText = string;
     footer.textLabel.userInteractionEnabled = true;
     [footer.textLabel addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self
@@ -215,14 +227,40 @@
 
 - (void)tappedFooterLabel:(UITapGestureRecognizer *)tap
 {
-    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://github.com/sponsors/LIJI32"] options:nil completionHandler:nil];
+    UILabel *textLabel = (UILabel *)tap.view;
+    CGPoint tapLocation = [tap locationInView:textLabel];
+    
+    NSTextStorage *textStorage = [[NSTextStorage alloc] initWithString:textLabel.attributedText.string
+                                                            attributes:@{
+        NSFontAttributeName: textLabel.font
+    }];
+    NSLayoutManager *layoutManager = [[NSLayoutManager alloc] init];
+    [textStorage addLayoutManager:layoutManager];
+    
+    NSTextContainer *textContainer = [[NSTextContainer alloc] initWithSize:CGSizeMake(textLabel.frame.size.width,
+                                                                                      textLabel.frame.size.height + 256)];
+    textContainer.lineFragmentPadding = 0;
+    textContainer.maximumNumberOfLines = 16;
+    textContainer.lineBreakMode = NSLineBreakByWordWrapping;
+    
+    [layoutManager addTextContainer:textContainer];
+    
+    unsigned characterIndex = [layoutManager characterIndexForPoint:tapLocation
+                                                    inTextContainer:textContainer
+                           fractionOfDistanceBetweenInsertionPoints:NULL];
+    
+    NSURL *url = [textLabel.attributedText attribute:NSLinkAttributeName atIndex:characterIndex effectiveRange:NULL];
+
+    if (url) {
+        [[UIApplication sharedApplication] openURL:url options:nil completionHandler:nil];
+    }
 }
 
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
     if (section != [self numberOfSectionsInTableView:nil] - 1) return nil;
-    return @"You can additionally further support SameBoy's development on GitHub Sponsors. Note that GitHub sponsorships do not unlock in-app themes.";
+    return @"You can additionally further support SameBoy's development on GitHub Sponsors. Note that GitHub sponsorships do not unlock in-app themes.\n\nSupporter subscriptions are subject to the Privacy Policy and the standard Apple Terms of Use (EULA).";
 }
 
 - (void)viewDidLoad
