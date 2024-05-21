@@ -240,10 +240,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     _motionManager = [[CMMotionManager alloc] init];
     _cameraPosition = AVCaptureDevicePositionBack;
     _cameraPositionButton = [[UIButton alloc] initWithFrame:CGRectMake(8,
-                                                                       _backgroundView.bounds.size.height - 8 - 32,
+                                                                       0,
                                                                        32,
                                                                        32)];
-    _cameraPositionButton.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin;
+    [self didRotateFromInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation];
     if (@available(iOS 13.0, *)) {
         [_cameraPositionButton  setImage:[UIImage systemImageNamed:@"camera.rotate"
                                                  withConfiguration:[UIImageSymbolConfiguration configurationWithScale:UIImageSymbolScaleLarge]]
@@ -539,6 +539,12 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     if (!self.presentedViewController) {
         _window.backgroundColor = layout.theme.backgroundGradientBottom;
     }
+}
+
+- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
+{
+    UIEdgeInsets insets = self.window.safeAreaInsets;
+    _cameraPositionButton.frame = CGRectMake(insets.left + 8, _backgroundView.bounds.size.height - 8 - insets.bottom - 32, 32, 32);
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations
