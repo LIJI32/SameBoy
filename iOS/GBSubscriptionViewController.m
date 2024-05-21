@@ -182,6 +182,7 @@
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
 {
+    if (section == 1) return nil;
     UILabel *label = [[UILabel alloc] init];
     [self configureHeaderLabel:label];
     return label;
@@ -190,6 +191,7 @@
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
+    if (section == 1) return 0;
     UILabel *label = [[UILabel alloc] init];
     [self configureHeaderLabel:label];
     return ceil([label textRectForBounds:(CGRect){{0,0}, {tableView.bounds.size.width - 32, INFINITY}} limitedToNumberOfLines:16].size.height + 24);
