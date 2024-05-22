@@ -331,15 +331,16 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     [UIImagePNGRepresentation(screenshot) writeToFile:[file stringByAppendingPathExtension:@"png"] atomically:false];
 }
 
-- (void)loadStateFromFile:(NSString *)file
+- (bool)loadStateFromFile:(NSString *)file
 {
     GB_model_t model;
     if (!GB_get_state_model(file.fileSystemRepresentation, &model)) {
         if (GB_get_model(&_gb) != model) {
             GB_switch_model_and_reset(&_gb, model);
         }
-        GB_load_state(&_gb, file.fileSystemRepresentation);
+        return GB_load_state(&_gb, file.fileSystemRepresentation) == 0;
     }
+    return false;
 }
 
 - (void)loadROM
@@ -358,7 +359,17 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         if (_romLoaded) {
             GB_reset(&_gb);
             GB_load_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
-            [self loadStateFromFile:[GBROMManager sharedManager].autosaveStateFile];
+            if (![self loadStateFromFile:[GBROMManager sharedManager].autosaveStateFile]) {
+                // Newly played ROM, pick the best model
+                uint8_t *rom = GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_ROM, NULL, NULL);
+
+                if ((rom[0x143] & 0x80) && !GB_is_cgb(&_gb)) {
+                    GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBCGBModel"]);
+                }
+                else if ((rom[0x146]  == 3) && !GB_is_sgb(&_gb)) {
+                    GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBSGBModel"]);
+                }
+            }
         }
         GB_rewind_reset(&_gb);
     }

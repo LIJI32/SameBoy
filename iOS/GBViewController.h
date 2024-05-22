@@ -22,6 +22,6 @@ typedef enum {
 - (void)openSettings;
 - (void)showAbout;
 - (void)saveStateToFile:(NSString *)file;
-- (void)loadStateFromFile:(NSString *)file;
+- (bool)loadStateFromFile:(NSString *)file;
 @property (nonatomic) GBRunMode runMode;
 @end
