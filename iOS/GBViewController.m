@@ -1081,7 +1081,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 - (void)setRunMode:(GBRunMode)runMode
 {
-    [self setRunMode:runMode ignoreDynamicSpeed:true];
+    [self setRunMode:runMode ignoreDynamicSpeed:false];
 }
 
 - (AVCaptureDevice *)captureDevice
