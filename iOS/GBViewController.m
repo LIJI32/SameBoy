@@ -15,6 +15,7 @@
 #ifdef APPSTORE
 #import "GBSubscriptionManager.h"
 #endif
+#import "GCExtendedGamepad+AllElements.h"
 #import <CoreMotion/CoreMotion.h>
 #import <dlfcn.h>
 
@@ -54,6 +55,8 @@
     NSTimer *_disableCameraTimer;
     AVCaptureDevicePosition _cameraPosition;
     UIButton *_cameraPositionButton;
+    
+    __weak GCController *_lastController;
 }
 
 static void loadBootROM(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -266,8 +269,137 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     [UNUserNotificationCenter currentNotificationCenter].delegate = self;
     [self verifyEntitlements];
 
+    [self setControllerHandlers];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(setControllerHandlers)
+                                                 name:GCControllerDidConnectNotification
+                                               object:nil];
+    
     return true;
 }
+
+
+- (void)setControllerHandlers
+{
+    for (GCController *controller in [GCController controllers]) {
+        __weak GCController *weakController = controller;
+        if (controller.extendedGamepad) {
+            [[controller.extendedGamepad elementsDictionary] enumerateKeysAndObjectsUsingBlock:^(NSNumber *usage, GCControllerElement *element, BOOL *stop) {
+                if ([element isKindOfClass:[GCControllerButtonInput class]]) {
+                    [(GCControllerButtonInput *)element setValueChangedHandler:^(GCControllerButtonInput *button, float value, BOOL pressed) {
+                        [self controller:weakController buttonChanged:button usage:usage.unsignedIntValue];
+                    }];
+                }
+                else if ([element isKindOfClass:[GCControllerDirectionPad class]]) {
+                    [(GCControllerDirectionPad *)element setValueChangedHandler:^(GCControllerDirectionPad *dpad, float xValue, float yValue) {
+                        [self controller:weakController axisChanged:dpad usage:usage.unsignedIntValue];
+                    }];
+                }
+            }];
+            
+            if (controller.motion) {
+                [controller.motion setValueChangedHandler:^(GCMotion *motion) {
+                    [self controller:weakController motionChanged:motion];
+                }];
+            }
+        }
+    }
+}
+
+- (void)updateLastController:(GCController *)controller
+{
+    if (_lastController == controller) return;
+    _lastController = controller;
+    [GBHapticManager sharedManager].controller = controller;
+}
+
+- (void)controller:(GCController *)controller buttonChanged:(GCControllerButtonInput *)button usage:(GBControllerUsage)usage
+{
+    [self updateLastController:controller];
+    
+    GBButton gbButton = [GBSettingsViewController controller:controller convertUsageToButton:usage];
+    static const double analogThreshold = 0.0625;
+    switch (gbButton) {
+        case GBRight:
+        case GBLeft:
+        case GBUp:
+        case GBDown:
+        case GBA:
+        case GBB:
+        case GBSelect:
+        case GBStart:
+            GB_set_key_state(&_gb, (GB_key_t)gbButton, button.value > 0.25);
+            break;
+        case GBTurbo:
+            if (button.value > analogThreshold) {
+                [self setRunMode:GBRunModeTurbo ignoreDynamicSpeed:!button.isAnalog];
+                if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
+                    GB_set_clock_multiplier(&_gb, (button.value - analogThreshold) / (1 - analogThreshold) * 3 + 1);
+                }
+            }
+            else {
+                [self setRunMode:GBRunModeNormal];
+            }
+            break;
+        case GBRewind:
+            if (button.value > analogThreshold) {
+                [self setRunMode:GBRunModeRewind ignoreDynamicSpeed:!button.isAnalog];
+                if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
+                    GB_set_clock_multiplier(&_gb, (button.value - analogThreshold) / (1 - analogThreshold) * 4);
+                }
+            }
+            else {
+                [self setRunMode:GBRunModeNormal];
+            }
+            break;
+        case GBUnderclock:
+            if (button.value > analogThreshold) {
+                if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
+                    GB_set_clock_multiplier(&_gb, 1 - ((button.value - analogThreshold) / (1 - analogThreshold) * 0.75));
+                }
+                else {
+                    GB_set_clock_multiplier(&_gb, 0.5);
+                }
+            }
+            else {
+                GB_set_clock_multiplier(&_gb, 1.0);
+            }
+            break;
+        default: break;
+    }
+}
+
+- (void)controller:(GCController *)controller axisChanged:(GCControllerDirectionPad *)axis usage:(GBControllerUsage)usage
+{
+    [self updateLastController:controller];
+    
+    GB_set_key_state(&_gb, GB_KEY_LEFT, axis.left.value > 0.5);
+    GB_set_key_state(&_gb, GB_KEY_RIGHT, axis.right.value > 0.5);
+    GB_set_key_state(&_gb, GB_KEY_UP, axis.up.value > 0.5);
+    GB_set_key_state(&_gb, GB_KEY_DOWN, axis.down.value > 0.5);
+}
+
+- (void)controller:(GCController *)controller motionChanged:(GCMotion *)motion
+{
+    if (controller != _lastController) return;
+    GCAcceleration gravity = {0,};
+    GCAcceleration userAccel = {0,};
+    if (@available(iOS 14.0, *)) {
+        if (motion.hasGravityAndUserAcceleration) {
+            gravity = motion.gravity;
+            userAccel = motion.userAcceleration;
+        }
+        else {
+            gravity = motion.acceleration;
+        }
+    }
+    else {
+        gravity = motion.gravity;
+        userAccel = motion.userAcceleration;
+    }
+    GB_set_accelerometer_values(&_gb, -(gravity.x + userAccel.x), gravity.y + userAccel.y);
+}
+
 
 - (void)verifyEntitlements
 {
@@ -642,8 +774,16 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     
     [_audioClient start];
     if (GB_has_accelerometer(&_gb)) {
+        if (@available(iOS 14.0, *)) {
+            for (GCController *controller in [GCController controllers]) {
+                if (controller.motion.sensorsRequireManualActivation) {
+                    [controller.motion setSensorsActive:true];
+                }
+            }
+        }
         [_motionManager startAccelerometerUpdatesToQueue:[NSOperationQueue mainQueue]
                                              withHandler:^(CMAccelerometerData *accelerometerData, NSError *error) {
+            if (_lastController.motion) return;
             CMAcceleration data = accelerometerData.acceleration;
             UIInterfaceOrientation orientation = _orientation;
             switch (orientation) {
@@ -768,6 +908,13 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
     }
     [[GBHapticManager sharedManager] setRumbleStrength:0];
+    if (@available(iOS 14.0, *)) {
+        for (GCController *controller in [GCController controllers]) {
+            if (controller.motion.sensorsRequireManualActivation) {
+                [controller.motion setSensorsActive:false];
+            }
+        }
+    }
     [_motionManager stopAccelerometerUpdates];
     
     unsigned timeToAlarm = GB_time_to_alarm(&_gb);
@@ -901,7 +1048,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     return [GBROMManager sharedManager].currentROM != nil;
 }
 
-- (void)setRunMode:(GBRunMode)runMode
+- (void)setRunMode:(GBRunMode)runMode ignoreDynamicSpeed:(bool)ignoreDynamicSpeed
 {
     if (runMode == GBRunModeRewind && _rewindOver) {
         runMode = GBRunModePaused;
@@ -919,7 +1066,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         _rewindOver = false;
     }
     
-    if (_runMode == GBRunModeNormal || ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
+    if (_runMode == GBRunModeNormal || !([[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"] && !ignoreDynamicSpeed)) {
         if (_runMode == GBRunModeTurbo) {
             double multiplier = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboSpeed"];
             GB_set_turbo_mode(&_gb, multiplier == 1, false);
@@ -930,6 +1077,11 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
             GB_set_clock_multiplier(&_gb, 1.0);
         }
     }
+}
+
+- (void)setRunMode:(GBRunMode)runMode
+{
+    [self setRunMode:runMode ignoreDynamicSpeed:true];
 }
 
 - (AVCaptureDevice *)captureDevice
