@@ -208,16 +208,20 @@
     if (section != [self numberOfSectionsInTableView:nil] - 1) return;
     UITableViewHeaderFooterView *footer = (UITableViewHeaderFooterView *)view;
     NSMutableAttributedString *string = footer.textLabel.attributedText.mutableCopy;
+    UIColor *linkColor = [UIColor linkColor];
     [string addAttributes:@{
-        NSLinkAttributeName: [NSURL URLWithString:@"https://github.com/sponsors/LIJI32"],
+        @"GBLinkAttribute": [NSURL URLWithString:@"https://github.com/sponsors/LIJI32"],
+        NSForegroundColorAttributeName: linkColor,
     } range:[string.string rangeOfString:@"further support SameBoy's development on GitHub Sponsors"]];
     
     [string addAttributes:@{
-        NSLinkAttributeName: [NSURL URLWithString:@"https://sameboy.github.io/privacy/"],
+        @"GBLinkAttribute": [NSURL URLWithString:@"https://sameboy.github.io/privacy/"],
+        NSForegroundColorAttributeName: linkColor,
     } range:[string.string rangeOfString:@"Privacy Policy"]];
     
     [string addAttributes:@{
-        NSLinkAttributeName: [NSURL URLWithString:@"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"],
+        @"GBLinkAttribute": [NSURL URLWithString:@"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"],
+        NSForegroundColorAttributeName: linkColor,
     } range:[string.string rangeOfString:@"standard Apple Terms of Use (EULA)"]];
 
     
@@ -251,7 +255,7 @@
                                                     inTextContainer:textContainer
                            fractionOfDistanceBetweenInsertionPoints:NULL];
     
-    NSURL *url = [textLabel.attributedText attribute:NSLinkAttributeName atIndex:characterIndex effectiveRange:NULL];
+    NSURL *url = [textLabel.attributedText attribute:@"GBLinkAttribute" atIndex:characterIndex effectiveRange:NULL];
 
     if (url) {
         [[UIApplication sharedApplication] openURL:url options:nil completionHandler:nil];
