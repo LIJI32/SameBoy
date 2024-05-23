@@ -437,7 +437,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                     },
 #ifdef APPSTORE
                     @{
-                        @"title": @"Subscription",
+                        @"title": @"Support SameBoy",
                         @"type": typeSubmenu,
                         @"class": [GBSubscriptionViewController class],
                         @"image": [UIImage imageNamed:@"subscriptionSettings"],

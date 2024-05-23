@@ -10,21 +10,36 @@
 {
     SKProductsRequest *_request;
     NSArray<SKProduct *> *_products;
+    unsigned _subscriptionsCount;
+    enum {
+        SubscriptionsSection,
+        LifetimeSection,
+        RestoreSection,
+    } _sections[3];
 }
 
 
 - (void)productsRequest:(SKProductsRequest *)request didReceiveResponse:(SKProductsResponse *)response
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        _products = [response.products sortedArrayUsingComparator:^NSComparisonResult(id  obj1, id  obj2) {
+        _products = [response.products sortedArrayUsingComparator:^NSComparisonResult(SKProduct *obj1, SKProduct *obj2) {
+            if (!!obj1.subscriptionPeriod != !!obj2.subscriptionPeriod) {
+                return obj2.subscriptionPeriod? NSOrderedDescending : NSOrderedAscending;
+            }
+            
             if ([obj1 price].doubleValue > [obj2 price].doubleValue) {
                 return NSOrderedDescending;
             }
             return NSOrderedAscending;
         }];
+        for (SKProduct *product in _products) {
+            if (product.subscriptionPeriod) {
+                _subscriptionsCount++;
+            }
+        }
         if (_products.count == 0) {
             UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Could not connect to the App Store"
-                                                                           message:@"Could not obtain a list of subscription tiers from the App Store, make sure your device is online."
+                                                                           message:@"Could not obtain a list of support options from the App Store, make sure your device is online."
                                                                     preferredStyle:UIAlertControllerStyleAlert];
             [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
                                                        style:UIAlertActionStyleCancel
@@ -40,40 +55,63 @@
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-    if (GBSubscriptionManager.defaultManager.state != GBSubscriptionActive) {
-        return 2;
+    unsigned sections = 0;
+    _sections[sections++] = SubscriptionsSection;
+    if (GBSubscriptionManager.defaultManager.state != GBSubscriptionPermanent && _products.count != _subscriptionsCount) {
+        _sections[sections++] = LifetimeSection;
     }
-    return 1;
+    if (GBSubscriptionManager.defaultManager.state != GBSubscriptionActive &&
+        GBSubscriptionManager.defaultManager.state != GBSubscriptionPermanent) {
+        _sections[sections++] = RestoreSection;
+    }
+    return sections;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    if (section == 1) return 1;
-    return _products.count;
+    switch (_sections[section]) {
+        case SubscriptionsSection: return _subscriptionsCount;
+        case LifetimeSection: return _products.count - _subscriptionsCount;
+        case RestoreSection: return 1;
+    }
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (indexPath.section == 1) {
-        [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
-        [self deselectRow];
-        return;
+    switch (_sections[indexPath.section]) {
+        case SubscriptionsSection: {
+            SKPayment *payment = [SKPayment paymentWithProduct:_products[indexPath.row]];
+            [[SKPaymentQueue defaultQueue] addPayment:payment];
+            return;
+        }
+        case LifetimeSection: {
+            SKPayment *payment = [SKPayment paymentWithProduct:_products[indexPath.row + _subscriptionsCount]];
+            [[SKPaymentQueue defaultQueue] addPayment:payment];
+            return;
+        }
+        case RestoreSection: {
+            [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
+            [self deselectRow];
+            return;
+        }
     }
-    
-    SKPayment *payment = [SKPayment paymentWithProduct:_products[indexPath.row]];
-    
-    [[SKPaymentQueue defaultQueue] addPayment:payment];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
-    if (indexPath.section == 1) {
-        cell.textLabel.text = @"Restore subscription";
+    if (_sections[indexPath.section] == RestoreSection) {
+        cell.textLabel.text = @"Restore purchases";
         cell.detailTextLabel.text = @"Restore from a different device or Apple ID";
         return cell;
     }
-    SKProduct *tier = _products[indexPath.row];
+    
+    unsigned productIndex = indexPath.row;
+    if (_sections[indexPath.section] == LifetimeSection) {
+        productIndex += _subscriptionsCount;
+    }
+    SKProduct *tier = _products[productIndex];
+    
     cell.textLabel.text = tier.localizedTitle;
     UILabel *priceLabel = [[UILabel alloc] init];
     priceLabel.textColor = [UIColor systemBlueColor];
@@ -81,27 +119,29 @@
     formatter.numberStyle = NSNumberFormatterCurrencyStyle;
     formatter.locale = tier.priceLocale;
     
-    NSString *periodString = nil;
-    unsigned number = tier.subscriptionPeriod.numberOfUnits;
-    switch (tier.subscriptionPeriod.unit) {
-        case SKProductPeriodUnitDay:
-            if (number == 1) periodString = @"day";
-            else periodString = [NSString stringWithFormat:@"%u days", number];
-            break;
-        case SKProductPeriodUnitWeek:
-            if (number == 1) periodString = @"week";
-            else periodString = [NSString stringWithFormat:@"%u weeks", number];
-            break;
-        case SKProductPeriodUnitMonth:
-            if (number == 1) periodString = @"month";
-            else periodString = [NSString stringWithFormat:@"%u months", number];
-            break;
-        case SKProductPeriodUnitYear:
-            if (number == 1) periodString = @"year";
-            else periodString = [NSString stringWithFormat:@"%u years", number];
-            break;
+    NSString *periodString = @"";
+    if (tier.subscriptionPeriod) {
+        unsigned number = tier.subscriptionPeriod.numberOfUnits;
+        switch (tier.subscriptionPeriod.unit) {
+            case SKProductPeriodUnitDay:
+                if (number == 1) periodString = @"/day";
+                else periodString = [NSString stringWithFormat:@"/%u days", number];
+                break;
+            case SKProductPeriodUnitWeek:
+                if (number == 1) periodString = @"/week";
+                else periodString = [NSString stringWithFormat:@"/%u weeks", number];
+                break;
+            case SKProductPeriodUnitMonth:
+                if (number == 1) periodString = @"/month";
+                else periodString = [NSString stringWithFormat:@"/%u months", number];
+                break;
+            case SKProductPeriodUnitYear:
+                if (number == 1) periodString = @"/year";
+                else periodString = [NSString stringWithFormat:@"/%u years", number];
+                break;
+        }
     }
-    priceLabel.text = [NSString stringWithFormat:@"%@/%@",[formatter stringFromNumber:tier.price], periodString];
+    priceLabel.text = [NSString stringWithFormat:@"%@%@",[formatter stringFromNumber:tier.price], periodString];
     
     GBSubscriptionManager *subManager = GBSubscriptionManager.defaultManager;
     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
@@ -151,28 +191,35 @@
          NSMutableAttributedString *string = [[NSMutableAttributedString alloc] initWithString:@"Support SameBoy\n"
                                                                                     attributes:@{
             NSFontAttributeName: [UIFont systemFontOfSize:34 weight:UIFontWeightBold],
-            NSForegroundColorAttributeName: [UIColor labelColor],
             NSParagraphStyleAttributeName: [NSParagraphStyle defaultParagraphStyle],
          }];
          NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
          style.paragraphSpacing = -8;
-         NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"\nSupport SameBoy's development with a monthly subscription and gain access to exclusive themes."
-         attributes:@{
-             NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
-             NSForegroundColorAttributeName: [UIColor labelColor],
-             NSParagraphStyleAttributeName: style,
-         }];
-         [string appendAttributedString:paragraph];
-         
-         style = style.mutableCopy;
-         style.paragraphSpacing = 0;
-         paragraph = [[NSAttributedString alloc] initWithString:@"\n\nAll subscription tiers offer access to all available themes. Choose the price that suits you best."
-                                                                         attributes:@{
-            NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
-            NSForegroundColorAttributeName: [UIColor labelColor],
-            NSParagraphStyleAttributeName: style,
-         }];
-         [string appendAttributedString:paragraph];
+         if (GBSubscriptionManager.defaultManager.state == GBSubscriptionPermanent) {
+             NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"\nThank you for purchasing lifetime theme access! If you wish to further support SameBoy's development, you can do so with a monthly supporter subscription."
+                                                                             attributes:@{
+                NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
+                NSParagraphStyleAttributeName: style,
+             }];
+             [string appendAttributedString:paragraph];
+         }
+         else {
+             NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"\nSameBoy is free and open source. Support SameBoy's development with a monthly subscription and gain access to exclusive themes."
+                                                                             attributes:@{
+                NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
+                NSParagraphStyleAttributeName: style,
+             }];
+             [string appendAttributedString:paragraph];
+             
+             style = style.mutableCopy;
+             style.paragraphSpacing = 0;
+             paragraph = [[NSAttributedString alloc] initWithString:@"\n\nAll subscription tiers offer access to all available themes. Choose the price that suits you best."
+                                                         attributes:@{
+                NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
+                NSParagraphStyleAttributeName: style,
+             }];
+             [string appendAttributedString:paragraph];
+         }
          label.attributedText = string;
          label.textColor = [UIColor labelColor];
          label.lineBreakMode = NSLineBreakByWordWrapping;
@@ -180,27 +227,64 @@
      }
 }
 
+- (void)configureLifetimeHeaderLabel:(UILabel *)label
+{
+    if (@available(iOS 13.0, *)) {
+        NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"You can alternatively purchase lifetime access to all themes with a single payment.\n"
+                                                                        attributes:@{
+            NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
+        }];
+        
+        label.attributedText = paragraph;
+        label.textColor = [UIColor labelColor];
+        label.lineBreakMode = NSLineBreakByWordWrapping;
+        label.numberOfLines = 0;
+    }
+}
+
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
 {
-    if (section == 1) return nil;
-    UILabel *label = [[UILabel alloc] init];
-    [self configureHeaderLabel:label];
-    return label;
-
+    switch (_sections[section]) {
+        case SubscriptionsSection: {
+            UILabel *label = [[UILabel alloc] init];
+            [self configureHeaderLabel:label];
+            return label;
+        }
+        case LifetimeSection: {
+            UILabel *label = [[UILabel alloc] init];
+            [self configureLifetimeHeaderLabel:label];
+            return label;
+        }
+        case RestoreSection:
+            return nil;
+    }
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
-    if (section == 1) return 0;
-    UILabel *label = [[UILabel alloc] init];
-    [self configureHeaderLabel:label];
-    return ceil([label textRectForBounds:(CGRect){{0,0}, {tableView.bounds.size.width - 32, INFINITY}} limitedToNumberOfLines:16].size.height + 24);
+    switch (_sections[section]) {
+        case SubscriptionsSection: {
+            UILabel *label = [[UILabel alloc] init];
+            [self configureHeaderLabel:label];
+            return ceil([label textRectForBounds:(CGRect){{0,0}, {tableView.bounds.size.width - 32, INFINITY}} limitedToNumberOfLines:16].size.height + 24);
+        }
+        case LifetimeSection: {
+            UILabel *label = [[UILabel alloc] init];
+            [self configureLifetimeHeaderLabel:label];
+            return ceil([label textRectForBounds:(CGRect){{0,0}, {tableView.bounds.size.width - 32, INFINITY}} limitedToNumberOfLines:16].size.height);
+        }
+        case RestoreSection:
+            return 0;
+    }
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
-    if (section == 1) return nil;
-    return @" ";
+    switch (_sections[section]) {
+        case SubscriptionsSection: return @" ";
+        case LifetimeSection: return @" ";
+        case RestoreSection: return nil;
+    }
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayFooterView:(UIView *)view forSection:(NSInteger)section
@@ -266,7 +350,7 @@
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
     if (section != [self numberOfSectionsInTableView:nil] - 1) return nil;
-    return @"You can additionally further support SameBoy's development on GitHub Sponsors. Note that GitHub sponsorships do not unlock in-app themes.\n\nSupporter subscriptions are subject to the Privacy Policy and the standard Apple Terms of Use (EULA).";
+    return @"You can additionally further support SameBoy's development on GitHub Sponsors. Note that GitHub sponsorships do not unlock in-app themes.\n\nTransactions are subject to the Privacy Policy and the standard Apple Terms of Use (EULA).";
 }
 
 - (void)viewDidLoad
@@ -280,7 +364,13 @@
         [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
     }
     static SKProductsRequest *request = nil;
-    request = [[SKProductsRequest alloc] initWithProductIdentifiers: [NSSet setWithObjects:@"Subscription1", @"Subscription2", @"Subscription3", @"Subscription4", @"Subscription5", @"Subscription6", @"Subscription6", @"Subscription7", @"Subscription8", @"Subscription9", nil]];
+    request = [[SKProductsRequest alloc] initWithProductIdentifiers: [NSSet setWithObjects:
+                                                                      @"Subscription1", @"Subscription2", @"Subscription3",
+                                                                      @"Subscription4", @"Subscription5", @"Subscription6",
+                                                                      @"Subscription7", @"Subscription8", @"Subscription9",
+                                                                      @"Lifetime1", @"Lifetime2", @"Lifetime3",
+                                                                      @"Lifetime4", @"Lifetime5", @"Lifetime6",
+                                                                      @"Lifetime7", @"Lifetime8", @"Lifetime9", nil]];
     
     [request setDelegate: self];
     [request start];

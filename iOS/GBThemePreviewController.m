@@ -76,7 +76,7 @@
     }
 #else
     if (false) {
-        // Not subscription-only themes outside the App Store release
+        // No supporter-only themes outside the App Store release
     }
 #endif
     else {

@@ -7,6 +7,7 @@ typedef enum {
     GBSubscriptionInactive,
     GBSubscriptionActive,
     GBSubscriptionGrace, // Current subscription expired, but got not obtain new subscription
+    GBSubscriptionPermanent,
 } GBSubscriptionState;
 
 @interface GBSubscriptionManager : NSObject

@@ -494,6 +494,8 @@ __attribute__((objc_direct_members))
 
 - (void)enterGraceMode
 {
+    if (_state == GBSubscriptionPermanent) return;
+    
     NSString *cacheFolder = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true)[0];
     NSString *path = [cacheFolder stringByAppendingPathComponent:@"SKGrace"];
     NSData *data = [NSData dataWithContentsOfFile:path];
@@ -529,8 +531,14 @@ __attribute__((objc_direct_members))
     }
 }
 
+- (void)enterPermanentMode
+{
+    _state = GBSubscriptionPermanent;
+}
+
 - (void)enterActiveMode
 {
+    if (_state == GBSubscriptionPermanent) return;
     _state = GBSubscriptionActive;
     NSString *cacheFolder = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true)[0];
     NSString *path = [cacheFolder stringByAppendingPathComponent:@"SKGrace"];
@@ -587,7 +595,10 @@ __attribute__((objc_direct_members))
     _activeSubscriptions = [NSMutableArray array];
     NSDate *now = [NSDate date];
     for (NSDictionary *item in iap) {
-        if (!item[@"expires_date"]) continue; // Not a subscription
+        if ([item[@"product_id"] containsString:@"Lifetime"]) {
+            [self enterPermanentMode];
+            continue;
+        }
         if ([now compare:item[@"purchase_date"]] == NSOrderedDescending &&
             [now compare:item[@"expires_date"]] == NSOrderedAscending) {
             [_activeSubscriptions addObject:item];
