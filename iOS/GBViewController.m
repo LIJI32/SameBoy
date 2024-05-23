@@ -465,6 +465,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (bool)loadStateFromFile:(NSString *)file
 {
+    [self stop];
     GB_model_t model;
     if (!GB_get_state_model(file.fileSystemRepresentation, &model)) {
         if (GB_get_model(&_gb) != model) {
@@ -570,6 +571,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             model = [[NSUserDefaults standardUserDefaults] integerForKey:items[i].settingKey];
         }
         [controller addOption:items[i].title withCheckmark:items[i].checked action:^{
+            [self stop];
             GB_switch_model_and_reset(&_gb, model);
             if (model > GB_MODEL_CGB_E && ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBShownGBAWarning"]) {
                 UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"SameBoy is not a Game Boy Advance Emulator"
@@ -896,7 +898,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 - (void)postRun
 {
     [_audioLock lock];
-    memset(_audioBuffer, 0, (_audioBufferSize - _audioBufferPosition) * sizeof(*_audioBuffer));
+    if (_audioBuffer) {
+        memset(_audioBuffer, 0, (_audioBufferSize - _audioBufferPosition) * sizeof(*_audioBuffer));
+    }
     _audioBufferPosition = _audioBufferNeeded;
     [_audioLock signal];
     [_audioLock unlock];

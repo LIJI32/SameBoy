@@ -67,9 +67,12 @@
                                                                                     duration:1.0]]
                                                              parameters:nil
                                                                   error:nil];
-    id<CHHapticPatternPlayer> player = [_engine createPlayerWithPattern:pattern error:nil];
-    
-    [player startAtTime:0 error:nil];
+    @try {
+        id<CHHapticPatternPlayer> player = [_engine createPlayerWithPattern:pattern error:nil];
+        
+        [player startAtTime:0 error:nil];
+    }
+    @catch (NSException *exception) {}
 }
 
 - (void)setRumbleStrength:(double)rumble

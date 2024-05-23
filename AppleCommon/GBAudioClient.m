@@ -46,11 +46,17 @@ static OSStatus render(
 
     // Get the default playback output unit
     AudioComponent defaultOutput = AudioComponentFindNext(NULL, &defaultOutputDescription);
-    NSAssert(defaultOutput, @"Can't find default output");
+    if (!defaultOutput) {
+        NSLog(@"Can't find default output");
+        return nil;
+    }
 
     // Create a new unit based on this that we'll use for output
     OSErr err = AudioComponentInstanceNew(defaultOutput, &audioUnit);
-    NSAssert1(audioUnit, @"Error creating unit: %hd", err);
+    if (!audioUnit) {
+        NSLog(@"Error creating unit: %hd", err);
+        return nil;
+    }
 
     // Set our tone rendering function on the unit
     AURenderCallbackStruct input;
@@ -62,7 +68,10 @@ static OSStatus render(
                                0,
                                &input,
                                sizeof(input));
-    NSAssert1(err == noErr, @"Error setting callback: %hd", err);
+    if (err) {
+        NSLog(@"Error setting callback: %hd", err);
+        return nil;
+    }
 
     AudioStreamBasicDescription streamFormat;
     streamFormat.mSampleRate = rate;
@@ -80,9 +89,16 @@ static OSStatus render(
                                 0,
                                 &streamFormat,
                                 sizeof(AudioStreamBasicDescription));
-    NSAssert1(err == noErr, @"Error setting stream format: %hd", err);
+    
+    if (err) {
+        NSLog(@"Error setting stream format: %hd", err);
+        return nil;
+    }
     err = AudioUnitInitialize(audioUnit);
-    NSAssert1(err == noErr, @"Error initializing unit: %hd", err);
+    if (err) {
+        NSLog(@"Error initializing unit: %hd", err);
+        return nil;
+    }
 
     self.renderBlock = block;
     _rate = rate;
@@ -93,7 +109,10 @@ static OSStatus render(
 -(void) start
 {
     OSErr err = AudioOutputUnitStart(audioUnit);
-    NSAssert1(err == noErr, @"Error starting unit: %hd", err);
+    if (err) {
+        NSLog(@"Error starting unit: %hd", err);
+        return;
+    }
     _playing = true;
 
 }
