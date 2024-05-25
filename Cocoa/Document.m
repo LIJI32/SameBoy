@@ -778,6 +778,9 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     
     
     self.consoleWindow.title = [NSString stringWithFormat:@"Debug Console – %@", [self.fileURL.path lastPathComponent]];
+    self.memoryWindow.title = [NSString stringWithFormat:@"Memory – %@", [self.fileURL.path lastPathComponent]];
+    self.vramWindow.title = [NSString stringWithFormat:@"VRAM Viewer – %@", [self.fileURL.path lastPathComponent]];
+    
     self.debuggerSplitView.dividerColor = self.debuggerVerticalLine.borderColor;
     [self.debuggerVerticalLine removeFromSuperview]; // No longer used, just there for the color
     if (@available(macOS 11.0, *)) {
@@ -2325,7 +2328,8 @@ enum GBWindowResizeAction
 {
     [super setFileURL:fileURL];
     self.consoleWindow.title = [NSString stringWithFormat:@"Debug Console – %@", [[fileURL path] lastPathComponent]];
-    
+    self.memoryWindow.title = [NSString stringWithFormat:@"Memory – %@", [[fileURL path] lastPathComponent]];
+    self.vramWindow.title = [NSString stringWithFormat:@"VRAM Viewer – %@", [[fileURL path] lastPathComponent]];
 }
 
 - (BOOL)splitView:(GBSplitView *)splitView canCollapseSubview:(NSView *)subview;
