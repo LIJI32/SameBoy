@@ -297,12 +297,12 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     }
 }
 
-- (void) updatePalette
+- (void)updatePalette
 {
     GB_set_palette(&_gb, [GBPaletteEditorController userPalette]);
 }
 
-- (void) initCommon
+- (void)initCommon
 {
     GB_init(&_gb, [self internalModel]);
     GB_set_user_data(&_gb, (__bridge void *)(self));
@@ -359,7 +359,7 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     }];
 }
 
-- (void) updateMinSize
+- (void)updateMinSize
 {
     self.mainWindow.contentMinSize = NSMakeSize(GB_get_screen_width(&_gb), GB_get_screen_height(&_gb));
     if (self.mainWindow.contentView.bounds.size.width < GB_get_screen_width(&_gb) ||
@@ -369,7 +369,7 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     self.osdView.usesSGBScale = GB_get_screen_width(&_gb) == 256;
 }
 
-- (void) vblankWithType:(GB_vblank_type_t)type
+- (void)vblankWithType:(GB_vblank_type_t)type
 {
     if (_gbsVisualizer) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -444,7 +444,7 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     [_view setRumble:amp];
 }
 
-- (void) preRun
+- (void)preRun
 {
     GB_set_pixels_output(&_gb, self.view.pixels);
     GB_set_sample_rate(&_gb, 96000);
@@ -453,7 +453,8 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
         
         if (_audioBufferPosition < nFrames) {
             _audioBufferNeeded = nFrames;
-            [_audioLock waitUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.125]];
+            [_audioLock waitUntilDate:[NSDate dateWithTimeIntervalSinceNow:(double)(_audioBufferNeeded - _audioBufferPosition) / sampleRate]];
+            _audioBufferNeeded = 0;
         }
         
         if (_stopping || GB_debugger_is_stopped(&_gb)) {
@@ -466,7 +467,7 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
             // Not enough audio
             memset(buffer, 0, (nFrames - _audioBufferPosition) * sizeof(*buffer));
             memcpy(buffer, _audioBuffer, _audioBufferPosition * sizeof(*buffer));
-            _audioBufferPosition = 0;
+            // Do not reset the audio position to avoid more underflows
         }
         else if (_audioBufferPosition < nFrames + 4800) {
             memcpy(buffer, _audioBuffer, nFrames * sizeof(*buffer));

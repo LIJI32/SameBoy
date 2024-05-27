@@ -377,7 +377,7 @@ lib: $(PUBLIC_HEADERS)
 
 # Automatic dependency generation
 
-ifneq ($(filter-out ios ios-ipa ios-dev clean bootroms libretro %.bin, $(MAKECMDGOALS)),)
+ifneq ($(filter-out ios ios-ipa ios-deb clean bootroms libretro %.bin, $(MAKECMDGOALS)),)
 -include $(CORE_OBJECTS:.o=.dep)
 ifneq ($(filter $(MAKECMDGOALS),sdl),)
 -include $(SDL_OBJECTS:.o=.dep)

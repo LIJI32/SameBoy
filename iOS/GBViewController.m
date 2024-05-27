@@ -496,8 +496,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                 // Newly played ROM, pick the best model
                 uint8_t *rom = GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_ROM, NULL, NULL);
 
-                if ((rom[0x143] & 0x80) && !GB_is_cgb(&_gb)) {
-                    GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBCGBModel"]);
+                if ((rom[0x143] & 0x80)) {
+                    if (!GB_is_cgb(&_gb)) {
+                        GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBCGBModel"]);
+                    }
                 }
                 else if ((rom[0x146]  == 3) && !GB_is_sgb(&_gb)) {
                     GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBSGBModel"]);
@@ -746,7 +748,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             
             if (_audioBufferPosition < nFrames) {
                 _audioBufferNeeded = nFrames;
-                [_audioLock waitUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.125]];
+                [_audioLock waitUntilDate:[NSDate dateWithTimeIntervalSinceNow:(double)(_audioBufferNeeded - _audioBufferPosition) / sampleRate]];
+                _audioBufferNeeded = 0;
             }
             
             if (_stopping) {
@@ -759,7 +762,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                 // Not enough audio
                 memset(buffer, 0, (nFrames - _audioBufferPosition) * sizeof(*buffer));
                 memcpy(buffer, _audioBuffer, _audioBufferPosition * sizeof(*buffer));
-                _audioBufferPosition = 0;
+                // Do not reset the audio position to avoid more underflows
             }
             else if (_audioBufferPosition < nFrames + 4800) {
                 memcpy(buffer, _audioBuffer, nFrames * sizeof(*buffer));
