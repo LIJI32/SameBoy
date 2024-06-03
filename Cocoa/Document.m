@@ -564,8 +564,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
 {
     [_hexTimer invalidate];
     [_audioLock lock];
-    memset(_audioBuffer, 0, (_audioBufferSize - _audioBufferPosition) * sizeof(*_audioBuffer));
-    _audioBufferPosition = _audioBufferNeeded;
+    _audioBufferPosition = _audioBufferNeeded = 0;
     [_audioLock signal];
     [_audioLock unlock];
     [_audioClient stop];

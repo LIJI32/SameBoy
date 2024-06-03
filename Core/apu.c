@@ -752,6 +752,7 @@ void GB_apu_run(GB_gameboy_t *gb, bool force)
                         gb->apu_output.edge_triggered[i] = true;
                     }
                 }
+                gb->apu.square_channels[i].just_reloaded = cycles_left == 0;
                 if (cycles_left) {
                     gb->apu.square_channels[i].sample_countdown -= cycles_left;
                 }
@@ -1217,6 +1218,9 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
             GB_channel_t index = reg == GB_IO_NR23? GB_SQUARE_2: GB_SQUARE_1;
             gb->apu.square_channels[index].sample_length &= ~0xFF;
             gb->apu.square_channels[index].sample_length |= value & 0xFF;
+            if (gb->apu.square_channels[index].just_reloaded) {
+                gb->apu.square_channels[index].sample_countdown = (gb->apu.square_channels[index].sample_length ^ 0x7FF) * 2 + 1;
+            }
             break;
         }
 
@@ -1243,6 +1247,9 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
             uint16_t old_sample_length = gb->apu.square_channels[index].sample_length;
             gb->apu.square_channels[index].sample_length &= 0xFF;
             gb->apu.square_channels[index].sample_length |= (value & 7) << 8;
+            if (gb->apu.square_channels[index].just_reloaded) {
+                gb->apu.square_channels[index].sample_countdown = (gb->apu.square_channels[index].sample_length ^ 0x7FF) * 2 + 1;
+            }
             if (value & 0x80) {
                 /* Current sample index remains unchanged when restarting channels 1 or 2. It is only reset by
                    turning the APU off. */
@@ -1264,7 +1271,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 else {
                     unsigned extra_delay = 0;
                     if (gb->model == GB_MODEL_CGB_E || gb->model == GB_MODEL_CGB_D) {
-                        if (!(value & 4) && !(((gb->apu.square_channels[index].sample_countdown - 1 - gb->apu.square_channels[index].delay) / 2) & 0x400)) {
+                        if (!gb->apu.square_channels[index].just_reloaded && !(value & 4) && !(((gb->apu.square_channels[index].sample_countdown - 1 - gb->apu.square_channels[index].delay) / 2) & 0x400)) {
                             gb->apu.square_channels[index].current_sample_index++;
                             gb->apu.square_channels[index].current_sample_index &= 0x7;
                             gb->apu.square_channels[index].sample_surpressed = false;
@@ -1378,6 +1385,10 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         case GB_IO_NR33:
             gb->apu.wave_channel.sample_length &= ~0xFF;
             gb->apu.wave_channel.sample_length |= value & 0xFF;
+            if (gb->apu.wave_channel.bugged_read_countdown == 1) { // Just reloaded countdown
+                /* TODO: not verified with a test ROM yet */
+                gb->apu.wave_channel.sample_countdown = gb->apu.wave_channel.sample_length ^ 0x7FF;
+            }
             break;
         case GB_IO_NR34:
             gb->apu.wave_channel.sample_length &= 0xFF;

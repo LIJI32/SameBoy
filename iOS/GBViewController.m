@@ -901,10 +901,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 - (void)postRun
 {
     [_audioLock lock];
-    if (_audioBuffer) {
-        memset(_audioBuffer, 0, (_audioBufferSize - _audioBufferPosition) * sizeof(*_audioBuffer));
-    }
-    _audioBufferPosition = _audioBufferNeeded;
+    _audioBufferPosition = _audioBufferNeeded = 0;
     [_audioLock signal];
     [_audioLock unlock];
     [_audioClient stop];

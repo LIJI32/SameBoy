@@ -102,7 +102,9 @@ typedef struct
         bool length_enabled; // NRX4
         GB_envelope_clock_t envelope_clock;
         uint8_t delay; // Hack for CGB D/E phantom step due to how sample_countdown is implemented in SameBoy
-        bool did_tick;
+        bool did_tick:1;
+        bool just_reloaded:1;
+        uint8_t padding:6;
     } square_channels[2];
 
     struct {

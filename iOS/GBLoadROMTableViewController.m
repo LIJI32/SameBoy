@@ -16,6 +16,12 @@
 {
     self = [super initWithStyle:UITableViewStyleGrouped];
     self.navigationItem.rightBarButtonItem = self.editButtonItem;
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(deselectRow)
+                                                 name:UIApplicationDidBecomeActiveNotification
+                                               object:nil];
+    
     return self;
 }
 
@@ -26,7 +32,7 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    if (section == 1) return 1;
+    if (section == 1) return 2;
     return [GBROMManager sharedManager].allROMs.count;
 }
 
@@ -34,7 +40,10 @@
 {
     if (indexPath.section == 1) {
         UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        cell.textLabel.text = @"Import ROM files";
+        switch (indexPath.item) {
+            case 0: cell.textLabel.text = @"Import ROM files"; break;
+            case 1: cell.textLabel.text = @"Show Library in Files"; break;
+        }
         return cell;
     }
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
@@ -83,49 +92,59 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (indexPath.section == 1) {
-        UIViewController *parent = self.presentingViewController;
-        NSString *gbUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"gb", NULL);
-        NSString *gbcUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"gbc", NULL);
-        NSString *isxUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"isx", NULL);
-        
-        NSMutableSet *extensions = [NSMutableSet set];
-        [extensions addObjectsFromArray:(__bridge NSArray *)UTTypeCopyAllTagsWithClass((__bridge CFStringRef)gbUTI, kUTTagClassFilenameExtension)];
-        [extensions addObjectsFromArray:(__bridge NSArray *)UTTypeCopyAllTagsWithClass((__bridge CFStringRef)gbcUTI, kUTTagClassFilenameExtension)];
-        [extensions addObjectsFromArray:(__bridge NSArray *)UTTypeCopyAllTagsWithClass((__bridge CFStringRef)isxUTI, kUTTagClassFilenameExtension)];
-
-        if (extensions.count != 3) {
-            if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBShownUTIWarning"]) {
-                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"File Association Conflict"
-                                                                               message:@"Due to a limitation in iOS, the file picker will allow you to select files not supported by SameBoy. SameBoy will only import GB, GBC and ISX files.\n\nIf you have a multi-system emulator installed, updating it could fix this problem."
-                                                                        preferredStyle:UIAlertControllerStyleAlert];
-                [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
-                                                           style:UIAlertActionStyleCancel
-                                                         handler:^(UIAlertAction *action) {
-                    [[NSUserDefaults standardUserDefaults] setBool:true forKey:@"GBShownUTIWarning"];
-                    [self tableView:tableView didSelectRowAtIndexPath:indexPath];
-                }]];
-                [self presentViewController:alert animated:true completion:nil];
+        switch (indexPath.item) {
+            case 0: {
+                UIViewController *parent = self.presentingViewController;
+                NSString *gbUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"gb", NULL);
+                NSString *gbcUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"gbc", NULL);
+                NSString *isxUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"isx", NULL);
+                
+                NSMutableSet *extensions = [NSMutableSet set];
+                [extensions addObjectsFromArray:(__bridge NSArray *)UTTypeCopyAllTagsWithClass((__bridge CFStringRef)gbUTI, kUTTagClassFilenameExtension)];
+                [extensions addObjectsFromArray:(__bridge NSArray *)UTTypeCopyAllTagsWithClass((__bridge CFStringRef)gbcUTI, kUTTagClassFilenameExtension)];
+                [extensions addObjectsFromArray:(__bridge NSArray *)UTTypeCopyAllTagsWithClass((__bridge CFStringRef)isxUTI, kUTTagClassFilenameExtension)];
+                
+                if (extensions.count != 3) {
+                    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBShownUTIWarning"]) {
+                        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"File Association Conflict"
+                                                                                       message:@"Due to a limitation in iOS, the file picker will allow you to select files not supported by SameBoy. SameBoy will only import GB, GBC and ISX files.\n\nIf you have a multi-system emulator installed, updating it could fix this problem."
+                                                                                preferredStyle:UIAlertControllerStyleAlert];
+                        [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                                   style:UIAlertActionStyleCancel
+                                                                 handler:^(UIAlertAction *action) {
+                            [[NSUserDefaults standardUserDefaults] setBool:true forKey:@"GBShownUTIWarning"];
+                            [self tableView:tableView didSelectRowAtIndexPath:indexPath];
+                        }]];
+                        [self presentViewController:alert animated:true completion:nil];
+                        return;
+                    }
+                }
+                
+                [self.presentingViewController dismissViewControllerAnimated:true completion:^{
+                    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"com.github.liji32.sameboy.gb",
+                                                                                                                             @"com.github.liji32.sameboy.gbc",
+                                                                                                                             @"com.github.liji32.sameboy.isx",
+                                                                                                                             gbUTI ?: @"",
+                                                                                                                             gbcUTI ?: @"",
+                                                                                                                             isxUTI ?: @""]
+                                                                                                                    inMode:UIDocumentPickerModeImport];
+                    picker.allowsMultipleSelection = true;
+                    if (@available(iOS 13.0, *)) {
+                        picker.shouldShowFileExtensions = true;
+                    }
+                    picker.delegate = self;
+                    objc_setAssociatedObject(picker, @selector(delegate), self, OBJC_ASSOCIATION_RETAIN);
+                    [parent presentViewController:picker animated:true completion:nil];
+                }];
+                return;
+            }
+            case 1: {
+                [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[NSString stringWithFormat:@"shareddocuments://%@", NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true).firstObject]]
+                                                   options:nil
+                                         completionHandler:nil];
                 return;
             }
         }
-        
-        [self.presentingViewController dismissViewControllerAnimated:true completion:^{
-            UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"com.github.liji32.sameboy.gb",
-                                                                                                                     @"com.github.liji32.sameboy.gbc",
-                                                                                                                     @"com.github.liji32.sameboy.isx",
-                                                                                                                     gbUTI ?: @"",
-                                                                                                                     gbcUTI ?: @"",
-                                                                                                                     isxUTI ?: @""]
-                                                                                                            inMode:UIDocumentPickerModeImport];
-            picker.allowsMultipleSelection = true;
-            if (@available(iOS 13.0, *)) {
-                picker.shouldShowFileExtensions = true;
-            }
-            picker.delegate = self;
-            objc_setAssociatedObject(picker, @selector(delegate), self, OBJC_ASSOCIATION_RETAIN);
-            [parent presentViewController:picker animated:true completion:nil];
-        }];
-        return;
     }
     [GBROMManager sharedManager].currentROM = [GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]];
     [self.presentingViewController dismissViewControllerAnimated:true completion:^{
@@ -295,6 +314,13 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
             }],
         ]];
     }];
+}
+
+- (void)deselectRow
+{
+    if (self.tableView.indexPathForSelectedRow) {
+        [self.tableView deselectRowAtIndexPath:self.tableView.indexPathForSelectedRow animated:true];
+    }
 }
 
 @end
