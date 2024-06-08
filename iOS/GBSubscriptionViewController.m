@@ -1,6 +1,7 @@
 #ifdef APPSTORE
 #import "GBSubscriptionViewController.h"
 #import "GBSubscriptionManager.h"
+#import "UILabel+TapLocation.h"
 
 @interface GBSubscriptionViewController()<SKProductsRequestDelegate>
 
@@ -317,35 +318,14 @@
 
 - (void)tappedFooterLabel:(UITapGestureRecognizer *)tap
 {
-    UILabel *textLabel = (UILabel *)tap.view;
-    CGPoint tapLocation = [tap locationInView:textLabel];
+    unsigned characterIndex = [(UILabel *)tap.view characterAtTap:tap];
     
-    NSTextStorage *textStorage = [[NSTextStorage alloc] initWithString:textLabel.attributedText.string
-                                                            attributes:@{
-        NSFontAttributeName: textLabel.font
-    }];
-    NSLayoutManager *layoutManager = [[NSLayoutManager alloc] init];
-    [textStorage addLayoutManager:layoutManager];
-    
-    NSTextContainer *textContainer = [[NSTextContainer alloc] initWithSize:CGSizeMake(textLabel.frame.size.width,
-                                                                                      textLabel.frame.size.height + 256)];
-    textContainer.lineFragmentPadding = 0;
-    textContainer.maximumNumberOfLines = 16;
-    textContainer.lineBreakMode = NSLineBreakByWordWrapping;
-    
-    [layoutManager addTextContainer:textContainer];
-    
-    unsigned characterIndex = [layoutManager characterIndexForPoint:tapLocation
-                                                    inTextContainer:textContainer
-                           fractionOfDistanceBetweenInsertionPoints:NULL];
-    
-    NSURL *url = [textLabel.attributedText attribute:@"GBLinkAttribute" atIndex:characterIndex effectiveRange:NULL];
+    NSURL *url = [((UILabel *)tap.view).attributedText attribute:@"GBLinkAttribute" atIndex:characterIndex effectiveRange:NULL];
 
     if (url) {
         [[UIApplication sharedApplication] openURL:url options:nil completionHandler:nil];
     }
 }
-
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
