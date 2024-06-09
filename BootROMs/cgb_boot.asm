@@ -1238,6 +1238,7 @@ BootEnd:
 IF BootEnd > $900
     FAIL "BootROM overflowed: {BootEnd}"
 ENDC
+    ds $100 + $800 - @ ; Ensure that the ROM is padded up to standard size.
 
 SECTION "HRAM", HRAM[$FF80]
 TitleChecksum:

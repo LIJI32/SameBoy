@@ -686,6 +686,8 @@ static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type)
         [GB_BOOT_ROM_SGB2] = "sgb2_boot.bin",
         [GB_BOOT_ROM_CGB_0] = "cgb0_boot.bin",
         [GB_BOOT_ROM_CGB] = "cgb_boot.bin",
+        [GB_BOOT_ROM_CGB_E] = "cgbE_boot.bin",
+        [GB_BOOT_ROM_AGB_0] = "agb0_boot.bin",
         [GB_BOOT_ROM_AGB] = "agb_boot.bin",
     };
     bool use_built_in = true;
@@ -696,7 +698,16 @@ static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type)
     }
     if (use_built_in) {
         start_capturing_logs();
-        GB_load_boot_rom(gb, resource_path(names[type]));
+        if (GB_load_boot_rom(gb, resource_path(names[type]))) {
+            if (type == GB_BOOT_ROM_CGB_E) {
+                load_boot_rom(gb, GB_BOOT_ROM_CGB);
+                return;
+            }
+            if (type == GB_BOOT_ROM_AGB_0) {
+                load_boot_rom(gb, GB_BOOT_ROM_AGB);
+                return;
+            }
+        }
         end_capturing_logs(true, false, SDL_MESSAGEBOX_ERROR, "Error");
     }
 }

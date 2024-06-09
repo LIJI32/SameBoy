@@ -672,4 +672,10 @@ static inline int common_prefix_length(const char *a, const char *b) {
     }
 }
 
+/* Compatibility with Sonoma */
++ (bool)clipsToBounds
+{
+    return true;
+}
+
 @end

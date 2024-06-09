@@ -1665,8 +1665,10 @@ static void request_boot_rom(GB_gameboy_t *gb)
             case GB_MODEL_CGB_B:
             case GB_MODEL_CGB_C:
             case GB_MODEL_CGB_D:
-            case GB_MODEL_CGB_E:
                 type = GB_BOOT_ROM_CGB;
+                break;
+            case GB_MODEL_CGB_E:
+                type = GB_BOOT_ROM_CGB_E;
                 break;
             case GB_MODEL_AGB_A:
             case GB_MODEL_GBP_A:

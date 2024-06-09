@@ -82,7 +82,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
 @implementation GBBackgroundView
 {
     NSMutableSet<UITouch *> *_touches;
-    UITouch *_swipePadTouch;
+    UITouch *_padTouch;
     CGPoint _padSwipeOrigin;
     UITouch *_screenTouch;
     UITouch *_logoTouch;
@@ -219,10 +219,10 @@ static GB_key_mask_t angleToKeyMask(double angle)
         else if (CGRectContainsPoint(logoRect, point) && !_logoTouch) {
             _logoTouch = touch;
         }
-        else if (_usesSwipePad && !_swipePadTouch) {
+        else if (!_padTouch) {
             if (fabs(point.x - dpadLocation.x) <= dpadRadius &&
                 fabs(point.y - dpadLocation.y) <= dpadRadius) {
-                _swipePadTouch = touch;
+                _padTouch = touch;
                 _padSwipeOrigin = point;
             }
         }
@@ -233,8 +233,8 @@ static GB_key_mask_t angleToKeyMask(double angle)
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
-    if (_swipePadTouch && [touches containsObject:_swipePadTouch]) {
-        _swipePadTouch = nil;
+    if (_padTouch && [touches containsObject:_padTouch]) {
+        _padTouch = nil;
     }
     
     if (_screenTouch && [touches containsObject:_screenTouch]) {
@@ -298,8 +298,8 @@ static GB_key_mask_t angleToKeyMask(double angle)
     bool dpadHandled = false;
     if (_usesSwipePad) {
         dpadHandled = true;
-        if (_swipePadTouch) {
-            CGPoint point = [_swipePadTouch locationInView:self];
+        if (_padTouch) {
+            CGPoint point = [_padTouch locationInView:self];
             double squaredDistance = CGPointSquaredDistance(point, _padSwipeOrigin);
             if (squaredDistance > 16 * 16) {
                 double angle = CGPointAngle(point, _padSwipeOrigin);
@@ -315,7 +315,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
         }
     }
     for (UITouch *touch in _touches) {
-        if (touch == _swipePadTouch) continue;
+        if (_usesSwipePad && touch == _padTouch) continue;
         CGPoint point = [touch locationInView:self];
         
         if (touch == _screenTouch) {
@@ -364,7 +364,17 @@ static GB_key_mask_t angleToKeyMask(double angle)
         
         point.x *= factor;
         point.y *= factor;
-        if (CGPointSquaredDistance(point, _layout.aLocation) <= buttonRadiusSquared) {
+        if (!dpadHandled &&
+            (touch == _padTouch ||
+                (fabs(point.x - _layout.dpadLocation.x) <= dpadRadius &&
+                 fabs(point.y - _layout.dpadLocation.y) <= dpadRadius)
+            ) && (fabs(point.x - _layout.dpadLocation.x) >= dpadRadius / 5 ||
+                  fabs(point.y - _layout.dpadLocation.y) >= dpadRadius / 5)) {
+            dpadHandled = true; // Don't handle the dpad twice
+            double angle = CGPointAngle(point, _layout.dpadLocation);
+            mask |= angleToKeyMask(angle);
+        }
+        else if (CGPointSquaredDistance(point, _layout.aLocation) <= buttonRadiusSquared) {
             mask |= GB_KEY_A_MASK;
         }
         else if (CGPointSquaredDistance(point, _layout.bLocation) <= buttonRadiusSquared) {
@@ -379,13 +389,6 @@ static GB_key_mask_t angleToKeyMask(double angle)
         else if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBEnableABCombo"] &&
                  CGPointSquaredDistance(point, _layout.abComboLocation) <= buttonRadiusSquared) {
             mask |= GB_KEY_A_MASK | GB_KEY_B_MASK;
-        }
-        else if (!dpadHandled &&
-                 fabs(point.x - _layout.dpadLocation.x) <= dpadRadius &&
-                 fabs(point.y - _layout.dpadLocation.y) <= dpadRadius) {
-            dpadHandled = true; // Don't handle the dpad twice
-            double angle = CGPointAngle(point, _layout.dpadLocation);
-            mask |= angleToKeyMask(angle);
         }
     }
     if (mask != _lastMask) {

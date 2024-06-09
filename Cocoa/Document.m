@@ -647,7 +647,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     GB_debugger_set_disabled(&_gb, false);
 }
 
-- (void) loadBootROM: (GB_boot_rom_t)type
+- (void)loadBootROM: (GB_boot_rom_t)type
 {
     static NSString *const names[] = {
         [GB_BOOT_ROM_DMG_0] = @"dmg0_boot",
@@ -657,9 +657,24 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
         [GB_BOOT_ROM_SGB2] = @"sgb2_boot",
         [GB_BOOT_ROM_CGB_0] = @"cgb0_boot",
         [GB_BOOT_ROM_CGB] = @"cgb_boot",
+        [GB_BOOT_ROM_CGB_E] = @"cgbE_boot",
+        [GB_BOOT_ROM_AGB_0] = @"agb0_boot",
         [GB_BOOT_ROM_AGB] = @"agb_boot",
     };
-    GB_load_boot_rom(&_gb, [[self bootROMPathForName:names[type]] UTF8String]);
+    NSString *name = names[type];
+    NSString *path = [self bootROMPathForName:name];
+    /* These boot types are not commonly available, and they are indentical
+       from an emulator perspective, so fall back to the more common variants
+       if they can't be found. */
+    if (!path && type == GB_BOOT_ROM_CGB_E) {
+        [self loadBootROM:GB_BOOT_ROM_CGB];
+        return;
+    }
+    if (!path && type == GB_BOOT_ROM_AGB_0) {
+        [self loadBootROM:GB_BOOT_ROM_AGB];
+        return;
+    }
+    GB_load_boot_rom(&_gb, [path UTF8String]);
 }
 
 - (IBAction)reset:(id)sender
@@ -780,6 +795,8 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     self.consoleWindow.title = [NSString stringWithFormat:@"Debug Console – %@", [self.fileURL.path lastPathComponent]];
     self.memoryWindow.title = [NSString stringWithFormat:@"Memory – %@", [self.fileURL.path lastPathComponent]];
     self.vramWindow.title = [NSString stringWithFormat:@"VRAM Viewer – %@", [self.fileURL.path lastPathComponent]];
+    
+    self.consoleWindow.level = NSNormalWindowLevel;
     
     self.debuggerSplitView.dividerColor = self.debuggerVerticalLine.borderColor;
     [self.debuggerVerticalLine removeFromSuperview]; // No longer used, just there for the color

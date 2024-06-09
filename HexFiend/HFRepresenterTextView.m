@@ -1761,4 +1761,10 @@ static size_t unionAndCleanLists(NSRect *rectList, id *valueList, size_t count) 
     else return YES;
 }
 
+/* Compatibility with Sonoma */
++ (bool)clipsToBounds
+{
+    return true;
+}
+
 @end

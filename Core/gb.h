@@ -245,6 +245,8 @@ typedef enum {
     GB_BOOT_ROM_SGB2,
     GB_BOOT_ROM_CGB_0,
     GB_BOOT_ROM_CGB,
+    GB_BOOT_ROM_CGB_E,
+    GB_BOOT_ROM_AGB_0,
     GB_BOOT_ROM_AGB,
 } GB_boot_rom_t;
 
