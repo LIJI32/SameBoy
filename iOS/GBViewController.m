@@ -975,6 +975,23 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [_audioLock unlock];
     }
 }
+
+
+- (NSString *)bootROMPathForName:(NSString *)name
+{
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBCustomBootROMs"]) {
+        NSString *path = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true)[0];
+        path = [path stringByAppendingPathComponent:@"Boot ROMs"];
+        path = [path stringByAppendingPathComponent:name];
+        path = [path stringByAppendingPathExtension:@"bin"];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+            return path;
+        }
+    }
+    
+    return [[NSBundle mainBundle] pathForResource:name ofType:@"bin"];
+}
+
 - (void)loadBootROM: (GB_boot_rom_t)type
 {
     static NSString *const names[] = {
@@ -985,9 +1002,24 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [GB_BOOT_ROM_SGB2] = @"sgb2_boot",
         [GB_BOOT_ROM_CGB_0] = @"cgb0_boot",
         [GB_BOOT_ROM_CGB] = @"cgb_boot",
+        [GB_BOOT_ROM_CGB_E] = @"cgbE_boot",
+        [GB_BOOT_ROM_AGB_0] = @"agb0_boot",
         [GB_BOOT_ROM_AGB] = @"agb_boot",
     };
-    GB_load_boot_rom(&_gb, [[[NSBundle mainBundle] pathForResource:names[type] ofType:@"bin"] UTF8String]);
+    NSString *name = names[type];
+    NSString *path = [self bootROMPathForName:name];
+    /* These boot types are not commonly available, and they are indentical
+     from an emulator perspective, so fall back to the more common variants
+     if they can't be found. */
+    if (!path && type == GB_BOOT_ROM_CGB_E) {
+        [self loadBootROM:GB_BOOT_ROM_CGB];
+        return;
+    }
+    if (!path && type == GB_BOOT_ROM_AGB_0) {
+        [self loadBootROM:GB_BOOT_ROM_AGB];
+        return;
+    }
+    GB_load_boot_rom(&_gb, [path UTF8String]);
 }
 
 - (void)vblankWithType:(GB_vblank_type_t)type

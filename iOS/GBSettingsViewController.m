@@ -167,6 +167,31 @@ static NSString const *typeLightTemp = @"typeLightTemp";
             }
         },
         @{
+            @"header": @"Boot ROMs",
+            @"items": @[
+                @{@"type": typeRadio, @"pref": @"GBCustomBootROMs", @"title": @"Use Built-in Boot ROMs", @"value": @NO,},
+                @{@"type": typeRadio, @"pref": @"GBCustomBootROMs", @"title": @"Use Boot ROMs from Files", @"value": @YES,},
+                @{@"type": typeBlock, @"title": @"Open Boot ROMs Folder", @"block": ^bool(GBSettingsViewController *controller) {
+                    
+                    NSString *path = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true)[0];
+                    path = [path stringByAppendingPathComponent:@"Boot ROMs"];
+                    [[NSFileManager defaultManager] createDirectoryAtPath:path
+                                              withIntermediateDirectories:true
+                                                               attributes:nil
+                                                                    error:nil];
+                    
+                    
+                    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[NSString stringWithFormat:@"shareddocuments://%@", [path stringByReplacingOccurrencesOfString:@" "
+                                                                                                                                                                        withString:@"%20"]]]
+                                                       options:nil
+                                             completionHandler:nil];
+
+                    return false;
+                }},
+            ],
+            @"footer": @"Put your boot ROM files (dmg_boot.bin, cgb_boot.bin, etc.) in the Boot ROMs folder to use them"
+        },
+        @{
             @"header": @"Emulated Revisions",
             @"items": @[
                 QUICK_SUBMENU(@"Game Boy", @[

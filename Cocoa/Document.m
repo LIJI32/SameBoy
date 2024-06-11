@@ -255,21 +255,6 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     return self;
 }
 
-- (NSString *)bootROMPathForName:(NSString *)name
-{
-    NSURL *url = [[NSUserDefaults standardUserDefaults] URLForKey:@"GBBootROMsFolder"];
-    if (url) {
-        NSString *path = [url path];
-        path = [path stringByAppendingPathComponent:name];
-        path = [path stringByAppendingPathExtension:@"bin"];
-        if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
-            return path;
-        }
-    }
-    
-    return [[NSBundle mainBundle] pathForResource:name ofType:@"bin"];
-}
-
 - (GB_model_t)internalModel
 {
     switch (_currentModel) {
@@ -645,6 +630,21 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
         [_audioLock unlock];
     }
     GB_debugger_set_disabled(&_gb, false);
+}
+
+- (NSString *)bootROMPathForName:(NSString *)name
+{
+    NSURL *url = [[NSUserDefaults standardUserDefaults] URLForKey:@"GBBootROMsFolder"];
+    if (url) {
+        NSString *path = [url path];
+        path = [path stringByAppendingPathComponent:name];
+        path = [path stringByAppendingPathExtension:@"bin"];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+            return path;
+        }
+    }
+    
+    return [[NSBundle mainBundle] pathForResource:name ofType:@"bin"];
 }
 
 - (void)loadBootROM: (GB_boot_rom_t)type
