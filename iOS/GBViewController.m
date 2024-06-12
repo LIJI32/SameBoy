@@ -57,6 +57,8 @@
     UIButton *_cameraPositionButton;
     
     __weak GCController *_lastController;
+    
+    dispatch_queue_t _cameraQueue;
 }
 
 static void loadBootROM(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -265,6 +267,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                               action:@selector(rotateCamera)
                     forControlEvents:UIControlEventTouchUpInside];
     [_backgroundView addSubview:_cameraPositionButton];
+    
+    _cameraQueue = dispatch_queue_create("SameBoy Camera Queue", NULL);
     
     [UNUserNotificationCenter currentNotificationCenter].delegate = self;
     [self verifyEntitlements];
@@ -1140,61 +1144,66 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 - (void)cameraRequestUpdate
 {
-    @try {
+    dispatch_async(dispatch_get_main_queue(), ^{
         if (!_cameraSession) {
-            NSError *error;
-            AVCaptureDevice *device = [self captureDevice];
-            AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice: device error: &error];
-            
-            if (!input) {
-                GB_camera_updated(&_gb);
-                return;
-            }
-            
-            _cameraOutput = [[AVCaptureVideoDataOutput alloc] init];
-            [_cameraOutput setVideoSettings: @{(id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)}];
-            [_cameraOutput setSampleBufferDelegate:self
-                                             queue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0)];
-            
-            
-            
-            _cameraSession = [AVCaptureSession new];
-            _cameraSession.sessionPreset = AVCaptureSessionPreset352x288;
-            
-            [_cameraSession addInput: input];
-            [_cameraSession addOutput: _cameraOutput];
-            _cameraConnection = [_cameraOutput connectionWithMediaType: AVMediaTypeVideo];
-            _cameraConnection.videoOrientation = AVCaptureVideoOrientationPortrait;
-            [_cameraSession startRunning];
+            dispatch_async(_cameraQueue, ^{
+                @try {
+                    if (!_cameraSession) {
+                        NSError *error;
+                        AVCaptureDevice *device = [self captureDevice];
+                        AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice: device error: &error];
+                        
+                        if (!input) {
+                            GB_camera_updated(&_gb);
+                            return;
+                        }
+                        
+                        _cameraOutput = [[AVCaptureVideoDataOutput alloc] init];
+                        [_cameraOutput setVideoSettings: @{(id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)}];
+                        [_cameraOutput setSampleBufferDelegate:self
+                                                         queue:_cameraQueue];
+                        
+                        
+                        
+                        _cameraSession = [AVCaptureSession new];
+                        _cameraSession.sessionPreset = AVCaptureSessionPreset352x288;
+                        
+                        [_cameraSession addInput: input];
+                        [_cameraSession addOutput: _cameraOutput];
+                        _cameraConnection = [_cameraOutput connectionWithMediaType: AVMediaTypeVideo];
+                        _cameraConnection.videoOrientation = AVCaptureVideoOrientationPortrait;
+                        [_cameraSession startRunning];
+                    }
+                }
+                @catch (NSException *exception) {
+                    /* I have not tested camera support on many devices, so we catch exceptions just in case. */
+                    GB_camera_updated(&_gb);
+                }
+            });
         }
-    }
-    @catch (NSException *exception) {
-        /* I have not tested camera support on many devices, so we catch exceptions just in case. */
-        GB_camera_updated(&_gb);
-    }
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        
         _cameraNeedsUpdate = true;
         [_disableCameraTimer invalidate];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (!_cameraPositionButton.alpha) {
+        if (!_cameraPositionButton.alpha) {
+            [UIView animateWithDuration:0.25 animations:^{
+                _cameraPositionButton.alpha = 1;
+            }];
+        }
+        _disableCameraTimer = [NSTimer scheduledTimerWithTimeInterval:1
+                                                             repeats:false
+                                                               block:^(NSTimer *timer) {
+            if (_cameraPositionButton.alpha) {
                 [UIView animateWithDuration:0.25 animations:^{
-                    _cameraPositionButton.alpha = 1;
+                    _cameraPositionButton.alpha = 0;
                 }];
             }
-            _disableCameraTimer = [NSTimer scheduledTimerWithTimeInterval:1
-                                                                 repeats:false
-                                                                   block:^(NSTimer *timer) {
-                if (_cameraPositionButton.alpha) {
-                    [UIView animateWithDuration:0.25 animations:^{
-                        _cameraPositionButton.alpha = 0;
-                    }];
-                }
+            dispatch_async(_cameraQueue, ^{
                 [_cameraSession stopRunning];
                 _cameraSession = nil;
                 _cameraConnection = nil;
                 _cameraOutput = nil;
-            }];
-        });
+            });
+        }];
     });
 }
 
@@ -1280,16 +1289,17 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 - (void)rotateCamera
 {
-    _cameraPosition ^= AVCaptureDevicePositionBack ^ AVCaptureDevicePositionFront;
-    [_cameraSession stopRunning];
-    _cameraSession = nil;
-    _cameraConnection = nil;
-    _cameraOutput = nil;
-    if (_cameraNeedsUpdate) {
-        _cameraNeedsUpdate = false;
-        GB_camera_updated(&_gb);
-    }
-
+    dispatch_async(_cameraQueue, ^{
+        _cameraPosition ^= AVCaptureDevicePositionBack ^ AVCaptureDevicePositionFront;
+        [_cameraSession stopRunning];
+        _cameraSession = nil;
+        _cameraConnection = nil;
+        _cameraOutput = nil;
+        if (_cameraNeedsUpdate) {
+            _cameraNeedsUpdate = false;
+            GB_camera_updated(&_gb);
+        }
+    });
 }
 
 @end
