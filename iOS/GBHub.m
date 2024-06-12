@@ -236,24 +236,29 @@ static NSURL *StringToWebURL(NSString *string)
         }
         
         for (NSDictionary *entry in json[@"entries"]) {
-            @autoreleasepool {
-                GBHubGame *game = [[GBHubGame alloc] initWithJSON:entry];
-                if (game && !_allGames[game.slug]) {
-                    _allGames[game.slug] = game;
-                    bool showcase = [_showcaseExtras containsObject:game.slug];
-                    if (!showcase) {
-                        for (NSString *tag in game.tags) {
-                            _tags[tag] = @(_tags[tag].unsignedIntValue + 1);
-                            if ([tag containsString:@"Shortlist"]) {
-                                showcase = true;
-                                break;
+            @try {
+                @autoreleasepool {
+                    GBHubGame *game = [[GBHubGame alloc] initWithJSON:entry];
+                    if (game && !_allGames[game.slug]) {
+                        _allGames[game.slug] = game;
+                        bool showcase = [_showcaseExtras containsObject:game.slug];
+                        if (!showcase) {
+                            for (NSString *tag in game.tags) {
+                                _tags[tag] = @(_tags[tag].unsignedIntValue + 1);
+                                if ([tag containsString:@"Shortlist"]) {
+                                    showcase = true;
+                                    break;
+                                }
                             }
                         }
-                    }
-                    if (showcase) {
-                        [_showcaseGames addObject:game];
+                        if (showcase) {
+                            [_showcaseGames addObject:game];
+                        }
                     }
                 }
+            }
+            @catch (NSException *exception) {
+                // Just in case I missed some JSON edge cases, let's not abort the entire response over one bad game
             }
         }
         
