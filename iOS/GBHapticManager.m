@@ -12,6 +12,7 @@
 #pragma clang diagnostic pop
     __weak GCController *_controller;
     double _rumble;
+    dispatch_queue_t _queue;
 }
 
 + (instancetype)sharedManager
@@ -38,6 +39,7 @@
 #ifndef APPSTORE
     if (!_engine) return [[GBHapticManagerLegacy alloc] init];
 #endif
+    _queue = dispatch_queue_create("SameBoy Haptic Queue", NULL);
     return self;
 }
 
@@ -59,20 +61,22 @@
 
 - (void)doTapHaptic
 {
-    if (_rumble) return;
+    double intensity = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBHapticsStrength"];
+    if (_rumble > intensity) return;
 
-    CHHapticPattern *pattern = [[CHHapticPattern alloc] initWithEvents:@[[self eventWithType:CHHapticEventTypeHapticTransient
-                                                                                   sharpness:0.25
-                                                                                   intensity:[[NSUserDefaults standardUserDefaults] doubleForKey:@"GBHapticsStrength"]
-                                                                                    duration:1.0]]
-                                                             parameters:nil
-                                                                  error:nil];
-    @try {
-        id<CHHapticPatternPlayer> player = [_engine createPlayerWithPattern:pattern error:nil];
-        
-        [player startAtTime:0 error:nil];
-    }
-    @catch (NSException *exception) {}
+    dispatch_async(_queue, ^{
+        CHHapticPattern *pattern = [[CHHapticPattern alloc] initWithEvents:@[[self eventWithType:CHHapticEventTypeHapticTransient
+                                                                                       sharpness:0.25
+                                                                                       intensity:intensity
+                                                                                        duration:1.0]]
+                                                                parameters:nil
+                                                                     error:nil];
+        @try {
+            id<CHHapticPatternPlayer> player = [_engine createPlayerWithPattern:pattern error:nil];
+            [player startAtTime:0 error:nil];
+        }
+        @catch (NSException *exception) {}
+    });
 }
 
 - (void)setRumbleStrength:(double)rumble
@@ -92,27 +96,32 @@
         _rumble = 0;
         return;
     }
+    
+    // No change
+    if (rumble == _rumble) return;
     _rumble = rumble;
-    CHHapticPattern *pattern = [[CHHapticPattern alloc] initWithEvents:@[[self eventWithType:CHHapticEventTypeHapticContinuous
-                                                                                   sharpness:0.75
-                                                                                   intensity:rumble
-                                                                                    duration:1.0]]
-                                                            parameters:nil
-                                                                 error:nil];
-    @try {
-        id<CHHapticPatternPlayer> newPlayer = [_externalEngine ?: _engine createPlayerWithPattern:pattern error:nil];
-        
-        [newPlayer startAtTime:0 error:nil];
-        [_rumblePlayer stopAtTime:0 error:nil];
-        _rumblePlayer = newPlayer;
-    }
-    @catch (NSException *exception) {
-        if (_externalEngine) {
-            // Something might have happened with our controller? Delete and try again
-            _externalEngine = nil;
-            [self setRumbleStrength: rumble];
+    
+    dispatch_async(_queue, ^{
+        CHHapticPattern *pattern = [[CHHapticPattern alloc] initWithEvents:@[[self eventWithType:CHHapticEventTypeHapticContinuous
+                                                                                       sharpness:0.75
+                                                                                       intensity:rumble
+                                                                                        duration:1.0]]
+                                                                parameters:nil
+                                                                     error:nil];
+        @try {
+            id<CHHapticPatternPlayer> newPlayer = [_externalEngine ?: _engine createPlayerWithPattern:pattern error:nil];
+            [newPlayer startAtTime:0 error:nil];
+            [_rumblePlayer stopAtTime:0 error:nil];
+            _rumblePlayer = newPlayer;
         }
-    }
+        @catch (NSException *exception) {
+            if (_externalEngine) {
+                // Something might have happened with our controller? Delete and try again
+                _externalEngine = nil;
+                [self setRumbleStrength: rumble];
+            }
+        }
+    });
 }
 
 - (void)setController:(GCController *)controller
