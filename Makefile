@@ -46,6 +46,8 @@ DATA_DIR ?= $(PREFIX)/share/sameboy/
 FREEDESKTOP ?= true
 endif
 
+ENABLE_MINIZIP ?= 1
+
 default: $(DEFAULT)
 
 ifeq ($(MAKECMDGOALS),)
@@ -220,6 +222,15 @@ GL_LDFLAGS := -lGL
 else
 GL_CFLAGS := $(shell $(PKG_CONFIG) --cflags gl)
 GL_LDFLAGS := $(shell $(PKG_CONFIG) --libs gl || echo -lGL)
+endif
+
+ifneq ($(ENABLE_MINIZIP),0)
+MINIZIP_CPPFLAGS := -DGB_HAS_MINIZIP
+ifeq (,$(PKG_CONFIG))
+MINIZIP_LDFLAGS := -lminizip -lz
+else
+MINIZIP_LDFLAGS := $(shell $(PKG_CONFIG) --libs minizip)
+endif
 endif
 
 ifeq ($(PLATFORM),windows32)
@@ -400,7 +411,7 @@ $(OBJ)/%.dep: %
 
 $(OBJ)/Core/%.c.o: Core/%.c
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(FAT_FLAGS) -DGB_INTERNAL -c $< -o $@
+	$(CC) $(CFLAGS) $(FAT_FLAGS) $(MINIZIP_CPPFLAGS) -DGB_INTERNAL -c $< -o $@
 
 $(OBJ)/SDL/%.c.o: SDL/%.c
 	-@$(MKDIR) -p $(dir $@)
@@ -449,7 +460,7 @@ $(BIN)/SameBoy-iOS.app: $(BIN)/SameBoy-iOS.app/SameBoy \
 
 $(BIN)/SameBoy-iOS.app/SameBoy: $(CORE_OBJECTS) $(IOS_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS)
+	$(CC) $^ -o $@ $(LDFLAGS) $(MINIZIP_LDFLAGS)
 ifeq ($(CONF), release)
 	$(STRIP) $@
 endif
@@ -488,7 +499,7 @@ endif
 
 $(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(CORE_OBJECTS) $(COCOA_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -framework OpenGL -framework AudioToolbox -framework AudioUnit -framework AVFoundation -framework CoreVideo -framework CoreMedia -framework IOKit -framework PreferencePanes -framework Carbon -framework QuartzCore -framework Security -framework WebKit -weak_framework Metal -weak_framework MetalKit
+	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) $(MINIZIP_LDFLAGS) -framework OpenGL -framework AudioToolbox -framework AudioUnit -framework AVFoundation -framework CoreVideo -framework CoreMedia -framework IOKit -framework PreferencePanes -framework Carbon -framework QuartzCore -framework Security -framework WebKit -weak_framework Metal -weak_framework MetalKit
 ifeq ($(CONF), release)
 	$(STRIP) $@
 endif
@@ -516,7 +527,7 @@ endif
 # once in the QL Generator. It should probably become a dylib instead.
 $(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL: $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -Wl,-exported_symbols_list,QuickLook/exports.sym -bundle -framework Cocoa -framework Quicklook
+	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) $(MINIZIP_LDFLAGS) -Wl,-exported_symbols_list,QuickLook/exports.sym -bundle -framework Cocoa -framework Quicklook
 ifeq ($(CONF), release)
 	$(STRIP) $@
 endif
@@ -532,7 +543,7 @@ $(BIN)/SameBoy.qlgenerator/Contents/Resources/cgb_boot_fast.bin: $(BIN)/BootROMs
 # Unix versions build only one binary
 $(BIN)/SDL/sameboy: $(CORE_OBJECTS) $(SDL_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS)
+	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) $(MINIZIP_LDFLAGS)
 ifeq ($(CONF), release)
 	$(STRIP) $@
 	$(CODESIGN) $@
@@ -541,11 +552,11 @@ endif
 # Windows version builds two, one with a conole and one without it
 $(BIN)/SDL/sameboy.exe: $(CORE_OBJECTS) $(SDL_OBJECTS) $(OBJ)/Windows/resources.o
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) -Wl,/subsystem:windows
+	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) $(MINIZIP_LDFLAGS) -Wl,/subsystem:windows
 
 $(BIN)/SDL/sameboy_debugger.exe: $(CORE_OBJECTS) $(SDL_OBJECTS) $(OBJ)/Windows/resources.o
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) -Wl,/subsystem:console
+	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) $(MINIZIP_LDFLAGS) -Wl,/subsystem:console
 
 ifneq ($(USE_WINDRES),)
 $(OBJ)/%.o: %.rc
@@ -570,7 +581,7 @@ $(BIN)/SDL/%.dll:
 
 $(BIN)/tester/sameboy_tester: $(CORE_OBJECTS) $(TESTER_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS)
+	$(CC) $^ -o $@ $(LDFLAGS) $(MINIZIP_LDFLAGS)
 ifeq ($(CONF), release)
 	$(STRIP) $@
 	$(CODESIGN) $@
@@ -578,7 +589,7 @@ endif
 
 $(BIN)/tester/sameboy_tester.exe: $(CORE_OBJECTS) $(SDL_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) -Wl,/subsystem:console
+	$(CC) $^ -o $@ $(LDFLAGS) $(MINIZIP_LDFLAGS) -Wl,/subsystem:console
 
 $(BIN)/SDL/%.bin: $(BOOTROMS_DIR)/%.bin
 	-@$(MKDIR) -p $(dir $@)

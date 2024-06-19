@@ -9,6 +9,11 @@
 #include <sys/select.h>
 #include <unistd.h>
 #endif
+
+#ifdef GB_HAS_MINIZIP
+#include <minizip/unzip.h>
+#endif
+
 #include "random.h"
 #include "gb.h"
 
@@ -317,31 +322,81 @@ static size_t rounded_rom_size(size_t size)
     return size;
 }
 
+static void init_new_rom(GB_gameboy_t *gb)
+{
+    GB_configure_cart(gb);
+    gb->tried_loading_sgb_border = false;
+    gb->has_sgb_border = false;
+    load_default_border(gb);
+}
+
 int GB_load_rom(GB_gameboy_t *gb, const char *path)
+{
+#ifdef GB_HAS_MINIZIP
+    size_t path_len = strlen(path);
+    const char *ext;
+    if (path_len > 4) {
+        ext = path + path_len - 4;
+        if (strcasecmp(ext, ".zip") == 0) {
+            return GB_load_rom_from_zip(gb, path);
+        }
+    }
+#endif
+    return GB_load_rom_from_bin(gb, path);
+}
+
+int GB_load_rom_from_bin(GB_gameboy_t *gb, const char *path)
 {
     GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     
     FILE *f = fopen(path, "rb");
+    size_t bin_size;
     if (!f) {
         GB_log(gb, "Could not open ROM: %s.\n", strerror(errno));
         return errno;
     }
     fseek(f, 0, SEEK_END);
-    gb->rom_size = rounded_rom_size(ftell(f));
+    bin_size = ftell(f);
+    gb->rom_size = rounded_rom_size(bin_size);
     fseek(f, 0, SEEK_SET);
     if (gb->rom) {
         free(gb->rom);
     }
     gb->rom = malloc(gb->rom_size);
     memset(gb->rom, 0xFF, gb->rom_size); /* Pad with 0xFFs */
-    fread(gb->rom, 1, gb->rom_size, f);
+    fread(gb->rom, 1, bin_size, f);
     fclose(f);
-    GB_configure_cart(gb);
-    gb->tried_loading_sgb_border = false;
-    gb->has_sgb_border = false;
-    load_default_border(gb);
+    init_new_rom(gb);
     return 0;
 }
+
+#ifdef GB_HAS_MINIZIP
+int GB_load_rom_from_zip(GB_gameboy_t *gb, const char *path)
+{
+    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+
+    unzFile *z = unzOpen(path);
+    unz_file_info file_info;
+    if (!z) {
+        GB_log(gb, "Could not open ZIP.\n");
+        return -1;
+    }
+    unzGoToFirstFile(z);
+    unzGetCurrentFileInfo(z, &file_info, NULL, 0, NULL, 0, NULL, 0);
+    gb->rom_size = rounded_rom_size(file_info.uncompressed_size);
+    unzOpenCurrentFile(z);
+    if (gb->rom) {
+        free(gb->rom);
+    }
+    gb->rom = malloc(gb->rom_size);
+    memset(gb->rom, 0xFF, gb->rom_size);
+    unzReadCurrentFile(z, gb->rom, file_info.uncompressed_size);
+    unzCloseCurrentFile(z);
+    unzClose(z);
+    init_new_rom(gb);
+    return 0;
+}
+#endif
 
 #define GBS_ENTRY 0x61
 #define GBS_ENTRY_SIZE 13
@@ -738,10 +793,7 @@ void GB_load_rom_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t siz
     gb->rom = malloc(gb->rom_size);
     memset(gb->rom, 0xFF, gb->rom_size);
     memcpy(gb->rom, buffer, size);
-    GB_configure_cart(gb);
-    gb->tried_loading_sgb_border = false;
-    gb->has_sgb_border = false;
-    load_default_border(gb);
+    init_new_rom(gb);
 }
 
 typedef struct {

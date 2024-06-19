@@ -27,7 +27,7 @@ char *do_open_rom_dialog(void)
     dialog.lStructSize = sizeof(dialog);
     dialog.lpstrFile = filename;
     dialog.nMaxFile = MAX_PATH;
-    dialog.lpstrFilter = L"Game Boy ROMs\0*.gb;*.gbc;*.sgb;*.isx\0All files\0*.*\0\0";
+    dialog.lpstrFilter = L"Game Boy ROMs\0*.gb;*.gbc;*.sgb;*.isx;*.zip\0All files\0*.*\0\0";
     dialog.nFilterIndex = 1;
     dialog.lpstrFileTitle = NULL;
     dialog.nMaxFileTitle = 0;
