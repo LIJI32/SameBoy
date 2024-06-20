@@ -671,6 +671,10 @@ else
 	cp FreeDesktop/sameboy.desktop $(DESTDIR)$(PREFIX)/share/applications/sameboy.desktop
 endif
 
+$(DESTDIR)$(PREFIX)/share/metainfo/io.github.sameboy.SameBoy.metainfo.xml: FreeDesktop/io.github.sameboy.SameBoy.metainfo.xml
+	-@$(MKDIR) -p $(DESTDIR)$(PREFIX)/share/metainfo/
+	cp FreeDesktop/io.github.sameboy.SameBoy.metainfo.xml $(DESTDIR)$(PREFIX)/share/metainfo/io.github.sameboy.SameBoy.metainfo.xml
+
 $(DESTDIR)$(PREFIX)/share/icons/hicolor/%/apps/sameboy.png: FreeDesktop/AppIcon/%.png
 	-@$(MKDIR) -p $(dir $@)
 	cp -f $^ $@
