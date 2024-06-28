@@ -60,6 +60,8 @@
     __weak GCController *_lastController;
     
     dispatch_queue_t _cameraQueue;
+    
+    bool _runModeFromController;
 }
 
 static void loadBootROM(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -390,9 +392,14 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                 if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
                     GB_set_clock_multiplier(&_gb, (button.value - analogThreshold) / (1 - analogThreshold) * 3 + 1);
                 }
+                _runModeFromController = true;
+                [_backgroundView fadeOverlayOut];
             }
             else {
-                [self setRunMode:GBRunModeNormal];
+                if (self.runMode == GBRunModeTurbo && _runModeFromController) {
+                    [self setRunMode:GBRunModeNormal];
+                    _runModeFromController = false;
+                }
             }
             break;
         case GBRewind:
@@ -401,22 +408,30 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                 if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
                     GB_set_clock_multiplier(&_gb, (button.value - analogThreshold) / (1 - analogThreshold) * 4);
                 }
+                _runModeFromController = true;
+                [_backgroundView fadeOverlayOut];
             }
             else {
-                [self setRunMode:GBRunModeNormal];
+                if (self.runMode == GBRunModeRewind && _runModeFromController) {
+                    [self setRunMode:GBRunModeNormal];
+                    _runModeFromController = false;
+                }
             }
             break;
         case GBUnderclock:
             if (button.value > analogThreshold) {
+                [self setRunMode:GBRunModeUnderclock ignoreDynamicSpeed:!button.isAnalog];
                 if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
                     GB_set_clock_multiplier(&_gb, 1 - ((button.value - analogThreshold) / (1 - analogThreshold) * 0.75));
                 }
-                else {
-                    GB_set_clock_multiplier(&_gb, 0.5);
-                }
+                _runModeFromController = true;
+                [_backgroundView fadeOverlayOut];
             }
             else {
-                GB_set_clock_multiplier(&_gb, 1.0);
+                if (self.runMode == GBRunModeUnderclock && _runModeFromController) {
+                    [self setRunMode:GBRunModeNormal];
+                    _runModeFromController = false;
+                }
             }
             break;
         default: break;
@@ -1030,6 +1045,10 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [_audioLock signal];
         [_audioLock unlock];
     }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.runMode = GBRunModeNormal;
+        [_backgroundView fadeOverlayOut];
+    });
 }
 
 
@@ -1161,15 +1180,18 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [_audioClient stop];
     }
     
-    if (_runMode == GBRunModeNormal || _runMode == GBRunModeTurbo) {
+    if (_runMode == GBRunModeNormal || _runMode == GBRunModeTurbo || _runMode == GBRunModeUnderclock) {
         _rewindOver = false;
     }
     
-    if (_runMode == GBRunModeNormal || !([[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"] && !ignoreDynamicSpeed)) {
+    if (_runMode == GBRunModeNormal  || _runMode == GBRunModeUnderclock || !([[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"] && !ignoreDynamicSpeed)) {
         if (_runMode == GBRunModeTurbo) {
             double multiplier = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboSpeed"];
             GB_set_turbo_mode(&_gb, multiplier == 1, false);
             GB_set_clock_multiplier(&_gb, multiplier);
+        }
+        else if (_runMode == GBRunModeUnderclock) {
+            GB_set_clock_multiplier(&_gb, 0.5);
         }
         else {
             GB_set_turbo_mode(&_gb, false, false);

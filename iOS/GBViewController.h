@@ -7,6 +7,7 @@ typedef enum {
     GBRunModeTurbo,
     GBRunModeRewind,
     GBRunModePaused,
+    GBRunModeUnderclock,
 } GBRunMode;
 
 @interface GBViewController : UIViewController <UIApplicationDelegate,

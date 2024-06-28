@@ -11,4 +11,5 @@
 
 - (void)enterPreviewMode:(bool)showLabel;
 - (void)reloadThemeImages;
+- (void)fadeOverlayOut;
 @end
