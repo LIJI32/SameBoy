@@ -1,0 +1,32 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+         "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/com/github/liji32/sameboy/XdgThumbnailer">
+  <interface name="org.freedesktop.thumbnails.SpecializedThumbnailer1">
+    <method name="Queue">
+      <arg type="s" name="uri" direction="in" />
+      <arg type="s" name="mime_type" direction="in" />
+      <arg type="s" name="flavor" direction="in" />
+      <arg type="b" name="urgent" direction="in" />
+      <arg type="u" name="handle" direction="out" />
+    </method>
+    <method name="Dequeue">
+      <arg type="u" name="handle" direction="in" />
+    </method>
+    <signal name="Ready">
+      <arg type="u" name="handle" />
+      <arg type="s" name="uri" />
+    </signal>
+    <signal name="Started">
+      <arg type="u" name="handle" />
+    </signal>
+    <signal name="Finished">
+      <arg type="u" name="handle" />
+    </signal>
+    <signal name="Error">
+      <arg type="u" name="handle" />
+      <arg type="s" name="failed_uri" />
+      <arg type="i" name="error_code" />
+      <arg type="s" name="message" />
+    </signal>
+  </interface>
+</node>

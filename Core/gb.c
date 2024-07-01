@@ -550,7 +550,7 @@ int GB_load_isx(GB_gameboy_t *gb, const char *path)
                 bank = byte;
                 if (byte >= 0x80) {
                     READ(byte);
-                    /* TODO: This is just a guess, the docs don't elaborator on how banks > 0xFF are saved,
+                    /* TODO: This is just a guess, the docs don't elaborate on how banks > 0xFF are saved,
                        other than the fact that banks >= 80 requires two bytes to store them, and I haven't
                        encountered an ISX file for a ROM larger than 4MBs yet. */
                     bank += byte << 7;

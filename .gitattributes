@@ -7,4 +7,5 @@ HexFiend/* linguist-vendored
 Core/*.h linguist-language=C
 SDL/*.h linguist-language=C
 Windows/*.h linguist-language=C
+XdgThumbnailer/*.h linguist-language=C
 Cocoa/*.h linguist-language=Objective-C
