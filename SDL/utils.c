@@ -1,5 +1,6 @@
 #include <SDL.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
@@ -26,7 +27,23 @@ char *resource_path(const char *filename)
     if (access(path, F_OK) == 0) {
         return path;
     }
-    snprintf(path, sizeof(path), "%s%s", DATA_DIR, filename);
+
+    char* directory = DATA_DIR;
+#ifdef APPIMAGE_BUILD
+    char* appdir = getenv("APPDIR");
+    if (appdir)
+    {
+        directory = malloc(strlen(DATA_DIR) + strlen(appdir) + 1);
+        strcpy(directory, appdir);
+        strcat(directory, DATA_DIR);
+    }
+#endif
+
+    snprintf(path, sizeof(path), "%s%s", directory, filename);
+
+#ifdef APPIMAGE_BUILD
+    if (appdir) free(directory);
+#endif
 #endif
     return path;
 }

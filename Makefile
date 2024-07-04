@@ -108,6 +108,12 @@ ifdef DATA_DIR
 CFLAGS += -DDATA_DIR="\"$(DATA_DIR)\""
 endif
 
+APPIMAGE_BUILD ?=
+
+ifdef APPIMAGE_BUILD
+CFLAGS += -DAPPIMAGE_BUILD
+endif
+
 # Set tools
 
 # Use clang if it's available.
@@ -327,6 +333,8 @@ else
 SDL_TARGET := $(BIN)/SDL/sameboy
 TESTER_TARGET := $(BIN)/tester/sameboy_tester
 endif
+
+APPIMAGE_DIR := $(BIN)/AppImage/
 
 cocoa: $(BIN)/SameBoy.app
 quicklook: $(BIN)/SameBoy.qlgenerator
@@ -674,6 +682,13 @@ else
 	-@$(MKDIR) -p $(DESTDIR)$(PREFIX)/share/applications/
 	cp FreeDesktop/sameboy.desktop $(DESTDIR)$(PREFIX)/share/applications/sameboy.desktop
 endif
+
+appimage: $(APPIMAGE_DIR)/AppDir
+	OUTPUT=$(APPIMAGE_DIR)/SameBoy.AppImage \
+	linuxdeploy --appdir $< -v2 --output appimage --desktop-file FreeDesktop/sameboy.desktop --icon-file FreeDesktop/sameboy.png
+
+$(APPIMAGE_DIR)/AppDir:
+	+make APPIMAGE_BUILD=1 DESTDIR=$@ PREFIX=/usr install
 
 $(DESTDIR)$(PREFIX)/share/icons/hicolor/%/apps/sameboy.png: FreeDesktop/AppIcon/%.png
 	-@$(MKDIR) -p $(dir $@)
