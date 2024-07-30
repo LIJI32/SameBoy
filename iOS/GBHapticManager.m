@@ -89,7 +89,12 @@
         rumble = 0;
     }
     if (rumble == 0) {
-        [_rumblePlayer stopAtTime:0 error:nil];
+        @try {
+            /* Why must every method from this framework randomly throw exceptions whenever
+               anything remotely unusual happens? CoreHaptic sucks.*/
+            [_rumblePlayer stopAtTime:0 error:nil];
+        }
+        @catch (NSException *exception) {}
         _rumblePlayer = nil;
         _rumble = 0;
         return;
