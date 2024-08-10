@@ -1125,7 +1125,9 @@ static bool delete(GB_gameboy_t *gb, char *arguments, char *modifiers, const deb
     
     for (unsigned i = 0; i < gb->n_breakpoints; i++) {
         if (gb->breakpoints[i].id != id) continue;
-        
+        value_t addr = (value_t){gb->breakpoints[i].bank != (uint16_t)-1, gb->breakpoints[i].bank, gb->breakpoints[i].addr};
+        GB_log(gb, "Breakpoint %u removed from %s\n", id, debugger_value_to_string(gb, addr, addr.has_bank, false));
+
         if (gb->breakpoints[i].condition) {
             free(gb->breakpoints[i].condition);
         }
@@ -1145,9 +1147,6 @@ static bool delete(GB_gameboy_t *gb, char *arguments, char *modifiers, const deb
         gb->n_breakpoints--;
         gb->breakpoints = realloc(gb->breakpoints, gb->n_breakpoints * sizeof(gb->breakpoints[0]));
         
-        value_t addr = (value_t){gb->breakpoints[i].bank != (uint16_t)-1, gb->breakpoints[i].bank, gb->breakpoints[i].addr};
-
-        GB_log(gb, "Breakpoint %u removed from %s\n", id, debugger_value_to_string(gb, addr, addr.has_bank, false));
         return true;
     }
 
@@ -1300,6 +1299,9 @@ static bool unwatch(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
     for (unsigned i = 0; i < gb->n_watchpoints; i++) {
         if (gb->watchpoints[i].id != id) continue;
         
+        value_t addr = (value_t){gb->watchpoints[i].bank != (uint16_t)-1, gb->watchpoints[i].bank, gb->watchpoints[i].addr};
+        GB_log(gb, "Watchpoint %u removed from %s\n", id, debugger_value_to_string(gb, addr, addr.has_bank, false));
+        
         if (gb->watchpoints[i].condition) {
             free(gb->watchpoints[i].condition);
         }
@@ -1308,9 +1310,6 @@ static bool unwatch(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
         gb->n_watchpoints--;
         gb->watchpoints = realloc(gb->watchpoints, gb->n_watchpoints * sizeof(gb->watchpoints[0]));
         
-        value_t addr = (value_t){gb->watchpoints[i].bank != (uint16_t)-1, gb->watchpoints[i].bank, gb->watchpoints[i].addr};
-        
-        GB_log(gb, "Watchpoint %u removed from %s\n", id, debugger_value_to_string(gb, addr, addr.has_bank, false));
         return true;
     }
     
