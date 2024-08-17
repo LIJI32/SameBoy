@@ -142,6 +142,9 @@ static bool HasHomeBar(void)
     CGRect rect = CGRectMake(0,
                              range.location - range.length / 3,
                              self.size.width, range.length * 2);
+    if (self.size.width > self.size.height) {
+        rect.origin.x += _cutout / 2;
+    }
     NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
     style.alignment = NSTextAlignmentCenter;
     [@"SAMEBOY" drawInRect:rect
