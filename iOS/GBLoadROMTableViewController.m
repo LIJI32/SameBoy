@@ -253,6 +253,15 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     return [UIContextMenuConfiguration configurationWithIdentifier:nil
                                                    previewProvider:nil
                                                     actionProvider:^UIMenu *(NSArray<UIMenuElement *> *suggestedActions) {
+        UIAction *deleteAction = [UIAction actionWithTitle:@"Delete"
+                                                     image:[UIImage systemImageNamed:@"trash"]
+                                                identifier:nil
+                                                   handler:^(__kindof UIAction * _Nonnull action) {
+            [self tableView:tableView
+         commitEditingStyle:UITableViewCellEditingStyleDelete
+          forRowAtIndexPath:indexPath];
+        }];
+        deleteAction.attributes = UIMenuElementAttributesDestructive;
         return [UIMenu menuWithTitle:nil children:@[
             [UIAction actionWithTitle:@"Rename"
                                 image:[UIImage systemImageNamed:@"pencil"]
@@ -267,6 +276,7 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
                 [[GBROMManager sharedManager] duplicateROM:[GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]]];
                 [self.tableView reloadData];
             }],
+            deleteAction,
         ]];
     }];
 }
