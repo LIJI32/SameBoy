@@ -24,5 +24,6 @@ typedef enum {
 - (void)showAbout;
 - (void)saveStateToFile:(NSString *)file;
 - (bool)loadStateFromFile:(NSString *)file;
+- (bool)handleOpenURLs:(NSArray <NSURL *> *)urls openInPlace:(bool)inPlace;
 @property (nonatomic) GBRunMode runMode;
 @end

@@ -122,6 +122,8 @@
                     }
                 }
                 
+                [extensions addObject:@"zip"];
+                
                 [self.presentingViewController dismissViewControllerAnimated:true completion:^{
                     UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"com.github.liji32.sameboy.gb",
                                                                                                                              @"com.github.liji32.sameboy.gbc",
@@ -161,61 +163,7 @@
 
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray <NSURL *>*)urls
 {
-    NSMutableArray<NSURL *> *validURLs = [NSMutableArray array];
-    NSMutableArray<NSString *> *skippedBasenames = [NSMutableArray array];
-
-    for (NSURL *url in urls) {
-        if ([@[@"gb", @"gbc", @"isx"] containsObject:url.pathExtension.lowercaseString]) {
-            [validURLs addObject:url];
-        }
-        else {
-            [skippedBasenames addObject:url.lastPathComponent];
-        }
-    }
-    
-    if (skippedBasenames.count) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Unsupported Files"
-                                                                       message:[NSString stringWithFormat:@"Could not import the following files because they're not supported:\n%@",
-                                                                                [skippedBasenames componentsJoinedByString:@"\n"]]
-                                                                preferredStyle:UIAlertControllerStyleAlert];
-        [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
-                                                   style:UIAlertActionStyleCancel
-                                                 handler:^(UIAlertAction *action) {
-            [[NSUserDefaults standardUserDefaults] setBool:false forKey:@"GBShownUTIWarning"]; // Somebody might need a reminder
-        }]];
-        [[UIApplication sharedApplication].keyWindow.rootViewController presentViewController:alert animated:true completion:nil];
-        urls = validURLs;
-    }
-    
-    if (urls.count == 1) {
-        NSURL *url = urls.firstObject;
-        NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
-        if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
-            [GBROMManager sharedManager].currentROM = potentialROM;
-        }
-        else {
-            [url startAccessingSecurityScopedResource];
-            [GBROMManager sharedManager].currentROM =
-            [[GBROMManager sharedManager] importROM:url.path
-                                       keepOriginal:true];
-            [url stopAccessingSecurityScopedResource];
-        }
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
-    }
-    else {
-        for (NSURL *url in urls) {
-            NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
-            if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
-                // That's an already imported ROM
-                continue;
-            }
-            [url startAccessingSecurityScopedResource];
-            [[GBROMManager sharedManager] importROM:url.path
-                                       keepOriginal:true];
-            [url stopAccessingSecurityScopedResource];
-        }
-        [(GBViewController *)[UIApplication sharedApplication].keyWindow.rootViewController openLibrary];
-    }
+    [(GBViewController *)[UIApplication sharedApplication] handleOpenURLs:urls openInPlace:false];
 }
 
 - (UIModalPresentationStyle)modalPresentationStyle

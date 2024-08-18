@@ -114,6 +114,14 @@
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
 		</dict>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>zip</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.pkware.zip-archive</string>
+            </array>
+        </dict>
 	</array>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
@@ -174,24 +182,24 @@
 		<integer>1</integer>
 		<integer>2</integer>
 	</array>
-    <key>CFBundleSupportedPlatforms</key>
-    <array>
-        <string>iPhoneOS</string>
-    </array>
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>arm64</string>
-    </array>
-    <key>UIRequiresFullScreen</key>
-    <true/>
-    <key>GCSupportedGameControllers</key>
-    <array>
-        <dict>
-            <key>ProfileName</key>
-            <string>ExtendedGamepad</string>
-        </dict>
-    </array>
-    <key>GCSupportsControllerUserInteraction</key>
-    <true/>
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>iPhoneOS</string>
+	</array>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>GCSupportedGameControllers</key>
+	<array>
+		<dict>
+			<key>ProfileName</key>
+			<string>ExtendedGamepad</string>
+		</dict>
+	</array>
+	<key>GCSupportsControllerUserInteraction</key>
+	<true/>
 </dict>
 </plist>

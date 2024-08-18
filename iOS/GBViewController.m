@@ -13,6 +13,8 @@
 #import "GBSettingsViewController.h"
 #import "GBStatesViewController.h"
 #import "GCExtendedGamepad+AllElements.h"
+#import "GBZipReader.h"
+#import <sys/stat.h>
 #import <CoreMotion/CoreMotion.h>
 #import <dlfcn.h>
 
@@ -1147,23 +1149,117 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     GB_set_palette(&_gb, &_palette);
 }
 
-- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+- (bool)handleOpenURLs:(NSArray <NSURL *> *)urls openInPlace:(bool)inPlace
 {
-    [self stop];
-    NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
-    if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
-        [GBROMManager sharedManager].currentROM = potentialROM;
+    NSMutableArray<NSURL *> *validURLs = [NSMutableArray array];
+    NSMutableArray<NSString *> *skippedBasenames = [NSMutableArray array];
+    NSMutableArray<NSString *> *unusedZips = [NSMutableArray array];
+    NSString *tempDir = NSTemporaryDirectory();
+    
+    __block unsigned tempIndex = 0;
+    for (NSURL *url in urls) {
+        if ([url.pathExtension.lowercaseString isEqualToString:@"zip"]) {
+            GBZipReader *reader = [[GBZipReader alloc] initWithPath:url.path];
+            if (!reader) {
+                [skippedBasenames addObject:url.lastPathComponent];
+                continue;
+            }
+            __block bool used = false;
+            [reader iterateFiles:^bool(NSString *filename, size_t uncompressedSize, bool (^getData)(void *), bool (^writeToPath)(NSString *)) {
+                if ([@[@"gb", @"gbc", @"isx"] containsObject:filename.pathExtension.lowercaseString] && uncompressedSize <= 32 * 1024 * 1024) {
+                    tempIndex++;
+                    NSString *subDir = [tempDir stringByAppendingFormat:@"/%u", tempIndex];
+                    mkdir(subDir.UTF8String, 0755);
+                    NSString *dest = [subDir stringByAppendingPathComponent:filename.lastPathComponent];
+                    if (writeToPath(dest)) {
+                        [validURLs addObject:[NSURL fileURLWithPath:dest]];
+                        used = true;
+                    }
+                }
+                return true;
+            }];
+            if (!used) {
+                [unusedZips addObject:url.lastPathComponent];
+            }
+        }
+        else if ([@[@"gb", @"gbc", @"isx"] containsObject:url.pathExtension.lowercaseString]) {
+            [validURLs addObject:url];
+        }
+        else {
+            [skippedBasenames addObject:url.lastPathComponent];
+        }
     }
-    else {
-        [url startAccessingSecurityScopedResource];
-        [GBROMManager sharedManager].currentROM =
+    
+    if (unusedZips.count) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"No ROMs in archive"
+                                                                       message:[NSString stringWithFormat:@"Could not find any Game Boy ROM files in the following archives:\n%@",
+                                                                                [unusedZips componentsJoinedByString:@"\n"]]
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                   style:UIAlertActionStyleCancel
+                                                 handler:nil]];
+        [self stop];
+        [self presentViewController:alert animated:true completion:nil];
+    }
+    
+    if (skippedBasenames.count) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Unsupported Files"
+                                                                       message:[NSString stringWithFormat:@"Could not import the following files because they're not supported:\n%@",
+                                                                                [skippedBasenames componentsJoinedByString:@"\n"]]
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                   style:UIAlertActionStyleCancel
+                                                 handler:^(UIAlertAction *action) {
+            [[NSUserDefaults standardUserDefaults] setBool:false forKey:@"GBShownUTIWarning"]; // Somebody might need a reminder
+        }]];
+        [self stop];
+        [self presentViewController:alert animated:true completion:nil];
+    }
+    
+    if (validURLs.count == 1 && urls.count == 1) {
+        NSURL *url = validURLs.firstObject;
+        NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
+        if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
+            [GBROMManager sharedManager].currentROM = potentialROM;
+        }
+        else {
+            [url startAccessingSecurityScopedResource];
+            [GBROMManager sharedManager].currentROM =
             [[GBROMManager sharedManager] importROM:url.path
-                                       keepOriginal:[options[UIApplicationOpenURLOptionsOpenInPlaceKey] boolValue]];
+                                       keepOriginal:![url.path hasPrefix:tempDir] && !inPlace];
+            [url stopAccessingSecurityScopedResource];
+        }
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
+        return true;
+    }
+    for (NSURL *url in validURLs) {
+        NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
+        if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
+            // That's an already imported ROM
+            continue;
+        }
+        [url startAccessingSecurityScopedResource];
+        [[GBROMManager sharedManager] importROM:url.path
+                                   keepOriginal:![url.path hasPrefix:tempDir] && !inPlace];
         [url stopAccessingSecurityScopedResource];
     }
-    [self loadROM];
-    [self start];
-    return [GBROMManager sharedManager].currentROM != nil;
+    [self stop];
+    [self openLibrary];
+    
+    return validURLs.count;
+}
+
+- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+{
+    NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
+    if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
+        [self stop];
+        [GBROMManager sharedManager].currentROM = potentialROM;
+        [self loadROM];
+        [self start];
+        return [GBROMManager sharedManager].currentROM != nil;
+    }
+    return [self handleOpenURLs:@[url] openInPlace:[options[UIApplicationOpenURLOptionsOpenInPlaceKey] boolValue]];
 }
 
 - (void)setRunMode:(GBRunMode)runMode ignoreDynamicSpeed:(bool)ignoreDynamicSpeed
