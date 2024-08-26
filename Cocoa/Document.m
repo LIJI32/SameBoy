@@ -2773,4 +2773,15 @@ enum GBWindowResizeAction
     [self queueDebuggerCommand:sender.alternateTitle];
 }
 
++ (NSArray<NSString *> *)readableTypes
+{
+    NSMutableSet *set = [NSMutableSet setWithArray:[super readableTypes]];
+    for (NSString *type in @[@"gb", @"gbc", @"isx", @"gbs"]) {
+        [set addObject:(__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension,
+                                                                                           (__bridge CFStringRef)type,
+                                                                                           NULL)];
+    }
+    return [set allObjects];
+}
+
 @end

@@ -22,7 +22,8 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>com.github.liji32.sameboy.gb</string>
-                <string>public.gbrom</string>
+				<string>public.gbrom</string>
+				<string>com.retroarch.gb</string>
 			</array>
 			<key>LSTypeIsPackage</key>
 			<integer>0</integer>
@@ -43,6 +44,7 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>com.github.liji32.sameboy.gbc</string>
+				<string>com.retroarch.gbc</string>
 			</array>
 			<key>LSTypeIsPackage</key>
 			<integer>0</integer>
