@@ -102,7 +102,7 @@
         else {
             dispatch_async(dispatch_get_main_queue(), ^{
                 NSBeep();
-                [GBWarningPopover popoverWithContents:@"This code is not a valid GameShark or GameGenie code" onView:self.importCodeField];
+                [GBWarningPopover popoverWithContents:@"This code is not a valid GameShark or Game Genie code" onView:self.importCodeField];
             });
         }
     }];

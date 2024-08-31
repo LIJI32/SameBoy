@@ -160,7 +160,7 @@ const GB_cheat_t *GB_import_cheat(GB_gameboy_t *gb, const char *cheat, const cha
         }
     }
     
-    /* GameGenie */
+    /* Game Genie */
     {
         char stripped_cheat[10] = {0,};
         for (unsigned i = 0; i < 9 && *cheat; i++) {

@@ -824,7 +824,7 @@ static void import_cheat_callback(char ch)
     text_input[len + 1] = 0;
     if (text_input_title[0] != 'E') {
         strcpy(text_input_title, "Enter a GameShark");
-        strcpy(text_input_title2, "or GameGenie Code");
+        strcpy(text_input_title2, "or Game Genie Code");
     }
 
 }
@@ -833,7 +833,7 @@ static void import_cheat_callback(char ch)
 static void import_cheat(unsigned index)
 {
     strcpy(text_input_title, "Enter a GameShark");
-    strcpy(text_input_title2, "or GameGenie Code");
+    strcpy(text_input_title2, "or Game Genie Code");
     text_input[0] = 0;
     gui_state = TEXT_INPUT;
     text_input_callback = import_cheat_callback;
