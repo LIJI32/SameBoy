@@ -225,7 +225,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         GBTheme *theme = [GBSettingsViewController themeNamed:newValue];
         _horizontalLayout = [[GBHorizontalLayout alloc] initWithTheme:theme];
         _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];
-        
+        _printerSpinner.color = theme.brandColor;
+
         [self willRotateToInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation
                                           duration:0];
         [_backgroundView reloadThemeImages];
@@ -304,11 +305,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     }
     _backCaptureDevices = filteredBackCameras;
 
-    UIEdgeInsets insets = self.window.safeAreaInsets;
-    _cameraPositionButton = [[UIButton alloc] initWithFrame:CGRectMake(insets.left + 8,
-                                                                       _backgroundView.bounds.size.height - 8 - insets.bottom - 32,
-                                                                       32,
-                                                                       32)];
+    _cameraPositionButton = [[UIButton alloc] init];
     [self didRotateFromInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation];
     if (@available(iOS 13.0, *)) {
         [_cameraPositionButton  setImage:[UIImage systemImageNamed:@"camera.rotate"
@@ -317,10 +314,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         _cameraPositionButton.backgroundColor = [UIColor systemBackgroundColor];
 
         // Configure the change camera button stacked on top of the camera position button
-        _changeCameraButton = [[UIButton alloc] initWithFrame:CGRectMake(insets.left + 8,
-                                                                         _backgroundView.bounds.size.height - 8 - insets.bottom - 32 - 32 - 8,
-                                                                         32,
-                                                                         32)];
+        _changeCameraButton = [[UIButton alloc] init];
         [_changeCameraButton  setImage:[UIImage systemImageNamed:@"camera.aperture"
                                                 withConfiguration:[UIImageSymbolConfiguration configurationWithScale:UIImageSymbolScaleLarge]]
                                 forState:UIControlStateNormal];
@@ -377,6 +371,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     
     _printerButton = [[UIButton alloc] init];
     _printerSpinner = [[UIActivityIndicatorView alloc] init];
+    _printerSpinner.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhite;
+    _printerSpinner.color = _verticalLayout.theme.brandColor;
     [self didRotateFromInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation];
     
     if (@available(iOS 13.0, *)) {
@@ -883,13 +879,19 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
 {
     UIEdgeInsets insets = self.window.safeAreaInsets;
+    bool landscape = true;
+    if (_orientation == UIInterfaceOrientationPortrait || _orientation == UIInterfaceOrientationPortraitUpsideDown) {
+        landscape = false;
+    }
+        
+    
     _cameraPositionButton.frame = CGRectMake(insets.left + 8,
                                              _backgroundView.bounds.size.height - 8 - insets.bottom - 32,
                                              32,
                                              32);
     if (_changeCameraButton) {
-        _changeCameraButton.frame = CGRectMake(insets.left + 8,
-                                               _backgroundView.bounds.size.height - 8 - insets.bottom - 32 - 32 - 8,
+        _changeCameraButton.frame = CGRectMake(insets.left + 8 +  (landscape? (32 + 8) : 0 ),
+                                               _backgroundView.bounds.size.height - 8 - insets.bottom - 32 - (landscape? 0 : (32 + 8)),
                                                32,
                                                32);
     }
@@ -898,8 +900,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                                       32,
                                       32);
     
-    _printerSpinner.frame = CGRectMake(_backgroundView.bounds.size.width - 8 - insets.right - 32,
-                                       _backgroundView.bounds.size.height - 8 - insets.bottom - 32 - 32 - 8,
+    _printerSpinner.frame = CGRectMake(_backgroundView.bounds.size.width - 8 - insets.right - 32 - (landscape? (32 + 4) : 0),
+                                       _backgroundView.bounds.size.height - 8 - insets.bottom - 32 - (landscape? 0 : (32 + 4)),
                                        32,
                                        32);
 
@@ -1717,6 +1719,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
                                    width:160
                                   height:_currentPrinterImageData.length / 160 / sizeof(uint32_t)];
 
+    _window.backgroundColor = [UIColor blackColor];
     [self presentViewController:[[GBPrinterFeedController alloc] initWithImage:image]
                        animated:true
                      completion:nil];

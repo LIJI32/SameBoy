@@ -487,6 +487,12 @@ static GB_key_mask_t angleToKeyMask(double angle)
     screenFrame.origin.y += 8;
     screenFrame.size.width -= 16;
     screenFrame.size.height -= 16;
+    
+    if (@available(iOS 13.0, *)) {
+        self.overrideUserInterfaceStyle = layout.theme.isDark? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+        self.tintColor = layout.theme.brandColor;
+    }
+
     _screenLabel.frame = screenFrame;
 }
 
