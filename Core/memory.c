@@ -1394,11 +1394,12 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
         
         /* Hardware registers */
         switch (addr & 0xFF) {
-            case GB_IO_WY:
-                if (value == gb->current_line) {
-                    gb->wy_triggered = true;
-                }
+                
             case GB_IO_WX:
+                gb->io_registers[addr & 0xFF] = value;
+                GB_update_wx_glitch(gb);
+                break;
+                
             case GB_IO_IF:
             case GB_IO_SCX:
             case GB_IO_SCY:
@@ -1422,8 +1423,12 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 
                 }
                 return;
-            case GB_IO_LYC:
+            case GB_IO_WY:
+                gb->io_registers[addr & 0xFF] = value;
+                gb->wy_check_scheduled = true;
+                return;
                 
+            case GB_IO_LYC:
                 /* TODO: Probably completely wrong in double speed mode */
                 
                 /* TODO: This hack is disgusting */
@@ -1437,7 +1442,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 
                 /* These are the states when LY changes, let the display routine call GB_STAT_update for use
                    so it correctly handles T-cycle accurate LYC writes */
-                if (!GB_is_cgb(gb)  || (
+                if (!GB_is_cgb(gb) || (
                     gb->display_state != 35 &&
                     gb->display_state != 26 &&
                     gb->display_state != 15 &&
@@ -1520,10 +1525,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                     }
                 }
                 gb->io_registers[GB_IO_LCDC] = value;
-                if (!(value & GB_LCDC_WIN_ENABLE)) {
-                    gb->wx_triggered = false;
-                    gb->wx166_glitch = false;
-                }
+                gb->wy_check_scheduled = true;
                 return;
 
             case GB_IO_STAT:

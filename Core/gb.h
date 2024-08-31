@@ -9,6 +9,16 @@ extern "C" {
 #include <stdalign.h>
 #include <time.h>
 
+#ifndef GB_DISABLE_CHEAT_SEARCH
+#ifdef GB_DISABLE_CHEATS
+#define GB_DISABLE_CHEAT_SEARCH
+#else
+#ifdef GB_DISABLE_DEBUGGER
+#define GB_DISABLE_CHEAT_SEARCH
+#endif
+#endif
+#endif
+
 #include "model.h"
 #include "defs.h"
 #include "save_state.h"
@@ -27,6 +37,7 @@ extern "C" {
 #include "symbol_hash.h"
 #include "sgb.h"
 #include "cheats.h"
+#include "cheat_search.h"
 #include "rumble.h"
 #include "workboy.h"
 #include "random.h"
@@ -607,7 +618,7 @@ struct GB_gameboy_internal_s {
         uint8_t current_tile_data[2];
         uint8_t fetcher_state;
         bool window_is_being_fetched;
-        bool wx166_glitch;
+        GB_PADDING(bool, wx166_glitch);
         bool wx_triggered;
         uint8_t visible_objs[10];
         uint8_t objects_x[10];
@@ -647,6 +658,13 @@ struct GB_gameboy_internal_s {
         bool insert_bg_pixel;
         uint8_t cpu_vram_bus;
         uint32_t frame_parity_ticks;
+        bool last_tileset;
+        bool cgb_wx_glitch;
+        bool line_has_fractional_scrolling;
+        uint8_t wy_check_modulo;
+        bool wy_check_scheduled;
+        bool wy_just_checked;
+        bool wx_166_interrupt_glitch;
     )
     
     GB_SECTION(accessory,
@@ -811,6 +829,12 @@ struct GB_gameboy_internal_s {
         size_t cheat_count;
         GB_cheat_t **cheats;
         GB_cheat_hash_t *cheat_hash[256];
+#endif
+#ifndef GB_DISABLE_CHEAT_SEARCH
+        uint8_t *cheat_search_data;
+        uint8_t *cheat_search_bitmap;
+        size_t cheat_search_count;
+        GB_cheat_search_data_type_t cheat_search_data_type;
 #endif
 
         /* Misc */

@@ -14,6 +14,10 @@
     screenRect.size.width = self.hasFractionalPixels? resolution.width : floor(resolution.width / 160) * 160;
     screenRect.size.height = screenRect.size.width / 160 * 144;
     
+    screenRect.origin.x = (resolution.width - screenRect.size.width) / 2;
+    screenRect.origin.y = (resolution.height - screenRect.size.height) / 2;
+    self.fullScreenRect = screenRect;
+    
     double screenBorderWidth = screenRect.size.width / 40;
     screenRect.origin.x = (resolution.width - screenRect.size.width) / 2;
     screenRect.origin.y = self.minY + screenBorderWidth * 2;

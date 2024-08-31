@@ -26,6 +26,8 @@ static bool paused = false;
 static uint32_t pixel_buffer_1[256 * 224], pixel_buffer_2[256 * 224];
 static uint32_t *active_pixel_buffer = pixel_buffer_1, *previous_pixel_buffer = pixel_buffer_2;
 static bool underclock_down = false, rewind_down = false, do_rewind = false, rewind_paused = false, turbo_down = false;
+static bool rapid_a = false, rapid_b = false;
+static uint8_t rapid_a_count = 0, rapid_b_count = 0;
 static double clock_mutliplier = 1.0;
 
 char *filename = NULL;
@@ -134,24 +136,21 @@ static void log_capture_callback(GB_gameboy_t *gb, const char *string, GB_log_at
     captured_log[current_len + len_to_add] = 0;
 }
 
-static void start_capturing_logs(void)
+static void *start_capturing_logs(void)
 {
-    if (captured_log != NULL) {
-        free(captured_log);
-    }
+    void *previous = captured_log;
     captured_log = malloc(1);
     captured_log[0] = 0;
     GB_set_log_callback(&gb, log_capture_callback);
+    return previous;
 }
 
-static const char *end_capturing_logs(bool show_popup, bool should_exit, uint32_t popup_flags, const char *title)
+static void end_capturing_logs(bool show_popup, bool should_exit, uint32_t popup_flags, const char *title, void *previous)
 {
-    GB_set_log_callback(&gb, console_supported? log_callback : NULL);
-    if (captured_log[0] == 0) {
-        free(captured_log);
-        captured_log = NULL;
+    if (!previous) {
+        GB_set_log_callback(&gb, console_supported? log_callback : NULL);
     }
-    else {
+    if (captured_log[0] != 0) {
         if (show_popup) {
             SDL_ShowSimpleMessageBox(popup_flags, title, captured_log, window);
         }
@@ -159,7 +158,8 @@ static const char *end_capturing_logs(bool show_popup, bool should_exit, uint32_
             exit(1);
         }
     }
-    return captured_log;
+    free(captured_log);
+    captured_log = previous;
 }
 
 static void update_palette(void)
@@ -324,8 +324,18 @@ static void handle_events(GB_gameboy_t *gb)
                             break;
                     }
                 }
+                else if (button == JOYPAD_BUTTON_RAPID_A) {
+                    rapid_a = event.type == SDL_JOYBUTTONDOWN;
+                    rapid_a_count = 0;
+                    GB_set_key_state(gb, GB_KEY_A, event.type == SDL_JOYBUTTONDOWN);
+                }
+                else if (button == JOYPAD_BUTTON_RAPID_B) {
+                    rapid_b = event.type == SDL_JOYBUTTONDOWN;
+                    rapid_b_count = 0;
+                    GB_set_key_state(gb, GB_KEY_B, event.type == SDL_JOYBUTTONDOWN);
+                }
             }
-                break;
+            break;
                 
             case SDL_JOYAXISMOTION: {
                 static bool axis_active[2] = {false, false};
@@ -477,20 +487,30 @@ static void handle_events(GB_gameboy_t *gb)
                         break;
                 }
             case SDL_KEYUP: // Fallthrough
-                if (event.key.keysym.scancode == configuration.keys[8]) {
+                if (event.key.keysym.scancode == configuration.keys[GB_CONF_KEYS_TURBO]) {
                     turbo_down = event.type == SDL_KEYDOWN;
                     GB_audio_clear_queue();
                     GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
                 }
-                else if (event.key.keysym.scancode == configuration.keys_2[0]) {
+                else if (event.key.keysym.scancode == configuration.keys_2[GB_CONF_KEYS2_REWIND]) {
                     rewind_down = event.type == SDL_KEYDOWN;
                     if (event.type == SDL_KEYUP) {
                         rewind_paused = false;
                     }
                     GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
                 }
-                else if (event.key.keysym.scancode == configuration.keys_2[1]) {
+                else if (event.key.keysym.scancode == configuration.keys_2[GB_CONF_KEYS2_UNDERCLOCK]) {
                     underclock_down = event.type == SDL_KEYDOWN;
+                }
+                else if (event.key.keysym.scancode == configuration.keys_2[GB_CONF_KEYS2_RAPID_A]) {
+                    rapid_a = event.type == SDL_KEYDOWN;
+                    rapid_a_count = 0;
+                    GB_set_key_state(gb, GB_KEY_A, event.type == SDL_KEYDOWN);
+                }
+                else if (event.key.keysym.scancode == configuration.keys_2[GB_CONF_KEYS2_RAPID_B]) {
+                    rapid_b = event.type == SDL_KEYDOWN;
+                    rapid_b_count = 0;
+                    GB_set_key_state(gb, GB_KEY_B, event.type == SDL_KEYDOWN);
                 }
                 else {
                     for (unsigned i = 0; i < GB_KEY_MAX; i++) {
@@ -520,6 +540,15 @@ static void vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
     else if (!underclock_down && clock_mutliplier < 1.0) {
         clock_mutliplier += 1.0/16;
         GB_set_clock_multiplier(gb, clock_mutliplier);
+    }
+    
+    if (rapid_a) {
+        rapid_a_count++;
+        GB_set_key_state(gb, GB_KEY_A, !(rapid_a_count & 2));
+    }
+    if (rapid_b) {
+        rapid_b_count++;
+        GB_set_key_state(gb, GB_KEY_B, !(rapid_b_count & 2));
     }
     
     if (turbo_down) {
@@ -620,7 +649,7 @@ static bool handle_pending_command(void)
             save_extension[2] += command_parameter;
             replace_extension(filename, strlen(filename), save_path, save_extension);
             
-            start_capturing_logs();
+            void *previous = start_capturing_logs();
             bool success;
             if (pending_command == GB_SDL_LOAD_STATE_COMMAND) {
                 int result = GB_load_state(&gb, save_path);
@@ -639,25 +668,28 @@ static bool handle_pending_command(void)
             end_capturing_logs(true,
                                false,
                                success? SDL_MESSAGEBOX_INFORMATION : SDL_MESSAGEBOX_ERROR,
-                               success? "Notice" : "Error");
+                               success? "Notice" : "Error",
+                               previous);
             if (success) {
                 show_osd_text(pending_command == GB_SDL_LOAD_STATE_COMMAND? "State loaded" : "State saved");
             }
             return false;
         }
     
-        case GB_SDL_LOAD_STATE_FROM_FILE_COMMAND:
-            start_capturing_logs();
+        case GB_SDL_LOAD_STATE_FROM_FILE_COMMAND: {
+            void *previous = start_capturing_logs();
             bool success = GB_load_state(&gb, dropped_state_file) == 0;
             end_capturing_logs(true,
                                false,
                                success? SDL_MESSAGEBOX_INFORMATION : SDL_MESSAGEBOX_ERROR,
-                               success? "Notice" : "Error");
+                               success? "Notice" : "Error",
+                               previous);
             SDL_free(dropped_state_file);
             if (success) {
                 show_osd_text("State loaded");
             }
             return false;
+        }
             
         case GB_SDL_NO_COMMAND:
             return false;
@@ -697,18 +729,20 @@ static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type)
         use_built_in = GB_load_boot_rom(gb, path);
     }
     if (use_built_in) {
-        start_capturing_logs();
+        void *previous = start_capturing_logs();
         if (GB_load_boot_rom(gb, resource_path(names[type]))) {
             if (type == GB_BOOT_ROM_CGB_E) {
+                end_capturing_logs(false, false, 0, NULL, previous);
                 load_boot_rom(gb, GB_BOOT_ROM_CGB);
                 return;
             }
             if (type == GB_BOOT_ROM_AGB_0) {
+                end_capturing_logs(false, false, 0, NULL, previous);
                 load_boot_rom(gb, GB_BOOT_ROM_AGB);
                 return;
             }
         }
-        end_capturing_logs(true, false, SDL_MESSAGEBOX_ERROR, "Error");
+        end_capturing_logs(true, false, SDL_MESSAGEBOX_ERROR, "Error", previous);
     }
 }
 
@@ -752,13 +786,34 @@ static void debugger_reload_callback(GB_gameboy_t *gb)
     GB_reset(gb);
 }
 
-static void run(void)
+static GB_model_t model_to_use(void)
 {
-    SDL_ShowCursor(SDL_DISABLE);
-    GB_model_t model;
-    pending_command = GB_SDL_NO_COMMAND;
-restart:
-    model = (GB_model_t [])
+    typeof(configuration.model) gui_model = configuration.model;
+    if (gui_model == MODEL_AUTO) {
+        uint8_t *rom = GB_get_direct_access(&gb, GB_DIRECT_ACCESS_ROM, NULL, NULL);
+        if (!rom) {
+            gui_model = MODEL_CGB;
+        }
+        else if (rom[0x143] & 0x80) { // Has CGB features
+            gui_model = MODEL_CGB;
+        }
+        else if (rom[0x146] == 3) { // Has SGB features
+            gui_model = MODEL_SGB;
+        }
+        else if (rom[0x14B] == 1) { // Nintendo-licensed (most likely has boot ROM palettes)
+            gui_model = MODEL_CGB;
+        }
+        else if (rom[0x14B] == 0x33 &&
+                 rom[0x144] == '0' &&
+                 rom[0x145] == '1') { // Ditto
+            gui_model = MODEL_CGB;
+        }
+        else {
+            gui_model = MODEL_DMG;
+        }
+    }
+    
+    return (GB_model_t [])
     {
         [MODEL_DMG] = GB_MODEL_DMG_B,
         [MODEL_CGB] = GB_MODEL_CGB_0 + configuration.cgb_revision,
@@ -770,7 +825,16 @@ restart:
             [SGB_PAL] = GB_MODEL_SGB_PAL,
             [SGB_2] = GB_MODEL_SGB2,
         }[configuration.sgb_revision],
-    }[configuration.model];
+    }[gui_model];
+}
+
+static void run(void)
+{
+    SDL_ShowCursor(SDL_DISABLE);
+    GB_model_t model;
+    pending_command = GB_SDL_NO_COMMAND;
+restart:;
+    model = model_to_use();
     
     if (GB_is_inited(&gb)) {
         if (doing_hot_swap) {
@@ -819,7 +883,7 @@ restart:
 
     bool error = false;
     GB_debugger_clear_symbols(&gb);
-    start_capturing_logs();
+    void *previous = start_capturing_logs();
     size_t path_length = strlen(filename);
     char extension[4] = {0,};
     if (path_length > 4) {
@@ -840,6 +904,11 @@ restart:
     else {
         GB_load_rom(&gb, filename);
     }
+    GB_model_t updated_model = model_to_use(); // Could change after loading ROM with auto setting
+    if (model != updated_model) {
+        model = updated_model;
+        GB_switch_model_and_reset(&gb, model);
+    }
     
     /* Configure battery */
     char battery_save_path[path_length + 5]; /* At the worst case, size is strlen(path) + 4 bytes for .sav + NULL */
@@ -856,7 +925,7 @@ restart:
     replace_extension(filename, path_length, cheat_path, ".cht");
     GB_load_cheats(&gb, cheat_path);
     
-    end_capturing_logs(true, error, SDL_MESSAGEBOX_WARNING, "Warning");
+    end_capturing_logs(true, error, SDL_MESSAGEBOX_WARNING, "Warning", previous);
     
     static char start_text[64];
     static char title[17];
@@ -958,14 +1027,15 @@ static void handle_model_option(const char *model_string)
         GB_model_t model;
         const char *description;
     } name_to_model[] = {
+        {"auto", -1, "Pick automatically"},
         {"dmg-b", GB_MODEL_DMG_B, "Game Boy, DMG-CPU B"},
         {"dmg", GB_MODEL_DMG_B, "Alias of dmg-b"},
         {"sgb-ntsc", GB_MODEL_SGB_NTSC, "Super Game Boy (NTSC)"},
-        {"sgb-pal", GB_MODEL_SGB_PAL, "Super Game Boy (PAL"},
+        {"sgb-pal", GB_MODEL_SGB_PAL, "Super Game Boy (PAL)"},
         {"sgb2", GB_MODEL_SGB2, "Super Game Boy 2"},
         {"sgb", GB_MODEL_SGB, "Alias of sgb-ntsc"},
         {"mgb", GB_MODEL_MGB, "Game Boy Pocket/Light"},
-        {"cgb-0", GB_MODEL_CGB_0, "Game Boy Color, CPU CGB 0"},
+        {"cgb-0", GB_MODEL_CGB_0, "Game Boy Color, CPU CGB"},
         {"cgb-a", GB_MODEL_CGB_A, "Game Boy Color, CPU CGB A"},
         {"cgb-b", GB_MODEL_CGB_B, "Game Boy Color, CPU CGB B"},
         {"cgb-c", GB_MODEL_CGB_C, "Game Boy Color, CPU CGB C"},
@@ -1028,6 +1098,7 @@ static void handle_model_option(const char *model_string)
             break;
             
         default:
+            configuration.model = MODEL_AUTO;
             break;
     }
 }
@@ -1063,6 +1134,10 @@ int main(int argc, char **argv)
 #endif
 
     SDL_Init(SDL_INIT_EVERYTHING & ~SDL_INIT_AUDIO);
+    // This is, essentially, best-effort.
+    // This function will not be called if the process is terminated in any way, anyhow.
+    atexit(SDL_Quit);
+
     if ((console_supported = CON_start(completer))) {
         CON_set_repeat_empty(true);
         CON_printf("SameBoy v" GB_VERSION "\n");
@@ -1089,7 +1164,6 @@ int main(int argc, char **argv)
         configuration.default_scale %= GB_SDL_DEFAULT_SCALE_MAX + 1;
         configuration.blending_mode %= GB_FRAME_BLENDING_MODE_ACCURATE + 1;
         configuration.highpass_mode %= GB_HIGHPASS_MAX;
-        configuration.model %= MODEL_MAX;
         configuration.sgb_revision %= SGB_MAX;
         configuration.dmg_palette %= 5;
         if (configuration.dmg_palette) {

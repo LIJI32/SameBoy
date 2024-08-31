@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+	<gresource prefix="/thumbnailer">
+		<file alias="CartridgeTemplate.png">QuickLook/CartridgeTemplate.png</file>
+		<file alias="ColorCartridgeTemplate.png">QuickLook/ColorCartridgeTemplate.png</file>
+		<file alias="UniversalCartridgeTemplate.png">QuickLook/UniversalCartridgeTemplate.png</file>
+		<file alias="cgb_boot_fast.bin">build/bin/BootROMs/cgb_boot_fast.bin</file>
+	</gresource>
+</gresources>

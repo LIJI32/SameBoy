@@ -252,8 +252,9 @@ static void timers_run(GB_gameboy_t *gb, uint8_t cycles)
 {
     if (gb->stopped) {
         if (GB_is_cgb(gb)) {
-            gb->apu.apu_cycles += 4 << !gb->cgb_double_speed;
+            gb->apu.apu_cycles += 1 << !gb->cgb_double_speed;
         }
+        gb->apu_output.sample_cycles += (gb->apu_output.sample_rate << !gb->cgb_double_speed) << 1;
         return;
     }
     
@@ -266,7 +267,8 @@ static void timers_run(GB_gameboy_t *gb, uint8_t cycles)
     while (true) {
         advance_tima_state_machine(gb);
         GB_set_internal_div_counter(gb, gb->div_counter + 4);
-        gb->apu.apu_cycles += 4 << !gb->cgb_double_speed;
+        gb->apu.apu_cycles += 1 << !gb->cgb_double_speed;
+        gb->apu_output.sample_cycles += (gb->apu_output.sample_rate << !gb->cgb_double_speed) << 1;
         GB_SLEEP(gb, div, 2, 4);
     }
 }
@@ -476,7 +478,6 @@ void GB_advance_cycles(GB_gameboy_t *gb, uint8_t cycles)
     if (likely(gb->io_registers[GB_IO_LCDC] & GB_LCDC_ENABLE)) {
         gb->double_speed_alignment += cycles;
     }
-    gb->apu_output.sample_cycles += cycles * gb->apu_output.sample_rate;
     gb->cycles_since_last_sync += cycles;
     gb->cycles_since_run += cycles;
     

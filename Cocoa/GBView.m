@@ -119,6 +119,9 @@ static const uint8_t workboy_vk_to_key[] = {
     bool _mouseControlEnabled;
     NSMutableDictionary<NSNumber *, JOYController *> *_controllerMapping;
     unsigned _lastPlayerCount;
+    
+    bool _rapidA[4], _rapidB[4];
+    uint8_t _rapidACount[4], _rapidBCount[4];
 }
 
 + (instancetype)alloc
@@ -343,6 +346,17 @@ static const uint8_t workboy_vk_to_key[] = {
              (analogClockMultiplierValid && analogClockMultiplier < 1)) {
         [self.osdView displayText:@"Slow motion…"];
     }
+    
+    for (unsigned i = GB_get_player_count(_gb); i--;) {
+        if (_rapidA[i]) {
+            _rapidACount[i]++;
+            GB_set_key_state_for_player(_gb, GB_KEY_A, i, !(_rapidACount[i] & 2));
+        }
+        if (_rapidB[i]) {
+            _rapidBCount[i]++;
+            GB_set_key_state_for_player(_gb, GB_KEY_B, i, !(_rapidBCount[i] & 2));
+        }
+    }
     [super flip];
 }
 
@@ -370,7 +384,7 @@ static const uint8_t workboy_vk_to_key[] = {
         player_count = 2;
     }
     for (unsigned player = 0; player < player_count; player++) {
-        for (GBButton button = 0; button < GBButtonCount; button++) {
+        for (GBButton button = 0; button < GBKeyboardButtonCount; button++) {
             NSNumber *key = [defaults valueForKey:button_to_preference_name(button, player)];
             if (!key) continue;
 
@@ -399,6 +413,18 @@ static const uint8_t workboy_vk_to_key[] = {
                     case GBUnderclock:
                         underclockKeyDown = true;
                         analogClockMultiplierValid = false;
+                        break;
+                        
+                    case GBRapidA:
+                        _rapidA[player] = true;
+                        _rapidACount[player] = 0;
+                        GB_set_key_state_for_player(_gb, GB_KEY_A, player, true);
+                        break;
+                        
+                    case GBRapidB:
+                        _rapidB[player] = true;
+                        _rapidBCount[player] = 0;
+                        GB_set_key_state_for_player(_gb, GB_KEY_B, player, true);
                         break;
                         
                     default:
@@ -444,7 +470,7 @@ static const uint8_t workboy_vk_to_key[] = {
         player_count = 2;
     }
     for (unsigned player = 0; player < player_count; player++) {
-        for (GBButton button = 0; button < GBButtonCount; button++) {
+        for (GBButton button = 0; button < GBKeyboardButtonCount; button++) {
             NSNumber *key = [defaults valueForKey:button_to_preference_name(button, player)];
             if (!key) continue;
             
@@ -469,6 +495,16 @@ static const uint8_t workboy_vk_to_key[] = {
                     case GBUnderclock:
                         underclockKeyDown = false;
                         analogClockMultiplierValid = false;
+                        break;
+                    
+                    case GBRapidA:
+                        _rapidA[player] = false;
+                        GB_set_key_state_for_player(_gb, GB_KEY_A, player, false);
+                        break;
+                        
+                    case GBRapidB:
+                        _rapidB[player] = false;
+                        GB_set_key_state_for_player(_gb, GB_KEY_B, player, false);
                         break;
                         
                     default:
@@ -651,7 +687,7 @@ static const uint8_t workboy_vk_to_key[] = {
             }
         }
         
-        switch (usage) {
+        switch ((unsigned)usage) {
                 
             case JOYButtonUsageNone: break;
             case JOYButtonUsageA: GB_set_key_state_for_player(effectiveGB, GB_KEY_A, effectivePlayer, button.isPressed); break;
@@ -696,7 +732,16 @@ static const uint8_t workboy_vk_to_key[] = {
             case JOYButtonUsageDPadUp: GB_set_key_state_for_player(effectiveGB, GB_KEY_UP, effectivePlayer, button.isPressed); break;
             case JOYButtonUsageDPadDown: GB_set_key_state_for_player(effectiveGB, GB_KEY_DOWN, effectivePlayer, button.isPressed); break;
 
-            default:
+            case GBJoyKitRapidA:
+                _rapidA[effectivePlayer] = button.isPressed;
+                _rapidACount[effectivePlayer] = 0;
+                GB_set_key_state_for_player(_gb, GB_KEY_A, effectivePlayer, button.isPressed);
+                break;
+                
+            case GBJoyKitRapidB:
+                _rapidB[effectivePlayer] = button.isPressed;
+                _rapidBCount[effectivePlayer] = 0;
+                GB_set_key_state_for_player(_gb, GB_KEY_B, effectivePlayer, button.isPressed);
                 break;
         }
     }

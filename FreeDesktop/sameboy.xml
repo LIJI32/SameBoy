@@ -1,23 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
-<mime-type type="application/x-gameboy-rom">
-  <comment>Game Boy ROM</comment>
-  <icon name="x-gameboy-rom"/>
-  <glob-deleteall/>
-  <glob pattern="*.gb"/>
-  <glob pattern="*.sgb"/>
-</mime-type>
-<mime-type type="application/x-gameboy-color-rom">
-  <comment>Game Boy Color ROM</comment>
-  <icon name="x-gameboy-color-rom"/>
-  <glob-deleteall/>
-  <glob pattern="*.gbc"/>
-  <glob pattern="*.cgb"/>
-</mime-type>
-<mime-type type="application/x-gameboy-isx">
-      <comment>Game Boy ISX binary</comment>
-      <icon name="x-gameboy-rom"/>
-      <glob-deleteall/>
-      <glob pattern="*.isx"/>
-    </mime-type>
+  <mime-type type="application/x-gameboy-rom">
+    <comment>Game Boy ROM</comment>
+    <icon name="x-gameboy-rom"/>
+    <glob pattern="*.gb"/>
+    <glob pattern="*.sgb"/>
+    <magic>
+      <!-- Nintendo logo starting at 0x0104. -->
+      <match type="string" offset="260" value="\xCE\xED\x66\x66\xCC\x0D\x00\x0B\x03\x73\x00\x83\x00\x0C\x00\x0D\x00\x08\x11\x1F\x88\x89\x00\x0E\xDC\xCC\x6E\xE6\xDD\xDD\xD9\x99\xBB\xBB\x67\x63\x6E\x0E\xEC\xCC\xDD\xDC\x99\x9F\xBB\xB9\x33\x3E">
+        <!-- 0x0143: bit 7 is set. -->
+        <match type="byte" offset="323" mask="128" value="0"/>
+      </match>
+    </magic>
+  </mime-type>
+  <mime-type type="application/x-gameboy-color-rom">
+    <comment>Game Boy Color ROM</comment>
+    <icon name="x-gameboy-color-rom"/>
+    <glob pattern="*.gbc"/>
+    <glob pattern="*.cgb"/>
+    <magic>
+      <!-- Nintendo logo starting at 0x0104. -->
+      <match type="string" offset="260" value="\xCE\xED\x66\x66\xCC\x0D\x00\x0B\x03\x73\x00\x83\x00\x0C\x00\x0D\x00\x08\x11\x1F\x88\x89\x00\x0E\xDC\xCC\x6E\xE6\xDD\xDD\xD9\x99\xBB\xBB\x67\x63\x6E\x0E\xEC\xCC\xDD\xDC\x99\x9F\xBB\xB9\x33\x3E">
+        <!-- 0x0143: bit 7 is set. -->
+        <match type="byte" offset="323" mask="128" value="128"/>
+      </match>
+    </magic>
+  </mime-type>
+  <mime-type type="application/x-gameboy-isx">
+    <comment>Game Boy ISX binary</comment>
+    <icon name="x-gameboy-rom"/>
+    <glob pattern="*.isx"/>
+    <!-- Only "extended" ISX files have this magic, but at least this will enable *some* detection. -->
+    <magic>
+      <match type="string" offset="0" value="ISX "/>
+    </magic>
+  </mime-type>
 </mime-info>

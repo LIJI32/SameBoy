@@ -26,6 +26,7 @@ int main(int argc, char * argv[])
             @"GBDynamicSpeed": @NO,
             
             @"GBInterfaceTheme": @"SameBoy",
+            @"GBControllersHideInterface": @YES,
                         
             @"GBCurrentTheme": @"Lime (Game Boy)",
             // Default themes

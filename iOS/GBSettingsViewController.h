@@ -17,9 +17,9 @@ typedef enum {
     GBUnderclock,
     // GBHotkey1, // Todo
     // GBHotkey2, // Todo
-    GBJoypadButtonCount,
-    GBButtonCount =  GBUnderclock + 1,
-    GBGameBoyButtonCount = GBStart + 1,
+    GBTotalButtonCount,
+    GBKeyboardButtonCount =  GBUnderclock + 1,
+    GBPerPlayerButtonCount = GBStart + 1,
     GBUnusedButton = 0xFF,
 } GBButton;
 

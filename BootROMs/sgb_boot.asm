@@ -1,14 +1,14 @@
 ; SameBoy SGB bootstrap ROM
 
-INCLUDE	"hardware.inc"
+include "sameboot.inc"
 
-SECTION "BootCode", ROM0[$0]
+SECTION "BootCode", ROM0[$0000]
 Start:
 ; Init stack pointer
-    ld sp, $fffe
+    ld sp, $FFFE
 
 ; Clear memory VRAM
-    ld hl, $8000
+    ld hl, _VRAM
     xor a
 
 .clearVRAMLoop
@@ -17,24 +17,25 @@ Start:
     jr z, .clearVRAMLoop
 
 ; Init Audio
-    ld a, $80
+    ld a, AUDENA_ON
     ldh [rNR52], a
+    assert AUDENA_ON == AUDLEN_DUTY_50
     ldh [rNR11], a
-    ld a, $f3
-    ldh [rNR12], a
-    ldh [rNR51], a
+    ld a, $F3
+    ldh [rNR12], a ; Envelope $F, decreasing, sweep $3
+    ldh [rNR51], a ; Channels 1+2+3+4 left, channels 1+2 right
     ld a, $77
-    ldh [rNR50], a
+    ldh [rNR50], a ; Volume $7, left and right
 
 ; Init BG palette to white
-    ld a, $0
+    ld a, %00_00_00_00
     ldh [rBGP], a
 
 ; Load logo from ROM.
 ; A nibble represents a 4-pixels line, 2 bytes represent a 4x4 tile, scaled to 8x8.
 ; Tiles are ordered left to right, top to bottom.
-    ld de, $104 ; Logo start
-    ld hl, $8010 ; This is where we load the tiles in VRAM
+    ld de, NintendoLogo
+    ld hl, _VRAM + $10 ; This is where we load the tiles in VRAM
 
 .loadLogoLoop
     ld a, [de] ; Read 2 rows
@@ -43,43 +44,43 @@ Start:
     call DoubleBitsAndWriteRow
     inc de
     ld a, e
-    xor $34 ; End of logo
+    xor LOW(NintendoLogoEnd)
     jr nz, .loadLogoLoop
 
 ; Load trademark symbol
     ld de, TrademarkSymbol
-    ld c,$08
+    ld c, TrademarkSymbolEnd - TrademarkSymbol
 .loadTrademarkSymbolLoop:
-    ld a,[de]
+    ld a, [de]
     inc de
-    ldi [hl],a
+    ldi [hl], a
     inc hl
     dec c
     jr nz, .loadTrademarkSymbolLoop
 
 ; Set up tilemap
-    ld a,$19      ; Trademark symbol
-    ld [$9910], a ; ... put in the superscript position
-    ld hl,$992f   ; Bottom right corner of the logo
-    ld c,$c       ; Tiles in a logo row
+    ld a, $19                           ; Trademark symbol tile ID
+    ld [_SCRN0 + 8 * SCRN_VX_B + 16], a ; ... put in the superscript position
+    ld hl, _SCRN0 + 9 * SCRN_VX_B + 15  ; Bottom right corner of the logo
+    ld c, 12                            ; Tiles in a logo row
 .tilemapLoop
     dec a
     jr z, .tilemapDone
     ldd [hl], a
     dec c
     jr nz, .tilemapLoop
-    ld l,$0f ; Jump to top row
+    ld l, $0F ; Jump to top row
     jr .tilemapLoop
 .tilemapDone
 
     ; Turn on LCD
-    ld a, $91
+    ld a, LCDCF_ON | LCDCF_BLK01 | LCDCF_BGON
     ldh [rLCDC], a
 
-    ld a, $f1 ; Packet magic, increases by 2 for every packet
-    ldh [_HRAM], a
-    ld hl, $104 ; Header start
-    
+    ld a, $F1 ; Packet magic, increases by 2 for every packet
+    ldh [hCommand], a
+    ld hl, NintendoLogo ; Header start
+
     xor a
     ld c, a ; JOYP
 
@@ -88,37 +89,37 @@ Start:
     ld [c], a
     ld a, $30
     ld [c], a
-    
-    ldh a, [_HRAM]
+
+    ldh a, [hCommand]
     call SendByte
     push hl
-    ld b, $e
+
+    ld b, 14
     ld d, 0
-    
 .checksumLoop
     call ReadHeaderByte
     add d
     ld d, a
     dec b
     jr nz, .checksumLoop
-    
+
     ; Send checksum
     call SendByte
     pop hl
-    
-    ld b, $e
+
+    ld b, 14
 .sendLoop
     call ReadHeaderByte
     call SendByte
     dec b
     jr nz, .sendLoop
-    
+
     ; Done bit
     ld a, $20
     ld [c], a
     ld a, $30
     ld [c], a
-    
+
     ; Wait 4 frames
     ld e, 4
     ld a, 1
@@ -126,41 +127,41 @@ Start:
     xor a
 .waitLoop
     ldh [rIF], a
-    db $76 ; halt, compatible with rgbds 0.5-0.8
+    halt
     nop
     dec e
     jr nz, .waitLoop
     ldh [rIE], a
-    
+
     ; Update command
-    ldh a, [_HRAM]
+    ldh a, [hCommand]
     add 2
-    ldh [_HRAM], a
-    
+    ldh [hCommand], a
+
     ld a, $58
     cp l
     jr nz, .sendCommand
-    
+
     ; Write to sound registers for DMG compatibility
-    ld c, $13
-    ld a, $c1
+    ld c, LOW(rNR13)
+    ld a, $C1
     ld [c], a
     inc c
-    ld a, 7
+    ld a, $7
     ld [c], a
-    
+
     ; Init BG palette
-    ld a, $fc
+    ld a, %11_11_11_00
     ldh [rBGP], a
-    
+
 ; Set registers to match the original SGB boot
 IF DEF(SGB2)
-    ld a, $FF
+    ld a, BOOTUP_A_MGB
 ELSE
-    ld a, 1
+    ld a, BOOTUP_A_DMG
 ENDC
-    ld hl, $c060
-    
+    ld hl, $C060
+
 ; Boot the game
     jp BootGame
 
@@ -212,8 +213,23 @@ DoubleBitsAndWriteRow:
     ret
 
 TrademarkSymbol:
-db $3c,$42,$b9,$a5,$b9,$a5,$42,$3c
+    pusho
+    opt b.X
+    db %..XXXX..
+    db %.X....X.
+    db %X.XXX..X
+    db %X.X..X.X
+    db %X.XXX..X
+    db %X.X..X.X
+    db %.X....X.
+    db %..XXXX..
+    popo
+TrademarkSymbolEnd:
 
-SECTION "BootGame", ROM0[$fe]
+SECTION "BootGame", ROM0[$00FE]
 BootGame:
     ldh [rBANK], a
+
+SECTION "HRAM", HRAM[_HRAM]
+hCommand:
+    ds 1

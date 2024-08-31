@@ -14,6 +14,10 @@
     screenRect.size.height = self.hasFractionalPixels? (resolution.height - self.homeBar) : floor((resolution.height - self.homeBar) / 144) * 144;
     screenRect.size.width = screenRect.size.height / 144 * 160;
     
+    screenRect.origin.x = (resolution.width - screenRect.size.width) / 2;
+    screenRect.origin.y = (resolution.height - self.homeBar - screenRect.size.height) / 2;
+    self.fullScreenRect = screenRect;
+    
     double horizontalMargin, verticalMargin;
     while (true) {
         horizontalMargin = (resolution.width - screenRect.size.width) / 2;

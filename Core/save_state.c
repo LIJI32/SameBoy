@@ -425,6 +425,11 @@ static void sanitize_state(GB_gameboy_t *gb)
     if (gb->camera_update_request_callback) {
         GB_camera_updated(gb);
     }
+    
+    if (!gb->apu.apu_cycles_in_2mhz) {
+        gb->apu.apu_cycles >>= 2;
+        gb->apu.apu_cycles_in_2mhz = true;
+    }
 }
 
 static bool dump_section(virtual_file_t *file, const void *src, uint32_t size)

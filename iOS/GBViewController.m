@@ -12,10 +12,14 @@
 #import "GBAboutController.h"
 #import "GBSettingsViewController.h"
 #import "GBStatesViewController.h"
+#import "GBCheckableAlertController.h"
+#import "GBPrinterFeedController.h"
 #ifdef APPSTORE
 #import "GBSubscriptionManager.h"
 #endif
 #import "GCExtendedGamepad+AllElements.h"
+#import "GBZipReader.h"
+#import <sys/stat.h>
 #import <CoreMotion/CoreMotion.h>
 #import <dlfcn.h>
 
@@ -55,10 +59,24 @@
     NSTimer *_disableCameraTimer;
     AVCaptureDevicePosition _cameraPosition;
     UIButton *_cameraPositionButton;
+    UIButton *_changeCameraButton;
+    NSArray *_allCaptureDevices;
+    NSArray *_backCaptureDevices;
+    AVCaptureDevice *_selectedBackCaptureDevice;
     
     __weak GCController *_lastController;
     
     dispatch_queue_t _cameraQueue;
+    
+    bool _runModeFromController;
+    
+    UIWindow *_mirrorWindow;
+    GBView *_mirrorView;
+    
+    bool _printerConnected;
+    UIButton *_printerButton;
+    UIActivityIndicatorView *_printerSpinner;
+    NSMutableData *_currentPrinterImageData;
 }
 
 static void loadBootROM(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -72,6 +90,21 @@ static void vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
     GBViewController *self = (__bridge GBViewController *)GB_get_user_data(gb);
     [self vblankWithType:type];
 }
+
+
+static void printImage(GB_gameboy_t *gb, uint32_t *image, uint8_t height,
+                       uint8_t top_margin, uint8_t bottom_margin, uint8_t exposure)
+{
+    GBViewController *self = (__bridge GBViewController *)GB_get_user_data(gb);
+    [self printImage:image height:height topMargin:top_margin bottomMargin:bottom_margin exposure:exposure];
+}
+
+static void printDone(GB_gameboy_t *gb)
+{
+    GBViewController *self = (__bridge GBViewController *)GB_get_user_data(gb);
+    [self printDone];
+}
+
 
 static void consoleLog(GB_gameboy_t *gb, const char *string, GB_log_attributes attributes)
 {
@@ -244,8 +277,36 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     
     _motionManager = [[CMMotionManager alloc] init];
     _cameraPosition = AVCaptureDevicePositionBack;
-    _cameraPositionButton = [[UIButton alloc] initWithFrame:CGRectMake(8,
-                                                                       0,
+    _selectedBackCaptureDevice = [AVCaptureDevice defaultDeviceWithMediaType: AVMediaTypeVideo];
+
+    // Back camera setup
+    NSArray *deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera,
+                             AVCaptureDeviceTypeBuiltInTelephotoCamera];
+    if (@available(iOS 13.0, *)) {
+        // AVCaptureDeviceTypeBuiltInUltraWideCamera is only available in iOS 13+
+        deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera,
+                        AVCaptureDeviceTypeBuiltInUltraWideCamera,
+                        AVCaptureDeviceTypeBuiltInTelephotoCamera];
+    }
+
+    // Use a discovery session to gather the capture devices (all back cameras as well as the front camera)
+    AVCaptureDeviceDiscoverySession *cameraDiscoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
+                                                                                                                     mediaType:AVMediaTypeVideo
+                                                                                                                      position:AVCaptureDevicePositionUnspecified];
+    _allCaptureDevices = cameraDiscoverySession.devices;
+
+    // Filter only the back cameras into a list used for switching between them
+    NSMutableArray *filteredBackCameras = [NSMutableArray array];
+    for (AVCaptureDevice *device in _allCaptureDevices) {
+        if ([device position] == AVCaptureDevicePositionBack) {
+            [filteredBackCameras addObject:device];
+        }
+    }
+    _backCaptureDevices = filteredBackCameras;
+
+    UIEdgeInsets insets = self.window.safeAreaInsets;
+    _cameraPositionButton = [[UIButton alloc] initWithFrame:CGRectMake(insets.left + 8,
+                                                                       _backgroundView.bounds.size.height - 8 - insets.bottom - 32,
                                                                        32,
                                                                        32)];
     [self didRotateFromInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation];
@@ -254,20 +315,41 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                                                  withConfiguration:[UIImageSymbolConfiguration configurationWithScale:UIImageSymbolScaleLarge]]
                                 forState:UIControlStateNormal];
         _cameraPositionButton.backgroundColor = [UIColor systemBackgroundColor];
+
+        // Configure the change camera button stacked on top of the camera position button
+        _changeCameraButton = [[UIButton alloc] initWithFrame:CGRectMake(insets.left + 8,
+                                                                         _backgroundView.bounds.size.height - 8 - insets.bottom - 32 - 32 - 8,
+                                                                         32,
+                                                                         32)];
+        [_changeCameraButton  setImage:[UIImage systemImageNamed:@"camera.aperture"
+                                                withConfiguration:[UIImageSymbolConfiguration configurationWithScale:UIImageSymbolScaleLarge]]
+                                forState:UIControlStateNormal];
+        _changeCameraButton.backgroundColor = [UIColor systemBackgroundColor];
+        _changeCameraButton.layer.cornerRadius = 6;
+        _changeCameraButton.alpha = 0;
+        [_changeCameraButton addTarget:self
+                                action:@selector(changeCamera)
+                      forControlEvents:UIControlEventTouchUpInside];
+        // Only show the change camera button if we have more than one back camera to swap between.
+        if ([_backCaptureDevices count] > 1) {
+            [_backgroundView addSubview:_changeCameraButton];
+        }
     }
     else {
-        UIImage *image = [[UIImage imageNamed:@"CameraRotateTemplate"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        [_cameraPositionButton  setImage:image
-                                forState:UIControlStateNormal];
+        UIImage *rotateImage = [[UIImage imageNamed:@"CameraRotateTemplate"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        [_cameraPositionButton setImage:rotateImage
+                               forState:UIControlStateNormal];
         _cameraPositionButton.backgroundColor = [UIColor whiteColor];
     }
+
     _cameraPositionButton.layer.cornerRadius = 6;
     _cameraPositionButton.alpha = 0;
     [_cameraPositionButton addTarget:self
                               action:@selector(rotateCamera)
                     forControlEvents:UIControlEventTouchUpInside];
+
     [_backgroundView addSubview:_cameraPositionButton];
-    
+
     _cameraQueue = dispatch_queue_create("SameBoy Camera Queue", NULL);
     
     [UNUserNotificationCenter currentNotificationCenter].delegate = self;
@@ -279,9 +361,88 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                                                  name:GCControllerDidConnectNotification
                                                object:nil];
     
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(controllerDisconnected:)
+                                                 name:GCControllerDidDisconnectNotification
+                                               object:nil];
+    
+    for (NSString *name in @[UIScreenDidConnectNotification,
+                             UIScreenDidDisconnectNotification,
+                             UIScreenModeDidChangeNotification]) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(updateMirrorWindow)
+                                                     name:name
+                                                   object:nil];
+    }
+    
+    _printerButton = [[UIButton alloc] init];
+    _printerSpinner = [[UIActivityIndicatorView alloc] init];
+    [self didRotateFromInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation];
+    
+    if (@available(iOS 13.0, *)) {
+        [_printerButton  setImage:[UIImage systemImageNamed:@"printer"
+                                          withConfiguration:[UIImageSymbolConfiguration configurationWithScale:UIImageSymbolScaleLarge]]
+                         forState:UIControlStateNormal];
+        _printerButton.backgroundColor = [UIColor systemBackgroundColor];
+    }
+    else {
+        UIImage *rotateImage = [[UIImage imageNamed:@"PrinterTemplate"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        [_printerButton setImage:rotateImage
+                               forState:UIControlStateNormal];
+        _printerButton.backgroundColor = [UIColor whiteColor];
+    }
+    
+    _printerButton.layer.cornerRadius = 6;
+    _printerButton.alpha = 0;
+    [_printerButton addTarget:self
+                       action:@selector(showPrinterFeed)
+             forControlEvents:UIControlEventTouchUpInside];
+    
+    
+    [_backgroundView addSubview:_printerButton];
+    [_backgroundView addSubview:_printerSpinner];
+
+    
+    [self updateMirrorWindow];
+    
     return true;
 }
 
+- (void)updateMirrorWindow
+{
+    if ([UIScreen screens].count == 1) {
+        _mirrorWindow = nil;
+        _mirrorView = nil;
+        return;
+    }
+    if (_mirrorWindow && ![[UIScreen screens] containsObject:_mirrorWindow.screen]) {
+        _mirrorWindow = nil;
+        _mirrorView = nil;
+    }
+    for (UIScreen *screen in [UIScreen screens]) {
+        if (screen == UIScreen.mainScreen) continue;
+        CGRect rect = screen.bounds;
+        rect.size.height = floor(rect.size.height / 144) * 144;
+        rect.size.width = rect.size.height / 144 * 160;
+        rect.origin.x = (screen.bounds.size.width - rect.size.width) / 2;
+        rect.origin.y = (screen.bounds.size.height - rect.size.height) / 2;
+        _mirrorWindow = [[UIWindow alloc] initWithFrame:screen.bounds];
+        _mirrorWindow.screen = screen;
+        _mirrorView = [_gbView mirroredView];
+        _mirrorView.frame = rect;
+        _mirrorWindow.backgroundColor = [UIColor blackColor];
+        [_mirrorWindow addSubview:_mirrorView];
+        [_mirrorWindow setHidden:false];
+        break;
+    }
+}
+
+- (void)controllerDisconnected:(NSNotification *)notification
+{
+    if (notification.object == _lastController) {
+        _backgroundView.fullScreenMode = false;
+    }
+}
 
 - (void)setControllerHandlers
 {
@@ -320,6 +481,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)controller:(GCController *)controller buttonChanged:(GCControllerButtonInput *)button usage:(GBControllerUsage)usage
 {
     [self updateLastController:controller];
+    if (_running && button.value > 0.25 &&
+        [[NSUserDefaults standardUserDefaults] boolForKey:@"GBControllersHideInterface"]) {
+        _backgroundView.fullScreenMode = true;
+    }
     
     GBButton gbButton = [GBSettingsViewController controller:controller convertUsageToButton:usage];
     static const double analogThreshold = 0.0625;
@@ -340,9 +505,14 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                 if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
                     GB_set_clock_multiplier(&_gb, (button.value - analogThreshold) / (1 - analogThreshold) * 3 + 1);
                 }
+                _runModeFromController = true;
+                [_backgroundView fadeOverlayOut];
             }
             else {
-                [self setRunMode:GBRunModeNormal];
+                if (self.runMode == GBRunModeTurbo && _runModeFromController) {
+                    [self setRunMode:GBRunModeNormal];
+                    _runModeFromController = false;
+                }
             }
             break;
         case GBRewind:
@@ -351,22 +521,30 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                 if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
                     GB_set_clock_multiplier(&_gb, (button.value - analogThreshold) / (1 - analogThreshold) * 4);
                 }
+                _runModeFromController = true;
+                [_backgroundView fadeOverlayOut];
             }
             else {
-                [self setRunMode:GBRunModeNormal];
+                if (self.runMode == GBRunModeRewind && _runModeFromController) {
+                    [self setRunMode:GBRunModeNormal];
+                    _runModeFromController = false;
+                }
             }
             break;
         case GBUnderclock:
             if (button.value > analogThreshold) {
+                [self setRunMode:GBRunModeUnderclock ignoreDynamicSpeed:!button.isAnalog];
                 if (button.isAnalog && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
                     GB_set_clock_multiplier(&_gb, 1 - ((button.value - analogThreshold) / (1 - analogThreshold) * 0.75));
                 }
-                else {
-                    GB_set_clock_multiplier(&_gb, 0.5);
-                }
+                _runModeFromController = true;
+                [_backgroundView fadeOverlayOut];
             }
             else {
-                GB_set_clock_multiplier(&_gb, 1.0);
+                if (self.runMode == GBRunModeUnderclock && _runModeFromController) {
+                    [self setRunMode:GBRunModeNormal];
+                    _runModeFromController = false;
+                }
             }
             break;
         default: break;
@@ -376,11 +554,20 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)controller:(GCController *)controller axisChanged:(GCControllerDirectionPad *)axis usage:(GBControllerUsage)usage
 {
     [self updateLastController:controller];
+    bool left = axis.left.value > 0.5;
+    bool right = axis.right.value > 0.5;
+    bool up = axis.up.value > 0.5;
+    bool down = axis.down.value > 0.5;
     
-    GB_set_key_state(&_gb, GB_KEY_LEFT, axis.left.value > 0.5);
-    GB_set_key_state(&_gb, GB_KEY_RIGHT, axis.right.value > 0.5);
-    GB_set_key_state(&_gb, GB_KEY_UP, axis.up.value > 0.5);
-    GB_set_key_state(&_gb, GB_KEY_DOWN, axis.down.value > 0.5);
+    if (_running && (left || right || up || down ) &&
+        [[NSUserDefaults standardUserDefaults] boolForKey:@"GBControllersHideInterface"]) {
+        _backgroundView.fullScreenMode = true;
+    }
+    
+    GB_set_key_state(&_gb, GB_KEY_LEFT, left);
+    GB_set_key_state(&_gb, GB_KEY_RIGHT, right);
+    GB_set_key_state(&_gb, GB_KEY_UP, up);
+    GB_set_key_state(&_gb, GB_KEY_DOWN, down);
 }
 
 - (void)controller:(GCController *)controller motionChanged:(GCMotion *)motion
@@ -688,14 +875,34 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     _backgroundView.frame = [layout viewRectForOrientation:orientation];
     _backgroundView.layout = layout;
     if (!self.presentedViewController) {
-        _window.backgroundColor = layout.theme.backgroundGradientBottom;
+        _window.backgroundColor = _backgroundView.fullScreenMode? [UIColor blackColor] :
+                                                                  layout.theme.backgroundGradientBottom;
     }
 }
 
 - (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
 {
     UIEdgeInsets insets = self.window.safeAreaInsets;
-    _cameraPositionButton.frame = CGRectMake(insets.left + 8, _backgroundView.bounds.size.height - 8 - insets.bottom - 32, 32, 32);
+    _cameraPositionButton.frame = CGRectMake(insets.left + 8,
+                                             _backgroundView.bounds.size.height - 8 - insets.bottom - 32,
+                                             32,
+                                             32);
+    if (_changeCameraButton) {
+        _changeCameraButton.frame = CGRectMake(insets.left + 8,
+                                               _backgroundView.bounds.size.height - 8 - insets.bottom - 32 - 32 - 8,
+                                               32,
+                                               32);
+    }
+    _printerButton.frame = CGRectMake(_backgroundView.bounds.size.width - 8 - insets.right - 32,
+                                      _backgroundView.bounds.size.height - 8 - insets.bottom - 32,
+                                      32,
+                                      32);
+    
+    _printerSpinner.frame = CGRectMake(_backgroundView.bounds.size.width - 8 - insets.right - 32,
+                                       _backgroundView.bounds.size.height - 8 - insets.bottom - 32 - 32 - 8,
+                                       32,
+                                       32);
+
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations
@@ -736,9 +943,9 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (UIStatusBarStyle)preferredStatusBarStyle
 {
     if (@available(iOS 13.0, *)) {
-        return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
+        return (_verticalLayout.theme.isDark || _backgroundView.fullScreenMode)? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
     }
-    return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDefault;
+    return (_verticalLayout.theme.isDark || _backgroundView.fullScreenMode)? UIStatusBarStyleLightContent : UIStatusBarStyleDefault;
 }
 
 
@@ -978,6 +1185,10 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [_audioLock signal];
         [_audioLock unlock];
     }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.runMode = GBRunModeNormal;
+        [_backgroundView fadeOverlayOut];
+    });
 }
 
 
@@ -1076,23 +1287,117 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     GB_set_palette(&_gb, &_palette);
 }
 
-- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+- (bool)handleOpenURLs:(NSArray <NSURL *> *)urls openInPlace:(bool)inPlace
 {
-    [self stop];
-    NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
-    if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
-        [GBROMManager sharedManager].currentROM = potentialROM;
+    NSMutableArray<NSURL *> *validURLs = [NSMutableArray array];
+    NSMutableArray<NSString *> *skippedBasenames = [NSMutableArray array];
+    NSMutableArray<NSString *> *unusedZips = [NSMutableArray array];
+    NSString *tempDir = NSTemporaryDirectory();
+    
+    __block unsigned tempIndex = 0;
+    for (NSURL *url in urls) {
+        if ([url.pathExtension.lowercaseString isEqualToString:@"zip"]) {
+            GBZipReader *reader = [[GBZipReader alloc] initWithPath:url.path];
+            if (!reader) {
+                [skippedBasenames addObject:url.lastPathComponent];
+                continue;
+            }
+            __block bool used = false;
+            [reader iterateFiles:^bool(NSString *filename, size_t uncompressedSize, bool (^getData)(void *), bool (^writeToPath)(NSString *)) {
+                if ([@[@"gb", @"gbc", @"isx"] containsObject:filename.pathExtension.lowercaseString] && uncompressedSize <= 32 * 1024 * 1024) {
+                    tempIndex++;
+                    NSString *subDir = [tempDir stringByAppendingFormat:@"/%u", tempIndex];
+                    mkdir(subDir.UTF8String, 0755);
+                    NSString *dest = [subDir stringByAppendingPathComponent:filename.lastPathComponent];
+                    if (writeToPath(dest)) {
+                        [validURLs addObject:[NSURL fileURLWithPath:dest]];
+                        used = true;
+                    }
+                }
+                return true;
+            }];
+            if (!used) {
+                [unusedZips addObject:url.lastPathComponent];
+            }
+        }
+        else if ([@[@"gb", @"gbc", @"isx"] containsObject:url.pathExtension.lowercaseString]) {
+            [validURLs addObject:url];
+        }
+        else {
+            [skippedBasenames addObject:url.lastPathComponent];
+        }
     }
-    else {
-        [url startAccessingSecurityScopedResource];
-        [GBROMManager sharedManager].currentROM =
+    
+    if (unusedZips.count) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"No ROMs in archive"
+                                                                       message:[NSString stringWithFormat:@"Could not find any Game Boy ROM files in the following archives:\n%@",
+                                                                                [unusedZips componentsJoinedByString:@"\n"]]
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                   style:UIAlertActionStyleCancel
+                                                 handler:nil]];
+        [self stop];
+        [self presentViewController:alert animated:true completion:nil];
+    }
+    
+    if (skippedBasenames.count) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Unsupported Files"
+                                                                       message:[NSString stringWithFormat:@"Could not import the following files because they're not supported:\n%@",
+                                                                                [skippedBasenames componentsJoinedByString:@"\n"]]
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                   style:UIAlertActionStyleCancel
+                                                 handler:^(UIAlertAction *action) {
+            [[NSUserDefaults standardUserDefaults] setBool:false forKey:@"GBShownUTIWarning"]; // Somebody might need a reminder
+        }]];
+        [self stop];
+        [self presentViewController:alert animated:true completion:nil];
+    }
+    
+    if (validURLs.count == 1 && urls.count == 1) {
+        NSURL *url = validURLs.firstObject;
+        NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
+        if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
+            [GBROMManager sharedManager].currentROM = potentialROM;
+        }
+        else {
+            [url startAccessingSecurityScopedResource];
+            [GBROMManager sharedManager].currentROM =
             [[GBROMManager sharedManager] importROM:url.path
-                                       keepOriginal:[options[UIApplicationOpenURLOptionsOpenInPlaceKey] boolValue]];
+                                       keepOriginal:![url.path hasPrefix:tempDir] && !inPlace];
+            [url stopAccessingSecurityScopedResource];
+        }
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
+        return true;
+    }
+    for (NSURL *url in validURLs) {
+        NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
+        if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
+            // That's an already imported ROM
+            continue;
+        }
+        [url startAccessingSecurityScopedResource];
+        [[GBROMManager sharedManager] importROM:url.path
+                                   keepOriginal:![url.path hasPrefix:tempDir] && !inPlace];
         [url stopAccessingSecurityScopedResource];
     }
-    [self loadROM];
-    [self start];
-    return [GBROMManager sharedManager].currentROM != nil;
+    [self stop];
+    [self openLibrary];
+    
+    return validURLs.count;
+}
+
+- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+{
+    NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
+    if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {
+        [self stop];
+        [GBROMManager sharedManager].currentROM = potentialROM;
+        [self loadROM];
+        [self start];
+        return [GBROMManager sharedManager].currentROM != nil;
+    }
+    return [self handleOpenURLs:@[url] openInPlace:[options[UIApplicationOpenURLOptionsOpenInPlaceKey] boolValue]];
 }
 
 - (void)setRunMode:(GBRunMode)runMode ignoreDynamicSpeed:(bool)ignoreDynamicSpeed
@@ -1109,15 +1414,18 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [_audioClient stop];
     }
     
-    if (_runMode == GBRunModeNormal || _runMode == GBRunModeTurbo) {
+    if (_runMode == GBRunModeNormal || _runMode == GBRunModeTurbo || _runMode == GBRunModeUnderclock) {
         _rewindOver = false;
     }
     
-    if (_runMode == GBRunModeNormal || !([[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"] && !ignoreDynamicSpeed)) {
+    if (_runMode == GBRunModeNormal  || _runMode == GBRunModeUnderclock || !([[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"] && !ignoreDynamicSpeed)) {
         if (_runMode == GBRunModeTurbo) {
             double multiplier = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboSpeed"];
             GB_set_turbo_mode(&_gb, multiplier == 1, false);
             GB_set_clock_multiplier(&_gb, multiplier);
+        }
+        else if (_runMode == GBRunModeUnderclock) {
+            GB_set_clock_multiplier(&_gb, 0.5);
         }
         else {
             GB_set_turbo_mode(&_gb, false, false);
@@ -1133,12 +1441,20 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 - (AVCaptureDevice *)captureDevice
 {
-    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-    for (AVCaptureDevice *device in devices) {
+    for (AVCaptureDevice *device in _allCaptureDevices) {
         if ([device position] == _cameraPosition) {
-            return device;
+            // There is only one front camera, return it
+            if (_cameraPosition == AVCaptureDevicePositionFront) {
+                return device;
+            }
+
+            // There may be several back cameras, return the one with the matching type
+            if ([device deviceType] == [_selectedBackCaptureDevice deviceType]) {
+                return device;
+            }
         }
     }
+    // Return the default camera
     return [AVCaptureDevice defaultDeviceWithMediaType: AVMediaTypeVideo];
 }
 
@@ -1189,12 +1505,27 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
                 _cameraPositionButton.alpha = 1;
             }];
         }
+        if (_changeCameraButton) {
+            // The change camera button is only available when we are using a capture device on the back of the device
+            double changeCameraButtonAlpha = (_cameraPosition == AVCaptureDevicePositionFront) ? 0 : 1;
+            if (changeCameraButtonAlpha != _changeCameraButton.alpha) {
+                [UIView animateWithDuration:0.25 animations:^{
+                    _changeCameraButton.alpha = changeCameraButtonAlpha;
+                }];
+            }
+        }
+
         _disableCameraTimer = [NSTimer scheduledTimerWithTimeInterval:1
                                                              repeats:false
                                                                block:^(NSTimer *timer) {
             if (_cameraPositionButton.alpha) {
                 [UIView animateWithDuration:0.25 animations:^{
                     _cameraPositionButton.alpha = 0;
+                }];
+            }
+            if (_changeCameraButton.alpha) {
+                [UIView animateWithDuration:0.25 animations:^{
+                    _changeCameraButton.alpha = 0;
                 }];
             }
             dispatch_async(_cameraQueue, ^{
@@ -1300,6 +1631,106 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
             GB_camera_updated(&_gb);
         }
     });
+}
+
+- (void)changeCamera
+{
+    dispatch_async(_cameraQueue, ^{
+        // Get index of selected camera and select the next one, wrapping to the beginning
+        NSUInteger i = [_backCaptureDevices indexOfObject:_selectedBackCaptureDevice];
+        int nextIndex = (i + 1) % _backCaptureDevices.count;
+        _selectedBackCaptureDevice = _backCaptureDevices[nextIndex];
+
+        [_cameraSession stopRunning];
+        _cameraSession = nil;
+        _cameraConnection = nil;
+        _cameraOutput = nil;
+        if (_cameraNeedsUpdate) {
+            _cameraNeedsUpdate = false;
+            GB_camera_updated(&_gb);
+        }
+    });
+}
+
+- (void)openConnectMenu
+{
+    UIAlertControllerStyle style = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad?
+    UIAlertControllerStyleAlert : UIAlertControllerStyleActionSheet;
+    GBCheckableAlertController *menu = [GBCheckableAlertController alertControllerWithTitle:@"Connect which accessory?"
+                                                                                    message:nil
+                                                                             preferredStyle:style];
+    [menu addAction:[UIAlertAction actionWithTitle:@"None"
+                                             style:UIAlertActionStyleDefault
+                                           handler:^(UIAlertAction *action) {
+        _printerConnected = false;
+        _currentPrinterImageData = nil;
+        [UIView animateWithDuration:0.25 animations:^{
+            _printerButton.alpha = 0;
+        }];
+        [_printerSpinner stopAnimating];
+        GB_disconnect_serial(&_gb);
+    }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"Game Boy Printer"
+                                             style:UIAlertActionStyleDefault
+                                           handler:^(UIAlertAction *action) {
+        _printerConnected = true;
+        GB_connect_printer(&_gb, printImage, printDone);
+    }]];
+    menu.selectedAction = menu.actions[_printerConnected];
+    [menu addAction:[UIAlertAction actionWithTitle:@"Cancel"
+                                            style:UIAlertActionStyleCancel
+                                          handler:nil]];
+    [self presentViewController:menu animated:true completion:nil];
+}
+
+- (void)printImage:(uint32_t *)imageBytes height:(unsigned) height
+         topMargin:(unsigned) topMargin bottomMargin: (unsigned) bottomMargin
+          exposure:(unsigned) exposure
+{
+    uint32_t paddedImage[160 * (topMargin + height + bottomMargin)];
+    memset(paddedImage, 0xFF, sizeof(paddedImage));
+    memcpy(paddedImage + (160 * topMargin), imageBytes, 160 * height * sizeof(imageBytes[0]));
+    if (!_currentPrinterImageData) {
+        _currentPrinterImageData = [[NSMutableData alloc] init];
+    }
+    [_currentPrinterImageData appendBytes:paddedImage length:sizeof(paddedImage)];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIView animateWithDuration:0.25 animations:^{
+            _printerButton.alpha = 1;
+        }];
+        [_printerSpinner startAnimating];
+    });
+    
+}
+
+- (void)printDone
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [_printerSpinner stopAnimating];
+    });
+}
+
+- (void)showPrinterFeed
+{
+    UIImage *image = [self imageFromData:_currentPrinterImageData
+                                   width:160
+                                  height:_currentPrinterImageData.length / 160 / sizeof(uint32_t)];
+
+    [self presentViewController:[[GBPrinterFeedController alloc] initWithImage:image]
+                       animated:true
+                     completion:nil];
+    
+}
+
+- (void)emptyPrinterFeed
+{
+    _currentPrinterImageData = nil;
+    [UIView animateWithDuration:0.25 animations:^{
+        _printerButton.alpha = 0;
+    }];
+    [_printerSpinner stopAnimating];
+    [self dismissViewController];
 }
 
 @end

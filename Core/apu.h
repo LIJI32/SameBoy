@@ -148,6 +148,8 @@ typedef struct
         GB_SKIP_DIV_EVENT_SKIP,
     }) skip_div_event;
     uint8_t pcm_mask[2]; // For CGB-0 to CGB-C PCM read glitch
+    
+    bool apu_cycles_in_2mhz; // For compatibility with 0.16.x save states
 } GB_apu_t;
 
 typedef enum {
@@ -167,6 +169,7 @@ typedef struct {
     unsigned sample_rate;
 
     unsigned sample_cycles; // Counts by sample_rate until it reaches the clock frequency
+    unsigned max_cycles_per_sample;
 
     // Samples are NOT normalized to MAX_CH_AMP * 4 at this stage!
     unsigned cycles_since_render;

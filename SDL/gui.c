@@ -824,7 +824,7 @@ static void import_cheat_callback(char ch)
     text_input[len + 1] = 0;
     if (text_input_title[0] != 'E') {
         strcpy(text_input_title, "Enter a GameShark");
-        strcpy(text_input_title2, "or GameGenie Code");
+        strcpy(text_input_title2, "or Game Genie Code");
     }
 
 }
@@ -833,7 +833,7 @@ static void import_cheat_callback(char ch)
 static void import_cheat(unsigned index)
 {
     strcpy(text_input_title, "Enter a GameShark");
-    strcpy(text_input_title2, "or GameGenie Code");
+    strcpy(text_input_title2, "or Game Genie Code");
     text_input[0] = 0;
     gui_state = TEXT_INPUT;
     text_input_callback = import_cheat_callback;
@@ -933,26 +933,35 @@ static void enter_help_menu(unsigned index)
 
 static void cycle_model(unsigned index)
 {
-    
-    configuration.model++;
-    if (configuration.model == MODEL_MAX) {
-        configuration.model = 0;
+    switch (configuration.model) {
+        case MODEL_DMG:  configuration.model = MODEL_MGB;  break;
+        case MODEL_MGB:  configuration.model = MODEL_SGB;  break;
+        case MODEL_SGB:  configuration.model = MODEL_CGB;  break;
+        case MODEL_CGB:  configuration.model = MODEL_AGB;  break;
+        case MODEL_AGB:  configuration.model = MODEL_AUTO; break;
+        case MODEL_AUTO: configuration.model = MODEL_DMG;  break;
+        default: configuration.model = MODEL_AUTO;
     }
     pending_command = GB_SDL_RESET_COMMAND;
 }
 
 static void cycle_model_backwards(unsigned index)
 {
-    if (configuration.model == 0) {
-        configuration.model = MODEL_MAX;
+    switch (configuration.model) {
+        case MODEL_MGB:  configuration.model = MODEL_DMG;  break;
+        case MODEL_SGB:  configuration.model = MODEL_MGB;  break;
+        case MODEL_CGB:  configuration.model = MODEL_SGB;  break;
+        case MODEL_AGB:  configuration.model = MODEL_CGB;  break;
+        case MODEL_AUTO: configuration.model = MODEL_AGB;  break;
+        case MODEL_DMG:  configuration.model = MODEL_AUTO; break;
+        default: configuration.model = MODEL_AUTO;
     }
-    configuration.model--;
     pending_command = GB_SDL_RESET_COMMAND;
 }
 
 static const char *current_model_string(unsigned index)
 {
-    return GB_inline_const(const char *[], {"Game Boy", "Game Boy Color", "Game Boy Advance", "Super Game Boy", "Game Boy Pocket"})
+    return GB_inline_const(const char *[], {"Game Boy", "Game Boy Color", "Game Boy Advance", "Super Game Boy", "Game Boy Pocket", "Pick Automatically"})
         [configuration.model];
 }
 
@@ -982,10 +991,10 @@ static void cycle_cgb_revision_backwards(unsigned index)
 static const char *current_cgb_revision_string(unsigned index)
 {
     return GB_inline_const(const char *[], {
-        "CPU CGB 0 (Exp.)",
-        "CPU CGB A (Exp.)",
-        "CPU CGB B (Exp.)",
-        "CPU CGB C (Exp.)",
+        "CPU CGB 0",
+        "CPU CGB A",
+        "CPU CGB B",
+        "CPU CGB C",
         "CPU CGB D",
         "CPU CGB E",
     })
@@ -1755,16 +1764,17 @@ static const struct menu_item keyboard_menu[] = {
     {"Turbo:", modify_key, key_name,},
     {"Rewind:", modify_key, key_name,},
     {"Slow-Motion:", modify_key, key_name,},
+    {"Rapid A:", modify_key, key_name,},
+    {"Rapid B:", modify_key, key_name,},
     {"Back", enter_controls_menu},
     {NULL,}
 };
 
 static const char *key_name(unsigned index)
 {
-    if (index > 8) {
-        return SDL_GetScancodeName(configuration.keys_2[index - 9]);
-    }
-    return SDL_GetScancodeName(configuration.keys[index]);
+    SDL_Scancode code = index >= GB_CONF_KEYS_COUNT? configuration.keys_2[index - GB_CONF_KEYS_COUNT] : configuration.keys[index];
+    if (!code) return "Not Set";
+    return SDL_GetScancodeName(code);
 }
 
 static void enter_keyboard_menu(unsigned index)
@@ -2523,7 +2533,7 @@ void run_gui(bool is_running)
                 }
                 else if (gui_state == WAITING_FOR_KEY) {
                     if (current_selection > 8) {
-                        configuration.keys_2[current_selection - 9] = event.key.keysym.scancode;
+                        configuration.keys_2[current_selection - GB_CONF_KEYS_COUNT] = event.key.keysym.scancode;
                     }
                     else {
                         configuration.keys[current_selection] = event.key.keysym.scancode;
@@ -2764,6 +2774,8 @@ void run_gui(bool is_running)
                                            "Slow-Motion",
                                            "Hotkey 1",
                                            "Hotkey 2",
+                                           "Rapid A",
+                                           "Rapid B",
                                            "",
                                       }) [joypad_configuration_progress],
                                       gui_palette_native[3], gui_palette_native[0], STYLE_CENTER);

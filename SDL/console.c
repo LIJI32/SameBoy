@@ -85,28 +85,31 @@ static bool is_term(void)
 {
     if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) return false;
 #ifdef _WIN32
-    if (AllocConsole()) {
-        FreeConsole();
-        return false;
+    unsigned long input_mode, output_mode;
+    bool has_con_output;
+    
+    HANDLE stdin_handle = GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    
+    GetConsoleMode(stdin_handle, &input_mode);
+    has_con_output = GetConsoleMode(stdout_handle, &output_mode);
+    if (!has_con_output) {
+        return false; // stdout has been redirected to a file or pipe
     }
     
-    unsigned long input_mode, output_mode;
-    
-    GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &input_mode);
-    GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &output_mode);
-    SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), ENABLE_VIRTUAL_TERMINAL_INPUT);
-    SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), ENABLE_WRAP_AT_EOL_OUTPUT | ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    SetConsoleMode(stdin_handle, ENABLE_VIRTUAL_TERMINAL_INPUT);
+    SetConsoleMode(stdout_handle, ENABLE_WRAP_AT_EOL_OUTPUT | ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
     
     CONSOLE_SCREEN_BUFFER_INFO before = {0,};
-    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &before);
+    GetConsoleScreenBufferInfo(stdout_handle, &before);
     
     printf(SGR("0"));
     
     CONSOLE_SCREEN_BUFFER_INFO after = {0,};
-    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &after);
+    GetConsoleScreenBufferInfo(stdout_handle, &after);
     
-    SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), input_mode);
-    SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), output_mode);
+    SetConsoleMode(stdin_handle, input_mode);
+    SetConsoleMode(stdout_handle, output_mode);
 
 
     if (before.dwCursorPosition.X != after.dwCursorPosition.X ||
@@ -127,7 +130,7 @@ static char raw_getc(void)
 #ifdef _WIN32
     char c;
     unsigned long ret;
-    ReadConsole(GetStdHandle(STD_INPUT_HANDLE), &c, 1, &ret, NULL);
+    ReadFile(GetStdHandle(STD_INPUT_HANDLE), &c, 1, &ret, NULL);
 #else
     ssize_t ret;
     char c;

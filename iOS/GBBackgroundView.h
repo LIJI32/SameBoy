@@ -8,7 +8,9 @@
 @property (readonly) GBView *gbView;
 @property (nonatomic) GBLayout *layout;
 @property (nonatomic) bool usesSwipePad;
+@property (nonatomic) bool fullScreenMode;
 
 - (void)enterPreviewMode:(bool)showLabel;
 - (void)reloadThemeImages;
+- (void)fadeOverlayOut;
 @end

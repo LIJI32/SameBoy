@@ -17,6 +17,7 @@ internal void GB_palette_changed(GB_gameboy_t *gb, bool background_palette, uint
 internal void GB_STAT_update(GB_gameboy_t *gb);
 internal void GB_lcd_off(GB_gameboy_t *gb);
 internal void GB_display_vblank(GB_gameboy_t *gb, GB_vblank_type_t type);
+internal void GB_update_wx_glitch(GB_gameboy_t *gb);
 #define GB_display_sync(gb) GB_display_run(gb, 0, true)
 
 enum {

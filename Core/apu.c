@@ -211,7 +211,7 @@ static void render(GB_gameboy_t *gb)
             }
         }
 
-        if (likely(gb->apu_output.last_update[i] == 0)) {
+        if (likely(gb->apu_output.last_update[i] == 0 || gb->apu_output.cycles_since_render == 0)) {
             output.left += gb->apu_output.current_sample[i].left * multiplier;
             output.right += gb->apu_output.current_sample[i].right * multiplier;
         }
@@ -633,9 +633,14 @@ static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
 
 void GB_apu_run(GB_gameboy_t *gb, bool force)
 {
-    uint32_t clock_rate = GB_get_clock_rate(gb) * 2;
+    uint32_t clock_rate = GB_get_clock_rate(gb);
+    bool orig_force = force;
+    
+restart:;
+    uint16_t cycles = gb->apu.apu_cycles;
+
     if (force ||
-        (gb->apu.apu_cycles > 0x1000) ||
+        (cycles + gb->apu_output.cycles_since_render >= gb->apu_output.max_cycles_per_sample) ||
         (gb->apu_output.sample_cycles >= clock_rate) ||
         (gb->apu.square_sweep_calculate_countdown || gb->apu.channel_1_restart_hold || gb->apu.square_sweep_calculate_countdown_reload_timer) ||
         (gb->model <= GB_MODEL_CGB_E && (gb->apu.wave_channel.bugged_read_countdown || (gb->apu.wave_channel.enable && gb->apu.wave_channel.pulsed)))) {
@@ -644,10 +649,46 @@ void GB_apu_run(GB_gameboy_t *gb, bool force)
     if (!force) {
         return;
     }
-    /* Convert 4MHZ to 2MHz. apu_cycles is always divisable by 4. */
-    uint16_t cycles = gb->apu.apu_cycles >> 2;
+    
+    /* Force renders to never be more than max_cycles_per_sample apart by spliting runs. */
+    while (cycles + gb->apu_output.cycles_since_render > gb->apu_output.max_cycles_per_sample) {
+        /* We're already past max_cycles_per_sample. This can happen when changing clock rates, etc.
+           Let this sample render normally. */
+        if (unlikely(gb->apu_output.cycles_since_render > gb->apu_output.max_cycles_per_sample)) break;
+        
+        gb->apu.apu_cycles = gb->apu_output.max_cycles_per_sample - gb->apu_output.cycles_since_render;
+        
+        if (gb->apu.apu_cycles) {
+            // Run for just enough cycles to reach max_cycles_per_sample
+            cycles -= gb->apu.apu_cycles;
+            GB_apu_run(gb, true);
+            // Re-evaluate force if needed
+            if (!orig_force) {
+                force = false;
+                gb->apu.apu_cycles = cycles;
+                goto restart;
+            }
+            // Check if we need another batch
+            continue;
+        }
+        
+        // Render if needed
+        if (gb->apu_output.sample_cycles >= clock_rate) {
+            gb->apu_output.sample_cycles -= clock_rate;
+            render(gb);
+        }
+        break;
+    }
+
     gb->apu.apu_cycles = 0;
-    if (!cycles) return;
+    if (!cycles) {
+        /* This can happen in pre-CGB stop mode */
+        while (unlikely(gb->apu_output.sample_cycles >= clock_rate)) {
+            gb->apu_output.sample_cycles -= clock_rate;
+            render(gb);
+        }
+        return;
+    }
     
     if (unlikely(gb->apu.wave_channel.bugged_read_countdown)) {
         uint16_t cycles_left = cycles;
@@ -677,7 +718,7 @@ void GB_apu_run(GB_gameboy_t *gb, bool force)
             else {
                 /* Split it into two */
                 cycles -= gb->apu.noise_channel.dmg_delayed_start;
-                gb->apu.apu_cycles = gb->apu.noise_channel.dmg_delayed_start * 4;
+                gb->apu.apu_cycles = gb->apu.noise_channel.dmg_delayed_start;
                 GB_apu_run(gb, true);
             }
         }
@@ -854,6 +895,7 @@ void GB_apu_run(GB_gameboy_t *gb, bool force)
 void GB_apu_init(GB_gameboy_t *gb)
 {
     memset(&gb->apu, 0, sizeof(gb->apu));
+    gb->apu.apu_cycles_in_2mhz = true;
     gb->apu.lf_div = 1;
     gb->apu.wave_channel.shift = 4;
     /* APU glitch: When turning the APU on while DIV's bit 4 (or 5 in double speed mode) is on,
@@ -1154,6 +1196,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 memset(&gb->apu, 0, sizeof(gb->apu));
                 memset(gb->io_registers + GB_IO_NR10, 0, GB_IO_WAV_START - GB_IO_NR10);
                 gb->apu.global_enable = false;
+                gb->apu.apu_cycles_in_2mhz = true;
             }
 
             if (!GB_is_cgb(gb) && (value & 0x80)) {
@@ -1627,10 +1670,13 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
 
 void GB_set_sample_rate(GB_gameboy_t *gb, unsigned sample_rate)
 {
-
     gb->apu_output.sample_rate = sample_rate;
     if (sample_rate) {
         gb->apu_output.highpass_rate = pow(0.999958,  GB_get_clock_rate(gb) / (double)sample_rate);
+        gb->apu_output.max_cycles_per_sample = ceil(GB_get_clock_rate(gb) / 2.0 / sample_rate);
+    }
+    else {
+        gb->apu_output.max_cycles_per_sample = 0x400;
     }
 }
 
@@ -1643,6 +1689,7 @@ void GB_set_sample_rate_by_clocks(GB_gameboy_t *gb, double cycles_per_sample)
     }
     gb->apu_output.sample_rate = GB_get_clock_rate(gb) / cycles_per_sample * 2;
     gb->apu_output.highpass_rate = pow(0.999958, cycles_per_sample);
+    gb->apu_output.max_cycles_per_sample = ceil(cycles_per_sample / 4);
 }
 
 unsigned GB_get_sample_rate(GB_gameboy_t *gb)

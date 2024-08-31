@@ -1,18 +1,18 @@
 ; SameBoy CGB bootstrap ROM
 
-INCLUDE	"hardware.inc"
+include "sameboot.inc"
 
-SECTION "BootCode", ROM0[$0]
+SECTION "BootCode", ROM0[$0000]
 Start:
 ; Init stack pointer
-    ld sp, $fffe
+    ld sp, $FFFE
 
 ; Clear memory VRAM
-    call ClearMemoryPage8000
+    call ClearMemoryVRAM
 
 ; Clear OAM
-    ld h, $fe
-    ld c, $a0
+    ld h, HIGH(_OAMRAM)
+    ld c, sizeof_OAM_ATTRS * OAM_COUNT
 .clearOAMLoop
     ldi [hl], a
     dec c
@@ -20,8 +20,8 @@ Start:
 
 IF !DEF(CGB0)
 ; Init waveform
-    ld c, $10
-    ld hl, $FF30
+    ld c, 16
+    ld hl, _AUD3WAVERAM
 .waveformLoop
     ldi [hl], a
     cpl
@@ -30,22 +30,23 @@ IF !DEF(CGB0)
 ENDC
 
 ; Clear chosen input palette
-    ldh [InputPalette], a
+    ldh [hInputPalette], a
 ; Clear title checksum
-    ldh [TitleChecksum], a
+    ldh [hTitleChecksum], a
 
 ; Init Audio
-    ld a, $80
+    ld a, AUDENA_ON
     ldh [rNR52], a
+    assert AUDENA_ON == AUDLEN_DUTY_50
     ldh [rNR11], a
-    ld a, $f3
-    ldh [rNR12], a
-    ldh [rNR51], a
+    ld a, $F3
+    ldh [rNR12], a ; Envelope $F, decreasing, sweep $3
+    ldh [rNR51], a ; Channels 1+2+3+4 left, channels 1+2 right
     ld a, $77
-    ldh [rNR50], a
+    ldh [rNR50], a ; Volume $7, left and right
 
 ; Init BG palette
-    ld a, $fc
+    ld a, %11_11_11_00
     ldh [rBGP], a
 
 ; Load logo from ROM.
@@ -53,8 +54,8 @@ ENDC
 ; Tiles are ordered left to right, top to bottom.
 ; These tiles are not used, but are required for DMG compatibility. This is done
 ; by the original CGB Boot ROM as well.
-    ld de, $104 ; Logo start
-    ld hl, $8010 ; This is where we load the tiles in VRAM
+    ld de, NintendoLogo
+    ld hl, _VRAM + $10 ; This is where we load the tiles in VRAM
 
 .loadLogoLoop
     ld a, [de] ; Read 2 rows
@@ -62,14 +63,14 @@ ENDC
     call DoubleBitsAndWriteRowTwice
     inc de
     ld a, e
-    cp $34 ; End of logo
+    cp LOW(NintendoLogoEnd)
     jr nz, .loadLogoLoop
     call ReadTrademarkSymbol
 
 ; Clear the second VRAM bank
     ld a, 1
     ldh [rVBK], a
-    call ClearMemoryPage8000
+    call ClearMemoryVRAM
     call LoadTileset
 
     ld b, 3
@@ -78,12 +79,12 @@ IF DEF(FAST)
     ldh [rVBK], a
 ELSE
 ; Load Tilemap
-    ld hl, $98C2
+    ld hl, _SCRN0 + 6 * SCRN_VX_B + 2
     ld d, 3
     ld a, 8
 
 .tilemapLoop
-    ld c, $10
+    ld c, 16
 
 .tilemapRowLoop
 
@@ -117,8 +118,8 @@ ELSE
     dec d
 
     ld a, $38
-    ld l, $a7
-    ld bc, $0107
+    ld l, $A7
+    lb bc, 1, 7 ; $0107
     jr .tilemapRowLoop
 
 .write_with_palette
@@ -139,7 +140,7 @@ ENDC
     ; Expand Palettes
     ld de, AnimationColors
     ld c, 8
-    ld hl, BgPalettes
+    ld hl, hBgPalettes
     xor a
 .expandPalettesLoop:
     cpl
@@ -182,14 +183,14 @@ ENDC
     call LoadPalettesFromHRAM
 
     ; Turn on LCD
-    ld a, $91
+    ld a, LCDCF_ON | LCDCF_BLK01 | LCDCF_BGON
     ldh [rLCDC], a
 
 IF !DEF(FAST)
     call DoIntroAnimation
 
     ld a, 48 ; frames to wait after playing the chime
-    ldh [WaitLoopCounter], a
+    ldh [hWaitLoopCounter], a
     ld b, 4 ; frames to wait before playing the chime
     call WaitBFrames
 
@@ -199,17 +200,17 @@ IF !DEF(FAST)
     ld b, 5
     call WaitBFrames
     ; Play second sound
-    ld a, $c1
+    ld a, $C1
     call PlaySound
 
 .waitLoop
     call GetInputPaletteIndex
     call WaitFrame
-    ld hl, WaitLoopCounter
+    ld hl, hWaitLoopCounter
     dec [hl]
     jr nz, .waitLoop
 ELSE
-    ld a, $c1
+    ld a, $C1
     call PlaySound
 ENDC
     call Preboot
@@ -219,14 +220,19 @@ ENDC
     jr BootGame
 
 HDMAData:
-    db $D0, $00, $98, $A0, $12
-    db $D0, $00, $80, $00, $40
+MACRO hdma_data ; source, destination, length
+    db HIGH(\1), LOW(\1)
+    db HIGH(\2), LOW(\2)
+    db (\3)
+ENDM
+    hdma_data _RAMBANK, _SCRN0 + 5 * SCRN_VX_B + 0, 18
+    hdma_data _RAMBANK, _VRAM, 64
 
-SECTION "BootGame", ROM0[$fe]
+SECTION "BootGame", ROM0[$00FE]
 BootGame:
     ldh [rBANK], a ; unmap boot ROM
 
-SECTION "MoreStuff", ROM0[$200]
+SECTION "BootData", ROM0[$0200]
 ; Game Palettes Data
 TitleChecksums:
     db $00 ; Default
@@ -329,103 +335,107 @@ FirstChecksumWithDuplicate:
 ChecksumsEnd:
 
 PalettePerChecksum:
-MACRO palette_index ; palette, flags
-    db ((\1)) | (\2) ; | $80 means game requires DMG boot tilemap
+MACRO palette_index ; palette[, flags]
+    IF _NARG == 1
+        db (\1)
+    ELSE
+        db (\1) | (\2) ; flag $80 means game requires DMG boot tilemap
+    ENDC
 ENDM
-    palette_index 0, 0  ; Default Palette
-    palette_index 4, 0  ; ALLEY WAY
-    palette_index 5, 0  ; YAKUMAN
-    palette_index 35, 0 ; BASEBALL, (Game and Watch 2)
-    palette_index 34, 0 ; TENNIS
-    palette_index 3, 0  ; TETRIS
-    palette_index 31, 0 ; QIX
-    palette_index 15, 0 ; DR.MARIO
-    palette_index 10, 0 ; RADARMISSION
-    palette_index 5, 0  ; F1RACE
-    palette_index 19, 0 ; YOSSY NO TAMAGO
-    palette_index 36, 0 ;
-    palette_index 7, $80 ; X
-    palette_index 37, 0 ; MARIOLAND2
-    palette_index 30, 0 ; YOSSY NO COOKIE
-    palette_index 44, 0 ; ZELDA
-    palette_index 21, 0 ;
-    palette_index 32, 0 ;
-    palette_index 31, 0 ; TETRIS FLASH
-    palette_index 20, 0 ; DONKEY KONG
-    palette_index 5, 0  ; MARIO'S PICROSS
-    palette_index 33, 0 ;
-    palette_index 13, 0 ; POKEMON RED, (GAMEBOYCAMERA G)
-    palette_index 14, 0 ; POKEMON GREEN
-    palette_index 5, 0  ; PICROSS 2
-    palette_index 29, 0 ; YOSSY NO PANEPON
-    palette_index 5, 0  ; KIRAKIRA KIDS
-    palette_index 18, 0 ; GAMEBOY GALLERY
-    palette_index 9, 0  ; POCKETCAMERA
-    palette_index 3, 0  ;
-    palette_index 2, 0  ; BALLOON KID
-    palette_index 26, 0 ; KINGOFTHEZOO
-    palette_index 25, 0 ; DMG FOOTBALL
-    palette_index 25, 0 ; WORLD CUP
-    palette_index 41, 0 ; OTHELLO
-    palette_index 42, 0 ; SUPER RC PRO-AM
-    palette_index 26, 0 ; DYNABLASTER
-    palette_index 45, 0 ; BOY AND BLOB GB2
-    palette_index 42, 0 ; MEGAMAN
-    palette_index 45, 0 ; STAR WARS-NOA
-    palette_index 36, 0 ;
-    palette_index 38, 0 ; WAVERACE
+    palette_index  0 ; Default Palette
+    palette_index  4 ; ALLEY WAY
+    palette_index  5 ; YAKUMAN
+    palette_index 35 ; BASEBALL, (Game and Watch 2)
+    palette_index 34 ; TENNIS
+    palette_index  3 ; TETRIS
+    palette_index 31 ; QIX
+    palette_index 15 ; DR.MARIO
+    palette_index 10 ; RADARMISSION
+    palette_index  5 ; F1RACE
+    palette_index 19 ; YOSSY NO TAMAGO
+    palette_index 36 ;
+    palette_index  7, $80 ; X
+    palette_index 37 ; MARIOLAND2
+    palette_index 30 ; YOSSY NO COOKIE
+    palette_index 44 ; ZELDA
+    palette_index 21 ;
+    palette_index 32 ;
+    palette_index 31 ; TETRIS FLASH
+    palette_index 20 ; DONKEY KONG
+    palette_index  5 ; MARIO'S PICROSS
+    palette_index 33 ;
+    palette_index 13 ; POKEMON RED, (GAMEBOYCAMERA G)
+    palette_index 14 ; POKEMON GREEN
+    palette_index  5 ; PICROSS 2
+    palette_index 29 ; YOSSY NO PANEPON
+    palette_index  5 ; KIRAKIRA KIDS
+    palette_index 18 ; GAMEBOY GALLERY
+    palette_index  9 ; POCKETCAMERA
+    palette_index  3 ;
+    palette_index  2 ; BALLOON KID
+    palette_index 26 ; KINGOFTHEZOO
+    palette_index 25 ; DMG FOOTBALL
+    palette_index 25 ; WORLD CUP
+    palette_index 41 ; OTHELLO
+    palette_index 42 ; SUPER RC PRO-AM
+    palette_index 26 ; DYNABLASTER
+    palette_index 45 ; BOY AND BLOB GB2
+    palette_index 42 ; MEGAMAN
+    palette_index 45 ; STAR WARS-NOA
+    palette_index 36 ;
+    palette_index 38 ; WAVERACE
     palette_index 26, $80 ;
-    palette_index 42, 0 ; LOLO2
-    palette_index 30, 0 ; YOSHI'S COOKIE
-    palette_index 41, 0 ; MYSTIC QUEST
-    palette_index 34, 0 ;
-    palette_index 34, 0 ; TOPRANKINGTENNIS
-    palette_index 5, 0  ; MANSELL
-    palette_index 42, 0 ; MEGAMAN3
-    palette_index 6, 0  ; SPACE INVADERS
-    palette_index 5, 0  ; GAME&WATCH
-    palette_index 33, 0 ; DONKEYKONGLAND95
-    palette_index 25, 0 ; ASTEROIDS/MISCMD
-    palette_index 42, 0 ; STREET FIGHTER 2
-    palette_index 42, 0 ; DEFENDER/JOUST
-    palette_index 40, 0 ; KILLERINSTINCT95
-    palette_index 2, 0  ; TETRIS BLAST
-    palette_index 16, 0 ; PINOCCHIO
-    palette_index 25, 0 ;
-    palette_index 42, 0 ; BA.TOSHINDEN
-    palette_index 42, 0 ; NETTOU KOF 95
-    palette_index 5, 0  ;
-    palette_index 0, 0  ; TETRIS PLUS
-    palette_index 39, 0 ; DONKEYKONGLAND 3
-    palette_index 36, 0 ;
-    palette_index 22, 0 ; SUPER MARIOLAND
-    palette_index 25, 0 ; GOLF
-    palette_index 6, 0  ; SOLARSTRIKER
-    palette_index 32, 0 ; GBWARS
-    palette_index 12, 0 ; KAERUNOTAMENI
-    palette_index 36, 0 ;
-    palette_index 11, 0 ; POKEMON BLUE
-    palette_index 39, 0 ; DONKEYKONGLAND
-    palette_index 18, 0 ; GAMEBOY GALLERY2
-    palette_index 39, 0 ; DONKEYKONGLAND 2
-    palette_index 24, 0 ; KID ICARUS
-    palette_index 31, 0 ; TETRIS2
-    palette_index 50, 0 ;
-    palette_index 17, 0 ; MOGURANYA
-    palette_index 46, 0 ;
-    palette_index 6, 0  ; GALAGA&GALAXIAN
-    palette_index 27, 0 ; BT2RAGNAROKWORLD
-    palette_index 0, 0  ; KEN GRIFFEY JR
-    palette_index 47, 0 ;
-    palette_index 41, 0 ; MAGNETIC SOCCER
-    palette_index 41, 0 ; VEGAS STAKES
-    palette_index 0, 0  ;
-    palette_index 0, 0  ; MILLI/CENTI/PEDE
-    palette_index 19, 0 ; MARIO & YOSHI
-    palette_index 34, 0 ; SOCCER
-    palette_index 23, 0 ; POKEBOM
-    palette_index 18, 0 ; G&W GALLERY
-    palette_index 29, 0 ; TETRIS ATTACK
+    palette_index 42 ; LOLO2
+    palette_index 30 ; YOSHI'S COOKIE
+    palette_index 41 ; MYSTIC QUEST
+    palette_index 34 ;
+    palette_index 34 ; TOPRANKINGTENNIS
+    palette_index  5 ; MANSELL
+    palette_index 42 ; MEGAMAN3
+    palette_index  6 ; SPACE INVADERS
+    palette_index  5 ; GAME&WATCH
+    palette_index 33 ; DONKEYKONGLAND95
+    palette_index 25 ; ASTEROIDS/MISCMD
+    palette_index 42 ; STREET FIGHTER 2
+    palette_index 42 ; DEFENDER/JOUST
+    palette_index 40 ; KILLERINSTINCT95
+    palette_index  2 ; TETRIS BLAST
+    palette_index 16 ; PINOCCHIO
+    palette_index 25 ;
+    palette_index 42 ; BA.TOSHINDEN
+    palette_index 42 ; NETTOU KOF 95
+    palette_index  5 ;
+    palette_index  0 ; TETRIS PLUS
+    palette_index 39 ; DONKEYKONGLAND 3
+    palette_index 36 ;
+    palette_index 22 ; SUPER MARIOLAND
+    palette_index 25 ; GOLF
+    palette_index  6 ; SOLARSTRIKER
+    palette_index 32 ; GBWARS
+    palette_index 12 ; KAERUNOTAMENI
+    palette_index 36 ;
+    palette_index 11 ; POKEMON BLUE
+    palette_index 39 ; DONKEYKONGLAND
+    palette_index 18 ; GAMEBOY GALLERY2
+    palette_index 39 ; DONKEYKONGLAND 2
+    palette_index 24 ; KID ICARUS
+    palette_index 31 ; TETRIS2
+    palette_index 50 ;
+    palette_index 17 ; MOGURANYA
+    palette_index 46 ;
+    palette_index  6 ; GALAGA&GALAXIAN
+    palette_index 27 ; BT2RAGNAROKWORLD
+    palette_index  0 ; KEN GRIFFEY JR
+    palette_index 47 ;
+    palette_index 41 ; MAGNETIC SOCCER
+    palette_index 41 ; VEGAS STAKES
+    palette_index  0 ;
+    palette_index  0 ; MILLI/CENTI/PEDE
+    palette_index 19 ; MARIO & YOSHI
+    palette_index 34 ; SOCCER
+    palette_index 23 ; POKEBOM
+    palette_index 18 ; G&W GALLERY
+    palette_index 29 ; TETRIS ATTACK
 
 Dups4thLetterArray:
     db "BEFAARBEKEK R-URAR INAILICE R"
@@ -439,119 +449,133 @@ ENDM
 MACRO raw_palette_comb ; Obj0, Obj1, Bg
     db (\1) * 2, (\2) * 2, (\3) * 2
 ENDM
-    palette_comb 4, 4, 29
-    palette_comb 18, 18, 18
-    palette_comb 20, 20, 20
-    palette_comb 24, 24, 24
-    palette_comb 9, 9, 9
-    palette_comb 0, 0, 0
-    palette_comb 27, 27, 27
-    palette_comb 5, 5, 5
-    palette_comb 12, 12, 12
-    palette_comb 26, 26, 26
-    palette_comb 16, 8, 8
-    palette_comb 4, 28, 28
-    palette_comb 4, 2, 2
-    palette_comb 3, 4, 4
-    palette_comb 4, 29, 29
-    palette_comb 28, 4, 28
-    palette_comb 2, 17, 2
-    palette_comb 16, 16, 8
-    palette_comb 4, 4, 7
-    palette_comb 4, 4, 18
-    palette_comb 4, 4, 20
-    palette_comb 19, 19, 9
-    raw_palette_comb 4 * 4 - 1, 4 * 4 - 1, 11 * 4
-    palette_comb 17, 17, 2
-    palette_comb 4, 4, 2
-    palette_comb 4, 4, 3
-    palette_comb 28, 28, 0
-    palette_comb 3, 3, 0
-    palette_comb 0, 0, 1
-    palette_comb 18, 22, 18
-    palette_comb 20, 22, 20
-    palette_comb 24, 22, 24
-    palette_comb 16, 22, 8
-    palette_comb 17, 4, 13
-    raw_palette_comb 28 * 4 - 1, 0 * 4, 14 * 4
-    raw_palette_comb 28 * 4 - 1, 4 * 4, 15 * 4
-    raw_palette_comb 19 * 4, 23 * 4 - 1, 9 * 4
-    palette_comb 16, 28, 10
-    palette_comb 4, 23, 28
-    palette_comb 17, 22, 2
-    palette_comb 4, 0, 2
-    palette_comb 4, 28, 3
-    palette_comb 28, 3, 0
-    palette_comb 3, 28, 4
-    palette_comb 21, 28, 4
-    palette_comb 3, 28, 0
-    palette_comb 25, 3, 28
-    palette_comb 0, 28, 8
-    palette_comb 4, 3, 28
-    palette_comb 28, 3, 6
-    palette_comb 4, 28, 29
+    palette_comb  4,  4, 29 ;  0, Right + A
+    palette_comb 18, 18, 18 ;  1, Right
+    palette_comb 20, 20, 20 ;  2
+    palette_comb 24, 24, 24 ;  3, Down + A
+    palette_comb  9,  9,  9 ;  4
+    palette_comb  0,  0,  0 ;  5, Up
+    palette_comb 27, 27, 27 ;  6, Right + B
+    palette_comb  5,  5,  5 ;  7, Left + B
+    palette_comb 12, 12, 12 ;  8, Down
+    palette_comb 26, 26, 26 ;  9
+    palette_comb 16,  8,  8 ; 10
+    palette_comb  4, 28, 28 ; 11
+    palette_comb  4,  2,  2 ; 12
+    palette_comb  3,  4,  4 ; 13
+    palette_comb  4, 29, 29 ; 14
+    palette_comb 28,  4, 28 ; 15
+    palette_comb  2, 17,  2 ; 16
+    palette_comb 16, 16,  8 ; 17
+    palette_comb  4,  4,  7 ; 18
+    palette_comb  4,  4, 18 ; 19
+    palette_comb  4,  4, 20 ; 20
+    palette_comb 19, 19,  9 ; 21
+    raw_palette_comb 4 * 4 - 1, 4 * 4 - 1, 11 * 4 ; 22
+    palette_comb 17, 17,  2 ; 23
+    palette_comb  4,  4,  2 ; 24
+    palette_comb  4,  4,  3 ; 25
+    palette_comb 28, 28,  0 ; 26
+    palette_comb  3,  3,  0 ; 27
+    palette_comb  0,  0,  1 ; 28, Up + B
+    palette_comb 18, 22, 18 ; 29
+    palette_comb 20, 22, 20 ; 30
+    palette_comb 24, 22, 24 ; 31
+    palette_comb 16, 22,  8 ; 32
+    palette_comb 17,  4, 13 ; 33
+    raw_palette_comb 28 * 4 - 1, 0 * 4, 14 * 4 ; 34
+    raw_palette_comb 28 * 4 - 1, 4 * 4, 15 * 4 ; 35
+    raw_palette_comb 19 * 4, 23 * 4 - 1, 9 * 4 ; 36
+    palette_comb 16, 28, 10 ; 37
+    palette_comb  4, 23, 28 ; 38
+    palette_comb 17, 22,  2 ; 39
+    palette_comb  4,  0,  2 ; 40, Left + A
+    palette_comb  4, 28,  3 ; 41
+    palette_comb 28,  3,  0 ; 42
+    palette_comb  3, 28,  4 ; 43, Up + A
+    palette_comb 21, 28,  4 ; 44
+    palette_comb  3, 28,  0 ; 45
+    palette_comb 25,  3, 28 ; 46
+    palette_comb  0, 28,  8 ; 47
+    palette_comb  4,  3, 28 ; 48, Left
+    palette_comb 28,  3,  6 ; 49, Down + B
+    palette_comb  4, 28, 29 ; 50
     ; SameBoy "Exclusives"
-    palette_comb 30, 30, 30 ; CGA
-    palette_comb 31, 31, 31 ; DMG LCD
-    palette_comb 28, 4, 1
-    palette_comb 0, 0, 2
+    palette_comb 30, 30, 30 ; 51, Right + A + B, CGA
+    palette_comb 31, 31, 31 ; 52, Left + A + B, DMG LCD
+    palette_comb 28,  4,  1 ; 53, Up + A + B
+    palette_comb  0,  0,  2 ; 54, Down + A + B
 
 Palettes:
-    dw $7FFF, $32BF, $00D0, $0000
-    dw $639F, $4279, $15B0, $04CB
-    dw $7FFF, $6E31, $454A, $0000
-    dw $7FFF, $1BEF, $0200, $0000
-    dw $7FFF, $421F, $1CF2, $0000
-    dw $7FFF, $5294, $294A, $0000
-    dw $7FFF, $03FF, $012F, $0000
-    dw $7FFF, $03EF, $01D6, $0000
-    dw $7FFF, $42B5, $3DC8, $0000
-    dw $7E74, $03FF, $0180, $0000
-    dw $67FF, $77AC, $1A13, $2D6B
-    dw $7ED6, $4BFF, $2175, $0000
-    dw $53FF, $4A5F, $7E52, $0000
-    dw $4FFF, $7ED2, $3A4C, $1CE0
-    dw $03ED, $7FFF, $255F, $0000
-    dw $036A, $021F, $03FF, $7FFF
-    dw $7FFF, $01DF, $0112, $0000
-    dw $231F, $035F, $00F2, $0009
-    dw $7FFF, $03EA, $011F, $0000
-    dw $299F, $001A, $000C, $0000
-    dw $7FFF, $027F, $001F, $0000
-    dw $7FFF, $03E0, $0206, $0120
-    dw $7FFF, $7EEB, $001F, $7C00
-    dw $7FFF, $3FFF, $7E00, $001F
-    dw $7FFF, $03FF, $001F, $0000
-    dw $03FF, $001F, $000C, $0000
-    dw $7FFF, $033F, $0193, $0000
-    dw $0000, $4200, $037F, $7FFF
-    dw $7FFF, $7E8C, $7C00, $0000
-    dw $7FFF, $1BEF, $6180, $0000
+    dw $7FFF, $32BF, $00D0, $0000 ;  0
+    dw $639F, $4279, $15B0, $04CB ;  1
+    dw $7FFF, $6E31, $454A, $0000 ;  2
+    dw $7FFF, $1BEF, $0200, $0000 ;  3
+    dw $7FFF, $421F, $1CF2, $0000 ;  4
+    dw $7FFF, $5294, $294A, $0000 ;  5
+    dw $7FFF, $03FF, $012F, $0000 ;  6
+    dw $7FFF, $03EF, $01D6, $0000 ;  7
+    dw $7FFF, $42B5, $3DC8, $0000 ;  8
+    dw $7E74, $03FF, $0180, $0000 ;  9
+    dw $67FF, $77AC, $1A13, $2D6B ; 10
+    dw $7ED6, $4BFF, $2175, $0000 ; 11
+    dw $53FF, $4A5F, $7E52, $0000 ; 12
+    dw $4FFF, $7ED2, $3A4C, $1CE0 ; 13
+    dw $03ED, $7FFF, $255F, $0000 ; 14
+    dw $036A, $021F, $03FF, $7FFF ; 15
+    dw $7FFF, $01DF, $0112, $0000 ; 16
+    dw $231F, $035F, $00F2, $0009 ; 17
+    dw $7FFF, $03EA, $011F, $0000 ; 18
+    dw $299F, $001A, $000C, $0000 ; 19
+    dw $7FFF, $027F, $001F, $0000 ; 20
+    dw $7FFF, $03E0, $0206, $0120 ; 21
+    dw $7FFF, $7EEB, $001F, $7C00 ; 22
+    dw $7FFF, $3FFF, $7E00, $001F ; 23
+    dw $7FFF, $03FF, $001F, $0000 ; 24
+    dw $03FF, $001F, $000C, $0000 ; 25
+    dw $7FFF, $033F, $0193, $0000 ; 26
+    dw $0000, $4200, $037F, $7FFF ; 27
+    dw $7FFF, $7E8C, $7C00, $0000 ; 28
+    dw $7FFF, $1BEF, $6180, $0000 ; 29
     ; SameBoy "Exclusives"
-    dw $7FFF, $7FEA, $7D5F, $0000 ; CGA 1
-    dw $4778, $3290, $1D87, $0861 ; DMG LCD
+    dw $7FFF, $7FEA, $7D5F, $0000 ; 30, CGA 1
+    dw $4778, $3290, $1D87, $0861 ; 31, DMG LCD
 
 KeyCombinationPalettes:
-    db 1  * 3  ; Right
-    db 48 * 3  ; Left
-    db 5  * 3  ; Up
-    db 8  * 3  ; Down
-    db 0  * 3  ; Right + A
-    db 40 * 3  ; Left + A
-    db 43 * 3  ; Up + A
-    db 3  * 3  ; Down + A
-    db 6  * 3  ; Right + B
-    db 7  * 3  ; Left + B
-    db 28 * 3  ; Up + B
-    db 49 * 3  ; Down + B
+MACRO palette_comb_id ; PaletteCombinations ID
+    db (\1) * 3
+ENDM
+    palette_comb_id  1 ;  1, Right
+    palette_comb_id 48 ;  2, Left
+    palette_comb_id  5 ;  3, Up
+    palette_comb_id  8 ;  4, Down
+    palette_comb_id  0 ;  5, Right + A
+    palette_comb_id 40 ;  6, Left + A
+    palette_comb_id 43 ;  7, Up + A
+    palette_comb_id  3 ;  8, Down + A
+    palette_comb_id  6 ;  9, Right + B
+    palette_comb_id  7 ; 10, Left + B
+    palette_comb_id 28 ; 11, Up + B
+    palette_comb_id 49 ; 12, Down + B
     ; SameBoy "Exclusives"
-    db 51 * 3 ; Right + A + B
-    db 52 * 3 ; Left + A + B
-    db 53 * 3 ; Up + A + B
-    db 54 * 3 ; Down + A + B
+    palette_comb_id 51 ; 13, Right + A + B
+    palette_comb_id 52 ; 14, Left + A + B
+    palette_comb_id 53 ; 15, Up + A + B
+    palette_comb_id 54 ; 16, Down + A + B
 
 TrademarkSymbol:
-    db $3c,$42,$b9,$a5,$b9,$a5,$42,$3c
+    pusho
+    opt b.X
+    db %..XXXX..
+    db %.X....X.
+    db %X.XXX..X
+    db %X.X..X.X
+    db %X.XXX..X
+    db %X.X..X.X
+    db %.X....X.
+    db %..XXXX..
+    popo
+TrademarkSymbolEnd:
 
 SameBoyLogo:
     incbin "SameBoyLogo.pb12"
@@ -570,7 +594,7 @@ IF DEF(AGB)
 ELSE
     dw $5500 ; Blue
 ENDC
-    
+
 AnimationColorsEnd:
 
 ; Helper Functions
@@ -598,7 +622,7 @@ DoubleBitsAndWriteRowTwice:
 
 WaitFrame:
     push hl
-    ld hl, $FF0F
+    ld hl, rIF
     res 0, [hl]
 .wait
     bit 0, [hl]
@@ -619,8 +643,8 @@ PlaySound:
     ldh [rNR14], a
     ret
 
-ClearMemoryPage8000:
-    ld hl, $8000
+ClearMemoryVRAM:
+    ld hl, _VRAM
 ; Clear from HL to HL | 0x2000
 ClearMemoryPage:
     xor a
@@ -631,7 +655,7 @@ ClearMemoryPage:
 
 ReadTwoTileLines:
     call ReadTileLine
-; c = $f0 for even lines, $f for odd lines.
+; c = $F0 for even lines, $0F for odd lines.
 ReadTileLine:
     ld a, [de]
     and c
@@ -665,13 +689,10 @@ ReadCGBLogoHalfTile:
 ; LoadTileset using PB12 codec, 2020 Jakub Kądziołka
 ; (based on PB8 codec, 2019 Damian Yerrick)
 
-DEF SameBoyLogo_dst = $8080
-DEF SameBoyLogo_length = (128 * 24) / 64
-
 LoadTileset:
-    ld hl, SameBoyLogo
-    ld de, SameBoyLogo_dst - 1
-    ld c, SameBoyLogo_length
+    ld hl, SameBoyLogo         ; source
+    ld de, _VRAM + $80 - 1     ; destination
+    ld c, (128 * 24) / (8 * 8) ; length
 .refill
     ; Register map for PB12 decompression
     ; HL: source address in boot ROM
@@ -709,13 +730,13 @@ LoadTileset:
     ld c, a
     jr nc, .shift_left
     srl a
-    db $fe ; eat the add a with cp d8
+    db $FE ; eat the `add a` with `cp d8`
 .shift_left
     add a
     sla b
     jr c, .go_and
     or c
-    db $fe ; eat the and c with cp d8
+    db $FE ; eat the `and c` with `cp d8`
 .go_and
     and c
     jr .got_byte
@@ -739,26 +760,26 @@ LoadTileset:
     ld l, $80
 
 ; Copy (unresized) ROM logo
-    ld de, $104
+    ld de, NintendoLogo
 .CGBROMLogoLoop
-    ld c, $f0
+    ld c, $F0
     call ReadCGBLogoHalfTile
     add a, 22
     ld e, a
     call ReadCGBLogoHalfTile
     sub a, 22
     ld e, a
-    cp $1c
+    cp $1C
     jr nz, .CGBROMLogoLoop
     inc hl
     ; fallthrough
 ReadTrademarkSymbol:
     ld de, TrademarkSymbol
-    ld c,$08
+    ld c, TrademarkSymbolEnd - TrademarkSymbol
 .loadTrademarkSymbolLoop:
-    ld a,[de]
+    ld a, [de]
     inc de
-    ldi [hl],a
+    ldi [hl], a
     inc hl
     dec c
     jr nz, .loadTrademarkSymbolLoop
@@ -772,7 +793,7 @@ DoIntroAnimation:
 .animationLoop
     ld b, 2
     call WaitBFrames
-    ld hl, $98C0
+    ld hl, _SCRN0 + 6 * SCRN_VX_B + 0
     ld c, 3 ; Row count
 .loop
     ld a, [hl]
@@ -799,8 +820,8 @@ Preboot:
 IF !DEF(FAST)
     ld b, 32 ; 32 times to fade
 .fadeLoop
-    ld c, 32 ; 32 colors to fade
-    ld hl, BgPalettes
+    ld c, (hBgPalettesEnd - hBgPalettes) / 2 ; 32 colors to fade
+    ld hl, hBgPalettes
 .frameLoop
     push bc
 
@@ -810,7 +831,7 @@ IF !DEF(FAST)
     ld a, [hld]
     ld d, a
     ; RGB(1,1,1)
-    ld bc, $421
+    ld bc, $0421
 
    ; Is blue maxed?
     ld a, e
@@ -859,7 +880,7 @@ ENDC
     ld a, 2
     ldh [rSVBK], a
     ; Clear RAM Bank 2 (Like the original boot ROM)
-    ld hl, $D000
+    ld hl, _RAMBANK
     call ClearMemoryPage
     inc a
     call ClearVRAMViaHDMA
@@ -873,19 +894,19 @@ ENDC
     ; Final values for CGB mode
     ld d, a
     ld e, c
-    ld l, $0d
+    ld l, $0D
 
-    ld a, [$143]
+    ld a, [CGBFlag]
     bit 7, a
     call z, EmulateDMG
     bit 7, a
 
     ldh [rKEY0], a ; write CGB compatibility byte, CGB mode
-    ldh a, [TitleChecksum]
+    ldh a, [hTitleChecksum]
     ld b, a
 
     jr z, .skipDMGForCGBCheck
-    ldh a, [InputPalette]
+    ldh a, [hInputPalette]
     and a
     jr nz, .emulateDMGForCGBGame
 .skipDMGForCGBCheck
@@ -894,17 +915,17 @@ IF DEF(AGB)
     ; AF = $1100, C = 0
     xor a
     ld c, a
-    add a, $11
+    add a, BOOTUP_A_CGB
     ld h, c
-    ; B is set to 1 after ret
+    ; B is set to BOOTUP_B_AGB (1) after ret
 ELSE
     ; Set registers to match the original CGB boot
     ; AF = $1180, C = 0
     xor a
     ld c, a
-    ld a, $11
+    ld a, BOOTUP_A_CGB
     ld h, c
-    ; B is set to the title checksum
+    ; B is set to the title checksum (BOOTUP_B_CGB, 0)
 ENDC
     ret
 
@@ -933,7 +954,7 @@ EmulateDMG:
     add b
     add b
     ld b, a
-    ldh a, [InputPalette]
+    ldh a, [hInputPalette]
     and a
     jr z, .nothingDown
     call GetKeyComboPalette
@@ -946,19 +967,19 @@ EmulateDMG:
     ld a, 4
     ; Set the final values for DMG mode
     ld de, 8
-    ld l, $7c
+    ld l, $7C
     ret
 
 GetPaletteIndex:
-    ld hl, $14B
-    ld a, [hl] ; Old Licensee
+    ld hl, OldLicenseeCode
+    ld a, [hl]
     cp $33
     jr z, .newLicensee
     dec a ; 1 = Nintendo
     jr nz, .notNintendo
     jr .doChecksum
 .newLicensee
-    ld l, $44
+    ld l, LOW(NewLicenseeCode)
     ld a, [hli]
     cp "0"
     jr nz, .notNintendo
@@ -967,16 +988,15 @@ GetPaletteIndex:
     jr nz, .notNintendo
 
 .doChecksum
-    ld l, $34
-    ld c, $10
+    ld l, LOW(Title)
+    ld c, 16
     xor a
-
 .checksumLoop
     add [hl]
     inc l
     dec c
     jr nz, .checksumLoop
-    ldh [TitleChecksum], a
+    ldh [hTitleChecksum], a
     ld b, a
 
     ; c = 0
@@ -1002,7 +1022,7 @@ GetPaletteIndex:
     ld a, [hl]
     pop hl
     ld c, a
-    ld a, [$134 + 3] ; Get 4th letter
+    ld a, [Title + 3] ; Get 4th letter
     cp c
     jr nz, .searchLoop ; Not a match, continue
 
@@ -1011,7 +1031,7 @@ GetPaletteIndex:
     add PalettePerChecksum - TitleChecksums - 1; -1 since hl was incremented
     ld l, a
     ld a, b
-    ldh [TitleChecksum], a
+    ldh [hTitleChecksum], a
     ld a, [hl]
     ret
 
@@ -1039,13 +1059,13 @@ LoadPalettesFromIndex: ; a = index of combination
     ; b is already 0
     ld c, a
     add hl, bc
-    ld d, 8
-    ld c, $6A
+    ld d, 4 * 2
+    ld c, LOW(rOBPI)
     call LoadPalettes
     pop hl
-    bit 3, e
+    bit OAMB_BANK1, e
     jr nz, .loadBGPalette
-    ld e, 8
+    ld e, OAMF_BANK1
     jr .loadObjPalette
 .loadBGPalette
     ;BG Palette
@@ -1057,13 +1077,11 @@ LoadPalettesFromIndex: ; a = index of combination
     jr LoadBGPalettes
 
 LoadPalettesFromHRAM:
-    ld hl, BgPalettes
-    ld d, 64
-
+    ld hl, hBgPalettes
+    ld d, hBgPalettesEnd - hBgPalettes
 LoadBGPalettes:
     ld e, 0
     ld c, LOW(rBGPI)
-
 LoadPalettes:
     ld a, $80
     or e
@@ -1081,7 +1099,7 @@ ClearVRAMViaHDMA:
     ld hl, HDMAData
 _ClearVRAMViaHDMA:
     call WaitFrame ; Wait for vblank
-    ld c, $51
+    ld c, LOW(rHDMA1)
     ld b, 5
 .loop
     ld a, [hli]
@@ -1093,7 +1111,7 @@ _ClearVRAMViaHDMA:
 
 ; clobbers AF and HL
 GetInputPaletteIndex:
-    ld a, $20 ; Select directions
+    ld a, P1F_GET_DPAD
     ldh [rJOYP], a
     ldh a, [rJOYP]
     cpl
@@ -1108,7 +1126,7 @@ GetInputPaletteIndex:
 
     ; c = 1: Right, 2: Left, 3: Up, 4: Down
 
-    ld a, $10 ; Select buttons
+    ld a, P1F_GET_BTN
     ldh [rJOYP], a
     ldh a, [rJOYP]
     cpl
@@ -1117,11 +1135,11 @@ GetInputPaletteIndex:
     and $C
     add l
     ld l, a
-    ldh a, [InputPalette]
+    ldh a, [hInputPalette]
     cp l
     ret z ; No change, don't load
     ld a, l
-    ldh [InputPalette], a
+    ldh [hInputPalette], a
     ; Slide into change Animation Palette
 
 ChangeAnimationPalette:
@@ -1144,21 +1162,21 @@ ChangeAnimationPalette:
     ld a, [hli]
 
     push hl
-    ld hl, BgPalettes ; First color, all palettes
+    ld hl, hBgPalettes ; First color, all palettes
     call ReplaceColorInAllPalettes
-    ld l, LOW(BgPalettes + 2)  ; Second color, all palettes
+    ld l, LOW(hBgPalettes + 2)  ; Second color, all palettes
     call ReplaceColorInAllPalettes
     pop hl
-    ldh [BgPalettes + 6], a ; Fourth color, first palette
+    ldh [hBgPalettes + 6], a ; Fourth color, first palette
 
     ld a, [hli]
     push hl
-    ld hl, BgPalettes + 1 ; First color, all palettes
+    ld hl, hBgPalettes + 1 ; First color, all palettes
     call ReplaceColorInAllPalettes
-    ld l, LOW(BgPalettes + 3) ; Second color, all palettes
+    ld l, LOW(hBgPalettes + 3) ; Second color, all palettes
     call ReplaceColorInAllPalettes
     pop hl
-    ldh [BgPalettes + 7], a ; Fourth color, first palette
+    ldh [hBgPalettes + 7], a ; Fourth color, first palette
 
     pop af
     jr z, .isNotWhite
@@ -1166,41 +1184,41 @@ ChangeAnimationPalette:
     inc hl
 .isNotWhite
     ; Mixing code by ISSOtm
-    ldh a, [BgPalettes + 7 * 8 + 2]
+    ldh a, [hBgPalettes + 7 * 8 + 2]
     and ~$21
     ld b, a
     ld a, [hli]
     and ~$21
     add a, b
     ld b, a
-    ld a, [BgPalettes + 7 * 8 + 3]
+    ld a, [hBgPalettes + 7 * 8 + 3]
     res 2, a ; and ~$04, but not touching carry
     ld c, [hl]
     res 2, c ; and ~$04, but not touching carry
     adc a, c
     rra ; Carry sort of "extends" the accumulator, we're bringing that bit back home
-    ld [BgPalettes + 7 * 8 + 3], a
+    ld [hBgPalettes + 7 * 8 + 3], a
     ld a, b
     rra
-    ld [BgPalettes + 7 * 8 + 2], a
+    ld [hBgPalettes + 7 * 8 + 2], a
     dec l
 
     ld a, [hli]
-    ldh [BgPalettes + 7 * 8 + 6], a ; Fourth color, 7th palette
+    ldh [hBgPalettes + 7 * 8 + 6], a ; Fourth color, 7th palette
     ld a, [hli]
-    ldh [BgPalettes + 7 * 8 + 7], a ; Fourth color, 7th palette
+    ldh [hBgPalettes + 7 * 8 + 7], a ; Fourth color, 7th palette
 
     ld a, [hli]
-    ldh [BgPalettes + 4], a ; Third color, first palette
+    ldh [hBgPalettes + 4], a ; Third color, first palette
     ld a, [hli]
-    ldh [BgPalettes + 5], a ; Third color, first palette
+    ldh [hBgPalettes + 5], a ; Third color, first palette
 
 
     call WaitFrame
     call LoadPalettesFromHRAM
     ; Delay the wait loop while the user is selecting a palette
     ld a, 48
-    ldh [WaitLoopCounter], a
+    ldh [hWaitLoopCounter], a
     pop de
     pop bc
     ret
@@ -1218,34 +1236,35 @@ ReplaceColorInAllPalettes:
 LoadDMGTilemap:
     push af
     call WaitFrame
-    ld a, $19      ; Trademark symbol
-    ld [$9910], a ; ... put in the superscript position
-    ld hl,$992f   ; Bottom right corner of the logo
-    ld c,$c       ; Tiles in a logo row
+    ld a, $19                           ; Trademark symbol tile ID
+    ld [_SCRN0 + 8 * SCRN_VX_B + 16], a ; ... put in the superscript position
+    ld hl, _SCRN0 + 9 * SCRN_VX_B + 15  ; Bottom right corner of the logo
+    ld c, 12                            ; Tiles in a logo row
 .tilemapLoop
     dec a
     jr z, .tilemapDone
     ldd [hl], a
     dec c
     jr nz, .tilemapLoop
-    ld l, $0f ; Jump to top row
+    ld l, $0F ; Jump to top row
     jr .tilemapLoop
 .tilemapDone
     pop af
     ret
 
 BootEnd:
-IF BootEnd > $900
+IF BootEnd > $0900
     FAIL "BootROM overflowed: {BootEnd}"
 ENDC
     ds $100 + $800 - @ ; Ensure that the ROM is padded up to standard size.
 
-SECTION "HRAM", HRAM[$FF80]
-TitleChecksum:
+SECTION "HRAM", HRAM[_HRAM]
+hTitleChecksum:
     ds 1
-BgPalettes:
+hBgPalettes:
     ds 8 * 4 * 2
-InputPalette:
+hBgPalettesEnd:
+hInputPalette:
     ds 1
-WaitLoopCounter:
+hWaitLoopCounter:
     ds 1

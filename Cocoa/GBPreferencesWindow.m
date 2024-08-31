@@ -40,16 +40,16 @@ static inline NSString *keyEquivalentString(NSMenuItem *item)
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
 {
     if (self.playerListButton.selectedTag == 0) {
-        return GBButtonCount;
+        return GBKeyboardButtonCount;
     }
-    return GBGameBoyButtonCount;
+    return GBPerPlayerButtonCount;
 }
 
 - (unsigned) usesForKey:(unsigned) key
 {
     unsigned ret = 0;
     for (unsigned player = 4; player--;) {
-        for (unsigned button = player == 0? GBButtonCount:GBGameBoyButtonCount; button--;) {
+        for (unsigned button = player == 0? GBKeyboardButtonCount:GBPerPlayerButtonCount; button--;) {
             NSNumber *other = [[NSUserDefaults standardUserDefaults] valueForKey:button_to_preference_name(button, player)];
             if (other && [other unsignedIntValue] == key) {
                 ret++;
@@ -205,7 +205,7 @@ static inline NSString *keyEquivalentString(NSMenuItem *item)
     if (joystick_configuration_state == GBUnderclock) {
         [self.configureJoypadButton setTitle:@"Press Button for Slo-Mo"]; // Full name is too long :<
     }
-    else if (joystick_configuration_state < GBJoypadButtonCount) {
+    else if (joystick_configuration_state < GBTotalButtonCount) {
         [self.configureJoypadButton setTitle:[NSString stringWithFormat:@"Press Button for %@", GBButtonNames[joystick_configuration_state]]];
     }
     else {
@@ -227,7 +227,7 @@ static inline NSString *keyEquivalentString(NSMenuItem *item)
         
     if (!button.isPressed) return;
     if (joystick_configuration_state == -1) return;
-    if (joystick_configuration_state == GBJoypadButtonCount) return;
+    if (joystick_configuration_state == GBTotalButtonCount) return;
     if (!joystick_being_configured) {
         joystick_being_configured = controller.uniqueID;
     }
@@ -266,6 +266,8 @@ static inline NSString *keyEquivalentString(NSMenuItem *item)
     [GBB] = JOYButtonUsageB,
     [GBSelect] = JOYButtonUsageSelect,
     [GBStart] = JOYButtonUsageStart,
+    [GBRapidA] = GBJoyKitRapidA,
+    [GBRapidB] = GBJoyKitRapidB,
     [GBTurbo] = JOYButtonUsageL1,
     [GBRewind] = JOYButtonUsageL2,
     [GBUnderclock] = JOYButtonUsageR1,

@@ -32,5 +32,5 @@ typedef enum {
 - (void) createInternalView;
 - (uint32_t *)currentBuffer;
 - (uint32_t *)previousBuffer;
-
+- (instancetype)mirroredView;
 @end

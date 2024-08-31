@@ -11,6 +11,7 @@
 #import "GBTerminalTextFieldCell.h"
 #import "BigSurToolbar.h"
 #import "GBPaletteEditorController.h"
+#import "GBCheatSearchController.h"
 #import "GBObjectView.h"
 #import "GBPaletteView.h"
 #import "GBHexStatusBarRepresenter.h"
@@ -48,16 +49,6 @@
 /* Todo: The general Objective-C coding style conflicts with SameBoy's. This file needs a cleanup. */
 /* Todo: Split into category files! This is so messy!!! */
 
-enum model {
-    MODEL_NONE,
-    MODEL_DMG,
-    MODEL_CGB,
-    MODEL_AGB,
-    MODEL_SGB,
-    MODEL_MGB,
-    
-    MODEL_QUICK_RESET = -1,
-};
 
 @interface Document ()
 @property GBAudioClient *audioClient;
@@ -100,6 +91,7 @@ enum model {
     bool _logToSideView;
     bool _shouldClearSideView;
     enum model _currentModel;
+    bool _usesAutoModel;
     
     bool _rewind;
     bool _modelsChanging;
@@ -126,6 +118,8 @@ enum model {
     
     NSDate *_fileModificationTime;
     __weak NSThread *_emulationThread;
+    
+    GBCheatSearchController *_cheatSearchController;
 }
 
 static void boot_rom_load(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -263,6 +257,7 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
             
         case MODEL_NONE:
         case MODEL_QUICK_RESET:
+        case MODEL_AUTO:
         case MODEL_CGB:
             return (GB_model_t)[[NSUserDefaults standardUserDefaults] integerForKey:@"GBCGBModel"];
             
@@ -677,15 +672,46 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     GB_load_boot_rom(&_gb, [path UTF8String]);
 }
 
+- (enum model)bestModelForROM
+{
+    uint8_t *rom = GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_ROM, NULL, NULL);
+    if (!rom) return MODEL_CGB;
+    
+    if (rom[0x143] & 0x80) { // Has CGB features
+        return MODEL_CGB;
+    }
+    if (rom[0x146] == 3) { // Has SGB features
+        return MODEL_SGB;
+    }
+    
+    if (rom[0x14B] == 1) { // Nintendo-licensed (most likely has boot ROM palettes)
+        return MODEL_CGB;
+    }
+
+    if (rom[0x14B] == 0x33 &&
+        rom[0x144] == '0' &&
+        rom[0x145] == '1') { // Ditto
+        return MODEL_CGB;
+    }
+    
+    return MODEL_DMG;
+}
+
 - (IBAction)reset:(id)sender
 {
     [self stop];
     size_t old_width = GB_get_screen_width(&_gb);
     
-    if ([sender tag] != MODEL_NONE) {
+    if ([sender tag] > MODEL_NONE) {
+        /* User explictly selected a model, save the preference */
         _currentModel = (enum model)[sender tag];
+        _usesAutoModel = _currentModel == MODEL_AUTO;
+        [[NSUserDefaults standardUserDefaults] setInteger:_currentModel forKey:@"GBEmulatedModel"];
     }
     
+    /* Reload the ROM, SAV and SYM files */
+    [self loadROM];
+
     if ([sender tag] == MODEL_QUICK_RESET) {
         GB_quick_reset(&_gb);
     }
@@ -699,16 +725,6 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     
     [self updateMinSize];
     
-    if ([sender tag] > MODEL_NONE) {
-        /* User explictly selected a model, save the preference */
-        [[NSUserDefaults standardUserDefaults] setBool:_currentModel == MODEL_DMG forKey:@"EmulateDMG"];
-        [[NSUserDefaults standardUserDefaults] setBool:_currentModel == MODEL_SGB forKey:@"EmulateSGB"];
-        [[NSUserDefaults standardUserDefaults] setBool:_currentModel == MODEL_AGB forKey:@"EmulateAGB"];
-        [[NSUserDefaults standardUserDefaults] setBool:_currentModel == MODEL_MGB forKey:@"EmulateMGB"];
-    }
-    
-    /* Reload the ROM, SAV and SYM files */
-    [self loadROM];
 
     [self start];
 
@@ -871,19 +887,10 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     [self observeStandardDefaultsKey:@"GBVolume" withBlock:^(id newValue) {
         weakSelf->_volume = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBVolume"];
     }];
-        
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"EmulateDMG"]) {
-        _currentModel = MODEL_DMG;
-    }
-    else if ([[NSUserDefaults standardUserDefaults] boolForKey:@"EmulateSGB"]) {
-        _currentModel = MODEL_SGB;
-    }
-    else if ([[NSUserDefaults standardUserDefaults] boolForKey:@"EmulateMGB"]) {
-        _currentModel = MODEL_MGB;
-    }
-    else {
-        _currentModel = [[NSUserDefaults standardUserDefaults] boolForKey:@"EmulateAGB"]? MODEL_AGB : MODEL_CGB;
-    }
+    
+    
+    _currentModel = [[NSUserDefaults standardUserDefaults] integerForKey:@"GBEmulatedModel"];
+    _usesAutoModel = _currentModel == MODEL_AUTO;
     
     [self initCommon];
     self.view.gb = &_gb;
@@ -1125,7 +1132,7 @@ static bool is_path_writeable(const char *path)
     return true;
 }
 
-- (int) loadROM
+- (int)loadROM
 {
     __block int ret = 0;
     NSString *fileName = self.romPath;
@@ -1177,6 +1184,9 @@ static bool is_path_writeable(const char *path)
         [GBWarningPopover popoverWithContents:rom_warnings onWindow:self.mainWindow];
     }
     _fileModificationTime = [[NSFileManager defaultManager] attributesOfItemAtPath:fileName error:nil][NSFileModificationDate];
+    if (_usesAutoModel) {
+        _currentModel = [self bestModelForROM];
+    }
     return ret;
 }
 
@@ -1243,14 +1253,19 @@ static bool is_path_writeable(const char *path)
 - (BOOL)validateUserInterfaceItem:(id<NSValidatedUserInterfaceItem>)anItem
 {
     if ([anItem action] == @selector(mute:)) {
-        [(NSMenuItem *)anItem setState:!_audioClient.isPlaying];
+        if (_running) {
+            [(NSMenuItem *)anItem setState:!_audioClient.isPlaying];
+        }
+        else {
+            [(NSMenuItem *)anItem setState:[[NSUserDefaults standardUserDefaults] boolForKey:@"Mute"]];
+        }
     }
     else if ([anItem action] == @selector(togglePause:)) {
         [(NSMenuItem *)anItem setState:self.isPaused];
         return !GB_debugger_is_stopped(&_gb);
     }
     else if ([anItem action] == @selector(reset:) && anItem.tag != MODEL_NONE && anItem.tag != MODEL_QUICK_RESET) {
-        [(NSMenuItem *)anItem setState:anItem.tag == _currentModel];
+        [(NSMenuItem *)anItem setState:(anItem.tag == _currentModel) || (anItem.tag == MODEL_AUTO && _usesAutoModel)];
     }
     else if ([anItem action] == @selector(interrupt:)) {
         if (![[NSUserDefaults standardUserDefaults] boolForKey:@"DeveloperMode"]) {
@@ -1762,6 +1777,11 @@ enum GBWindowResizeAction
 {
     if (self.memoryWindow.isVisible) {
         [_hexController reloadData];
+    }
+    if (_cheatSearchController.window.isVisible) {
+        if ([_cheatSearchController.tableView editedColumn] != 2) {
+            [_cheatSearchController.tableView reloadData];
+        }
     }
 }
 
@@ -2388,6 +2408,14 @@ enum GBWindowResizeAction
     [self.cheatsWindow makeKeyAndOrderFront:nil];
 }
 
+- (IBAction)showCheatSearch:(id)sender
+{
+    if (!_cheatSearchController) {
+        _cheatSearchController = [GBCheatSearchController controllerWithDocument:self];
+    }
+    [_cheatSearchController.window makeKeyAndOrderFront:sender];
+}
+
 - (IBAction)toggleCheats:(id)sender
 {
     GB_set_cheats_enabled(&_gb, !GB_cheats_enabled(&_gb));
@@ -2771,6 +2799,17 @@ enum GBWindowResizeAction
 - (IBAction)debuggerButtonPressed:(NSButton *)sender
 {
     [self queueDebuggerCommand:sender.alternateTitle];
+}
+
++ (NSArray<NSString *> *)readableTypes
+{
+    NSMutableSet *set = [NSMutableSet setWithArray:[super readableTypes]];
+    for (NSString *type in @[@"gb", @"gbc", @"isx", @"gbs"]) {
+        [set addObject:(__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension,
+                                                                                           (__bridge CFStringRef)type,
+                                                                                           NULL)];
+    }
+    return [set allObjects];
 }
 
 @end

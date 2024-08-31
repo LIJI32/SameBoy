@@ -358,24 +358,33 @@ static struct {
     {"&", 1, and},
     {"^", 1, xor},
     {"<<", 2, shleft},
-    {"<=", 3, lower_equals},
-    {"<", 3, lower},
+    {"<=", -2, lower_equals},
+    {"<", -2, lower},
     {">>", 2, shright},
-    {">=", 3, greater_equals},
-    {">", 3, greater},
-    {"==", 3, equals},
+    {">=", -2, greater_equals},
+    {">", -2, greater},
+    {"==", -2, equals},
     {"=", -1, NULL, assign},
-    {"!=", 3, different},
-    {":", 4, bank},
+    {"!=", -2, different},
+    {":", 3, bank},
 };
 
-value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
-                           size_t length, bool *error,
-                           uint16_t *watchpoint_address, uint8_t *watchpoint_new_value);
+typedef struct {
+    union {
+        uint16_t old_address;
+        uint16_t old_value;
+    };
+    uint16_t new_value;
+    bool old_as_value;
+} evaluate_conf_t;
+
+static value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
+                                 size_t length, bool *error,
+                                 const evaluate_conf_t *conf);
 
 static lvalue_t debugger_evaluate_lvalue(GB_gameboy_t *gb, const char *string,
                                          size_t length, bool *error,
-                                         uint16_t *watchpoint_address, uint8_t *watchpoint_new_value)
+                                         const evaluate_conf_t *conf)
 {
     *error = false;
     // Strip whitespace
@@ -403,7 +412,7 @@ static lvalue_t debugger_evaluate_lvalue(GB_gameboy_t *gb, const char *string,
             }
             if (string[i] == ')') depth--;
         }
-        if (depth == 0) return debugger_evaluate_lvalue(gb, string + 1, length - 2, error, watchpoint_address, watchpoint_new_value);
+        if (depth == 0) return debugger_evaluate_lvalue(gb, string + 1, length - 2, error, conf);
     }
     else if (string[0] == '[' && string[length - 1] == ']') {
         // Attempt to strip square parentheses (memory dereference)
@@ -418,7 +427,7 @@ static lvalue_t debugger_evaluate_lvalue(GB_gameboy_t *gb, const char *string,
             if (string[i] == ']') depth--;
         }
         if (depth == 0) {
-            return (lvalue_t){LVALUE_MEMORY, .memory_address = debugger_evaluate(gb, string + 1, length - 2, error, watchpoint_address, watchpoint_new_value)};
+            return (lvalue_t){LVALUE_MEMORY, .memory_address = debugger_evaluate(gb, string + 1, length - 2, error, conf)};
         }
     }
     else if (string[0] == '{' && string[length - 1] == '}') {
@@ -434,7 +443,7 @@ static lvalue_t debugger_evaluate_lvalue(GB_gameboy_t *gb, const char *string,
             if (string[i] == '}') depth--;
         }
         if (depth == 0) {
-            return (lvalue_t){LVALUE_MEMORY16, .memory_address = debugger_evaluate(gb, string + 1, length - 2, error, watchpoint_address, watchpoint_new_value)};
+            return (lvalue_t){LVALUE_MEMORY16, .memory_address = debugger_evaluate(gb, string + 1, length - 2, error, conf)};
         }
     }
 
@@ -473,9 +482,9 @@ static lvalue_t debugger_evaluate_lvalue(GB_gameboy_t *gb, const char *string,
 }
 
 #define ERROR ((value_t){0,})
-value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
-                          size_t length, bool *error,
-                          uint16_t *watchpoint_address, uint8_t *watchpoint_new_value)
+static value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
+                                 size_t length, bool *error,
+                                 const evaluate_conf_t *conf)
 {
     /* Disable watchpoints while evaluating expressions */
     uint16_t n_watchpoints = gb->n_watchpoints;
@@ -510,7 +519,7 @@ value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
             if (string[i] == ')') depth--;
         }
         if (depth == 0) {
-            ret = debugger_evaluate(gb, string + 1, length - 2, error, watchpoint_address, watchpoint_new_value);
+            ret = debugger_evaluate(gb, string + 1, length - 2, error, conf);
             goto exit;
         }
     }
@@ -528,7 +537,7 @@ value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
         }
 
         if (depth == 0) {
-            value_t addr = debugger_evaluate(gb, string + 1, length - 2, error, watchpoint_address, watchpoint_new_value);
+            value_t addr = debugger_evaluate(gb, string + 1, length - 2, error, conf);
             banking_state_t state;
             if (addr.bank) {
                 save_banking_state(gb, &state);
@@ -555,7 +564,7 @@ value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
         }
 
         if (depth == 0) {
-            value_t addr = debugger_evaluate(gb, string + 1, length - 2, error, watchpoint_address, watchpoint_new_value);
+            value_t addr = debugger_evaluate(gb, string + 1, length - 2, error, conf);
             banking_state_t state;
             if (addr.bank) {
                 save_banking_state(gb, &state);
@@ -600,15 +609,15 @@ value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
     }
     if (operator_index != -1) {
         unsigned right_start = (unsigned)(operator_pos + strlen(operators[operator_index].string));
-        value_t right = debugger_evaluate(gb, string + right_start, length - right_start, error, watchpoint_address, watchpoint_new_value);
+        value_t right = debugger_evaluate(gb, string + right_start, length - right_start, error, conf);
         if (*error) goto exit;
         if (operators[operator_index].lvalue_operator) {
-            lvalue_t left = debugger_evaluate_lvalue(gb, string, operator_pos, error, watchpoint_address, watchpoint_new_value);
+            lvalue_t left = debugger_evaluate_lvalue(gb, string, operator_pos, error, conf);
             if (*error) goto exit;
             ret = operators[operator_index].lvalue_operator(gb, left, right.value);
             goto exit;
         }
-        value_t left = debugger_evaluate(gb, string, operator_pos, error, watchpoint_address, watchpoint_new_value);
+        value_t left = debugger_evaluate(gb, string, operator_pos, error, conf);
         if (*error) goto exit;
         ret = operators[operator_index].operator(left, right);
         goto exit;
@@ -640,22 +649,22 @@ value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
                 case 'p': if (string[1] == 'c') {ret = (value_t){true, bank_for_addr(gb, gb->pc), gb->pc};  goto exit;}
             }
         }
-        else if (length == 3) {
-            if (watchpoint_address && memcmp(string, "old", 3) == 0) {
-                ret = VALUE_16(GB_read_memory(gb, *watchpoint_address));
+        else if (length == 3 && conf) {
+            if (memcmp(string, "old", 3) == 0) {
+                if (conf->old_as_value) {
+                    ret = VALUE_16(conf->old_value);
+                }
+                else {
+                    ret = VALUE_16(GB_read_memory(gb, conf->old_address));
+                }
                 goto exit;
             }
 
-            if (watchpoint_new_value && memcmp(string, "new", 3) == 0) {
-                ret = VALUE_16(*watchpoint_new_value);
+            if (memcmp(string, "new", 3) == 0) {
+                ret = VALUE_16(conf->new_value);
                 goto exit;
             }
 
-            /* $new is identical to $old in read conditions */
-            if (watchpoint_address && memcmp(string, "new", 3) == 0) {
-                ret = VALUE_16(GB_read_memory(gb, *watchpoint_address));
-                goto exit;
-            }
         }
 
         char symbol_name[length + 1];
@@ -1036,7 +1045,7 @@ static bool breakpoint(GB_gameboy_t *gb, char *arguments, char *modifiers, const
         condition += strlen(" if ");
         /* Verify condition is sane (Todo: This might have side effects!) */
         bool error;
-        debugger_evaluate(gb, condition, (unsigned)strlen(condition), &error, NULL, NULL);
+        debugger_evaluate(gb, condition, (unsigned)strlen(condition), &error, NULL);
         if (error) return true;
 
     }
@@ -1050,13 +1059,13 @@ static bool breakpoint(GB_gameboy_t *gb, char *arguments, char *modifiers, const
     }
 
     bool error;
-    value_t result = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL, NULL);
+    value_t result = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL);
     if (error) return true;
 
     uint16_t length = 0;
     value_t end = result;
     if (to) {
-        end = debugger_evaluate(gb, to, (unsigned)strlen(to), &error, NULL, NULL);
+        end = debugger_evaluate(gb, to, (unsigned)strlen(to), &error, NULL);
         if (error) return true;
         if (end.has_bank && result.has_bank && end.bank != result.bank) {
             GB_log(gb, "Breakpoint range start and end points have different banks\n");
@@ -1125,7 +1134,9 @@ static bool delete(GB_gameboy_t *gb, char *arguments, char *modifiers, const deb
     
     for (unsigned i = 0; i < gb->n_breakpoints; i++) {
         if (gb->breakpoints[i].id != id) continue;
-        
+        value_t addr = (value_t){gb->breakpoints[i].bank != (uint16_t)-1, gb->breakpoints[i].bank, gb->breakpoints[i].addr};
+        GB_log(gb, "Breakpoint %u removed from %s\n", id, debugger_value_to_string(gb, addr, addr.has_bank, false));
+
         if (gb->breakpoints[i].condition) {
             free(gb->breakpoints[i].condition);
         }
@@ -1145,9 +1156,6 @@ static bool delete(GB_gameboy_t *gb, char *arguments, char *modifiers, const deb
         gb->n_breakpoints--;
         gb->breakpoints = realloc(gb->breakpoints, gb->n_breakpoints * sizeof(gb->breakpoints[0]));
         
-        value_t addr = (value_t){gb->breakpoints[i].bank != (uint16_t)-1, gb->breakpoints[i].bank, gb->breakpoints[i].addr};
-
-        GB_log(gb, "Breakpoint %u removed from %s\n", id, debugger_value_to_string(gb, addr, addr.has_bank, false));
         return true;
     }
 
@@ -1212,9 +1220,12 @@ static bool watch(GB_gameboy_t *gb, char *arguments, char *modifiers, const debu
         /* Verify condition is sane (Todo: This might have side effects!) */
         bool error;
         /* To make new and old legal */
-        uint16_t dummy = 0;
-        uint8_t dummy2 = 0;
-        debugger_evaluate(gb, condition, (unsigned)strlen(condition), &error, &dummy, &dummy2);
+        static const evaluate_conf_t conf = {
+            .old_as_value = true,
+            .old_value = 0,
+            .new_value = 0,
+        };
+        debugger_evaluate(gb, condition, (unsigned)strlen(condition), &error, &conf);
         if (error) return true;
     }
     
@@ -1227,13 +1238,13 @@ static bool watch(GB_gameboy_t *gb, char *arguments, char *modifiers, const debu
     }
 
     bool error;
-    value_t result = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL, NULL);
+    value_t result = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL);
     uint32_t key = WP_KEY(result);
     
     uint16_t length = 0;
     value_t end = result;
     if (to) {
-        end = debugger_evaluate(gb, to, (unsigned)strlen(to), &error, NULL, NULL);
+        end = debugger_evaluate(gb, to, (unsigned)strlen(to), &error, NULL);
         if (error) return true;
         if (end.has_bank && result.has_bank && end.bank != result.bank) {
             GB_log(gb, "Watchpoint range start and end points have different banks\n");
@@ -1300,6 +1311,9 @@ static bool unwatch(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
     for (unsigned i = 0; i < gb->n_watchpoints; i++) {
         if (gb->watchpoints[i].id != id) continue;
         
+        value_t addr = (value_t){gb->watchpoints[i].bank != (uint16_t)-1, gb->watchpoints[i].bank, gb->watchpoints[i].addr};
+        GB_log(gb, "Watchpoint %u removed from %s\n", id, debugger_value_to_string(gb, addr, addr.has_bank, false));
+        
         if (gb->watchpoints[i].condition) {
             free(gb->watchpoints[i].condition);
         }
@@ -1308,9 +1322,6 @@ static bool unwatch(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
         gb->n_watchpoints--;
         gb->watchpoints = realloc(gb->watchpoints, gb->n_watchpoints * sizeof(gb->watchpoints[0]));
         
-        value_t addr = (value_t){gb->watchpoints[i].bank != (uint16_t)-1, gb->watchpoints[i].bank, gb->watchpoints[i].addr};
-        
-        GB_log(gb, "Watchpoint %u removed from %s\n", id, debugger_value_to_string(gb, addr, addr.has_bank, false));
         return true;
     }
     
@@ -1414,7 +1425,7 @@ static unsigned should_break(GB_gameboy_t *gb, uint16_t addr, bool jump_to)
         bool error;
         bool condition = debugger_evaluate(gb, breakpoint->condition,
                                            (unsigned)strlen(breakpoint->condition),
-                                           &error, NULL, NULL).value;
+                                           &error, NULL).value;
         if (error) {
             GB_log(gb, "The condition for breakpoint %u is no longer a valid expression\n", breakpoint->id);
             return breakpoint->id;
@@ -1454,7 +1465,7 @@ static bool print(GB_gameboy_t *gb, char *arguments, char *modifiers, const debu
     }
 
     bool error;
-    value_t result = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL, NULL);
+    value_t result = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL);
     if (!error) {
         switch (modifiers[0]) {
             case 'a':
@@ -1500,7 +1511,7 @@ static bool examine(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
     }
 
     bool error;
-    value_t addr = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL, NULL);
+    value_t addr = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL);
     uint16_t count = 32;
 
     if (modifiers) {
@@ -1552,7 +1563,7 @@ static bool disassemble(GB_gameboy_t *gb, char *arguments, char *modifiers, cons
     }
 
     bool error;
-    value_t addr = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL, NULL);
+    value_t addr = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL);
     uint16_t count = 5;
 
     if (modifiers) {
@@ -2321,9 +2332,19 @@ static void test_watchpoint(GB_gameboy_t *gb, uint16_t addr, uint8_t flags, uint
             return;
         }
         bool error;
+        evaluate_conf_t conf = {
+            .old_as_value = flags == WATCHPOINT_READ,
+            .new_value = value,
+        };
+        if (flags == WATCHPOINT_READ) {
+            conf.old_value = value;
+        }
+        else {
+            conf.old_address = addr;
+        }
         bool condition = debugger_evaluate(gb, watchpoint->condition,
                                            (unsigned)strlen(watchpoint->condition),
-                                           &error, &addr, flags == WATCHPOINT_WRITE? &value : NULL).value;
+                                           &error, &conf).value;
         if (error) {
             GB_log(gb, "The condition for watchpoint %u is no longer a valid expression\n", watchpoint->id);
             GB_debugger_break(gb);
@@ -2715,7 +2736,7 @@ bool GB_debugger_evaluate(GB_gameboy_t *gb, const char *string, uint16_t *result
     GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     
     bool error = false;
-    value_t value = debugger_evaluate(gb, string, strlen(string), &error, NULL, NULL);
+    value_t value = debugger_evaluate(gb, string, strlen(string), &error, NULL);
     if (result) {
         *result = value.value;
     }
@@ -2724,6 +2745,26 @@ bool GB_debugger_evaluate(GB_gameboy_t *gb, const char *string, uint16_t *result
     }
     return error;
 }
+
+#ifndef GB_DISABLE_CHEAT_SEARCH
+internal bool GB_debugger_evaluate_cheat_filter(GB_gameboy_t *gb, const char *string, bool *result, uint16_t old, uint16_t new)
+{
+    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    
+    bool error = false;
+    evaluate_conf_t conf = {
+        .old_as_value = true,
+        .old_value = old,
+        .new_value = new,
+    };
+    value_t value = debugger_evaluate(gb, string, strlen(string), &error, &conf);
+    if (result) {
+        *result = value.value;
+    }
+
+    return error;
+}
+#endif
 
 void GB_debugger_break(GB_gameboy_t *gb)
 {

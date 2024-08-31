@@ -7,6 +7,7 @@
 
 @property (readonly) UIImage *background;
 @property (readonly) CGRect screenRect;
+@property (readonly) CGRect fullScreenRect;
 @property (readonly) CGRect logoRect;
 @property (readonly) CGPoint dpadLocation;
 @property (readonly) CGPoint aLocation;
@@ -23,6 +24,7 @@
 @interface GBLayout()
 @property UIImage *background;
 @property CGRect screenRect;
+@property CGRect fullScreenRect;
 @property CGPoint dpadLocation;
 @property CGPoint aLocation;
 @property CGPoint bLocation;

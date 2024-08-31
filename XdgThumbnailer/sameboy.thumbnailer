@@ -1,0 +1,4 @@
+[Thumbnailer Entry]
+TryExec=sameboy-thumbnailer
+Exec=sameboy-thumbnailer %i %o %s
+MimeType=application/x-gameboy-rom;application/x-gameboy-color-rom;application/x-gameboy-isx

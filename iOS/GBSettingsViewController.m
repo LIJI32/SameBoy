@@ -206,12 +206,12 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                     @{@"type": typeRadio, @"pref": @"GBSGBModel", @"title": @"Super Game Boy 2",      @"value": @(GB_MODEL_SGB2),},
                 ]),
                 QUICK_SUBMENU(@"Game Boy Color", @[
-                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB 0 (Experimental)", @"value": @(GB_MODEL_CGB_0),},
-                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB A (Experimental)", @"value": @(GB_MODEL_CGB_A),},
-                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB B (Experimental)", @"value": @(GB_MODEL_CGB_B),},
-                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB C (Experimental)", @"value": @(GB_MODEL_CGB_C),},
-                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB D",                @"value": @(GB_MODEL_CGB_D),},
-                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB E",                @"value": @(GB_MODEL_CGB_E),},
+                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB 0", @"value": @(GB_MODEL_CGB_0),},
+                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB A", @"value": @(GB_MODEL_CGB_A),},
+                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB B", @"value": @(GB_MODEL_CGB_B),},
+                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB C", @"value": @(GB_MODEL_CGB_C),},
+                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB D", @"value": @(GB_MODEL_CGB_D),},
+                    @{@"type": typeRadio, @"pref": @"GBCGBModel", @"title": @"CPU CGB E", @"value": @(GB_MODEL_CGB_E),},
                 ]),
                 QUICK_SUBMENU(@"Game Boy Advance", @[
                     @{@"type": typeDisabled, @"title": @"CPU AGB 0 (Early GBA)",},
@@ -402,10 +402,16 @@ static NSString const *typeLightTemp = @"typeLightTemp";
             ],
             @"footer": ^NSString *(){
                 if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBSwipeState"]) {
-                    return @"Swipe down on the Game Boy to save the state into state slot 1. Swipe up to load the state from state slot 1";
+                    return @"Swipe down on the Game Boy to save the state into state slot 1. Swipe up to load the state from state slot 1.";
                 }
                 return @" "; // This space is needed, otherwise UITableView spacing breaks
             },
+        },
+        @{
+            @"items": @[
+                @{@"type": typeCheck, @"pref": @"GBControllersHideInterface", @"title": @"Hide UI While Using a Controller"},
+            ],
+            @"footer": @"When enabled, the on-screen user interface will be hidden while a game controller is being used."
         },
         @{
             @"header": @"Enable Rumble",
