@@ -923,7 +923,9 @@ restart:;
     
     char cheat_path[path_length + 5];
     replace_extension(filename, path_length, cheat_path, ".cht");
-    GB_load_cheats(&gb, cheat_path);
+    // Remove all cheats before loading, so they're cleared even if loading fails.
+    GB_remove_all_cheats(&gb);
+    GB_load_cheats(&gb, cheat_path, false);
     
     end_capturing_logs(true, error, SDL_MESSAGEBOX_WARNING, "Warning", previous);
     

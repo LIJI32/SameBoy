@@ -9,6 +9,7 @@
 @property (readonly) NSString *romFile;
 @property (readonly) NSString *batterySaveFile;
 @property (readonly) NSString *autosaveStateFile;
+@property (readonly) NSString *cheatsFile;
 - (NSString *)stateFile:(unsigned)index;
 
 - (NSString *)romFileForROM:(NSString *)rom;

@@ -23,6 +23,7 @@ typedef enum {
 - (void)openSettings;
 - (void)showAbout;
 - (void)openConnectMenu;
+- (void)openCheats;
 - (void)emptyPrinterFeed;
 - (void)saveStateToFile:(NSString *)file;
 - (bool)loadStateFromFile:(NSString *)file;

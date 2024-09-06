@@ -100,7 +100,8 @@
                 NSString *gbUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"gb", NULL);
                 NSString *gbcUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"gbc", NULL);
                 NSString *isxUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"isx", NULL);
-                
+                NSString *zipUTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)@"zip", NULL);
+
                 NSMutableSet *extensions = [NSMutableSet set];
                 [extensions addObjectsFromArray:(__bridge NSArray *)UTTypeCopyAllTagsWithClass((__bridge CFStringRef)gbUTI, kUTTagClassFilenameExtension)];
                 [extensions addObjectsFromArray:(__bridge NSArray *)UTTypeCopyAllTagsWithClass((__bridge CFStringRef)gbcUTI, kUTTagClassFilenameExtension)];
@@ -121,16 +122,15 @@
                         return;
                     }
                 }
-                
-                [extensions addObject:@"zip"];
-                
+                                
                 [self.presentingViewController dismissViewControllerAnimated:true completion:^{
                     UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"com.github.liji32.sameboy.gb",
                                                                                                                              @"com.github.liji32.sameboy.gbc",
                                                                                                                              @"com.github.liji32.sameboy.isx",
                                                                                                                              gbUTI ?: @"",
                                                                                                                              gbcUTI ?: @"",
-                                                                                                                             isxUTI ?: @""]
+                                                                                                                             isxUTI ?: @"",
+                                                                                                                             zipUTI ?: @""]
                                                                                                                     inMode:UIDocumentPickerModeImport];
                     picker.allowsMultipleSelection = true;
                     if (@available(iOS 13.0, *)) {

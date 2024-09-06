@@ -1166,7 +1166,7 @@ static bool is_path_writeable(const char *path)
             }
         }
         GB_load_battery(&_gb, self.savPath.UTF8String);
-        GB_load_cheats(&_gb, self.chtPath.UTF8String);
+        GB_load_cheats(&_gb, self.chtPath.UTF8String, true);
         dispatch_async(dispatch_get_main_queue(), ^{
             [self.cheatWindowController cheatsUpdated];
         });

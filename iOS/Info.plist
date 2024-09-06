@@ -180,6 +180,23 @@ APPSTORE END -->
                 </array>
             </dict>
         </dict>
+        <dict>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeDescription</key>
+            <string>SameBoy Cheats Database</string>
+            <key>UTTypeIdentifier</key>
+            <string>com.github.liji32.sameboy.cheats</string>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>cht</string>
+                </array>
+            </dict>
+        </dict>
     </array>
     <key>UIDeviceFamily</key>
     <array>

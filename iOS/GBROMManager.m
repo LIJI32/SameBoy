@@ -103,6 +103,17 @@
     return [self stateFile:index forROM:_currentROM];
 }
 
+
+- (NSString *)cheatsFileForROM:(NSString *)rom
+{
+    return [self auxilaryFileForROM:rom withExtension:@"cht"];
+}
+
+- (NSString *)cheatsFile
+{
+    return [self cheatsFileForROM:_currentROM];
+}
+
 - (NSArray<NSString *> *)allROMs
 {
     NSMutableArray<NSString *> *ret = [NSMutableArray array];

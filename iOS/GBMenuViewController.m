@@ -61,7 +61,7 @@ static NSString *const tips[] = {
         {@"Connect", @"LinkCableTemplate", SelectorString(openConnectMenu), true},
         {@"Model", @"ModelTemplate", SelectorString(changeModel)},
         {@"States", @"square.stack", SelectorString(openStates), true},
-        {@"Cheats", @"wand.and.stars", nil}, // TODO
+        {@"Cheats", @"CheatsTemplate", SelectorString(openCheats), true}, // TODO
         {@"Settings", @"gear", SelectorString(openSettings)},
         {@"About", @"info.circle", SelectorString(showAbout)},
     };
@@ -82,10 +82,6 @@ static NSString *const tips[] = {
         [self.view addSubview:button];
 
         if (!buttons[i].selector) {
-            button.enabled = false;
-            continue;
-        }
-        if (buttons[i].selector == nil) {
             button.enabled = false;
             continue;
         }
