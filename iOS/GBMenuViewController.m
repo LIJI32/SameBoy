@@ -61,7 +61,7 @@ static NSString *const tips[] = {
         {@"Connect", @"LinkCableTemplate", SelectorString(openConnectMenu), true},
         {@"Model", @"ModelTemplate", SelectorString(changeModel)},
         {@"States", @"square.stack", SelectorString(openStates), true},
-        {@"Cheats", @"CheatsTemplate", SelectorString(openCheats), true}, // TODO
+        {@"Cheats", @"CheatsTemplate", SelectorString(openCheats), true},
         {@"Settings", @"gear", SelectorString(openSettings)},
         {@"About", @"info.circle", SelectorString(showAbout)},
     };

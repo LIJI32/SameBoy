@@ -1,7 +1,6 @@
 #import "GBLoadROMTableViewController.h"
 #import "GBROMManager.h"
 #import "GBViewController.h"
-#import "GBHubViewController.h"
 #import <CoreServices/CoreServices.h>
 #import <objc/runtime.h>
 
@@ -33,7 +32,7 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    if (section == 1) return 3;
+    if (section == 1) return 2;
     return [GBROMManager sharedManager].allROMs.count;
 }
 
@@ -43,8 +42,7 @@
         UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
         switch (indexPath.item) {
             case 0: cell.textLabel.text = @"Import ROM files"; break;
-            case 1: cell.textLabel.text = @"Browse Homebrew Hub"; break;
-            case 2: cell.textLabel.text = @"Show Library in Files"; break;
+            case 1: cell.textLabel.text = @"Show Library in Files"; break;
         }
         return cell;
     }
@@ -81,7 +79,7 @@
 
 - (NSString *)title
 {
-    return @"ROM Library";
+    return @"Local Library";
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
@@ -143,11 +141,6 @@
                 return;
             }
             case 1: {
-                [self.navigationController pushViewController:[[GBHubViewController alloc] init]
-                                                     animated:true];
-                return;
-            }
-            case 2: {
                 [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[NSString stringWithFormat:@"shareddocuments://%@", NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true).firstObject]]
                                                    options:nil
                                          completionHandler:nil];

@@ -14,6 +14,7 @@
     NSArray<GBHubGame *> *_results;
     NSString *_resultsTitle;
     bool _showingAllGames;
+    bool _appear;
 }
 
 - (instancetype)init
@@ -25,8 +26,16 @@
                                                object:nil];
     _imageCache = [NSMutableDictionary dictionary];
     self.tableView.rowHeight = UITableViewAutomaticDimension;
-    [GBHub.sharedHub refresh];
     return self;
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    if (!_appear) {
+        _appear = true;
+        [GBHub.sharedHub refresh];
+    }
+    [super viewDidAppear:animated];
 }
 
 - (void)viewDidLoad
