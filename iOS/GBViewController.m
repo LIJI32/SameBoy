@@ -4,7 +4,7 @@
 #import "GBViewMetal.h"
 #import "GBAudioClient.h"
 #import "GBROMManager.h"
-#import "GBLoadROMTableViewController.h"
+#import "GBLibraryViewController.h"
 #import "GBBackgroundView.h"
 #import "GBHapticManager.h"
 #import "GBMenuViewController.h"
@@ -607,13 +607,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)openLibrary
 {
-    UINavigationController *controller = [[UINavigationController alloc] initWithRootViewController:[[GBLoadROMTableViewController alloc] init]];
-    UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithTitle:@"Close"
-                                                             style:UIBarButtonItemStylePlain
-                                                             target:self
-                                                             action:@selector(dismissViewController)];
-    [controller.visibleViewController.navigationItem setLeftBarButtonItem:close];
-    [self presentViewController:controller
+    [self presentViewController:[[GBLibraryViewController alloc] init]
                        animated:true
                      completion:nil];
 }
