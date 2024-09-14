@@ -222,6 +222,18 @@ APPSTORE END -->
     </array>
     <key>GCSupportsControllerUserInteraction</key>
     <true/>
+    <key>NSUbiquitousContainers</key>
+    <dict>
+        <key>iCloud.com.github.liji32.sameboy.ios</key>
+        <dict>
+            <key>NSUbiquitousContainerIsDocumentScopePublic</key>
+            <true/>
+            <key>NSUbiquitousContainerSupportedFolderLevels</key>
+            <string>One</string>
+            <key>NSUbiquitousContainerName</key>
+            <string>SameBoy</string>
+        </dict>
+    </dict>
 <!-- APPSTORE START
     <key>MinimumOSVersion</key>
     <string>@IOS_MIN</string>

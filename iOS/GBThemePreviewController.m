@@ -61,9 +61,9 @@
                                               UIAlertControllerStyleAlert : UIAlertControllerStyleActionSheet];
 #ifdef APPSTORE
     if (_isPaid && GBSubscriptionManager.defaultManager.state == GBSubscriptionInactive) {
-        [alert  addAction:[UIAlertAction actionWithTitle:@"Support SameBoy to Unlock"
-                                                   style:UIAlertActionStyleDefault
-                                                 handler:^(UIAlertAction *action) {
+        [alert addAction:[UIAlertAction actionWithTitle:@"Support SameBoy to Unlock"
+                                                  style:UIAlertActionStyleDefault
+                                                handler:^(UIAlertAction *action) {
             UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:[GBSubscriptionViewController new]];
             UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithTitle:@"Close"
                                                                       style:UIBarButtonItemStylePlain
@@ -80,16 +80,16 @@
     }
 #endif
     else {
-        [alert  addAction:[UIAlertAction actionWithTitle:@"Apply Theme"
-                                                   style:UIAlertActionStyleDefault
-                                                 handler:^(UIAlertAction *action) {
+        [alert addAction:[UIAlertAction actionWithTitle:@"Apply Theme"
+                                                  style:UIAlertActionStyleDefault
+                                                handler:^(UIAlertAction *action) {
             [[NSUserDefaults standardUserDefaults] setObject:_verticalLayout.theme.name forKey:@"GBInterfaceTheme"];
             [[self presentingViewController] dismissViewControllerAnimated:true completion:nil];
         }]];
     }
-    [alert  addAction:[UIAlertAction actionWithTitle:@"Exit Preview"
-                                               style:UIAlertActionStyleDefault
-                                             handler:^(UIAlertAction *action) {
+    [alert addAction:[UIAlertAction actionWithTitle:@"Exit Preview"
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(UIAlertAction *action) {
         [[self presentingViewController] dismissViewControllerAnimated:true completion:nil];
     }]];
     [self presentViewController:alert animated:true completion:^{

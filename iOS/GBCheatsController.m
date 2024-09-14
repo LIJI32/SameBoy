@@ -231,6 +231,36 @@
     self.navigationController.toolbar.disableCompactLayout = true;
 }
 
+#ifdef APPSTORE
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    UIBarButtonItem *item = self.navigationItem.leftBarButtonItem;
+    id originalTarget = item.target;
+    SEL originalAction = item.action;
+    if (item.action == @selector(invoke)) return;
+    
+    id block = ^(){
+        self.view.window.userInteractionEnabled = false;
+        UIActivityIndicatorView *activityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+        [self navigationItem].rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:activityIndicator];
+        [activityIndicator startAnimating];
+        [[GBROMManager sharedManager] syncROM:GBROMManager.sharedManager.currentROM
+                                       completion:^(NSString *error) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            (void)[originalTarget performSelector:originalAction];
+#pragma clang diagnostic pop
+            [self navigationItem].rightBarButtonItem = nil;
+            self.view.window.userInteractionEnabled = true;
+        } queue:[NSOperationQueue mainQueue]];
+    };
+    objc_setAssociatedObject(item, "RetainedBlock", block, OBJC_ASSOCIATION_RETAIN);
+    item.target = block;
+    item.action = @selector(invoke);
+}
+#endif
+
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentAtURL:(NSURL *)url
 {
     [url startAccessingSecurityScopedResource];

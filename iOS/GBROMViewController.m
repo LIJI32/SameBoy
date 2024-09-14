@@ -1,13 +1,11 @@
-#import "GBLoadROMTableViewController.h"
+#import "GBROMViewController.h"
 #import "GBROMManager.h"
 #import "GBViewController.h"
+#import "GBLibraryViewController.h"
 #import <CoreServices/CoreServices.h>
 #import <objc/runtime.h>
 
-@interface GBLoadROMTableViewController() <UIDocumentPickerDelegate>
-@end
-
-@implementation GBLoadROMTableViewController
+@implementation GBROMViewController
 {
     NSIndexPath *_renamingPath;
 }
@@ -36,19 +34,10 @@
     return [GBROMManager sharedManager].allROMs.count;
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+- (UITableViewCell *)cellForROM:(NSString *)rom
 {
-    if (indexPath.section == 1) {
-        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-        switch (indexPath.item) {
-            case 0: cell.textLabel.text = @"Import ROM files"; break;
-            case 1: cell.textLabel.text = @"Show Library in Files"; break;
-        }
-        return cell;
-    }
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    NSString *rom = [GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]];
-    cell.textLabel.text = rom;
+    cell.textLabel.text = rom.lastPathComponent;
     cell.accessoryType = [rom isEqualToString:[GBROMManager sharedManager].currentROM]? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
     
     NSString *pngPath = [[[GBROMManager sharedManager] autosaveStateFileForROM:rom] stringByAppendingPathExtension:@"png"];
@@ -68,6 +57,20 @@
     UIGraphicsEndImageContext();
     
     return cell;
+
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == 1) {
+        UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+        switch (indexPath.item) {
+            case 0: cell.textLabel.text = @"Import ROM files"; break;
+            case 1: cell.textLabel.text = @"Show Library in Files"; break;
+        }
+        return cell;
+    }
+    return [self cellForROM:[GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]]];
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -87,6 +90,12 @@
     if (section == 0) return nil;
 
     return @"You can also import ROM files by opening them in SameBoy using the Files app or a web browser, or by sending them over with AirDrop.";
+}
+
+- (void)romSelectedAtIndex:(unsigned)index
+{
+    [GBROMManager sharedManager].currentROM = [GBROMManager sharedManager].allROMs[index];
+    [self.presentingViewController dismissViewControllerAnimated:true completion:nil];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
@@ -110,9 +119,9 @@
                         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"File Association Conflict"
                                                                                        message:@"Due to a limitation in iOS, the file picker will allow you to select files not supported by SameBoy. SameBoy will only import GB, GBC and ISX files.\n\nIf you have a multi-system emulator installed, updating it could fix this problem."
                                                                                 preferredStyle:UIAlertControllerStyleAlert];
-                        [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
-                                                                   style:UIAlertActionStyleCancel
-                                                                 handler:^(UIAlertAction *action) {
+                        [alert addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                                  style:UIAlertActionStyleCancel
+                                                                handler:^(UIAlertAction *action) {
                             [[NSUserDefaults standardUserDefaults] setBool:true forKey:@"GBShownUTIWarning"];
                             [self tableView:tableView didSelectRowAtIndexPath:indexPath];
                         }]];
@@ -141,22 +150,25 @@
                 return;
             }
             case 1: {
-                [[UIApplication sharedApplication] openURL:[NSURL URLWithString:[NSString stringWithFormat:@"shareddocuments://%@", NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true).firstObject]]
+                NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"shareddocuments://%@",
+                                                   [self.rootPath stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]]]];
+                [[UIApplication sharedApplication] openURL:url
                                                    options:nil
                                          completionHandler:nil];
                 return;
             }
         }
     }
-    [GBROMManager sharedManager].currentROM = [GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]];
-    [self.presentingViewController dismissViewControllerAnimated:true completion:^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
-    }];
+    [self romSelectedAtIndex:indexPath.row];
 }
 
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray <NSURL *>*)urls
 {
-    [(GBViewController *)[UIApplication sharedApplication] handleOpenURLs:urls openInPlace:false];
+    [(GBViewController *)[UIApplication sharedApplication].delegate handleOpenURLs:urls
+#ifdef APPSTORE
+                                                                     importToCloud:false
+#endif
+                                                                       openInPlace:false];
 }
 
 - (UIModalPresentationStyle)modalPresentationStyle
@@ -164,28 +176,34 @@
     return UIModalPresentationOverFullScreen;
 }
 
+- (void)deleteROMAtIndex:(unsigned)index
+{
+    NSString *rom = [GBROMManager sharedManager].allROMs[index];
+
+    [[GBROMManager sharedManager] deleteROM:rom];
+    [self.tableView deleteRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:index inSection:0]] withRowAnimation:UITableViewRowAnimationAutomatic];
+    if ([[GBROMManager sharedManager].currentROM isEqualToString:rom]) {
+        [GBROMManager sharedManager].currentROM = nil;
+    }
+}
+
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (indexPath.section == 1) return;
 
     if (editingStyle != UITableViewCellEditingStyleDelete) return;
-    NSString *rom = [GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Delete ROM “%@”?", rom]
+    NSString *rom = [self.tableView cellForRowAtIndexPath:indexPath].textLabel.text;
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Delete “%@”?", rom]
                                                                    message: @"Save data for this ROM will also be deleted."
                                                             preferredStyle:UIAlertControllerStyleAlert];
-    [alert  addAction:[UIAlertAction actionWithTitle:@"Delete"
-                                               style:UIAlertActionStyleDestructive
-                                             handler:^(UIAlertAction *action) {
-        [[GBROMManager sharedManager] deleteROM:rom];
-        [self.tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-        if ([[GBROMManager sharedManager].currentROM isEqualToString:rom]) {
-            [GBROMManager sharedManager].currentROM = nil;
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
-        }
+    [alert addAction:[UIAlertAction actionWithTitle:@"Delete"
+                                              style:UIAlertActionStyleDestructive
+                                            handler:^(UIAlertAction *action) {
+        [self deleteROMAtIndex:indexPath.row];
     }]];
-    [alert  addAction:[UIAlertAction actionWithTitle:@"Cancel"
-                                               style:UIAlertActionStyleCancel
-                                             handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
     [self presentViewController:alert animated:true completion:nil];
 }
 
@@ -197,7 +215,7 @@
     UITextField *field = [[UITextField alloc] initWithFrame:cell.textLabel.frame];
     field.font = cell.textLabel.font;
     field.text = cell.textLabel.text;
-    cell.textLabel.text = @"";
+    cell.textLabel.textColor = [UIColor clearColor];
     [[cell.textLabel superview] addSubview:field];
     [field becomeFirstResponder];
     [field selectAll:nil];
@@ -205,29 +223,36 @@
     [field addTarget:self action:@selector(doneRename:) forControlEvents:UIControlEventEditingDidEnd | UIControlEventEditingDidEndOnExit];
 }
 
+- (void)renameROM:(NSString *)oldName toName:(NSString *)newName
+{
+    [[GBROMManager sharedManager] renameROM:oldName toName:newName];
+    [self.tableView reloadData];
+}
+
 - (void)doneRename:(UITextField *)sender
 {
     if (!_renamingPath) return;
     NSString *newName = sender.text;
-    NSString *oldName = [GBROMManager sharedManager].allROMs[[_renamingPath indexAtPosition:1]];
+    NSString *oldName = [self.tableView cellForRowAtIndexPath:_renamingPath].textLabel.text;
+    
     _renamingPath = nil;
     if ([newName isEqualToString:oldName]) {
         [self.tableView reloadData];
         return;
     }
+    
     if ([newName containsString:@"/"]) {
         [self.tableView reloadData];
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"You can't use a name that contains “/”. Please choose another name."
                                                                        message:nil
                                                                 preferredStyle:UIAlertControllerStyleAlert];
-        [alert  addAction:[UIAlertAction actionWithTitle:@"OK"
-                                                   style:UIAlertActionStyleCancel
-                                                 handler:nil]];
+        [alert addAction:[UIAlertAction actionWithTitle:@"OK"
+                                                  style:UIAlertActionStyleCancel
+                                                handler:nil]];
         [self presentViewController:alert animated:true completion:nil];
         return;
     }
-    [[GBROMManager sharedManager] renameROM:oldName toName:newName];
-    [self.tableView reloadData];
+    [self renameROM:oldName toName:newName];
     _renamingPath = nil;
 }
 
@@ -235,6 +260,49 @@
 {
     return indexPath.section == 0;
 }
+
+- (void)duplicateROMAtIndex:(unsigned)index
+{
+    [[GBROMManager sharedManager] duplicateROM:[GBROMManager sharedManager].allROMs[index]];
+    [self.tableView reloadData];
+}
+
+#ifdef APPSTORE
+- (void)transitionToSibling:(unsigned)index
+{
+    [(GBLibraryViewController *)self.tabBarController setEnableAnimations:true];
+    self.tabBarController.selectedIndex = index;
+    [(GBLibraryViewController *)self.tabBarController setEnableAnimations:false];
+}
+
+- (UIAction *)transferActionForROMIndex:(unsigned)index API_AVAILABLE(ios(13.0))
+{
+    return [UIAction actionWithTitle:@"Move to iCloud"
+                        image:[UIImage systemImageNamed:@"icloud"]
+                   identifier:nil
+                      handler:^(__kindof UIAction *action) {
+        [[GBROMManager sharedManager] moveROMToCloud:[GBROMManager sharedManager].allROMs[index]
+                                           completion:^(NSString *error) {
+            if (error) {
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Move to iCloud Failed"
+                                                                               message:error
+                                                                        preferredStyle:UIAlertControllerStyleAlert];
+                [alert addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                          style:UIAlertActionStyleCancel
+                                                        handler:nil]];
+                [self presentViewController:alert animated:true completion:nil];
+                return;
+            }
+            [self.tableView deleteRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:index inSection:0]]
+                                  withRowAnimation:UITableViewRowAnimationAutomatic];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(NSEC_PER_SEC / 2)), dispatch_get_main_queue(), ^{
+                [self transitionToSibling:1];
+            });
+        }];
+        [self.tableView reloadData];
+    }];
+}
+#endif
 
 // Leave these ROM management to iOS 13.0 and up for now
 - (UIContextMenuConfiguration *)tableView:(UITableView *)tableView
@@ -266,9 +334,11 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
                                 image:[UIImage systemImageNamed:@"plus.square.on.square"]
                            identifier:nil
                               handler:^(__kindof UIAction *action) {
-                [[GBROMManager sharedManager] duplicateROM:[GBROMManager sharedManager].allROMs[[indexPath indexAtPosition:1]]];
-                [self.tableView reloadData];
+                [self duplicateROMAtIndex:indexPath.row];
             }],
+#ifdef APPSTORE
+           [self transferActionForROMIndex:indexPath.row],
+#endif
             deleteAction,
         ]];
     }];
@@ -284,6 +354,11 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)viewWillAppear:(BOOL)animated
 {
     [self.tableView reloadData];
+}
+
+- (NSString *)rootPath
+{
+    return [GBROMManager sharedManager].localRoot;
 }
 
 @end

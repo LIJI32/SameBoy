@@ -147,7 +147,8 @@ static GB_key_mask_t angleToKeyMask(double angle)
     _fadeView = [[UIView alloc] initWithFrame:self.frame];
     _fadeView.backgroundColor = [UIColor colorWithWhite:0 alpha:0];
     _fadeView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    
+    _fadeView.multipleTouchEnabled = true;
+
     [self addSubview:_dpadView];
     [self addSubview:_aButtonView];
     [self addSubview:_bButtonView];
@@ -178,7 +179,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
     _overlayViewContents.frame = CGRectMake(8, 8, 160, 20.5);
     [_overlayView.contentView addSubview:_overlayViewContents];
     [_gbView addSubview:_overlayView];
-    
+        
     return self;
 }
 

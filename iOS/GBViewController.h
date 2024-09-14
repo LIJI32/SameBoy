@@ -27,7 +27,11 @@ typedef enum {
 - (void)emptyPrinterFeed;
 - (void)saveStateToFile:(NSString *)file;
 - (bool)loadStateFromFile:(NSString *)file;
-- (bool)handleOpenURLs:(NSArray <NSURL *> *)urls openInPlace:(bool)inPlace;
+- (bool)handleOpenURLs:(NSArray <NSURL *> *)urls
+#ifdef APPSTORE
+         importToCloud:(bool)cloudImport
+#endif
+           openInPlace:(bool)inPlace;
 - (void)dismissViewController;
 @property (nonatomic) GBRunMode runMode;
 @end

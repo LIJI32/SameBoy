@@ -211,6 +211,11 @@
     if ([GBROMManager.sharedManager romFileForROM:_game.title]) {
         self.navigationItem.rightBarButtonItem.title = @"Open";
     }
+#if APPSTORE
+    else if ([GBROMManager.sharedManager romFileForROM:[@"icloud/" stringByAppendingString:_game.title]]) {
+        self.navigationItem.rightBarButtonItem.title = @"Open";
+    }
+#endif
 }
 
 - (void)rightButtonPressed
@@ -218,8 +223,13 @@
     if ([GBROMManager.sharedManager romFileForROM:_game.title]) {
         [GBROMManager sharedManager].currentROM = _game.title;
         [self.navigationController dismissViewControllerAnimated:true completion:nil];
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
     }
+#if APPSTORE
+    else if ([GBROMManager.sharedManager romFileForROM:[@"icloud/" stringByAppendingString:_game.title]]) {
+        [GBROMManager sharedManager].currentROM = [@"icloud/" stringByAppendingString:_game.title];
+        [self.navigationController dismissViewControllerAnimated:true completion:nil];
+    }
+#endif
     else {
         UIActivityIndicatorViewStyle style = UIActivityIndicatorViewStyleWhite;
         if (@available(iOS 13.0, *)) {
@@ -237,9 +247,9 @@
                     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Could not download ROM"
                                                                                    message:@"Could not download this ROM from Homebrew Hub. Please try again later."
                                                                             preferredStyle:UIAlertControllerStyleAlert];
-                    [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
-                                                               style:UIAlertActionStyleCancel
-                                                             handler:nil]];
+                    [alert addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                              style:UIAlertActionStyleCancel
+                                                            handler:nil]];
                     [self presentViewController:alert animated:true completion:nil];
                     self.navigationItem.rightBarButtonItem.customView = nil;
                 });

@@ -707,9 +707,9 @@ static NSString *LocalizedNameForElement(GCControllerElement *element, GBControl
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"No Controllers Connected"
                                                                        message:@"There are no connected game controllers to configure"
                                                                 preferredStyle:UIAlertControllerStyleAlert];
-        [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
-                                                   style:UIAlertActionStyleCancel
-                                                 handler:nil]];
+        [alert addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                  style:UIAlertActionStyleCancel
+                                                handler:nil]];
         [self presentViewController:alert animated:true completion:nil];
         return false;
         

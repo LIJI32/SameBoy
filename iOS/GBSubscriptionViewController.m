@@ -42,9 +42,9 @@
             UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Could not connect to the App Store"
                                                                            message:@"Could not obtain a list of support options from the App Store, make sure your device is online."
                                                                     preferredStyle:UIAlertControllerStyleAlert];
-            [alert  addAction:[UIAlertAction actionWithTitle:@"Close"
-                                                       style:UIAlertActionStyleCancel
-                                                     handler:^(UIAlertAction *action) {
+            [alert addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                      style:UIAlertActionStyleCancel
+                                                    handler:^(UIAlertAction *action) {
                 [self.presentingViewController dismissViewControllerAnimated:true completion:nil];
             }]];
             [self presentViewController:alert animated:true completion:nil];

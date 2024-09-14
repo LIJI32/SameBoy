@@ -2,6 +2,9 @@
 #import "GBSlotButton.h"
 #import "GBROMManager.h"
 #import "GBViewController.h"
+#ifdef APPSTORE
+#import <objc/runtime.h>
+#endif
 
 @implementation GBStatesViewController
 
@@ -35,6 +38,45 @@
     }
 }
 
+#ifdef APPSTORE
+- (void)performAtomically:(void (^)(void))block
+{
+    self.view.window.userInteractionEnabled = false;
+    UIActivityIndicatorView *activityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    [self navigationItem].rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:activityIndicator];
+    [activityIndicator startAnimating];
+    [[GBROMManager sharedManager] syncROM:GBROMManager.sharedManager.currentROM
+                                   completion:^(NSString *error) {
+        block();
+        if (error) {
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Could not sync save states with iCloud"
+                                                                           message:error
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                      style:UIAlertActionStyleCancel
+                                                    handler:nil]];
+
+            UIImage *image = [UIImage systemImageNamed:@"exclamationmark.triangle.fill"];
+            
+            id block = ^(){
+                [self presentViewController:alert animated:true completion:nil];
+            };
+            objc_setAssociatedObject(self, "RetainedBlock", block, OBJC_ASSOCIATION_RETAIN);
+            
+
+            [self navigationItem].rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:image
+                                                                                        style:UIBarButtonItemStylePlain
+                                                                                       target:block
+                                                                                       action:@selector(invoke)];
+        }
+        else {
+            [self navigationItem].rightBarButtonItem = nil;
+        }
+        self.view.window.userInteractionEnabled = true;
+    } queue:[NSOperationQueue mainQueue]];
+}
+#endif
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -65,6 +107,13 @@
         [root addSubview:slotView];
     }
     self.edgesForExtendedLayout = 0;
+#ifdef APPSTORE
+    [self performAtomically:^{
+        for (GBSlotButton *slotView in self.view.subviews) {
+            [self updateSlotView:slotView];
+        }
+    }];
+#endif
 }
 
 - (void)slotSelected:(GBSlotButton *)slot
@@ -78,10 +127,16 @@
     GBViewController *delegate = (typeof(delegate))[UIApplication sharedApplication].delegate;
     
     void (^saveState)(UIAlertAction *action) = ^(UIAlertAction *action) {
+#ifdef APPSTORE
+        [self performAtomically:^{
+#endif
         [delegate saveStateToFile:stateFile];
         [self updateSlotView:slot];
         [self.presentingViewController dismissViewControllerAnimated:true completion:nil];
         slot.showingMenu = false;
+#ifdef APPSTORE
+        }];
+#endif
     };
     
     if (![[NSFileManager defaultManager] fileExistsAtPath:stateFile]) {
@@ -96,10 +151,16 @@
     [controller addAction:[UIAlertAction actionWithTitle:@"Load state"
                                                    style:UIAlertActionStyleDefault
                                                  handler:^(UIAlertAction *action) {
+#ifdef APPSTORE
+        [self performAtomically:^{
+#endif
         [delegate loadStateFromFile:stateFile];
         [self updateSlotView:slot];
         [self.presentingViewController dismissViewControllerAnimated:true completion:nil];
         slot.showingMenu = false;
+#ifdef APPSTORE
+        }];
+#endif
     }]];
     
     [controller addAction:[UIAlertAction actionWithTitle:@"Cancel"
