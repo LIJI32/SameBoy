@@ -692,7 +692,7 @@ $(DESTDIR)$(PREFIX)/share/mime/packages/sameboy.xml: FreeDesktop/sameboy.xml
 	cp -f $^ $@
 endif
 
-ios:
+ios: bootroms
 	@$(MAKE) _ios
     
 $(BIN)/SameBoy-iOS.ipa: ios iOS/sideload.entitlements
