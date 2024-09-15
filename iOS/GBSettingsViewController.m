@@ -244,6 +244,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                                 @{@"type": typeRadio, @"pref": @"GBFilter", @"title": @"Monochrome LCD Display", @"value": @"MonoLCD",},
                                 @{@"type": typeRadio, @"pref": @"GBFilter", @"title": @"LCD Display", @"value": @"LCD",},
                                 @{@"type": typeRadio, @"pref": @"GBFilter", @"title": @"CRT Display", @"value": @"CRT",},
+                                @{@"type": typeRadio, @"pref": @"GBFilter", @"title": @"Flat CRT Display", @"value": @"FlatCRT",},
                             ]
                         },
                         @{
