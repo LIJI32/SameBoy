@@ -137,6 +137,11 @@
                                         <userDefinedRuntimeAttribute type="string" keyPath="preferenceValue" value="CRT"/>
                                     </userDefinedRuntimeAttributes>
                                 </menuItem>
+                                <menuItem title="Flat CRT display" id="43d-qZ-5sS" customClass="GBPreferenceMenuItem">
+                                    <userDefinedRuntimeAttributes>
+                                        <userDefinedRuntimeAttribute type="string" keyPath="preferenceValue" value="FlatCRT"/>
+                                    </userDefinedRuntimeAttributes>
+                                </menuItem>
                                 <menuItem title="Scale2x" id="C1I-L2-Up1" customClass="GBPreferenceMenuItem">
                                     <userDefinedRuntimeAttributes>
                                         <userDefinedRuntimeAttribute type="string" keyPath="preferenceValue" value="Scale2x"/>

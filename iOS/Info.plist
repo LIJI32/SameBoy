@@ -41,15 +41,11 @@
         <dict>
             <key>CFBundleIconFiles</key>
             <array>
-                <string>AppIcon60x60@2x.png</string>
-                <string>AppIcon60x60@3x.png</string>
-                <string>AppIcon76x76@2x.png</string>
-                <string>AppIcon83.5x83.5@2x.png</string>
+                <string>AppIcon60x60</string>
+                <string>AppIcon76x76</string>
             </array>
-<!-- APPSTORE START
             <key>CFBundleIconName</key>
             <string>AppIcon</string>
-APPSTORE END -->
         </dict>
     </dict>
     <key>LSApplicationCategoryType</key>

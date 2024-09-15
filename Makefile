@@ -156,7 +156,7 @@ endif
 
 IOS_MIN := 11.0
 
-IOS_PNGS := $(shell ls iOS/*.png)
+IOS_PNGS := $(shell ls iOS/*.png iOS/*.car)
 ifeq ($(CONF),appstore)
 override CONF := release
 CFLAGS += -DAPPSTORE
@@ -745,7 +745,7 @@ else
 endif
 endif
 
-ios:
+ios: bootroms
 	@$(MAKE) _ios
 
 $(BIN)/SameBoy-iOS.ipa: ios iOS/sideload.entitlements
