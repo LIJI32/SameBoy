@@ -145,7 +145,7 @@ endif
 
 IOS_MIN := 11.0
 
-IOS_PNGS := $(shell ls iOS/*.png)
+IOS_PNGS := $(shell ls iOS/*.png iOS/*.car)
 # Support out-of-PATH RGBDS
 RGBASM  := $(RGBDS)rgbasm
 RGBLINK := $(RGBDS)rgblink
