@@ -212,7 +212,9 @@
     if (indexPath.section == 1) return;
     
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-    UITextField *field = [[UITextField alloc] initWithFrame:cell.textLabel.frame];
+    CGRect frame = cell.textLabel.frame;
+    frame.size.width = cell.textLabel.superview.frame.size.width - 8 - frame.origin.x;
+    UITextField *field = [[UITextField alloc] initWithFrame:frame];
     field.font = cell.textLabel.font;
     field.text = cell.textLabel.text;
     cell.textLabel.textColor = [UIColor clearColor];

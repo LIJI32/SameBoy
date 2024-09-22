@@ -11,6 +11,7 @@
 #import "GBOptionViewController.h"
 #import "GBAboutController.h"
 #import "GBSettingsViewController.h"
+#import "GBPalettePicker.h"
 #import "GBStatesViewController.h"
 #import "GBCheckableAlertController.h"
 #import "GBPrinterFeedController.h"
@@ -35,10 +36,11 @@
     bool _rewindOver;
     bool _romLoaded;
     bool _swappingROM;
-    bool _loadingState;
+    bool _skipAutoLoad;
     
     UIInterfaceOrientation _orientation;
-    GBHorizontalLayout *_horizontalLayout;
+    GBHorizontalLayout *_horizontalLayoutLeft;
+    GBHorizontalLayout *_horizontalLayoutRight;
     GBVerticalLayout *_verticalLayout;
     GBBackgroundView *_backgroundView;
     
@@ -225,7 +227,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 #pragma clang diagnostic ignored "-Warc-retain-cycles"
     [self addDefaultObserver:^(id newValue) {
         GBTheme *theme = [GBSettingsViewController themeNamed:newValue];
-        _horizontalLayout = [[GBHorizontalLayout alloc] initWithTheme:theme];
+        _horizontalLayoutLeft = [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:false];
+        _horizontalLayoutRight = _horizontalLayoutLeft.cutout?
+            [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:true] :
+            _horizontalLayoutLeft;
         _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];
         _printerSpinner.color = theme.brandColor;
 
@@ -654,7 +659,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (bool)loadStateFromFile:(NSString *)file
 {
-    _loadingState = true;
+    _skipAutoLoad = true;
     GB_model_t model;
     if (!GB_get_state_model(file.fileSystemRepresentation, &model)) {
         if (GB_get_model(&_gb) != model) {
@@ -670,7 +675,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
     GBROMManager *romManager = [GBROMManager sharedManager];
     if (romManager.romFile) {
-        if (!_loadingState) {
+        if (!_skipAutoLoad) {
             // Todo: display errors and warnings
             if ([romManager.romFile.pathExtension.lowercaseString isEqualToString:@"isx"]) {
                 _romLoaded = GB_load_isx(&_gb, romManager.romFile.fileSystemRepresentation) == 0;
@@ -707,7 +712,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         _gbView.hidden = !_romLoaded;
     });
     _swappingROM = false;
-    _loadingState = false;
+    _skipAutoLoad = false;
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application
@@ -726,6 +731,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)reset
 {
     [self stop];
+    _skipAutoLoad = true;
     GB_reset(&_gb);
     [self start];
 }
@@ -762,6 +768,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         }
         [controller addOption:items[i].title withCheckmark:items[i].checked action:^{
             [self stop];
+            _skipAutoLoad = true;
             GB_switch_model_and_reset(&_gb, model);
             if (model > GB_MODEL_CGB_E && ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBShownGBAWarning"]) {
                 UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"SameBoy is not a Game Boy Advance Emulator"
@@ -877,11 +884,23 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)orientation duration:(NSTimeInterval)duration
 {
-    GBLayout *layout = _horizontalLayout;
+    GBLayout *layout = nil;
     _orientation = orientation;
-    if (orientation == UIInterfaceOrientationPortrait || orientation == UIInterfaceOrientationPortraitUpsideDown) {
-        layout = _verticalLayout;
+    switch (orientation) {
+        default:
+        case UIInterfaceOrientationUnknown:
+        case UIInterfaceOrientationPortrait:
+        case UIInterfaceOrientationPortraitUpsideDown:
+            layout = _verticalLayout;
+            break;
+        case UIInterfaceOrientationLandscapeRight:
+            layout = _horizontalLayoutLeft;
+            break;
+        case UIInterfaceOrientationLandscapeLeft:
+            layout = _horizontalLayoutRight;
+            break;
     }
+    
     _backgroundView.frame = [layout viewRectForOrientation:orientation];
     _backgroundView.layout = layout;
     if (!self.presentedViewController) {
@@ -1330,7 +1349,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 - (void)updatePalette
 {
     memcpy(&_palette,
-           [GBSettingsViewController paletteForTheme:[[NSUserDefaults standardUserDefaults] stringForKey:@"GBCurrentTheme"]],
+           [GBPalettePicker paletteForTheme:[[NSUserDefaults standardUserDefaults] stringForKey:@"GBCurrentTheme"]],
            sizeof(_palette));
     GB_set_palette(&_gb, &_palette);
 }
@@ -1486,10 +1505,77 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     return validURLs.count;
 }
 
+- (void)doImportedPaletteNotification
+{
+    UIVisualEffectView *effectView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleProminent]];
+    effectView.layer.cornerRadius = 8;
+    effectView.layer.masksToBounds = true;
+    [self.view addSubview:effectView];
+    UILabel *tipLabel = [[UILabel alloc] init];
+    tipLabel.text = [NSString stringWithFormat:@"Imported palette “%@”", [[NSUserDefaults standardUserDefaults] stringForKey:@"GBCurrentTheme"]];
+    if (@available(iOS 13.0, *)) {
+        tipLabel.textColor = [UIColor labelColor];
+    }
+    tipLabel.font = [UIFont systemFontOfSize:16];
+    tipLabel.alpha = 0.8;
+    [effectView.contentView addSubview:tipLabel];
+    
+    UIView *view = self.view;
+    CGSize outerSize = view.frame.size;
+    CGSize size = [tipLabel textRectForBounds:(CGRect){{0, 0},
+        {outerSize.width - 32,
+            outerSize.height - 32}}
+                       limitedToNumberOfLines:1].size;
+    size.width = ceil(size.width);
+    tipLabel.frame = (CGRect){{8, 8}, size};
+    CGRect finalFrame = (CGRect) {
+        {round((outerSize.width - size.width - 16) / 2), view.window.safeAreaInsets.top + 12},
+        {size.width + 16, size.height + 16}
+    };
+    
+    CGRect initFrame = finalFrame;
+    initFrame.origin.y = -initFrame.size.height;
+    effectView.frame = initFrame;
+    
+    effectView.alpha = 0;
+    [UIView animateWithDuration:0.5 animations:^{
+        effectView.alpha = 1.0;
+        effectView.frame = finalFrame;
+    }];
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(NSEC_PER_SEC * 1.5)), dispatch_get_main_queue(), ^{
+        [UIView animateWithDuration:0.5 animations:^{
+            effectView.alpha = 0.0;
+            effectView.frame = initFrame;
+        } completion:^(BOOL finished) {
+            if (finished) {
+                [effectView removeFromSuperview];
+            }
+        }];
+    });
+
+}
+
 - (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
 {
     if (self.presentedViewController && ![self.presentedViewController isKindOfClass:[UIAlertController class]]) {
         [self dismissViewController];
+    }
+    if ([url.pathExtension.lowercaseString isEqual:@"sbp"]) {
+        [url startAccessingSecurityScopedResource];
+        bool success = [GBPalettePicker importPalette:url.path];
+        [url stopAccessingSecurityScopedResource];
+        if (!success) {
+            UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Palette Import Failed"
+                                                                                     message:@"The imported palette file is invalid."
+                                                                              preferredStyle:UIAlertControllerStyleAlert];
+            [alertController addAction:[UIAlertAction actionWithTitle:@"Close" style:UIAlertActionStyleDefault handler:nil]];
+            [self presentViewController:alertController animated:true completion:nil];
+        }
+        else {
+            [self doImportedPaletteNotification];
+        }
+        return success;
     }
     NSString *potentialROM = [[url.path stringByDeletingLastPathComponent] lastPathComponent];
     if ([[[GBROMManager sharedManager] romFileForROM:potentialROM].stringByStandardizingPath isEqualToString:url.path.stringByStandardizingPath]) {

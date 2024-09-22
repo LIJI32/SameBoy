@@ -360,6 +360,7 @@ static double blend(double from, double to, double position)
         }
         [defaults setObject:newName forKey:@"GBCurrentTheme"];
         [self savePalette:sender];
+        [self.themesList reloadData];
         [self awakeFromNib];
     }
 }

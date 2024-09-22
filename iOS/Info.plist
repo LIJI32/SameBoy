@@ -124,6 +124,20 @@
             <key>LSHandlerRank</key>
             <string>Alternate</string>
         </dict>
+        <dict>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>sbp</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>SameBoy Palette</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.github.liji32.sameboy.sbp</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+        </dict>
     </array>
     <key>UTExportedTypeDeclarations</key>
     <array>
@@ -192,6 +206,23 @@
                 <key>public.filename-extension</key>
                 <array>
                     <string>cht</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeDescription</key>
+            <string>SameBoy Palette</string>
+            <key>UTTypeIdentifier</key>
+            <string>com.github.liji32.sameboy.sbp</string>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>sbp</string>
                 </array>
             </dict>
         </dict>

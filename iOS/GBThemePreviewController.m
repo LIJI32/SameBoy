@@ -9,7 +9,8 @@
 
 @implementation GBThemePreviewController
 {
-    GBHorizontalLayout *_horizontalLayout;
+    GBHorizontalLayout *_horizontalLayoutLeft;
+    GBHorizontalLayout *_horizontalLayoutRight;
     GBVerticalLayout *_verticalLayout;
     GBBackgroundView *_backgroundView;
     bool _isPaid;
@@ -18,7 +19,10 @@
 - (instancetype)initWithTheme:(GBTheme *)theme isPaid:(bool)paid
 {
     self = [super init];
-    _horizontalLayout = [[GBHorizontalLayout alloc] initWithTheme:theme];
+    _horizontalLayoutLeft = [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:false];
+    _horizontalLayoutRight = _horizontalLayoutLeft.cutout?
+        [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:true] :
+        _horizontalLayoutLeft;
     _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];
     _isPaid = paid;
     return self;
@@ -45,10 +49,22 @@
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)orientation duration:(NSTimeInterval)duration
 {
-    GBLayout *layout = _horizontalLayout;
-    if (orientation == UIInterfaceOrientationPortrait || orientation == UIInterfaceOrientationPortraitUpsideDown) {
-        layout = _verticalLayout;
+    GBLayout *layout = nil;
+    switch (orientation) {
+        default:
+        case UIInterfaceOrientationUnknown:
+        case UIInterfaceOrientationPortrait:
+        case UIInterfaceOrientationPortraitUpsideDown:
+            layout = _verticalLayout;
+            break;
+        case UIInterfaceOrientationLandscapeRight:
+            layout = _horizontalLayoutLeft;
+            break;
+        case UIInterfaceOrientationLandscapeLeft:
+            layout = _horizontalLayoutRight;
+            break;
     }
+    
     _backgroundView.frame = [layout viewRectForOrientation:orientation];
     _backgroundView.layout = layout;
 }

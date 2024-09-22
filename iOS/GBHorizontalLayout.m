@@ -3,12 +3,12 @@
 
 @implementation GBHorizontalLayout
 
-- (instancetype)initWithTheme:(GBTheme *)theme
+- (instancetype)initWithTheme:(GBTheme *)theme cutoutOnRight:(bool)cutoutOnRight
 {
     self = [super initWithTheme:theme];
     if (!self) return nil;
     
-    CGSize resolution = {self.resolution.height - self.cutout, self.resolution.width};
+    CGSize resolution = {self.resolution.height, self.resolution.width};
     
     CGRect screenRect = {0,};
     screenRect.size.height = self.hasFractionalPixels? (resolution.height - self.homeBar) : floor((resolution.height - self.homeBar) / 144) * 144;
@@ -46,19 +46,20 @@
     else {
         screenRect.origin.y = (resolution.height - self.homeBar - screenRect.size.height) / 2;
     }
-    
+        
     self.screenRect = screenRect;
     
     self.dpadLocation = (CGPoint){
-        round((screenRect.origin.x - screenBorderWidth) / 2),
+        round((screenRect.origin.x - screenBorderWidth) / 2) + (cutoutOnRight? 0 : self.cutout / 2),
         round(resolution.height * 3 / 8)
     };
-    
-    double wingWidth = (resolution.width - screenRect.size.width) / 2 - screenBorderWidth * 5;
+        
+    double longWing = (resolution.width - screenRect.size.width) / 2 - screenBorderWidth * 5;
+    double shortWing = longWing - self.cutout;
     double buttonRadius = 36 * self.factor;
-    CGSize buttonsDelta = [self buttonDeltaForMaxHorizontalDistance:wingWidth - buttonRadius * 2];
+    CGSize buttonsDelta = [self buttonDeltaForMaxHorizontalDistance:(cutoutOnRight? shortWing : longWing) - buttonRadius * 2];
     CGPoint buttonsCenter = {
-        resolution.width - self.dpadLocation.x,
+        (resolution.width + screenRect.size.width + screenRect.origin.x) / 2 - (cutoutOnRight? self.cutout / 2 : 0),
         self.dpadLocation.y,
     };
     
@@ -73,24 +74,14 @@
     };
 
     self.selectLocation = (CGPoint){
-        self.dpadLocation.x,
+        self.dpadLocation.x + (cutoutOnRight? self.cutout / 2 : 0),
         MIN(round(resolution.height * 3 / 4), self.dpadLocation.y + 180 * self.factor)
     };
     
     self.startLocation = (CGPoint){
-        buttonsCenter.x,
+        buttonsCenter.x -  (cutoutOnRight? 0 : self.cutout / 2 ),
         self.selectLocation.y
     };
-    
-    resolution.width += self.cutout * 2;
-    self.screenRect = (CGRect){{self.screenRect.origin.x + self.cutout, self.screenRect.origin.y}, self.screenRect.size};
-    self.dpadLocation = (CGPoint){self.dpadLocation.x + self.cutout, self.dpadLocation.y};
-    self.aLocation = (CGPoint){self.aLocation.x + self.cutout, self.aLocation.y};
-    self.bLocation = (CGPoint){self.bLocation.x + self.cutout, self.bLocation.y};
-    self.startLocation = (CGPoint){self.startLocation.x + self.cutout, self.startLocation.y};
-    self.selectLocation = (CGPoint){self.selectLocation.x + self.cutout, self.selectLocation.y};
-    self.abComboLocation = (CGPoint){(self.aLocation.x + self.bLocation.x) / 2,
-                                     (self.aLocation.y + self.bLocation.y) / 2};
 
     
     if (theme.renderingPreview) {
@@ -118,11 +109,13 @@
     return self;
 }
 
+- (instancetype)initWithTheme:(GBTheme *)theme
+{
+    assert(false);
+}
+
 - (CGRect)viewRectForOrientation:(UIInterfaceOrientation)orientation
 {
-    if (orientation == UIInterfaceOrientationLandscapeLeft) {
-        return CGRectMake(-(signed)self.cutout / (signed)self.factor, 0, self.background.size.width / self.factor, self.background.size.height / self.factor);
-    }
     return CGRectMake(0, 0, self.background.size.width / self.factor, self.background.size.height / self.factor);
 }
 

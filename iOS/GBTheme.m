@@ -391,7 +391,7 @@ __attribute__((objc_direct_members))
 {
     if (_horizontalPreview) return _horizontalPreview;
     _renderingPreview = true;
-    GBLayout *layout = [[GBHorizontalLayout alloc] initWithTheme:self];
+    GBLayout *layout = [[GBHorizontalLayout alloc] initWithTheme:self cutoutOnRight:false];
     _renderingPreview = false;
     GBBackgroundView *view = [[GBBackgroundView alloc] initWithLayout:layout];
     [view enterPreviewMode:false];

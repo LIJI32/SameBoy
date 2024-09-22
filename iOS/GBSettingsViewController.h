@@ -25,7 +25,6 @@ typedef enum {
 
 @interface GBSettingsViewController : UITableViewController
 + (UIViewController *)settingsViewControllerWithLeftButton:(UIBarButtonItem *)button;
-+ (const GB_palette_t *)paletteForTheme:(NSString *)theme;
 + (GBButton)controller:(GCController *)controller convertUsageToButton:(GBControllerUsage)usage;
 + (GBTheme *)themeNamed:(NSString *)name;
 @end
