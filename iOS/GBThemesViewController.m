@@ -51,6 +51,9 @@
             [[GBTheme alloc] initGameAndWatchTheme],
             [[GBTheme alloc] initSFCTheme],
             [[GBTheme alloc] initSNESTheme],
+            [[GBTheme alloc] initGCNTheme],
+            [[GBTheme alloc] initMegaDuckTheme],
+            [[GBTheme alloc] initDarkMegaDuckTheme],
         ],
 #endif
     ];

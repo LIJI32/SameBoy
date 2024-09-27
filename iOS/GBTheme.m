@@ -361,6 +361,102 @@ __attribute__((objc_direct_members))
     
     return self;
 }
+
+- (instancetype)initGCNTheme
+{
+    self = [super init];
+    
+    _brandColor = [UIColor colorWithWhite:1.0 alpha:0.78125];
+    _embossLabels = true;
+    [self setupBackgroundWithColor:0x373f88];
+    
+    _bezelsGradientTop = [UIColor colorWithWhite:45 / 255.0 alpha:1.0];
+    _bezelsGradientBottom = [UIColor colorWithWhite:53 / 255.0 alpha:1.0];
+
+    
+    _imageOverrides = @{
+        @"buttonA": [GBTheme recolorImage:[UIImage imageNamed:@"button"] withColor:MakeColor(-0x08, 0xff, 0xe8)],
+        @"buttonAPressed": [GBTheme recolorImage:[UIImage imageNamed:@"buttonPressed"] withColor:MakeColor(-0x08, 0xff, 0xe8)],
+        @"buttonB": [GBTheme recolorImage:[UIImage imageNamed:@"button"] withColor:MakeColor(0xff, -0xf, -0xa)],
+        @"buttonBPressed": [GBTheme recolorImage:[UIImage imageNamed:@"buttonPressed"] withColor:MakeColor(0xff, -0xf, -0xa)],
+        
+        
+        @"button2": [GBTheme recolorImage:[UIImage imageNamed:@"button2-tint"] withColor:[UIColor colorWithWhite:31 / 32.0 alpha:1.0]],
+        @"button2Pressed": [GBTheme recolorImage:[UIImage imageNamed:@"button2Pressed-tint"] withColor:[UIColor colorWithWhite:31 / 32.0 alpha:1.0]],
+        @"dpad": [GBTheme recolorImage:[UIImage imageNamed:@"dpad-tint"] withColor:[UIColor colorWithWhite:31 / 32.0 alpha:1.0]],
+        @"swipepad": [GBTheme recolorImage:[UIImage imageNamed:@"swipepad-tint"] withColor:[UIColor colorWithWhite:31 / 32.0 alpha:1.0]],
+    };
+    
+    _texture = [UIImage imageNamed:@"TexturedPlastic"];
+    
+    _name = @"Cubical";
+    
+    return self;
+}
+
+
+- (instancetype)initMegaDuckTheme
+{
+    self = [super init];
+    
+    UIColor *grey = MakeColor(0x39, 0x42, 0x49);
+    UIColor *teal = MakeColor(0x02, 0xe8, 0xf6);
+
+    _brandColor = grey;
+    [self setupBackgroundWithColor:0xd3d3d3];
+    
+    _bezelsGradientTop = MakeColor(0x47, 0x4d, 0x59);
+    _bezelsGradientBottom = MakeColor(0x3a, 0x3e, 0x49);
+    
+    
+    _imageOverrides = @{
+        @"button": [GBTheme recolorImage:[UIImage imageNamed:@"button"] withColor:teal],
+        @"buttonPressed": [GBTheme recolorImage:[UIImage imageNamed:@"buttonPressed"] withColor:teal],
+        
+        @"button2": [GBTheme recolorImage:[UIImage imageNamed:@"button2-tint"] withColor:grey],
+        @"button2Pressed": [GBTheme recolorImage:[UIImage imageNamed:@"button2Pressed-tint"] withColor:grey],
+        @"dpad": [GBTheme recolorImage:[UIImage imageNamed:@"dpad-tint"] withColor:teal],
+        @"swipepad": [GBTheme recolorImage:[UIImage imageNamed:@"swipepad-tint"] withColor:teal],
+    };
+    
+    _texture = [UIImage imageNamed:@"TexturedPlastic"];
+    
+    _name = @"Light Duck";
+    
+    return self;
+}
+
+- (instancetype)initDarkMegaDuckTheme
+{
+    self = [super init];
+    
+    UIColor *grey = MakeColor(0xad, 0xad, 0xa3);
+    UIColor *teal = MakeColor(-0x18, 0x48, 0xff);
+    
+    _brandColor = grey;
+    [self setupBackgroundWithColor:0x1e1e1e];
+    
+    _bezelsGradientTop = MakeColor(0x47, 0x4d, 0x59);
+    _bezelsGradientBottom = MakeColor(0x3a, 0x3e, 0x49);
+    
+    
+    _imageOverrides = @{
+        @"button": [GBTheme recolorImage:[UIImage imageNamed:@"button"] withColor:teal],
+        @"buttonPressed": [GBTheme recolorImage:[UIImage imageNamed:@"buttonPressed"] withColor:teal],
+        
+        @"button2": [GBTheme recolorImage:[UIImage imageNamed:@"button2-tint"] withColor:grey],
+        @"button2Pressed": [GBTheme recolorImage:[UIImage imageNamed:@"button2Pressed-tint"] withColor:grey],
+        @"dpad": [GBTheme recolorImage:[UIImage imageNamed:@"dpad-tint"] withColor:teal],
+        @"swipepad": [GBTheme recolorImage:[UIImage imageNamed:@"swipepad-tint"] withColor:teal],
+    };
+    
+    _texture = [UIImage imageNamed:@"TexturedPlastic"];
+    
+    _name = @"Dark Duck";
+    
+    return self;
+}
+
 #endif
 
 - (bool)isDark

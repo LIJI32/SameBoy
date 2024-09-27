@@ -35,6 +35,10 @@
 - (instancetype)initGameAndWatchTheme __attribute__((objc_direct));
 - (instancetype)initSFCTheme __attribute__((objc_direct));
 - (instancetype)initSNESTheme __attribute__((objc_direct));
+- (instancetype)initGCNTheme __attribute__((objc_direct));
+
+- (instancetype)initMegaDuckTheme __attribute__((objc_direct));
+- (instancetype)initDarkMegaDuckTheme __attribute__((objc_direct));
 #endif
 
 - (UIImage *)imageNamed:(NSString *)name  __attribute__((objc_direct));
