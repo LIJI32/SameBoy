@@ -451,6 +451,10 @@
 
         for (NSMetadataItem *item in query.results) {
             NSURL *itemURL = [item valueForAttribute:NSMetadataItemURLKey];
+            
+            if ([item valueForAttribute:NSMetadataUbiquitousItemDownloadingStatusKey] == NSMetadataUbiquitousItemDownloadingStatusDownloaded) { // Not up to date
+                [[NSFileManager defaultManager] evictUbiquitousItemAtURL:itemURL error:nil];
+            }
             if (![allowedExtensions containsObject:itemURL.pathExtension.lowercaseString]) {
                 continue;
             }
@@ -537,7 +541,7 @@
 
 - (NSString *)lockCloudROM
 {
-    if (![_currentROM  hasPrefix:@"icloud/"]) return nil;
+    if (![_currentROM hasPrefix:@"icloud/"]) return nil;
     [_lockLock lock];
     if (_lockRecursion++) return nil;
             
