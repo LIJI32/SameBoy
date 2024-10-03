@@ -281,40 +281,51 @@ LDFLAGS += -lc -lm -ldl
 endif
 
 ifeq ($(MAKECMDGOALS),_ios)
-OBJ := build/obj-ios
-SYSROOT := $(shell xcodebuild -sdk iphoneos -version Path 2> $(NULL))
-ifeq ($(SYSROOT),)
-$(error Could not find an iOS SDK)
-endif
-CFLAGS += -arch arm64 -miphoneos-version-min=$(IOS_MIN) -isysroot $(SYSROOT) -IAppleCommon -DGB_DISABLE_DEBUGGER
-CORE_FILTER += Core/debugger.c Core/sm83_disassembler.c Core/symbol_hash.c Core/cheat_search.c
-LDFLAGS += -arch arm64
-OCFLAGS += -x objective-c -fobjc-arc -Wno-deprecated-declarations -isysroot $(SYSROOT)
-LDFLAGS += -miphoneos-version-min=$(IOS_MIN)  -isysroot $(SYSROOT)
-IOS_INSTALLER_LDFLAGS := $(LDFLAGS) -lobjc -framework CoreServices -framework Foundation
-LDFLAGS += -lobjc -framework UIKit -framework Foundation -framework CoreGraphics -framework Metal -framework MetalKit -framework AudioToolbox -framework AVFoundation -framework QuartzCore -framework CoreMotion -framework CoreVideo -framework CoreMedia -framework CoreImage -framework UserNotifications -framework GameController -weak_framework CoreHaptics -framework MobileCoreServices -lcompression
-CODESIGN := codesign -fs -
-else
-ifeq ($(PLATFORM),Darwin)
-SYSROOT := $(shell xcodebuild -sdk macosx -version Path 2> $(NULL))
-ifeq ($(SYSROOT),)
-SYSROOT := /Library/Developer/CommandLineTools/SDKs/$(shell ls /Library/Developer/CommandLineTools/SDKs/ | grep "[0-9]\." | tail -n 1)
-endif
-ifeq ($(SYSROOT),/Library/Developer/CommandLineTools/SDKs/)
-$(error Could not find a macOS SDK)
+	OBJ := build/obj-ios
+	SYSROOT := $(shell xcodebuild -sdk iphoneos -version Path 2> $(NULL))
+	ifeq ($(SYSROOT),)
+	$(error Could not find an iOS SDK)
+	endif
+	CFLAGS += -arch arm64 -miphoneos-version-min=$(IOS_MIN) -isysroot $(SYSROOT) -IAppleCommon -DGB_DISABLE_DEBUGGER
+	CORE_FILTER += Core/debugger.c Core/sm83_disassembler.c Core/symbol_hash.c Core/cheat_search.c
+	LDFLAGS += -arch arm64
+	OCFLAGS += -x objective-c -fobjc-arc -isysroot $(SYSROOT)
+	LDFLAGS += -miphoneos-version-min=$(IOS_MIN)  -isysroot $(SYSROOT)
+	IOS_INSTALLER_LDFLAGS := $(LDFLAGS) -lobjc -framework CoreServices -framework Foundation
+	LDFLAGS += -lobjc -framework UIKit -framework Foundation -framework CoreGraphics -framework Metal -framework MetalKit -framework AudioToolbox -framework AVFoundation -framework QuartzCore -framework CoreMotion -framework CoreVideo -framework CoreMedia -framework CoreImage -framework UserNotifications -framework GameController -weak_framework CoreHaptics -framework MobileCoreServices -lcompression
+	CODESIGN := codesign -fs -
+else ifeq ($(MAKECMDGOALS),_watchos)
+	OBJ := build/obj-watchos
+	SYSROOT := $(shell xcodebuild -sdk watchos -version Path 2> $(NULL))
+	ifeq ($(SYSROOT),)
+	$(error Could not find a watchOS SDK)
+	endif
+	FAT_FLAGS := -arch armv7k -arch arm64_32
+	CFLAGS += -arch arm64 -mwatchos-version-min=7.0 -isysroot $(SYSROOT) -IAppleCommon -DGB_DISABLE_DEBUGGER -DGB_DISABLE_CHEATS
+	CORE_FILTER += Core/debugger.c Core/sm83_disassembler.c Core/symbol_hash.c Core/cheat_search.c Core/cheats.c
+	LDFLAGS += -arch arm64
+	OCFLAGS += -x objective-c -fobjc-arc -Wno-deprecated-declarations -isysroot $(SYSROOT)
+	LDFLAGS += -mwatchos-version-min=7.0  -isysroot $(SYSROOT)
+	LDFLAGS += -e _WKExtensionMain -lobjc -framework Foundation -framework WatchKit -framework SpriteKit
+	CODESIGN := codesign -fs -
+else ifeq ($(PLATFORM),Darwin)
+	SYSROOT := $(shell xcodebuild -sdk macosx -version Path 2> $(NULL))
+	ifeq ($(SYSROOT),)
+	SYSROOT := /Library/Developer/CommandLineTools/SDKs/$(shell ls /Library/Developer/CommandLineTools/SDKs/ | grep "[0-9]\." | tail -n 1)
+	endif
+	ifeq ($(SYSROOT),/Library/Developer/CommandLineTools/SDKs/)
+	$(error Could not find a macOS SDK)
+	endif
+	
+	CFLAGS += -F/Library/Frameworks -mmacosx-version-min=10.9 -isysroot $(SYSROOT) -IAppleCommon
+	OCFLAGS += -x objective-c -fobjc-arc -isysroot $(SYSROOT)
+	LDFLAGS += -framework AppKit -mmacosx-version-min=10.9 -isysroot $(SYSROOT)
+	GL_LDFLAGS := -framework OpenGL
+else ifeq ($(PLATFORM),windows32)
+	LDFLAGS += -Wl,/NODEFAULTLIB:libcmt.lib
 endif
 
-CFLAGS += -F/Library/Frameworks -mmacosx-version-min=10.9 -isysroot $(SYSROOT) -IAppleCommon
-OCFLAGS += -x objective-c -fobjc-arc -Wno-deprecated-declarations -isysroot $(SYSROOT)
-LDFLAGS += -framework AppKit -mmacosx-version-min=10.9 -isysroot $(SYSROOT)
-GL_LDFLAGS := -framework OpenGL
-endif
 CFLAGS += -Wno-deprecated-declarations
-ifeq ($(PLATFORM),windows32)
-CFLAGS += -Wno-deprecated-declarations # Seems like Microsoft deprecated every single LIBC function
-LDFLAGS += -Wl,/NODEFAULTLIB:libcmt.lib
-endif
-endif
 
 LIBFLAGS := -nostdlib -Wl,-r
 ifneq ($(PLATFORM),Darwin)
@@ -390,6 +401,8 @@ ifneq ($(FREEDESKTOP),)
 all: xdg-thumbnailer
 endif
 
+_watchos: $(BIN)/SameBoy-watchOS.app
+
 # Get a list of our source files and their respective object file targets
 
 CORE_SOURCES := $(filter-out $(CORE_FILTER),$(shell ls Core/*.c))
@@ -397,6 +410,7 @@ CORE_HEADERS := $(shell ls Core/*.h)
 SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG) $(patsubst %,SDL/audio/%.c,$(SDL_AUDIO_DRIVERS))
 TESTER_SOURCES := $(shell ls Tester/*.c)
 IOS_SOURCES := $(filter-out iOS/installer.m, $(shell ls iOS/*.m)) $(shell ls AppleCommon/*.m)
+WACTHOS_SOURCES := $(shell ls watchOS/*.m)
 COCOA_SOURCES := $(shell ls Cocoa/*.m) $(shell ls HexFiend/*.m) $(shell ls JoyKit/*.m) $(shell ls AppleCommon/*.m)
 QUICKLOOK_SOURCES := $(shell ls QuickLook/*.m) $(shell ls QuickLook/*.c)
 XDG_THUMBNAILER_SOURCES := $(shell ls XdgThumbnailer/*.c)
@@ -409,6 +423,7 @@ CORE_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(CORE_SOURCES))
 PUBLIC_HEADERS := $(patsubst Core/%,$(INC)/%,$(CORE_HEADERS))
 COCOA_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(COCOA_SOURCES))
 IOS_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(IOS_SOURCES))
+WATCHOS_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(WACTHOS_SOURCES))
 QUICKLOOK_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(QUICKLOOK_SOURCES))
 SDL_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(SDL_SOURCES))
 TESTER_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(TESTER_SOURCES))
@@ -431,6 +446,9 @@ ifneq ($(filter $(MAKECMDGOALS),cocoa),)
 endif
 ifneq ($(filter $(MAKECMDGOALS),_ios),)
 -include $(IOS_OBJECTS:.o=.dep)
+endif
+ifneq ($(filter $(MAKECMDGOALS),_watchos),)
+-include $(WATCHOS_OBJECTS:.o=.dep)
 endif
 endif
 
@@ -493,18 +511,18 @@ $(OBJ)/%.m.o: %.m
 # iOS Port
 
 $(BIN)/SameBoy-iOS.app: $(BIN)/SameBoy-iOS.app/SameBoy \
-                        $(IOS_PNGS) \
-                        iOS/License.html \
-                        iOS/Info.plist \
-                        $(BIN)/SameBoy-iOS.app/dmg_boot.bin \
-                        $(BIN)/SameBoy-iOS.app/mgb_boot.bin \
-                        $(BIN)/SameBoy-iOS.app/cgb0_boot.bin \
-                        $(BIN)/SameBoy-iOS.app/cgb_boot.bin \
-                        $(BIN)/SameBoy-iOS.app/agb_boot.bin \
-                        $(BIN)/SameBoy-iOS.app/sgb_boot.bin \
-                        $(BIN)/SameBoy-iOS.app/sgb2_boot.bin \
+						$(IOS_PNGS) \
+						iOS/License.html \
+						iOS/Info.plist \
+						$(BIN)/SameBoy-iOS.app/dmg_boot.bin \
+						$(BIN)/SameBoy-iOS.app/mgb_boot.bin \
+						$(BIN)/SameBoy-iOS.app/cgb0_boot.bin \
+						$(BIN)/SameBoy-iOS.app/cgb_boot.bin \
+						$(BIN)/SameBoy-iOS.app/agb_boot.bin \
+						$(BIN)/SameBoy-iOS.app/sgb_boot.bin \
+						$(BIN)/SameBoy-iOS.app/sgb2_boot.bin \
 						$(BIN)/SameBoy-iOS.app/LaunchScreen.storyboardc \
-                        Shaders
+						Shaders
 	$(MKDIR) -p $(BIN)/SameBoy-iOS.app
 	cp $(IOS_PNGS) $(BIN)/SameBoy-iOS.app
 	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/;s/@IOS_MIN/$(IOS_MIN)/;s/@COMMITS/$(COMMITS)/" < iOS/Info.plist > $(BIN)/SameBoy-iOS.app/Info.plist
@@ -523,23 +541,52 @@ endif
 $(OBJ)/installer: iOS/installer.m
 	$(CC) $< -o $@ $(IOS_INSTALLER_LDFLAGS) $(CFLAGS)
 
+# watchOS Port
+
+$(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/SameBoy \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/dmg_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/mgb_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/cgb0_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/cgb_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/agb_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/sgb_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/sgb2_boot.bin \
+							watchOS/ExtensionInfo.plist \
+							watchOS/Info.plist
+	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app
+	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/;s/@IOS_MIN/$(IOS_MIN)/;s/@COMMITS/$(COMMITS)/" < watchOS/Info.plist > $(BIN)/SameBoy-watchOS.app/Info.plist
+	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/
+	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/;s/@IOS_MIN/$(IOS_MIN)/;s/@COMMITS/$(COMMITS)/" < watchOS/ExtensionInfo.plist > $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/Info.plist
+	cp watchOS/WatchKitStub $(BIN)/SameBoy-watchOS.app/SameBoy
+	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app/_WatchKitStub
+	cp watchOS/WatchKitStub $(BIN)/SameBoy-watchOS.app/_WatchKitStub/WK
+	$(CODESIGN) $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex
+	$(CODESIGN) $@
+
+$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/SameBoy: $(CORE_OBJECTS) $(WATCHOS_OBJECTS)
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $^ -o $@ $(LDFLAGS)
+ifeq ($(CONF), release)
+	$(STRIP) $@
+endif
+
 # Cocoa Port
 
 $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
-                    $(shell ls Cocoa/*.icns Cocoa/*.png) \
-                    Cocoa/License.html \
-                    Cocoa/Info.plist \
-                    Misc/registers.sym \
-                    $(BIN)/SameBoy.app/Contents/Resources/dmg_boot.bin \
-                    $(BIN)/SameBoy.app/Contents/Resources/mgb_boot.bin \
-                    $(BIN)/SameBoy.app/Contents/Resources/cgb0_boot.bin \
-                    $(BIN)/SameBoy.app/Contents/Resources/cgb_boot.bin \
-                    $(BIN)/SameBoy.app/Contents/Resources/agb_boot.bin \
-                    $(BIN)/SameBoy.app/Contents/Resources/sgb_boot.bin \
-                    $(BIN)/SameBoy.app/Contents/Resources/sgb2_boot.bin \
-                    $(patsubst %.xib,%.nib,$(addprefix $(BIN)/SameBoy.app/Contents/Resources/,$(shell cd Cocoa;ls *.xib))) \
-                    $(BIN)/SameBoy.qlgenerator \
-                    Shaders
+					$(shell ls Cocoa/*.icns Cocoa/*.png) \
+					Cocoa/License.html \
+					Cocoa/Info.plist \
+					Misc/registers.sym \
+					$(BIN)/SameBoy.app/Contents/Resources/dmg_boot.bin \
+					$(BIN)/SameBoy.app/Contents/Resources/mgb_boot.bin \
+					$(BIN)/SameBoy.app/Contents/Resources/cgb0_boot.bin \
+					$(BIN)/SameBoy.app/Contents/Resources/cgb_boot.bin \
+					$(BIN)/SameBoy.app/Contents/Resources/agb_boot.bin \
+					$(BIN)/SameBoy.app/Contents/Resources/sgb_boot.bin \
+					$(BIN)/SameBoy.app/Contents/Resources/sgb2_boot.bin \
+					$(patsubst %.xib,%.nib,$(addprefix $(BIN)/SameBoy.app/Contents/Resources/,$(shell cd Cocoa;ls *.xib))) \
+					$(BIN)/SameBoy.qlgenerator \
+					Shaders
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Resources
 	cp Cocoa/*.icns Cocoa/*.png Misc/registers.sym $(BIN)/SameBoy.app/Contents/Resources/
 	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < Cocoa/Info.plist > $(BIN)/SameBoy.app/Contents/Info.plist
@@ -568,9 +615,9 @@ $(BIN)/SameBoy-iOS.app/%.storyboardc: iOS/%.storyboard
 # Quick Look generator
 
 $(BIN)/SameBoy.qlgenerator: $(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL \
-                            $(shell ls QuickLook/*.png) \
-                            QuickLook/Info.plist \
-                            $(BIN)/SameBoy.qlgenerator/Contents/Resources/cgb_boot_fast.bin
+							$(shell ls QuickLook/*.png) \
+							QuickLook/Info.plist \
+							$(BIN)/SameBoy.qlgenerator/Contents/Resources/cgb_boot_fast.bin
 	$(MKDIR) -p $(BIN)/SameBoy.qlgenerator/Contents/Resources
 	cp QuickLook/*.png $(BIN)/SameBoy.qlgenerator/Contents/Resources/
 	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < QuickLook/Info.plist > $(BIN)/SameBoy.qlgenerator/Contents/Info.plist
@@ -663,6 +710,10 @@ $(BIN)/SameBoy.app/Contents/Resources/%.bin: $(BOOTROMS_DIR)/%.bin
 $(BIN)/SameBoy-iOS.app/%.bin: $(BOOTROMS_DIR)/%.bin
 	-@$(MKDIR) -p $(dir $@)
 	cp -f $< $@
+	
+$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/%.bin: $(BOOTROMS_DIR)/%.bin
+	-@$(MKDIR) -p $(dir $@)
+	cp -f $< $@
 
 $(BIN)/SDL/%.bin: $(BOOTROMS_DIR)/%.bin
 	-@$(MKDIR) -p $(dir $@)
@@ -747,6 +798,9 @@ endif
 
 ios: bootroms
 	@$(MAKE) _ios
+	
+watchos: bootroms
+	@$(MAKE) _watchos
 
 $(BIN)/SameBoy-iOS.ipa: ios iOS/sideload.entitlements
 	$(MKDIR) -p $(OBJ)/Payload
@@ -780,7 +834,7 @@ $(OBJ)/control.tar.gz: iOS/deb-postinst iOS/deb-prerm iOS/deb-control
 $(OBJ)/debian-binary:
 	-@$(MKDIR) -p $(dir $@)
 	echo 2.0 > $@
-    
+	
 $(LIBDIR)/libsameboy.o: $(CORE_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	@# This is a somewhat simple hack to force Clang and GCC to build a native object file out of one or many LTO objects
@@ -788,7 +842,7 @@ $(LIBDIR)/libsameboy.o: $(CORE_OBJECTS)
 	@# And this is a somewhat complicated hack to invoke the correct LTO-enabled LD command in a mostly cross-platform nature
 	$(CC) $(FAT_FLAGS) $(CFLAGS) $(LIBFLAGS) $^ $(OBJ)/lto_hack.o -o $@
 	-@rm $(OBJ)/lto_hack.o
-    
+	
 $(LIBDIR)/libsameboy.a: $(LIBDIR)/libsameboy.o
 	-@$(MKDIR) -p $(dir $@)
 	-@rm -f $@
