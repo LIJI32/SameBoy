@@ -1,6 +1,14 @@
 # Make hacks
 .INTERMEDIATE:
 
+# Library versioning, following libtool's 'version-info' scheme (see:
+# info '(libtool) Libtool versioning' or
+# https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html).
+LT_CURRENT := 0
+LT_REVISION := 0
+LT_AGE := 0
+LT_VERSION_INFO := $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)
+
 # Set target, configuration, version and destination folders
 
 PLATFORM := $(shell uname -s)
@@ -33,10 +41,46 @@ else
 DEFAULT := sdl
 endif
 
+ifneq ($(LIBRARY),)
+DEFAULT += lib
+endif
+
+# Select whether libtool should build/link for static vs shared
+# libraries, or both.
+ifneq ($(LIBRARY),)
+ifeq ($(LIBRARY), shared)
+LT_MODE_ARG := -shared
+else ifeq ($(LIBRARY), static)
+LT_MODE_ARG := -static
+else
+# Build both static and shared libraries.
+LT_MODE_ARG :=
+endif
+endif
+
 NULL := /dev/null
 ifeq ($(PLATFORM),windows32)
 NULL := NUL
 endif
+
+# Strip a given prefix from a string.
+# arg1: The prefix to strip.
+# arg2: The text containing the prefix.
+# Return $text with $prefix stripped, else nothing.
+define strip_prefix =
+$(let stripped,$(subst $(1),,$(2)),$\
+  $(shell test "$(1)$(stripped)" = "$(2)" && echo $(stripped)))
+endef
+
+# Simplify a path for use with pkg-config, by replacing $prefix with '${prefix}'
+# arg1: prefix, e.g. an installation prefix, such as /usr/local.
+# arg2: pkgdir, e.g. a path such as $datadir, $bindir, etc.
+# arg3: pkg-config variable name, e.g. 'prefix' or 'exec_prefix'.
+#       Defaults to 'prefix'.
+define simplify_pkgconf_dir =
+$(let stripped,$(call strip_prefix,$(1),$(2)),$\
+  $(if stripped,$${$(or $(3),prefix)}$(stripped),$(2)))
+endef
 
 ifneq ($(shell which xdg-open 2> $(NULL))$(FREEDESKTOP),)
 # Running on an FreeDesktop environment, configure for (optional) installation
@@ -45,6 +89,22 @@ PREFIX ?= /usr/local
 DATA_DIR ?= $(PREFIX)/share/sameboy/
 FREEDESKTOP ?= true
 endif
+
+# Autoconf-style conventionally named variables.
+prefix ?= $(PREFIX)
+exec_prefix ?= $(prefix)
+includedir ?= $(prefix)/include
+bindir ?= $(exec_prefix)/bin
+libdir ?= $(exec_prefix)/lib
+datadir ?= $(prefix)/share
+
+# Prettified variants for use in the pkg-config file.
+override PKGCONF_EXEC_PREFIX = \
+	$(call simplify_pkgconf_dir,$(prefix),$(exec_prefix))
+override PKGCONF_INCLUDEDIR = \
+	$(call simplify_pkgconf_dir,$(prefix),$(includedir))
+override PKGCONF_LIBDIR = \
+	$(call simplify_pkgconf_dir,$(exec_prefix),$(libdir),exec_prefix)
 
 default: $(DEFAULT)
 
@@ -111,6 +171,9 @@ BIN := build/bin
 OBJ := build/obj
 INC := build/include/sameboy
 LIBDIR := build/lib
+PKGCONF_DIR := $(LIBDIR)/pkgconfig
+LIBTOOL_LIBRARY := $(LIBDIR)/libsameboy.la
+PKGCONF_FILE := $(PKGCONF_DIR)/sameboy.pc
 
 BOOTROMS_DIR ?= $(BIN)/BootROMs
 
@@ -134,6 +197,26 @@ ifeq ($(filter Darwin Haiku,$(PLATFORM)),)
 PKG_CONFIG := pkg-config
 endif
 endif
+
+# Libtool makes it easy to correctly build shared libraries with
+# version info on both MacOS and GNU/Linux; require it if building
+# libraries.
+ifneq ($(LIBRARY),)
+ifneq (, $(shell command -v libtool 2> $(NULL)))
+LIBTOOL := libtool
+LIBTOOL_CC := $(LIBTOOL) --tag=CC --mode=compile $(CC) -c
+LIBTOOL_LD := $(LIBTOOL) --tag=CC --mode=link $(CC) \
+	-version-info $(LT_VERSION_INFO) $(LT_MODE_ARG)
+else
+$(error "please install libtool")
+endif
+else
+# Not building libraries.
+LIBTOOL :=
+LIBTOOL_CC := $(CC)
+LIBTOOL_LD :=
+endif
+
 
 ifeq ($(PLATFORM),windows32)
 # To force use of the Unix version instead of the Windows version
@@ -315,11 +398,6 @@ LDFLAGS += -Wl,/NODEFAULTLIB:libcmt.lib
 endif
 endif
 
-LIBFLAGS := -nostdlib -Wl,-r
-ifneq ($(PLATFORM),Darwin)
-LIBFLAGS += -no-pie
-endif
-
 ifeq ($(CONF),debug)
 CFLAGS += -g
 else ifeq ($(CONF), release)
@@ -375,11 +453,14 @@ tester: $(TESTER_TARGET) $(BIN)/tester/dmg_boot.bin $(BIN)/tester/cgb_boot.bin $
 _ios: $(BIN)/SameBoy-iOS.app $(OBJ)/installer
 ios-ipa: $(BIN)/SameBoy-iOS.ipa
 ios-deb: $(BIN)/SameBoy-iOS.deb
+
+# Libraries.
 ifeq ($(PLATFORM),windows32)
 lib: lib-unsupported
-else
-lib: $(LIBDIR)/libsameboy.o $(LIBDIR)/libsameboy.a
+else ifneq ($(LIBRARY),)
+lib: $(LIBTOOL_LIBRARY) $(PKGCONF_FILE)
 endif
+
 all: sdl tester libretro lib
 ifeq ($(PLATFORM),Darwin)
 all: cocoa ios-ipa ios-deb
@@ -404,6 +485,10 @@ CORE_SOURCES += $(shell ls Windows/*.c)
 endif
 
 CORE_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(CORE_SOURCES))
+# Libtool PIC objects are created along the .o variants, when building
+# a shared library.
+CORE_LOBJECTS := $(patsubst %,$(OBJ)/%.lo,$(CORE_SOURCES))
+$(CORE_LOBJECTS): $(CORE_OBJECTS)
 PUBLIC_HEADERS := $(patsubst Core/%,$(INC)/%,$(CORE_HEADERS))
 COCOA_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(COCOA_SOURCES))
 IOS_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(IOS_SOURCES))
@@ -448,22 +533,22 @@ $(OBJ)/%.dep: %
 
 $(OBJ)/Core/%.c.o: Core/%.c
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(FAT_FLAGS) -DGB_INTERNAL -c $< -o $@
+	$(LIBTOOL_CC) $(CFLAGS) $(FAT_FLAGS) -DGB_INTERNAL -c $< -o $@
 
 $(OBJ)/SDL/%.c.o: SDL/%.c
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -c $< -o $@
+	$(LIBTOOL_CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -c $< -o $@
 
 $(OBJ)/XdgThumbnailer/%.c.o: XdgThumbnailer/%.c
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(GIO_CFLAGS) $(GDK_PIXBUF_CFLAGS) -DG_LOG_DOMAIN='"sameboy-thumbnailer"' -c $< -o $@
+	$(LIBTOOL_CC) $(CFLAGS) $(GIO_CFLAGS) $(GDK_PIXBUF_CFLAGS) -DG_LOG_DOMAIN='"sameboy-thumbnailer"' -c $< -o $@
 # Make sure not to attempt compiling this before generating the resource code.
 $(OBJ)/XdgThumbnailer/emulate.c.o: $(OBJ)/XdgThumbnailer/resources.h
 # Silence warnings for this. It is code generated not by us, so we do not want `-Werror` to break
 # compilation with some version of the generator and/or compiler.
 $(OBJ)/XdgThumbnailer/%.c.o: $(OBJ)/XdgThumbnailer/%.c
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(GIO_CFLAGS) $(GDK_PIXBUF_CFLAGS) -DG_LOG_DOMAIN='"sameboy-thumbnailer"' -w -c $< -o $@
+	$(LIBTOOL_CC) $(CFLAGS) $(GIO_CFLAGS) $(GDK_PIXBUF_CFLAGS) -DG_LOG_DOMAIN='"sameboy-thumbnailer"' -w -c $< -o $@
 
 $(OBJ)/XdgThumbnailer/resources.c $(OBJ)/XdgThumbnailer/resources.h: %: XdgThumbnailer/resources.gresource.xml $(BIN)/BootROMs/cgb_boot_fast.bin
 	-@$(MKDIR) -p $(dir $@)
@@ -472,21 +557,21 @@ $(OBJ)/XdgThumbnailer/resources.c $(OBJ)/XdgThumbnailer/resources.h: %: XdgThumb
 
 $(OBJ)/OpenDialog/%.c.o: OpenDialog/%.c
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -c $< -o $@
+	$(LIBTOOL_CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -c $< -o $@
 
 
 $(OBJ)/%.c.o: %.c
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) -c $< -o $@
+	$(LIBTOOL_CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) -c $< -o $@
 	
 # HexFiend requires more flags
 $(OBJ)/HexFiend/%.m.o: HexFiend/%.m
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) $(OCFLAGS) -c $< -o $@ -fno-objc-arc -include HexFiend/HexFiend_2_Framework_Prefix.pch
+	$(LIBTOOL_CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) $(OCFLAGS) -c $< -o $@ -fno-objc-arc -include HexFiend/HexFiend_2_Framework_Prefix.pch
 	
 $(OBJ)/%.m.o: %.m
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) $(OCFLAGS) -c $< -o $@
+	$(LIBTOOL_CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) $(OCFLAGS) -c $< -o $@
 
 # iOS Port
 
@@ -723,12 +808,23 @@ libretro:
 	CC=$(CC) CFLAGS="$(WARNINGS)" $(MAKE) -C libretro BOOTROMS_DIR=$(abspath $(BOOTROMS_DIR)) BIN=$(abspath $(BIN))
 
 # Install for Linux, and other FreeDesktop platforms.
+install_headers = install -Dm 644 -t $(DESTDIR)$(includedir)/sameboy $(INC)/*
+install_pkgconf_file = install -Dm 644 -t $(DESTDIR)$(libdir)/pkgconfig $(PKGCONF_FILE)
+
 ifneq ($(FREEDESKTOP),)
+ifneq ($(LIBRARY),)
+install: lib pkgconf
+endif
 install: $(BIN)/XdgThumbnailer/sameboy-thumbnailer sdl $(shell find FreeDesktop) XdgThumbnailer/sameboy.thumbnailer
 	(cd $(BIN)/SDL && find . \! -name sameboy -type f -exec install -Dm 644 -T {} "$(DESTDIR)$(DATA_DIR)/{}" \; )
-	install -Dm 755 -s $(BIN)/SDL/sameboy $(DESTDIR)$(PREFIX)/bin/sameboy
-	install -Dm 755 -s $(BIN)/XdgThumbnailer/sameboy-thumbnailer $(DESTDIR)$(PREFIX)/bin/sameboy-thumbnailer
-	install -Dm 644 XdgThumbnailer/sameboy.thumbnailer $(DESTDIR)$(PREFIX)/share/thumbnailers/sameboy.thumbnailer
+	install -Dm 755 -s $(BIN)/SDL/sameboy $(DESTDIR)$(bindir)/sameboy
+	install -Dm 755 -s $(BIN)/XdgThumbnailer/sameboy-thumbnailer $(DESTDIR)$(bindir)/sameboy-thumbnailer
+	install -Dm 644 XdgThumbnailer/sameboy.thumbnailer $(DESTDIR)$(datadir)/thumbnailers/sameboy.thumbnailer
+ifneq ($(LIBRARY),)
+	$(install_headers)
+	$(install_pkgconf_file)
+	$(LIBTOOL) --mode=install install -D $(LIBTOOL_LIBRARY) $(libdir)/libsameboy.la
+endif
 ifeq ($(DESTDIR),)
 	xdg-mime install --novendor FreeDesktop/sameboy.xml
 	xdg-desktop-menu install --novendor FreeDesktop/sameboy.desktop
@@ -738,12 +834,12 @@ ifeq ($(DESTDIR),)
 		xdg-icon-resource install --novendor --theme hicolor --size $$size --context mimetypes FreeDesktop/ColorCartridge/$${size}x$${size}.png x-gameboy-color-rom; \
 	done
 else
-	install -Dm 644 FreeDesktop/sameboy.xml $(DESTDIR)$(PREFIX)/share/mime/sameboy.xml
-	install -Dm 644 FreeDesktop/sameboy.desktop $(DESTDIR)$(PREFIX)/share/applications/sameboy.desktop
+	install -Dm 644 FreeDesktop/sameboy.xml $(DESTDIR)$(datadir)/mime/sameboy.xml
+	install -Dm 644 FreeDesktop/sameboy.desktop $(DESTDIR)$(datadir)/applications/sameboy.desktop
 	for size in 16x16 32x32 64x64 128x128 256x256 512x512; do \
-		install -Dm 644 FreeDesktop/AppIcon/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/apps/sameboy.png; \
-		install -Dm 644 FreeDesktop/Cartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-rom.png; \
-		install -Dm 644 FreeDesktop/ColorCartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-color-rom.png; \
+		install -Dm 644 FreeDesktop/AppIcon/$$size.png $(DESTDIR)$(datadir)/icons/hicolor/$$size/apps/sameboy.png; \
+		install -Dm 644 FreeDesktop/Cartridge/$$size.png $(DESTDIR)$(datadir)/icons/hicolor/$$size/mimetypes/x-gameboy-rom.png; \
+		install -Dm 644 FreeDesktop/ColorCartridge/$$size.png $(DESTDIR)$(datadir)/icons/hicolor/$$size/mimetypes/x-gameboy-color-rom.png; \
 	done
 endif
 endif
@@ -783,20 +879,23 @@ $(OBJ)/control.tar.gz: iOS/deb-postinst iOS/deb-prerm iOS/deb-control
 $(OBJ)/debian-binary:
 	-@$(MKDIR) -p $(dir $@)
 	echo 2.0 > $@
-    
-$(LIBDIR)/libsameboy.o: $(CORE_OBJECTS)
+
+# Link library objects with libtool.
+$(LIBTOOL_LIBRARY): $(CORE_LOBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	@# This is a somewhat simple hack to force Clang and GCC to build a native object file out of one or many LTO objects
-	echo "static const char __attribute__((used)) x=0;"| $(CC) $(filter-out -flto,$(CFLAGS)) -c -x c - -o $(OBJ)/lto_hack.o
-	@# And this is a somewhat complicated hack to invoke the correct LTO-enabled LD command in a mostly cross-platform nature
-	$(CC) $(FAT_FLAGS) $(CFLAGS) $(LIBFLAGS) $^ $(OBJ)/lto_hack.o -o $@
-	-@rm $(OBJ)/lto_hack.o
-    
-$(LIBDIR)/libsameboy.a: $(LIBDIR)/libsameboy.o
+	$(LIBTOOL_LD) -rpath $(libdir) $^ -o $@
+
+$(PKGCONF_FILE): sameboy.pc.in
 	-@$(MKDIR) -p $(dir $@)
 	-@rm -f $@
-	ar -crs $@ $^
-	
+	sed -e 's,@prefix@,$(prefix),' \
+	 -e 's/@version@/$(VERSION)/' \
+	 -e 's,@exec_prefix@,$(PKGCONF_EXEC_PREFIX),' \
+	 -e 's,@includedir@,$(PKGCONF_INCLUDEDIR),' \
+	 -e 's,@libdir@,$(PKGCONF_LIBDIR),' $< > $@
+
+pkgconf: $(PKGCONF_FILE)
+
 $(INC)/%.h: Core/%.h
 	-@$(MKDIR) -p $(dir $@)
 	-@# CPPP doesn't like multibyte characters, so we replace the single quote character before processing so it doesn't complain
@@ -810,4 +909,4 @@ lib-unsupported:
 clean:
 	rm -rf build
 
-.PHONY: libretro tester cocoa ios _ios ios-ipa ios-deb liblib-unsupported bootroms
+.PHONY: libretro tester cocoa ios _ios ios-ipa ios-deb lib lib-unsupported bootroms pkgconf
