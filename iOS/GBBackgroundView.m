@@ -117,6 +117,18 @@ static GB_key_mask_t angleToKeyMask(double angle)
     self.usesSwipePad = self.usesSwipePad;
 }
 
+- (void)setDefaultScreenLabel
+{
+    _screenLabel.text = @"Tap the Game Boy screen to open the menu and load a ROM from the library.";
+}
+
+#ifdef APPSTORE
+- (void)setCloudScreenLabel
+{
+    _screenLabel.text = @"Syncing with iCloud...";
+}
+#endif
+
 - (instancetype)initWithLayout:(GBLayout *)layout;
 {
     self = [super initWithImage:nil];
@@ -126,12 +138,12 @@ static GB_key_mask_t angleToKeyMask(double angle)
     _touches = [NSMutableSet set];
     
     _screenLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    _screenLabel.text = @"Tap the Game Boy screen to open the menu and load a ROM from the library.";
     _screenLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightMedium];
     _screenLabel.textAlignment = NSTextAlignmentCenter;
     _screenLabel.textColor = [UIColor whiteColor];
     _screenLabel.lineBreakMode = NSLineBreakByWordWrapping;
     _screenLabel.numberOfLines = 0;
+    [self setDefaultScreenLabel];
     [self addSubview:_screenLabel];
     
     _dpadView = [[UIImageView alloc] initWithImage:[_layout.theme imageNamed:@"dpad"]];

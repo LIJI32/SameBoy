@@ -1,12 +1,14 @@
 #import "GBROMManager.h"
 #import <copyfile.h>
 
+
 @implementation GBROMManager
 {
     NSString *_romFile;
     NSMutableDictionary<NSString *,NSString *> *_cloudNameToFile;
     bool _doneInitializing;
 #ifdef APPSTORE
+    NSFileCoordinator *_coordinator;
     NSOperationQueue *_iCloudQueue;
     NSCondition *_iCloudCondition;
     enum {
@@ -40,6 +42,7 @@
     _iCloudCondition = [[NSCondition alloc] init];
     _iCloudQueue.maxConcurrentOperationCount = 1;
     _lockLock = [[NSLock alloc] init];
+    _coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
 #endif
     _doneInitializing = true;
     return self;
@@ -278,6 +281,39 @@
 }
 
 #ifdef APPSTORE
+
+- (void)downloadURLs:(NSArray<NSURL *>*)urls queue:(NSOperationQueue *)queue completion:(void (^)(NSString *error))completion
+{
+    for (NSURL *url in urls) {
+        NSError *error;
+        __block bool mismatch = false;
+        [_coordinator coordinateReadingItemAtURL:url
+                                         options:0
+                                           error:&error
+                                      byAccessor:^(NSURL *newURL) {
+            if (![url.URLByStandardizingPath isEqual:newURL.URLByStandardizingPath]) {
+                mismatch = true;
+            }
+        }];
+        
+        if (error) {
+            [queue addOperationWithBlock:^{
+                completion(error.localizedDescription ?: @"Unknown error");
+            }];
+            return;
+        }
+        if (mismatch) {
+            [queue addOperationWithBlock:^{
+                completion(@"This ROM may be in use by another device.");
+            }];
+            return;
+        }
+    }
+    [queue addOperationWithBlock:^{
+        completion(nil);
+    }];
+}
+
 - (void)deleteCloudROM:(NSString *)rom completion:(void (^)(NSString *error))completion
 {
     if ([rom hasPrefix:@"icloud/"]) {
@@ -289,11 +325,10 @@
                                                                           options:NSFileCoordinatorWritingForDeleting];
             
             
-            NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
             
-            [coordinator coordinateAccessWithIntents:@[intent]
-                                               queue:[NSOperationQueue mainQueue]
-                                          byAccessor:^(NSError *error) {
+            [_coordinator coordinateAccessWithIntents:@[intent]
+                                                queue:[NSOperationQueue mainQueue]
+                                           byAccessor:^(NSError *error) {
                 if (!error) {
                     [[NSFileManager defaultManager] removeItemAtURL:intent.URL error:&error];
                 }
@@ -446,40 +481,42 @@
                                                                         usingBlock:^(NSNotification *note) {
         NSMutableArray *intents = @[[NSFileAccessIntent writingIntentWithURL:url
                                                                      options:0]].mutableCopy;
+        NSMutableArray *urls = @[url].mutableCopy;
+        
         NSArray <NSString *> *allowedExtensions = @[@"gb", @"gbc", @"isx", @"auto", @"sav", @"cht", @"png",
                                                     @"s0", @"s1", @"s2", @"s3", @"s4", @"s5", @"s6", @"s7", @"s8", @"s9"];
 
         for (NSMetadataItem *item in query.results) {
             NSURL *itemURL = [item valueForAttribute:NSMetadataItemURLKey];
             
-            if ([item valueForAttribute:NSMetadataUbiquitousItemDownloadingStatusKey] == NSMetadataUbiquitousItemDownloadingStatusDownloaded) { // Not up to date
-                [[NSFileManager defaultManager] evictUbiquitousItemAtURL:itemURL error:nil];
-            }
             if (![allowedExtensions containsObject:itemURL.pathExtension.lowercaseString]) {
                 continue;
             }
             NSFileAccessIntent *intent = [NSFileAccessIntent writingIntentWithURL:itemURL
                                                                           options:0];
             [intents addObject:intent];
+            [urls addObject:itemURL];
         }
         [query stopQuery];
         [[NSNotificationCenter defaultCenter] removeObserver:observer];
-        if (intents.count == 0) {
-            completion(nil);
-            return;
-        }
-        NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
         
-        [coordinator coordinateAccessWithIntents:intents
-                                           queue:queue
-                                      byAccessor:^(NSError *error) {
-            for (NSFileAccessIntent *intent in intents) {
-                if (![intent.URL.path.stringByResolvingSymlinksInPath hasPrefix:url.path.stringByResolvingSymlinksInPath]) {
-                    completion(@"This ROM may be in use by another device.");
-                    return;
-                }
+        [self downloadURLs:urls queue:queue completion:^(NSString *error) {
+            if (error) {
+                completion(error);
+                return;
             }
-            completion(nil);
+            
+            [_coordinator coordinateAccessWithIntents:intents
+                                                queue:queue
+                                           byAccessor:^(NSError *error) {
+                for (NSFileAccessIntent *intent in intents) {
+                    if (![[NSFileManager defaultManager] fileExistsAtPath:intent.URL.path]) {
+                        completion(@"Download failed for an unknown reason.");
+                        return;
+                    }
+                }
+                completion(nil);
+            }];
         }];
     }];
     [query startQuery];
@@ -509,13 +546,30 @@
                                                 itemAtURL:[NSURL fileURLWithPath:[self romDirectoryForROM:rom]]
                                            destinationURL:[iCloudRoot URLByAppendingPathComponent:uniqueROM]
                                                     error:&error];
+            NSString *newROM = [@"icloud/" stringByAppendingString:uniqueROM];
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (!error) {
-                    if ([rom isEqualToString:_currentROM]) {
-                        self.currentROM = [@"icloud/" stringByAppendingString:uniqueROM];
-                    }
+                if (error) {
+                    completion(error.localizedDescription);
+                    return;
                 }
-                completion([error localizedDescription]);
+                if ([rom isEqualToString:_currentROM]) {
+                    self.currentROM = newROM;
+                }
+                
+                __block void (^block)(NSString *, NSArray<NSString *> *) = ^(NSString *error, NSArray<NSString *> *list) {
+                    if (error) {
+                        block = nil;
+                        completion(error);
+                        return;
+                    }
+                    if ([list containsObject:newROM]) {
+                        block = nil;
+                        completion(nil);
+                        return;
+                    }
+                    [self obtainCloudROMList:block];
+                };
+                [self obtainCloudROMList:block];
             });
         });
     }];

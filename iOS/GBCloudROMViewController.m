@@ -36,17 +36,18 @@
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSString *pngPath = [[[GBROMManager sharedManager] autosaveStateFileForROM:rom] stringByAppendingPathExtension:@"png"];
-        NSFileAccessIntent *intent = [NSFileAccessIntent readingIntentWithURL:[NSURL fileURLWithPath:pngPath]
-                                                                      options:NSFileCoordinatorReadingWithoutChanges];
         
         
         NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
-        
-        [coordinator coordinateAccessWithIntents:@[intent]
-                                           queue:[NSOperationQueue mainQueue]
-                                      byAccessor:^(NSError *error) {
+        NSError *error;
+        [coordinator coordinateReadingItemAtURL:[NSURL fileURLWithPath:pngPath]
+                                        options:0
+                                          error:&error
+                                     byAccessor:^(NSURL * _Nonnull newURL) {
             if (!error) {
-                cell.imageView.image = [self cellForROM:rom].imageView.image;
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    cell.imageView.image = [self cellForROM:rom].imageView.image;
+                });
             }
         }];
     });

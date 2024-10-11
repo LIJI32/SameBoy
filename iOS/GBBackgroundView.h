@@ -13,4 +13,8 @@
 - (void)enterPreviewMode:(bool)showLabel;
 - (void)reloadThemeImages;
 - (void)fadeOverlayOut;
+#ifdef APPSTORE
+- (void)setDefaultScreenLabel;
+- (void)setCloudScreenLabel;
+#endif
 @end

@@ -1082,13 +1082,16 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
 #ifdef APPSTORE
     NSString *error = [GBROMManager.sharedManager lockCloudROM];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [_backgroundView setDefaultScreenLabel];
+    });
     if (error) {
         _romLoaded = false;
         [GBROMManager.sharedManager unlockCloudROM];
         NSString *title = GBROMManager.sharedManager.currentROM.lastPathComponent;
-        GBROMManager.sharedManager.currentROM = nil;
         _running = false;
         _stopping = false;
+        GBROMManager.sharedManager.currentROM = nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Could not load “%@”", title]
                                                                            message:error
@@ -1236,6 +1239,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     if (_running) return;
     if (self.presentedViewController) return;
     _running = true;
+    if ([GBROMManager.sharedManager.currentROM hasPrefix:@"icloud/"]) {
+        [_backgroundView setCloudScreenLabel];
+    }
     [[[NSThread alloc] initWithTarget:self selector:@selector(run) object:nil] start];
 }
 
