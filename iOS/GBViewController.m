@@ -1236,9 +1236,11 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     if (_running) return;
     if (self.presentedViewController) return;
     _running = true;
+#ifdef APPSTORE
     if ([GBROMManager.sharedManager.currentROM hasPrefix:@"icloud/"]) {
         [_backgroundView setCloudScreenLabel];
     }
+#endif
     [[[NSThread alloc] initWithTarget:self selector:@selector(run) object:nil] start];
 }
 
