@@ -63,6 +63,8 @@
         self.dpadLocation.y,
     };
     
+    self.abComboLocation = buttonsCenter;
+    
     self.aLocation = (CGPoint) {
         round(buttonsCenter.x + buttonsDelta.width / 2),
         round(buttonsCenter.y - buttonsDelta.height / 2)
@@ -112,6 +114,7 @@
 - (instancetype)initWithTheme:(GBTheme *)theme
 {
     assert(false);
+    __builtin_unreachable();
 }
 
 - (CGRect)viewRectForOrientation:(UIInterfaceOrientation)orientation

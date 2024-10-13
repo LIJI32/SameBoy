@@ -130,8 +130,8 @@ endif
 
 # Find libraries with pkg-config if available.
 ifneq (, $(shell which pkg-config 2> $(NULL)))
-# But not on macOS, it's annoying
-ifneq ($(PLATFORM),Darwin)
+# But not on macOS, it's annoying, and not on Haiku, where OpenGL is broken
+ifeq ($(filter Darwin Haiku,$(PLATFORM)),)
 PKG_CONFIG := pkg-config
 endif
 endif
@@ -213,6 +213,10 @@ ifeq (,$(PKG_CONFIG))
 SDL_CFLAGS := $(shell sdl2-config --cflags)
 SDL_LDFLAGS := $(shell sdl2-config --libs) -lpthread
 
+ifeq ($(PLATFORM),Darwin)
+SDL_LDFLAGS += -framework AppKit
+endif
+
 # We cannot detect the presence of OpenAL dev headers,
 # so we must do this manually
 ifeq ($(ENABLE_OPENAL),1)
@@ -277,7 +281,11 @@ LDFLAGS += -lxaudio2_9redist
 sdl: $(BIN)/SDL/xaudio2_9redist.dll
 endif
 else
-LDFLAGS += -lc -lm -ldl
+LDFLAGS += -lc -lm
+# libdl is not available as a standalone library in Haiku
+ifneq ($(PLATFORM),Haiku)
+LDFLAGS += -ldl
+endif
 endif
 
 ifeq ($(MAKECMDGOALS),_ios)
@@ -380,7 +388,6 @@ TESTER_TARGET := $(BIN)/tester/sameboy_tester
 endif
 
 cocoa: $(BIN)/SameBoy.app
-quicklook: $(BIN)/SameBoy.qlgenerator
 xdg-thumbnailer: $(BIN)/XdgThumbnailer/sameboy-thumbnailer
 sdl: $(SDL_TARGET) $(BIN)/SDL/dmg_boot.bin $(BIN)/SDL/mgb_boot.bin $(BIN)/SDL/cgb0_boot.bin $(BIN)/SDL/cgb_boot.bin $(BIN)/SDL/agb_boot.bin $(BIN)/SDL/sgb_boot.bin $(BIN)/SDL/sgb2_boot.bin $(BIN)/SDL/LICENSE $(BIN)/SDL/registers.sym $(BIN)/SDL/background.bmp $(BIN)/SDL/Shaders $(BIN)/SDL/Palettes
 bootroms: $(BIN)/BootROMs/agb_boot.bin $(BIN)/BootROMs/cgb_boot.bin $(BIN)/BootROMs/cgb0_boot.bin $(BIN)/BootROMs/dmg_boot.bin $(BIN)/BootROMs/mgb_boot.bin $(BIN)/BootROMs/sgb_boot.bin $(BIN)/BootROMs/sgb2_boot.bin
@@ -599,11 +606,16 @@ ifeq ($(CONF), release)
 	$(CODESIGN) $@
 endif
 
-$(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(CORE_OBJECTS) $(COCOA_OBJECTS)
+
+$(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy.dylib
+	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -rpath @executable_path/../../ -Wl,-reexport_library,$^
+    
+$(BIN)/SameBoy.app/Contents/MacOS/SameBoy.dylib: $(COCOA_OBJECTS) $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -framework OpenGL -framework AudioUnit -framework AVFoundation -framework CoreVideo -framework CoreMedia -framework IOKit -framework PreferencePanes -framework Carbon -framework QuartzCore -framework Security -framework WebKit -weak_framework Metal -weak_framework MetalKit
+	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -shared -install_name @rpath/Contents/MacOS/SameBoy.dylib -framework OpenGL -framework AudioUnit -framework AVFoundation -framework CoreVideo -framework CoreMedia -framework IOKit -framework PreferencePanes -framework Carbon -framework QuartzCore -framework Security -framework WebKit -weak_framework Metal -weak_framework MetalKit -framework Quicklook -framework AppKit -Wl,-exported_symbols_list,QuickLook/exports.sym -Wl,-exported_symbol,_main
 ifeq ($(CONF), release)
 	$(STRIP) $@
+	$(CODESIGN) $@
 endif
 
 $(BIN)/SameBoy.app/Contents/Resources/%.nib: Cocoa/%.xib
@@ -627,9 +639,9 @@ endif
 
 # Currently, SameBoy.app includes two "copies" of each Core .o file once in the app itself and
 # once in the QL Generator. It should probably become a dylib instead.
-$(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL: $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
+$(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy.dylib
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -Wl,-exported_symbols_list,QuickLook/exports.sym -bundle -framework Cocoa -framework Quicklook
+	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -bundle -Wl,-reexport_library,$^ -rpath @loader_path/../../../../../../
 ifeq ($(CONF), release)
 	$(STRIP) $@
 endif

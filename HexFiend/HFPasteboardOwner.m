@@ -44,7 +44,7 @@ NSString *const HFPrivateByteArrayPboardType = @"HFPrivateByteArrayPboardType";
         [[NSNotificationCenter defaultCenter] removeObserver:self name:HFPrepareForChangeInFileNotification object:nil];
     }
     if (retainedSelfOnBehalfOfPboard) {
-        CFRelease(self);
+        [self release];
         retainedSelfOnBehalfOfPboard = NO;
     }
 }

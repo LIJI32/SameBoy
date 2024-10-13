@@ -621,13 +621,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     const char *_teamIdentifier = xpc_dictionary_get_string(entitlements, "com.apple.developer.team-identifier");
     NSString *teamIdentifier = _teamIdentifier? @(_teamIdentifier) : nil;
     
-    CFRelease(entitlements);
-    
     if (!entIdentifier) { // No identifier. Installed using a jailbreak, we're fine.
         return;
     }
-    
-    
+
     if (teamIdentifier && [entIdentifier hasPrefix:[teamIdentifier stringByAppendingString:@"."]]) {
         entIdentifier = [entIdentifier substringFromIndex:teamIdentifier.length + 1];
     }

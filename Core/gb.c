@@ -559,7 +559,12 @@ int GB_load_isx(GB_gameboy_t *gb, const char *path)
                 
                 READ(address);
                 address = LE16(address);
-                address &= 0x3FFF;
+                if (bank) {
+                    address &= 0x3FFF;
+                }
+                else {
+                    address &= 0x7FFF;
+                }
 
                 READ(length);
                 length = LE16(length);
@@ -708,6 +713,17 @@ done:;
             gb->rom[0x147] = 0x3;
             GB_log(gb, "ROM claims to use MBC1 but appears to require MBC3 or 5, assuming MBC3.\n");
         }
+    }
+    
+    // Inject a correct checksum, the official linker doesn't always fix it, which breaks the official boot ROMs
+    uint8_t original_checksum = gb->rom[0x14d];
+    gb->rom[0x14d] = 0;
+    for (unsigned addr = 0x0134; addr <= 0x014C; addr++) {
+        gb->rom[0x14d] -= gb->rom[addr] + 1;
+    }
+    
+    if (original_checksum != gb->rom[0x14d]) {
+        GB_log(gb, "This ROM's header checksum has been automatically corrected\n");
     }
     
     if (old_rom) {

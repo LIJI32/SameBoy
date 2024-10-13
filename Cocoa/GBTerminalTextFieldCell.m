@@ -45,7 +45,7 @@
 {
     self = [super init];
     if (!self) {
-        return NULL;
+        return nil;
     }
     lines = [[NSMutableOrderedSet alloc] init];
     return self;
