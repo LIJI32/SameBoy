@@ -163,6 +163,7 @@ CFLAGS += -DAPPSTORE
 LDFLAGS += -framework StoreKit
 IOS_MIN := 13.0
 IOS_PNGS += $(shell ls iOS/AppStoreResources/*.png)
+$(BIN)/SameBoy-iOS.app: $(BIN)/SameBoy-iOS.app/Watch/SameBoy-watchOS.app
 endif
 
 # Support out-of-PATH RGBDS
@@ -440,7 +441,7 @@ lib: $(PUBLIC_HEADERS)
 
 # Automatic dependency generation
 
-ifneq ($(filter-out ios ios-ipa ios-deb clean bootroms libretro %.bin, $(MAKECMDGOALS)),)
+ifneq ($(filter-out ios ios-ipa ios-deb clean bootroms libretro watchos %.bin, $(MAKECMDGOALS)),)
 -include $(CORE_OBJECTS:.o=.dep)
 ifneq ($(filter $(MAKECMDGOALS),sdl),)
 -include $(SDL_OBJECTS:.o=.dep)
@@ -558,6 +559,9 @@ $(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExten
 							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/agb_boot.bin \
 							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/sgb_boot.bin \
 							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/sgb2_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/Interface.plist \
+							$(shell ls watchOS/*.png) \
+							watchOS/GBGameScene.sks \
 							watchOS/ExtensionInfo.plist \
 							watchOS/Info.plist
 	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app
@@ -567,16 +571,25 @@ $(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExten
 	cp watchOS/WatchKitStub $(BIN)/SameBoy-watchOS.app/SameBoy
 	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app/_WatchKitStub
 	cp watchOS/WatchKitStub $(BIN)/SameBoy-watchOS.app/_WatchKitStub/WK
+	cp watchOS/GBGameScene.sks $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/
+	cp watchOS/*.png $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/
 	$(CODESIGN) $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex
 	$(CODESIGN) $@
 
 $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/SameBoy: $(CORE_OBJECTS) $(WATCHOS_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS)
+	$(CC) $(FAT_FLAGS) $^ -o $@ $(LDFLAGS)
 ifeq ($(CONF), release)
 	$(STRIP) $@
 endif
 
+$(BIN)/SameBoy-watchOS.app/Interface.plist: watchOS/Interface.storyboard
+	ibtool --errors --warnings --notices --target-device watch --minimum-deployment-target 6.0 --output-format human-readable-text --compile $(BIN)/SameBoy-watchOS.app $^
+	
+$(BIN)/SameBoy-iOS.app/Watch/SameBoy-watchOS.app: watchos
+	-@$(MKDIR) -p $(dir $@)
+	cp -rf $(BIN)/SameBoy-watchOS.app $@
+	
 # Cocoa Port
 
 $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
@@ -850,7 +863,7 @@ $(OBJ)/debian-binary:
 $(LIBDIR)/libsameboy.o: $(CORE_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	@# This is a somewhat simple hack to force Clang and GCC to build a native object file out of one or many LTO objects
-	echo "static const char __attribute__((used)) x=0;"| $(CC) $(filter-out -flto,$(CFLAGS)) -c -x c - -o $(OBJ)/lto_hack.o
+	echo "static const char __attribute__((used)) x=0;"| $(CC) $(filter-out -flto,$(CFLAGS)) $(FAT_FLAGS) -c -x c - -o $(OBJ)/lto_hack.o
 	@# And this is a somewhat complicated hack to invoke the correct LTO-enabled LD command in a mostly cross-platform nature
 	$(CC) $(FAT_FLAGS) $(CFLAGS) $(LIBFLAGS) $^ $(OBJ)/lto_hack.o -o $@
 	-@rm $(OBJ)/lto_hack.o
