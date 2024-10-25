@@ -2,9 +2,7 @@
 #import "GBGameScene.h"
 
 @interface GBInterfaceController ()
-
 @property (strong, nonatomic) IBOutlet WKInterfaceSKScene *skInterface;
-
 @end
 
 @implementation GBInterfaceController
@@ -30,6 +28,21 @@
     self.skInterface.preferredFramesPerSecond = 60;
 }
 
+- (void)stop
+{
+    [_scene stop];
+}
+
+- (void)start
+{
+    [_scene start];
+}
+
+- (bool)isRunning
+{
+    return _scene.isRunning;
+}
+
 - (void)willActivate
 {
     // This method is called when watch view controller is about to be visible to user
@@ -44,7 +57,6 @@
     // This method is called when watch view controller is no longer visible
     [super didDeactivate];
     [_scene stop];
-
 }
 
 - (IBAction)singleTap:(id)sender
@@ -127,7 +139,7 @@
     [_crownIdleTimer invalidate];
     _crownIdleTimer = [NSTimer scheduledTimerWithTimeInterval:0.5
                                                       repeats:false
-                                                        block:^(NSTimer * _Nonnull timer) {
+                                                        block:^(NSTimer *timer) {
         [_scene setSpeedMultiplayer:1.0];
         [_scene setInput:0];
         [_scene start];

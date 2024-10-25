@@ -43,7 +43,7 @@
         [coordinator coordinateReadingItemAtURL:[NSURL fileURLWithPath:pngPath]
                                         options:0
                                           error:&error
-                                     byAccessor:^(NSURL * _Nonnull newURL) {
+                                     byAccessor:^(NSURL *newURL) {
             if (!error) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     cell.imageView.image = [self cellForROM:rom].imageView.image;

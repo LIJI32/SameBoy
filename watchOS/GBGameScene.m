@@ -175,4 +175,9 @@ static void vblank(GB_gameboy_t *gb)
     GB_run_frame(&_gb);
 }
 
+- (bool)isRunning
+{
+    return _running;
+}
+
 @end

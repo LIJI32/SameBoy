@@ -1,6 +1,6 @@
 #import "GBROMManager.h"
 #import <copyfile.h>
-
+#import <sys/stat.h>
 
 @implementation GBROMManager
 {
@@ -281,6 +281,52 @@
 }
 
 #ifdef APPSTORE
+
+- (NSDictionary<NSUUID *,NSString *> *)watchUUIDMap
+{
+    NSMutableDictionary<NSUUID *,NSString *> *ret = [NSMutableDictionary dictionary];
+    for (NSString *rom in self.allROMs) {
+        NSUUID *uuid = [self watchUUIDForROM:rom generateIfMissing:false];
+        if (uuid) {
+            if (!ret[uuid]) {
+                ret[uuid] = rom;
+                continue;
+            }
+            struct stat first, second;
+            stat([self romDirectoryForROM:rom].UTF8String, &first);
+            stat([self romDirectoryForROM:ret[uuid]].UTF8String, &first);
+            if (first.st_ino > second.st_ino) {
+                [self invalidateWatchUUIDForROM:rom];
+            }
+            else {
+                [self invalidateWatchUUIDForROM:ret[uuid]];
+                ret[uuid] = rom;
+            }
+        }
+    }
+    return ret;
+}
+
+- (NSUUID *)watchUUIDForROM:(NSString *)rom generateIfMissing:(bool)generate
+{
+    NSString *root = self.localRoot;
+    NSString *path = [[root stringByAppendingPathComponent:rom] stringByAppendingPathComponent:@".watch"];
+    NSString *contents = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];
+    if (contents) {
+        return [[NSUUID alloc] initWithUUIDString:contents];
+    }
+    if (!generate) return nil;
+    NSUUID *uuid = [NSUUID UUID];
+    [uuid.UUIDString writeToFile:path atomically:false encoding:NSUTF8StringEncoding error:nil];
+    return uuid;
+}
+
+- (void)invalidateWatchUUIDForROM:(NSString *)rom
+{
+    NSString *root = self.localRoot;
+    NSString *path = [[root stringByAppendingPathComponent:rom] stringByAppendingPathComponent:@".watch"];
+    unlink(path.UTF8String);
+}
 
 - (void)downloadURLs:(NSArray<NSURL *>*)urls queue:(NSOperationQueue *)queue completion:(void (^)(NSString *error))completion
 {

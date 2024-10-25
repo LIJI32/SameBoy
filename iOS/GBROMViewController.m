@@ -4,6 +4,9 @@
 #import "GBLibraryViewController.h"
 #import <CoreServices/CoreServices.h>
 #import <objc/runtime.h>
+#ifdef APPSTORE
+#import "GBWatchManager.h"
+#endif
 
 @implementation GBROMViewController
 {
@@ -55,6 +58,12 @@
     [mask stroke];
     cell.imageView.image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
+    
+#ifdef APPSTORE
+    if ([[GBROMManager sharedManager] watchUUIDForROM:rom generateIfMissing:false]) {
+        cell.accessoryView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"applewatch"] ?: [UIImage systemImageNamed:@"clock"]];
+    }
+#endif
     
     return cell;
 
@@ -179,6 +188,28 @@
 - (void)deleteROMAtIndex:(unsigned)index
 {
     NSString *rom = [GBROMManager sharedManager].allROMs[index];
+    
+#ifdef APPSTORE
+    if ([[GBROMManager sharedManager] watchUUIDForROM:rom generateIfMissing:false]) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"“%@” needs to be moved from Apple Watch.", rom]
+                                                                       message:[NSString stringWithFormat:@"“%@” needs to be moved from Apple Watch before being deleted.", rom]
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"Move from Apple Watch"
+                                                  style:UIAlertActionStyleDefault
+                                                handler:^(UIAlertAction *action) {
+            [self moveFromWatch:rom completion:^(bool success) {
+                if (success) {
+                    [self deleteROMAtIndex:index];
+                }
+            }];
+        }]];
+        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
+                                                  style:UIAlertActionStyleCancel
+                                                handler:nil]];
+        [self presentViewController:alert animated:true completion:nil];
+        return;
+    }
+#endif
 
     [[GBROMManager sharedManager] deleteROM:rom];
     [self.tableView deleteRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:index inSection:0]] withRowAnimation:UITableViewRowAnimationAutomatic];
@@ -304,6 +335,174 @@
         [self.tableView reloadData];
     }];
 }
+
+- (void)moveToWatch:(unsigned)index
+{
+    if (![GBWatchManager sharedManager].isReachable) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Launch SameBoy on your Apple Watch"
+                                                                       message:@"This ROM will be moved to your Apple Watch once you launch SameBoy on it."
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
+                                                  style:UIAlertActionStyleCancel
+                                                handler:^(UIAlertAction *action) {
+            [[GBWatchManager sharedManager] cancelRunWhenReachable];
+        }]];
+        [self presentViewController:alert animated:true completion:nil];
+        [[GBWatchManager sharedManager] runWhenReachable:^{
+            [alert dismissViewControllerAnimated:true completion:nil];
+            [self moveToWatch:index];
+        }];
+        return;
+    }
+    self.view.window.userInteractionEnabled = false;
+    void (^doError)(NSString *error) = ^void(NSString *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.view.window.userInteractionEnabled = true;
+            [self.tableView reloadData];
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Failed to move “%@” to Watch", [GBROMManager sharedManager].allROMs[index]]
+                                                                           message:error
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                      style:UIAlertActionStyleCancel
+                                                    handler:nil]];
+            [self presentViewController:alert animated:true completion:nil];
+        });
+    };
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:index inSection:0]];
+    cell.accessoryView = spinner;
+    [spinner startAnimating];
+
+
+    [[GBWatchManager sharedManager] getUUID:^(NSString *error, NSUUID *uuid) {
+        if (error) {
+            doError(error);
+            return;
+        }
+        if (uuid) {
+            NSString *currentROM = [[GBROMManager sharedManager] watchUUIDMap][uuid];
+            if (currentROM) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    cell.accessoryView = nil;
+                    self.view.window.userInteractionEnabled = true;
+                    [self moveFromWatch:currentROM completion:^(bool success) {
+                        if (success) {
+                            [self moveToWatch:index];
+                        }
+                    }];
+                });
+                return;
+            }
+        }
+        
+        [[GBWatchManager sharedManager] updateBootROMs:^(NSString *error) {
+            if (error) {
+                doError(error);
+                return;
+            }
+            [[GBWatchManager sharedManager] loadROM:[GBROMManager sharedManager].allROMs[index] completion:^(NSString *error) {
+                if (error) {
+                    doError(error);
+                    return;
+                }
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.view.window.userInteractionEnabled = true;
+                    [self.tableView reloadData];
+                });
+            }];
+        }];
+    }];
+}
+
+- (void)moveFromWatch:(NSString *)rom completion:(void (^)(bool))completion
+{
+    void (^doErrorTryForce)(NSString *error) = ^void(NSString *error) {
+        self.view.window.userInteractionEnabled = true;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView reloadData];
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Failed to move “%@” from Apple Watch", rom]
+                                                                           message:[NSString stringWithFormat:@"%@\nContinue anyway? Apple Watch progress on this ROM might become lost.", error]
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"Continue"
+                                                      style:UIAlertActionStyleDestructive
+                                                    handler:^(UIAlertAction *action) {
+                [[GBROMManager sharedManager] invalidateWatchUUIDForROM:rom];
+                [self.tableView reloadData];
+                if (completion) completion(true);
+            }]];
+            [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
+                                                      style:UIAlertActionStyleCancel
+                                                    handler:nil]];
+            [self presentViewController:alert animated:true completion:^{
+                if (completion) completion(false);
+            }];
+        });
+    };
+    
+    if (![GBWatchManager sharedManager].isReachable) {
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Launch SameBoy on your Apple Watch"
+                                                                       message:@"This ROM will be synced back to your iPhone once you launch SameBoy on your Apple Watch."
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
+                                                  style:UIAlertActionStyleCancel
+                                                handler:^(UIAlertAction *action) {
+            [[GBWatchManager sharedManager] cancelRunWhenReachable];
+            doErrorTryForce(@"The Apple Watch currently holding this ROM is not reachable.");
+        }]];
+        [self presentViewController:alert animated:true completion:nil];
+        [[GBWatchManager sharedManager] runWhenReachable:^{
+            [alert dismissViewControllerAnimated:true completion:nil];
+            [self moveFromWatch:rom completion:completion];
+        }];
+        return;
+    }
+    
+    self.view.window.userInteractionEnabled = false;
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:[[GBROMManager sharedManager].allROMs indexOfObject:rom]
+                                                                                     inSection:0]];
+    cell.accessoryView = spinner;
+    [spinner startAnimating];
+
+    
+    NSUUID *targetUUID = [[GBROMManager sharedManager] watchUUIDForROM:rom generateIfMissing:false];
+    [[GBWatchManager sharedManager] getSaveState:^(NSString *error, NSData *saveState, NSData *png, NSUUID *currentUUID) {
+        if (error) {
+            doErrorTryForce(error);
+            return;
+        }
+        if (![targetUUID isEqual:currentUUID]) {
+            doErrorTryForce(@"This ROM is not loaded on the currently active Apple Watch.");
+            return;
+        }
+        
+        [[GBWatchManager sharedManager] closeROM:^(NSString *error) {
+            if (error) {
+                doErrorTryForce(error);
+                return;
+            }
+            NSString *path = [[GBROMManager sharedManager] autosaveStateFileForROM:rom];
+            if (saveState) {
+                [saveState writeToFile:path atomically:false];
+            }
+            if (png) {
+                [png writeToFile:[path stringByAppendingPathExtension:@"png"] atomically:false];
+            }
+            [[GBROMManager sharedManager] invalidateWatchUUIDForROM:rom];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self.tableView reloadData];
+                self.view.window.userInteractionEnabled = true;
+                if (completion) completion(true);
+            });
+        }];
+    }];
+}
+
+- (void)moveFromWatch:(unsigned)index
+{
+    [self moveFromWatch:[GBROMManager sharedManager].allROMs[index] completion:nil];
+}
+
 #endif
 
 // Leave these ROM management to iOS 13.0 and up for now
@@ -325,7 +524,7 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
           forRowAtIndexPath:indexPath];
         }];
         deleteAction.attributes = UIMenuElementAttributesDestructive;
-        return [UIMenu menuWithTitle:nil children:@[
+        NSMutableArray *items = @[
             [UIAction actionWithTitle:@"Rename"
                                 image:[UIImage systemImageNamed:@"pencil"]
                            identifier:nil
@@ -338,11 +537,34 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
                               handler:^(__kindof UIAction *action) {
                 [self duplicateROMAtIndex:indexPath.row];
             }],
+        ].mutableCopy;
 #ifdef APPSTORE
-           [self transferActionForROMIndex:indexPath.row],
+        if (self.class == [GBROMViewController class] && [GBWatchManager sharedManager].isPaired) {
+            if ([[GBROMManager sharedManager] watchUUIDForROM:[GBROMManager sharedManager].allROMs[indexPath.row]
+                                            generateIfMissing:false]) {
+                [items addObject:[UIAction actionWithTitle:@"Move from Apple Watch"
+                                                     image:[UIImage systemImageNamed:@"applewatch"] ?: [UIImage systemImageNamed:@"arrow.up.doc"]
+                                                identifier:nil
+                                                   handler:^(__kindof UIAction *action) {
+                    [self moveFromWatch:indexPath.row];
+                }]];
+            }
+            else {
+                [items addObject:[UIAction actionWithTitle:@"Move to Apple Watch"
+                                                     image:[UIImage systemImageNamed:@"applewatch"] ?: [UIImage systemImageNamed:@"arrow.down.doc"]
+                                                identifier:nil
+                                                   handler:^(__kindof UIAction *action) {
+                    [self moveToWatch:indexPath.row];
+                }]];
+                [items addObject:[self transferActionForROMIndex:indexPath.row]];
+            }
+        }
+        else {
+            [items addObject:[self transferActionForROMIndex:indexPath.row]];
+        }
 #endif
-            deleteAction,
-        ]];
+        [items addObject:deleteAction];
+        return [UIMenu menuWithTitle:nil children:items];
     }];
 }
 

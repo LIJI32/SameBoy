@@ -11,4 +11,5 @@
 - (void)stop;
 - (void)setSpeedMultiplayer:(double)factor;
 - (void)rewindFrames:(unsigned)count;
+@property (readonly) bool isRunning;
 @end

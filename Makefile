@@ -160,7 +160,7 @@ IOS_PNGS := $(shell ls iOS/*.png iOS/*.car)
 ifeq ($(CONF),appstore)
 override CONF := release
 CFLAGS += -DAPPSTORE
-LDFLAGS += -framework StoreKit
+LDFLAGS += -framework StoreKit -framework WatchConnectivity
 IOS_MIN := 13.0
 IOS_PNGS += $(shell ls iOS/AppStoreResources/*.png)
 $(BIN)/SameBoy-iOS.app: $(BIN)/SameBoy-iOS.app/Watch/SameBoy-watchOS.app
@@ -191,7 +191,7 @@ endif
 
 # These must come before the -Wno- flags
 WARNINGS += -Werror -Wall -Wno-unknown-warning -Wno-unknown-warning-option -Wno-missing-braces
-WARNINGS += -Wno-nonnull -Wno-unused-result -Wno-multichar -Wno-int-in-bool-context -Wno-format-truncation
+WARNINGS += -Wno-nonnull -Wno-unused-result -Wno-multichar -Wno-int-in-bool-context -Wno-format-truncation -Wno-nullability-completeness
 
 # Only add this flag if the compiler supports it
 ifeq ($(shell $(CC) -x c -c $(NULL) -o $(NULL) -Werror -Wpartial-availability 2> $(NULL); echo $$?),0)

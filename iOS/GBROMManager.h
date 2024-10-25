@@ -25,6 +25,10 @@
 - (void)deleteROM:(NSString *)rom;
 
 #ifdef APPSTORE
+- (NSDictionary<NSUUID *,NSString *> *)watchUUIDMap;
+- (NSUUID *)watchUUIDForROM:(NSString *)rom generateIfMissing:(bool)generate;
+- (void)invalidateWatchUUIDForROM:(NSString *)rom;
+
 - (void)obtainCloudROMList:(void (^)(NSString *error, NSArray<NSString *> *list))completion;
 - (void)syncROM:(NSString *)rom completion:(void (^)(NSString *error))completion queue:(NSOperationQueue *)queue;
 - (void)renameCloudROM:(NSString *)oldName to:(NSString *)newName completion:(void (^)(NSString *error))completion;
