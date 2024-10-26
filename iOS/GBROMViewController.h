@@ -12,6 +12,7 @@
 - (void)duplicateROMAtIndex:(unsigned)index;
 - (NSString *)rootPath;
 #ifdef APPSTORE
+- (instancetype)initForWatch;
 - (UIAction *)transferActionForROMIndex:(unsigned)index API_AVAILABLE(ios(13.0));
 #endif
 

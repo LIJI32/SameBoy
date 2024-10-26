@@ -2,6 +2,7 @@
 #import "GBROMViewController.h"
 #ifdef APPSTORE
 #import "GBCloudROMViewController.h"
+#import "GBWatchManager.h"
 #endif
 #import "GBHubViewController.h"
 #import "GBViewController.h"
@@ -39,6 +40,14 @@
 #endif
         [self.class wrapViewController:[[GBHubViewController alloc] init]],
     ];
+#ifdef APPSTORE
+    if ([GBWatchManager sharedManager].isPaired) {
+        NSMutableArray<UIViewController *> *viewControllers = self.viewControllers.mutableCopy;
+        [viewControllers insertObject:[self.class wrapViewController:[[GBROMViewController alloc] initForWatch]] atIndex:2],
+        self.viewControllers = viewControllers;
+        viewControllers[2].tabBarItem.image = [UIImage systemImageNamed:@"applewatch"] ?: [UIImage systemImageNamed:@"clock"];
+    }
+#endif
     if (@available(iOS 13.0, *)) {
         UIEdgeInsets insets = [UIApplication sharedApplication].keyWindow.safeAreaInsets;
         bool hasHomeButton = insets.bottom == 0;
