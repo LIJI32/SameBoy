@@ -59,7 +59,7 @@
 - (void)updateSaveState:(void (^)(NSString *error))completion
 {
     if (_disableCommands) {
-        completion(nil);
+        if (completion) completion(nil);
         return;
     }
     
@@ -86,6 +86,10 @@
     }
     
     NSString *uuid = [NSDictionary dictionaryWithContentsOfFile:self.metadataPath][@"uuid"];
+    if (!uuid) {
+        completion(false);
+        return;
+    }
     [self sendMessage:@{
         @"cmd": @"validateUUID",
         @"uuid": uuid,
@@ -171,7 +175,9 @@
         } writeToFile:self.metadataPath atomically:false];
     }
     
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
+    });
     return @{};
 }
 
@@ -184,6 +190,7 @@
         unlink(self.pngPath.UTF8String);
         unlink(self.romPath.UTF8String);
         unlink(self.metadataPath.UTF8String);
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
         _disableCommands = false;
     });
 

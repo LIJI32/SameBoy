@@ -154,6 +154,7 @@
              errorHandler:^(NSString *error) {
             if (completion) completion(error);
         }];
+        return;
     }
     NSString *path = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true)[0];
     path = [path stringByAppendingPathComponent:@"Boot ROMs"];

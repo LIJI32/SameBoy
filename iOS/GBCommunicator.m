@@ -6,7 +6,7 @@ struct MessageHeader {
     uint32_t index;
     uint32_t count;
 };
-static const size_t ChunkSize = 0x8000 - sizeof(struct MessageHeader);
+static const size_t ChunkSize = 0x10000 - sizeof(struct MessageHeader);
 
 
 @implementation GBCommunicator
@@ -21,17 +21,21 @@ static const size_t ChunkSize = 0x8000 - sizeof(struct MessageHeader);
     size_t _outgoingIndex;
 }
 
+#define _errorcode(x, y) #x "-" #y
+#define __errorcode(x, y) _errorcode(x, y)
+#define errorcode() __errorcode(__LINE__, TARGET_OS_WATCH)
+
 - (void)handleReceiveReplyWithInitialData:(NSData *)firstChunk
                              replyHandler:(void (^)(NSDictionary<NSString *, id> *replyMessage))replyHandler
                              errorHandler:(void (^)(NSString *error))errorHandler
 {
     if (firstChunk.length < sizeof(struct MessageHeader)) {
-        errorHandler(@"Communication error");
+        errorHandler(@"Communication Error " errorcode());
         return;
     }
     const struct MessageHeader *header = firstChunk.bytes;
     if (header->index != 0) {
-        errorHandler(@"Communication error");
+        errorHandler((@"Communication Error " errorcode()));
         return;
     }
     if (header->count == 1) {
@@ -55,7 +59,7 @@ static const size_t ChunkSize = 0x8000 - sizeof(struct MessageHeader);
         [[WCSession defaultSession] sendMessageData:[NSData data]
                                        replyHandler:^(NSData *replyMessageData) {
             if (replyMessageData.length < sizeof(struct MessageHeader)) {
-                errorHandler(@"Communication error");
+                errorHandler((@"Communication Error " errorcode()));
                 getChunk = nil;
                 return;
             }
@@ -143,7 +147,7 @@ static const size_t ChunkSize = 0x8000 - sizeof(struct MessageHeader);
     if (messageData.length) { // Sending a request
         const struct MessageHeader *header = messageData.bytes;
         if (messageData.length < sizeof(*header)) {
-            replyHandler([@"Communication Error" dataUsingEncoding:NSUTF8StringEncoding]);
+            replyHandler([(@"Communication Error " errorcode()) dataUsingEncoding:NSUTF8StringEncoding]);
             return;
         }
         if (header->index == 0) {
@@ -159,11 +163,19 @@ static const size_t ChunkSize = 0x8000 - sizeof(struct MessageHeader);
         if (_incomingIndex == _incomingChunks) {
             _incomingMessage.length = _incomingPos;
             NSData *decompressed = [_incomingMessage decompressedDataUsingAlgorithm:NSDataCompressionAlgorithmLZFSE error:nil];
+            if (!decompressed) {
+                replyHandler([(@"Communication Error " errorcode()) dataUsingEncoding:NSUTF8StringEncoding]);
+                return;
+            }
             _incomingMessage = nil;
             NSDictionary *message = [NSPropertyListSerialization propertyListWithData:decompressed
                                                                               options:0
                                                                                format:nil
                                                                                 error:nil];
+            if (!message) {
+                replyHandler([(@"Communication Error " errorcode()) dataUsingEncoding:NSUTF8StringEncoding]);
+                return;
+            }
             [self session:session didReceiveMessage:message replyHandler:^(NSDictionary<NSString *,id> *replyMessage) {
                 NSData *data = [NSPropertyListSerialization dataWithPropertyList:replyMessage
                                                                           format:NSPropertyListBinaryFormat_v1_0
@@ -183,7 +195,7 @@ static const size_t ChunkSize = 0x8000 - sizeof(struct MessageHeader);
     }
     else { // Getting a reply
         if (!_outgoingReply) {
-            replyHandler([@"Communication Error" dataUsingEncoding:NSUTF8StringEncoding]);
+            replyHandler([(@"Communication Error " errorcode()) dataUsingEncoding:NSUTF8StringEncoding]);
             return;
         }
         size_t size = ChunkSize + sizeof(struct MessageHeader);

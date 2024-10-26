@@ -1,4 +1,5 @@
 #import "GBGameScene.h"
+#import "GBPhoneManager.h"
 #import <mach/mach.h>
 #import <Core/gb.h>
 
@@ -11,6 +12,7 @@
     SKSpriteNode *_holdSprite;
     volatile bool _running, _stopping;
     bool _activeBuffer;
+    bool _romLoaded;
 }
 
 static void nop_log_callback()
@@ -58,6 +60,7 @@ static void vblank(GB_gameboy_t *gb)
 - (void)start
 {
     if (_running) return;
+    if (!_romLoaded) return;
     _running = true;
     [NSThread detachNewThreadWithBlock:^{
         while (_running) {
@@ -73,11 +76,61 @@ static void vblank(GB_gameboy_t *gb)
     _stopping = true;
     _running = false;
     while (_stopping);
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.SameBoy"];
-    NSMutableData *state = [NSMutableData dataWithLength:GB_get_save_state_size(&_gb)];
-    GB_save_state_to_buffer(&_gb, state.mutableBytes);
-    NSData *compressedState = [state compressedDataUsingAlgorithm:NSDataCompressionAlgorithmLZ4 error:nil];
-    [defaults setObject:compressedState forKey:@"state"];
+    
+    GB_save_state(&_gb, GBPhoneManager.sharedManager.saveStatePath.UTF8String);
+    const uint32_t *buffer = !_activeBuffer? _pixels : _pixels + 256 * 224;
+    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL,
+                                                              buffer + 48 + 40 * 256,
+                                                              144 * 256 * 4, NULL);
+    CGColorSpaceRef colorSpaceRef = CGColorSpaceCreateDeviceRGB();
+    CGBitmapInfo bitmapInfo = kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast;
+    CGColorRenderingIntent renderingIntent = kCGRenderingIntentDefault;
+    
+    CGImageRef iref = CGImageCreate(160,
+                                    144,
+                                    8,
+                                    32,
+                                    4 * 256,
+                                    colorSpaceRef,
+                                    bitmapInfo,
+                                    provider,
+                                    NULL,
+                                    true,
+                                    renderingIntent);
+    
+    UIImage *image = [[UIImage alloc] initWithCGImage:iref];
+    CGColorSpaceRelease(colorSpaceRef);
+    CGDataProviderRelease(provider);
+    CGImageRelease(iref);
+    [UIImagePNGRepresentation(image) writeToFile:GBPhoneManager.sharedManager.pngPath
+                                      atomically:false];
+    
+    [GBPhoneManager.sharedManager updateSaveState:nil];
+    
+}
+
+- (void)loadROM
+{
+    GB_model_t model = GB_MODEL_CGB_E;
+    GBPhoneManager *phoneManager = [GBPhoneManager sharedManager];
+    NSDictionary *metadata = [NSDictionary dictionaryWithContentsOfFile:phoneManager.metadataPath];
+    if (!metadata) {
+        _romLoaded = false;
+        return;
+    }
+    if (GB_get_state_model(phoneManager.saveStatePath.UTF8String, &model)) {
+        model = [metadata[@"model"] unsignedIntValue];
+    }
+    
+    if ([metadata[@"isx"] boolValue]) {
+        _romLoaded = GB_load_isx(&_gb, phoneManager.romPath.UTF8String) == 0;
+    }
+    else {
+        _romLoaded = GB_load_rom(&_gb, phoneManager.romPath.UTF8String) == 0;
+    }
+    if (!_romLoaded) return;
+    GB_switch_model_and_reset(&_gb, model);
+    GB_load_state(&_gb, phoneManager.saveStatePath.UTF8String);
 }
 
 - (void)sceneDidLoad
@@ -98,16 +151,21 @@ static void vblank(GB_gameboy_t *gb)
     GB_set_color_correction_mode(&_gb, GB_COLOR_CORRECTION_MODERN_BALANCED);
     GB_set_rewind_length(&_gb, 60);
     GB_set_log_callback(&_gb, (GB_log_callback_t)nop_log_callback);
-
-    GB_load_rom(&_gb, [[NSBundle mainBundle] pathForResource:@"rom" ofType:@"gbc"].UTF8String);
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:@"group.SameBoy"];
-    NSData *compressedState = [defaults dataForKey:@"state"];
-    NSData *state = [compressedState decompressedDataUsingAlgorithm:NSDataCompressionAlgorithmLZ4 error:NULL];
-    if (state) {
-        GB_load_state_from_buffer(&_gb, state.bytes, state.length);
-        NSLog(@"State loaded");
-    }
-    [self start];
+    
+    [[GBPhoneManager sharedManager] validateUUID:^(bool valid) {
+        if (valid) {
+            [self loadROM];
+            [self start];
+        }
+    }];
+    [[NSNotificationCenter defaultCenter] addObserverForName:@"GBROMChanged"
+                                                      object:nil
+                                                       queue:nil
+                                                  usingBlock:^(NSNotification * _Nonnull note) {
+        [self stop];
+        [self loadROM];
+        [self start];
+    }];
 }
     
 - (void)vblank
@@ -167,6 +225,7 @@ static void vblank(GB_gameboy_t *gb)
 
 - (void)rewindFrames:(unsigned)count
 {
+    if (!_romLoaded) return;
     for (unsigned i = 0; i <= count; i++) {
         if (!GB_rewind_pop(&_gb)) {
             return;
