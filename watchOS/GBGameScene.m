@@ -6,6 +6,8 @@
 @implementation GBGameScene
 {
     SKSpriteNode *_screen;
+    SKLabelNode *_label;
+    SKSpriteNode *_iPhoneIcon;
     SKMutableTexture *_texture;
     GB_gameboy_t _gb;
     uint32_t _pixels[256 * 224 * 2];
@@ -141,6 +143,28 @@ static void vblank(GB_gameboy_t *gb)
     _screen = [SKSpriteNode spriteNodeWithTexture:_texture size:CGSizeMake(256, 224)];
     _screen.yScale = -1;
     [self addChild:_screen];
+    
+    NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
+    style.alignment = NSTextAlignmentCenter;
+    NSAttributedString *string = [[NSMutableAttributedString alloc] initWithString:@"Open SameBoy on your iPhone to transfer a ROM to your Apple Watch."
+                                                                        attributes:@{
+        NSParagraphStyleAttributeName: style,
+        NSForegroundColorAttributeName: [UIColor whiteColor],
+        NSFontAttributeName: [UIFont systemFontOfSize:16],
+    }];
+    _label = [SKLabelNode labelNodeWithAttributedText:string];
+    _label.horizontalAlignmentMode = SKLabelHorizontalAlignmentModeCenter;
+    _label.verticalAlignmentMode = SKLabelVerticalAlignmentModeTop;
+    _label.preferredMaxLayoutWidth = [WKInterfaceDevice currentDevice].screenBounds.size.width - 12;
+    _label.numberOfLines = 0;
+    _label.position = CGPointMake(0, -4);
+    [self addChild:_label];
+        
+    _iPhoneIcon = [SKSpriteNode spriteNodeWithImageNamed:@"iPhoneIcon"];
+    _iPhoneIcon.xScale = _iPhoneIcon.yScale = 1.0 / [WKInterfaceDevice currentDevice].screenScale;
+    _iPhoneIcon.position = CGPointMake(0, _iPhoneIcon.size.height / 2 + 4);
+    [self addChild: _iPhoneIcon];
+    
     GB_init(&_gb, GB_MODEL_CGB_E);
     GB_set_user_data(&_gb, (__bridge void *)(self));
     GB_set_rgb_encode_callback(&_gb, rgbEncode);
@@ -155,6 +179,9 @@ static void vblank(GB_gameboy_t *gb)
     [[GBPhoneManager sharedManager] validateUUID:^(bool valid) {
         if (valid) {
             [self loadROM];
+            _label.hidden = _romLoaded;
+            _iPhoneIcon.hidden = _romLoaded;
+            _screen.hidden = !_romLoaded;
             [self start];
         }
     }];
@@ -164,6 +191,9 @@ static void vblank(GB_gameboy_t *gb)
                                                   usingBlock:^(NSNotification * _Nonnull note) {
         [self stop];
         [self loadROM];
+        _label.hidden = _romLoaded;
+        _iPhoneIcon.hidden = _romLoaded;
+        _screen.hidden = !_romLoaded;
         [self start];
     }];
 }

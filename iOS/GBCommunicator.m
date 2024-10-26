@@ -1,6 +1,9 @@
 #ifdef APPSTORE
 #import "GBCommunicator.h"
 #import <WatchConnectivity/WatchConnectivity.h>
+#if TARGET_OS_WATCH
+#import <WatchKit/WatchKit.h>
+#endif
 
 struct MessageHeader {
     uint32_t index;
@@ -19,6 +22,10 @@ static const size_t ChunkSize = 0x10000 - sizeof(struct MessageHeader);
     NSData *_outgoingReply;
     size_t _outgoingChunks;
     size_t _outgoingIndex;
+    
+#if TARGET_OS_WATCH
+    NSTimer *_idleTimer;
+#endif
 }
 
 #define _errorcode(x, y) #x "-" #y
@@ -144,6 +151,14 @@ static const size_t ChunkSize = 0x10000 - sizeof(struct MessageHeader);
 
 - (void)session:(WCSession *)session didReceiveMessageData:(NSData *)messageData replyHandler:(void (^)(NSData *))replyHandler
 {
+ #if TARGET_OS_WATCH
+    [_idleTimer invalidate];
+    _idleTimer = nil;
+    [WKExtension sharedExtension].autorotating = true;
+    _idleTimer = [NSTimer scheduledTimerWithTimeInterval:1 repeats:false block:^(NSTimer *timer) {
+        [WKExtension sharedExtension].autorotating = false;
+    }];
+#endif
     if (messageData.length) { // Sending a request
         const struct MessageHeader *header = messageData.bytes;
         if (messageData.length < sizeof(*header)) {
