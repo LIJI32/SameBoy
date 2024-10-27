@@ -1,9 +1,9 @@
 #import "GBGizmoAudioClient.h"
 #import <AVFAudio/AVFAudio.h>
 
-#define MAX_SAMPLES 1024
-#define MIN_SAMPLES 480
-#define DEFAULT_SAMPLES 512
+#define MAX_SAMPLES 4096
+#define MIN_SAMPLES 1920
+#define DEFAULT_SAMPLES 2048
 
 @implementation GBGizmoAudioClient
 {
