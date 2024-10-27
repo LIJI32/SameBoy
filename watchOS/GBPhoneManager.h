@@ -3,10 +3,11 @@
 
 @interface GBPhoneManager : GBCommunicator
 + (instancetype)sharedManager;
-- (NSString *)saveStatePath;
-- (NSString *)pngPath;
-- (NSString *)romPath;
-- (NSString *)metadataPath;
+@property (readonly) NSString *saveStatePath;
+@property (readonly) NSString *pngPath;
+@property (readonly) NSString *romPath;
+@property (readonly) NSString *metadataPath;
+@property (readonly) NSString *batteryPath;
 - (void)updateSaveState:(void (^)(NSString *error))completion;
 - (void)validateUUID:(void (^)(bool valid))completion;
 - (void)refreshSettings:(void (^)(void))completion;

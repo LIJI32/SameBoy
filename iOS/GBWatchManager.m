@@ -82,6 +82,10 @@
             GB_dealloc(temp);
         }
         command[@"model"] = @(model);
+        NSData *battery = [NSData dataWithContentsOfFile:[romManager batterySaveFileForROM:rom]];
+        if (battery) {
+            command[@"battery"] = battery;
+        }
     }
     [self sendMessage:command
          replyHandler:^(NSDictionary<NSString *,id> *replyMessage) {

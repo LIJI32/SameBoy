@@ -56,6 +56,12 @@
     return [path stringByAppendingPathComponent:@"metadata"];
 }
 
+- (NSString *)batteryPath
+{
+    NSString *path = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true)[0];
+    return [path stringByAppendingPathComponent:@"battery"];
+}
+
 - (void)updateSaveState:(void (^)(NSString *error))completion
 {
     if (_disableCommands) {
@@ -175,6 +181,9 @@
             @"model": command[@"model"]
         } writeToFile:self.metadataPath atomically:false];
     }
+    [command[@"battery"] writeToFile:self.batteryPath
+                             options:0
+                               error:nil];
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
@@ -191,6 +200,7 @@
         unlink(self.pngPath.UTF8String);
         unlink(self.romPath.UTF8String);
         unlink(self.metadataPath.UTF8String);
+        unlink(self.batteryPath.UTF8String);
         [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
         _disableCommands = false;
     });

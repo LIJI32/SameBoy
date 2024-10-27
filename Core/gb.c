@@ -1065,13 +1065,13 @@ exit:
 }
 
 /* Loading will silently stop if the format is incomplete */
-void GB_load_battery(GB_gameboy_t *gb, const char *path)
+int GB_load_battery(GB_gameboy_t *gb, const char *path)
 {
     GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     
     FILE *f = fopen(path, "rb");
     if (!f) {
-        return;
+        return errno;
     }
 
     if (fread(gb->mbc_ram, 1, gb->mbc_ram_size, f) != gb->mbc_ram_size) {
@@ -1090,7 +1090,7 @@ void GB_load_battery(GB_gameboy_t *gb, const char *path)
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
-        return;
+        return 0;
     }
     
     if (gb->cartridge_type->mbc_type == GB_HUC3) {
@@ -1109,7 +1109,7 @@ void GB_load_battery(GB_gameboy_t *gb, const char *path)
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
-        return;
+        return 0;
     }
 
     rtc_save_t rtc_save;
@@ -1174,7 +1174,7 @@ reset_rtc:
     }
 exit:
     fclose(f);
-    return;
+    return 0;
 }
 
 unsigned GB_run(GB_gameboy_t *gb)

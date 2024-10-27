@@ -175,7 +175,12 @@ static void vblank(GB_gameboy_t *gb)
     }
     if (!_romLoaded) return;
     GB_switch_model_and_reset(&_gb, model);
-    GB_load_state(&_gb, phoneManager.saveStatePath.UTF8String);
+    if (GB_load_state(&_gb, phoneManager.saveStatePath.UTF8String)) {
+        if (GB_load_battery(&_gb, phoneManager.batteryPath.UTF8String) == 0) {
+            GB_save_state(&_gb, phoneManager.saveStatePath.UTF8String);
+            unlink(phoneManager.batteryPath.UTF8String);
+        }
+    }
 }
 
 - (const GB_palette_t *)currentPalette

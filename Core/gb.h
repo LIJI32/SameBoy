@@ -956,7 +956,7 @@ int GB_save_battery_to_buffer(GB_gameboy_t *gb, uint8_t *buffer, size_t size);
 int GB_save_battery(GB_gameboy_t *gb, const char *path);
 
 void GB_load_battery_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t size);
-void GB_load_battery(GB_gameboy_t *gb, const char *path);
+int GB_load_battery(GB_gameboy_t *gb, const char *path);
 
 void GB_set_turbo_mode(GB_gameboy_t *gb, bool on, bool no_frame_skip);
 void GB_set_rendering_disabled(GB_gameboy_t *gb, bool disabled);
