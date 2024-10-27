@@ -224,6 +224,18 @@ static void vblank(GB_gameboy_t *gb)
     return &customPalette;
 }
 
+- (void)setLabelString:(NSString *)string
+{
+    NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
+    style.alignment = NSTextAlignmentCenter;
+    _label.attributedText = [[NSMutableAttributedString alloc] initWithString:string
+                                                                   attributes:@{
+        NSParagraphStyleAttributeName: style,
+        NSForegroundColorAttributeName: [UIColor whiteColor],
+        NSFontAttributeName: [UIFont systemFontOfSize:16],
+    }];
+}
+
 - (void)sceneDidLoad
 {
     // Setup your scene here
@@ -233,15 +245,8 @@ static void vblank(GB_gameboy_t *gb)
     _screen.yScale = -1;
     [self addChild:_screen];
     
-    NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
-    style.alignment = NSTextAlignmentCenter;
-    NSAttributedString *string = [[NSMutableAttributedString alloc] initWithString:@"Open SameBoy on your iPhone to transfer a ROM to your Apple Watch."
-                                                                        attributes:@{
-        NSParagraphStyleAttributeName: style,
-        NSForegroundColorAttributeName: [UIColor whiteColor],
-        NSFontAttributeName: [UIFont systemFontOfSize:16],
-    }];
-    _label = [SKLabelNode labelNodeWithAttributedText:string];
+    _label = [SKLabelNode labelNodeWithText:@""];
+    [self setLabelString:@"Communicating with SameBoy on your iPhone..."];
     _label.horizontalAlignmentMode = SKLabelHorizontalAlignmentModeCenter;
     _label.verticalAlignmentMode = SKLabelVerticalAlignmentModeTop;
     _label.preferredMaxLayoutWidth = [WKInterfaceDevice currentDevice].screenBounds.size.width - 12;
@@ -329,6 +334,9 @@ static void vblank(GB_gameboy_t *gb)
             dispatch_async(dispatch_get_main_queue(), ^{
                 [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
             });
+        }
+        else {
+            [self setLabelString:@"Open SameBoy on your iPhone to transfer a ROM to your Apple Watch."];
         }
     }];
 }
