@@ -1169,7 +1169,7 @@ int main(int argc, char **argv)
         configuration.sgb_revision %= SGB_MAX;
         configuration.dmg_palette %= 5;
         if (configuration.dmg_palette) {
-            configuration.gui_pallete_enabled = true;
+            configuration.gui_palette_enabled = true;
         }
         configuration.border_mode %= GB_BORDER_ALWAYS + 1;
         configuration.rumble_mode %= GB_RUMBLE_ALL_GAMES + 1;

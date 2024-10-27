@@ -2,6 +2,9 @@
 #import "GBColorWell.h"
 #import "GBSlider.h"
 #import "GBPalettePicker.h"
+#ifdef APPSTORE
+#import "GBWatchManager.h"
+#endif
 
 static double blend(double from, double to, double position)
 {
@@ -337,6 +340,9 @@ static double blend(double from, double to, double position)
     if (_isCurrent) {
         [[NSUserDefaults standardUserDefaults] setObject:@"" forKey:@"GBCurrentTheme"]; // Force a reload
         [[NSUserDefaults standardUserDefaults] setObject:_paletteName forKey:@"GBCurrentTheme"];
+#ifdef APPSTORE
+        [[GBWatchManager sharedManager] updateSettings:nil];
+#endif
     }
 }
 - (void)viewWillDisappear:(BOOL)animated

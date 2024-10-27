@@ -15,6 +15,7 @@
     volatile bool _running, _stopping;
     bool _activeBuffer;
     bool _romLoaded;
+    NSMutableSet *_defaultsObservers;
 }
 
 static void nop_log_callback()
@@ -57,6 +58,25 @@ static void vblank(GB_gameboy_t *gb)
 - (NSString *)bootROMPathForName:(NSString *)name
 {
     return [[NSBundle mainBundle] pathForResource:name ofType:@"bin"];
+}
+
+- (void)addDefaultObserver:(void(^)(id newValue))block forKey:(NSString *)key
+{
+    if (!_defaultsObservers) {
+        _defaultsObservers = [NSMutableSet set];
+    }
+    block = [block copy];
+    [_defaultsObservers addObject:block];
+    [[NSUserDefaults standardUserDefaults] addObserver:self
+                                            forKeyPath:key
+                                               options:NSKeyValueObservingOptionNew
+                                               context:(void *)block];
+    block([[NSUserDefaults standardUserDefaults] objectForKey:key]);
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context
+{
+    ((__bridge void(^)(id))context)(change[NSKeyValueChangeNewKey]);
 }
 
 - (void)start
@@ -135,6 +155,33 @@ static void vblank(GB_gameboy_t *gb)
     GB_load_state(&_gb, phoneManager.saveStatePath.UTF8String);
 }
 
+- (const GB_palette_t *)currentPalette
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *theme = [defaults stringForKey:@"GBCurrentTheme"];
+    if ([theme isEqualToString:@"Greyscale"]) {
+        return &GB_PALETTE_GREY;
+    }
+    if ([theme isEqualToString:@"Lime (Game Boy)"]) {
+        return &GB_PALETTE_DMG;
+    }
+    if ([theme isEqualToString:@"Olive (Pocket)"]) {
+        return &GB_PALETTE_MGB;
+    }
+    if ([theme isEqualToString:@"Teal (Light)"]) {
+        return &GB_PALETTE_GBL;
+    }
+    static GB_palette_t customPalette;
+    NSArray *colors = [defaults dictionaryForKey:@"GBThemes"][theme][@"Colors"];
+    if (colors.count != 5) return &GB_PALETTE_DMG;
+    unsigned i = 0;
+    for (NSNumber *color in colors) {
+        uint32_t c = [color unsignedIntValue];
+        customPalette.colors[i++] = (struct GB_color_s) {c, c >> 8, c >> 16};
+    }
+    return &customPalette;
+}
+
 - (void)sceneDidLoad
 {
     // Setup your scene here
@@ -172,8 +219,28 @@ static void vblank(GB_gameboy_t *gb)
     GB_set_vblank_callback(&_gb, (GB_vblank_callback_t) vblank);
     GB_set_border_mode(&_gb, GB_BORDER_ALWAYS);
     GB_set_pixels_output(&_gb, _pixels);
-    GB_set_color_correction_mode(&_gb, GB_COLOR_CORRECTION_MODERN_BALANCED);
-    GB_set_rewind_length(&_gb, 60);
+        
+    GB_gameboy_t *gb = &_gb;
+    [self addDefaultObserver:^(id newValue) {
+        GB_set_color_correction_mode(gb, (GB_color_correction_mode_t)[newValue integerValue]);
+    } forKey:@"GBColorCorrection"];
+    [self addDefaultObserver:^(id newValue) {
+        GB_set_light_temperature(gb, [newValue doubleValue]);
+    } forKey:@"GBLightTemperature"];
+    __weak typeof(self) weakSelf = self;
+    [self addDefaultObserver:^(id newValue) {
+        GB_set_palette(gb, [weakSelf currentPalette]);
+    } forKey:@"GBCurrentTheme"];
+    GB_set_rgb_encode_callback(gb, rgbEncode);
+    [self addDefaultObserver:^(id newValue) {
+        GB_set_highpass_filter_mode(gb, (GB_highpass_mode_t)[newValue integerValue]);
+    } forKey:@"GBHighpassFilter"];
+    [self addDefaultObserver:^(id newValue) {
+        GB_set_interference_volume(gb, [newValue doubleValue]);
+    } forKey:@"GBInterferenceVolume"];
+    [self addDefaultObserver:^(id newValue) {
+        GB_set_rewind_length(gb, [newValue unsignedIntValue]);
+    } forKey:@"GBRewindLength"];
     GB_set_log_callback(&_gb, (GB_log_callback_t)nop_log_callback);
     
     [[GBPhoneManager sharedManager] validateUUID:^(bool valid) {

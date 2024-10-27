@@ -1,7 +1,9 @@
 #import <UIKit/UIKit.h>
 #import <Core/gb.h>
+#if !defined(APPSTORE) || !TARGET_OS_WATCH
 #import "GBViewController.h"
 #import "GBView.h"
+#endif
 
 int main(int argc, char * argv[])
 {
@@ -12,7 +14,9 @@ int main(int argc, char * argv[])
             @"GBAudioMode": @"switch",
             @"GBHighpassFilter": @(GB_HIGHPASS_ACCURATE),
             @"GBRewindLength": @(120),
+#if !defined(APPSTORE) || !TARGET_OS_WATCH
             @"GBFrameBlendingMode": @(GB_FRAME_BLENDING_MODE_ACCURATE),
+#endif
             
             @"GBDMGModel": @(GB_MODEL_DMG_B),
             @"GBCGBModel": @(GB_MODEL_CGB_E),
@@ -146,5 +150,9 @@ int main(int argc, char * argv[])
             },
         }];
     }
+#if !defined(APPSTORE) || !TARGET_OS_WATCH
     return UIApplicationMain(argc, argv, nil, NSStringFromClass([GBViewController class]));
+#else
+    return 0;
+#endif
 }

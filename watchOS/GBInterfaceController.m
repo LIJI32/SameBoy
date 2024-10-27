@@ -1,5 +1,10 @@
 #import "GBInterfaceController.h"
 #import "GBGameScene.h"
+#import "GBPhoneManager.h"
+
+#define main(...) RegisterDefaults(void)
+#include "../iOS/main.m"
+#undef main
 
 @interface GBInterfaceController ()
 @property (strong, nonatomic) IBOutlet WKInterfaceSKScene *skInterface;
@@ -12,6 +17,10 @@
 }
 - (void)awakeWithContext:(id)context
 {
+    RegisterDefaults();
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [[GBPhoneManager sharedManager] refreshSettings:nil];
+    });
     [super awakeWithContext:context];
 
     // Load the SKScene from 'GameScene.sks'
@@ -46,6 +55,9 @@
 - (void)willActivate
 {
     // This method is called when watch view controller is about to be visible to user
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [[GBPhoneManager sharedManager] refreshSettings:nil];
+    });
     [super willActivate];
     [_scene start];
     self.crownSequencer.delegate = self;
@@ -55,8 +67,8 @@
 - (void)didDeactivate
 {
     // This method is called when watch view controller is no longer visible
-    [super didDeactivate];
     [_scene stop];
+    [super didDeactivate];
 }
 
 - (IBAction)singleTap:(id)sender

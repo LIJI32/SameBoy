@@ -6,6 +6,7 @@
 #import "GBHapticManager.h"
 #ifdef APPSTORE
 #import "GBSubscriptionViewController.h"
+#import "GBWatchManager.h"
 #endif
 #import "GCExtendedGamepad+AllElements.h"
 #import <objc/runtime.h>
@@ -395,7 +396,15 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                         @"image": [UIImage imageNamed:@"subscriptionSettings"],
                     },
 #endif
-            ]
+            ],
+#ifdef APPSTORE
+            @"footer": ^NSString *(){
+                if ([GBWatchManager sharedManager].isPaired) {
+                    return @"Applicable settings will also apply to SameBoy on your Apple Watch.";
+                }
+                return @"";
+            },
+#endif
         }
     ];
 }
@@ -741,6 +750,9 @@ static id ValueForItem(NSDictionary *item)
         __weak typeof(self) weakSelf = self;
         id block = ^(){
             [[NSUserDefaults standardUserDefaults] setBool:button.on forKey:item[@"pref"]];
+#ifdef APPSTORE
+            [[GBWatchManager sharedManager] updateSettings:nil];
+#endif
             unsigned section = [indexPath indexAtPosition:0];
             UITableViewHeaderFooterView *view = [weakSelf.tableView footerViewForSection:section];
             view.textLabel.text = [weakSelf tableView:weakSelf.tableView titleForFooterInSection:section];
@@ -794,6 +806,9 @@ static id ValueForItem(NSDictionary *item)
         
         id block = ^(){
             [[NSUserDefaults standardUserDefaults] setDouble:slider.value forKey:item[@"pref"]];
+#ifdef APPSTORE
+            [[GBWatchManager sharedManager] updateSettings:nil];
+#endif
         };
         objc_setAssociatedObject(cell, "RetainedBlock", block, OBJC_ASSOCIATION_RETAIN);
 
@@ -843,6 +858,9 @@ static id ValueForItem(NSDictionary *item)
         }
         else {
             [[NSUserDefaults standardUserDefaults] setObject:item[@"value"] forKey:item[@"pref"]];
+#ifdef APPSTORE
+            [[GBWatchManager sharedManager] updateSettings:nil];
+#endif
         }
         [self.tableView reloadData];
     }

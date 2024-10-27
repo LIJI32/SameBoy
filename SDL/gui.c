@@ -1383,7 +1383,7 @@ static void cycle_palette(unsigned index)
     else {
         configuration.dmg_palette++;
     }
-    configuration.gui_pallete_enabled = true;
+    configuration.gui_palette_enabled = true;
     update_gui_palette();
 }
 
@@ -1414,7 +1414,7 @@ static void cycle_palette_backwards(unsigned index)
     else {
         configuration.dmg_palette--;
     }
-    configuration.gui_pallete_enabled = true;
+    configuration.gui_palette_enabled = true;
     update_gui_palette();
 }
 
@@ -2164,7 +2164,7 @@ void run_gui(bool is_running)
     
     /* Draw the background screen */
     if (!converted_background) {
-        if (configuration.gui_pallete_enabled) {
+        if (configuration.gui_palette_enabled) {
             update_gui_palette();
         }
         else {

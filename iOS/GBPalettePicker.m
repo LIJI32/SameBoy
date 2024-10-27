@@ -1,6 +1,9 @@
 #import "GBPalettePicker.h"
 #import "GBPaletteEditor.h"
 #import <CoreServices/CoreServices.h>
+#ifdef APPSTORE
+#import "GBWatchManager.h"
+#endif
 
 /* TODO: Unify with Cocoa? */
 #define MAGIC 'SBPL'
@@ -270,6 +273,9 @@ typedef struct __attribute__ ((packed)) {
     }
     [[NSUserDefaults standardUserDefaults] setObject:[self.tableView cellForRowAtIndexPath:indexPath].textLabel.text
                                               forKey:@"GBCurrentTheme"];
+#ifdef APPSTORE
+    [[GBWatchManager sharedManager] updateSettings:nil];
+#endif
     [self.tableView reloadData];
     return nil;
 }
@@ -318,6 +324,9 @@ typedef struct __attribute__ ((packed)) {
     [[NSUserDefaults standardUserDefaults] setObject:dict forKey:@"GBThemes"];
     if ([[[NSUserDefaults standardUserDefaults] stringForKey:@"GBCurrentTheme"] isEqual:oldName]) {
         [[NSUserDefaults standardUserDefaults] setObject:newName forKey:@"GBCurrentTheme"];
+#ifdef APPSTORE
+        [[GBWatchManager sharedManager] updateSettings:nil];
+#endif
     }
     [self.tableView reloadData];
     _renamingPath = nil;
@@ -345,6 +354,9 @@ typedef struct __attribute__ ((packed)) {
         if ([[[NSUserDefaults standardUserDefaults] stringForKey:@"GBCurrentTheme"] isEqual:name]) {
             [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"GBCurrentTheme"];
             [self.tableView reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:1 inSection:0]] withRowAnimation:UITableViewRowAnimationFade];
+#ifdef APPSTORE
+            [[GBWatchManager sharedManager] updateSettings:nil];
+#endif
         }
     }]];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"

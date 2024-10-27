@@ -108,6 +108,7 @@
         @"cmd": @"getSettings"
     }
          replyHandler:^(NSDictionary<NSString *,id> *replyMessage) {
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"GBCurrentTheme"];
         [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:replyMessage[@"settings"]];
         if (completion) completion();
     }
@@ -255,6 +256,7 @@
 
 - (NSDictionary<NSString *,id> *)updateSettings:(NSDictionary<NSString *,id> *)command
 {
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"GBCurrentTheme"];
     [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:command[@"settings"]];
     return @{};
 }
