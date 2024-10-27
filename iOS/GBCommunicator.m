@@ -151,13 +151,14 @@ static const size_t ChunkSize = 0x10000 - sizeof(struct MessageHeader);
 
 - (void)session:(WCSession *)session didReceiveMessageData:(NSData *)messageData replyHandler:(void (^)(NSData *))replyHandler
 {
- #if TARGET_OS_WATCH
+#if TARGET_OS_WATCH
     [_idleTimer invalidate];
     _idleTimer = nil;
     [WKExtension sharedExtension].autorotating = true;
-    _idleTimer = [NSTimer scheduledTimerWithTimeInterval:1 repeats:false block:^(NSTimer *timer) {
+    _idleTimer = [NSTimer timerWithTimeInterval:3 repeats:false block:^(NSTimer *timer) {
         [WKExtension sharedExtension].autorotating = false;
     }];
+    [[NSRunLoop mainRunLoop] addTimer:_idleTimer forMode:NSDefaultRunLoopMode];
 #endif
     if (messageData.length) { // Sending a request
         const struct MessageHeader *header = messageData.bytes;
