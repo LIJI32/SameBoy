@@ -172,7 +172,7 @@
                             @"agb_boot.bin"]) {
         NSString *romPath = [path stringByAppendingPathComponent:rom];
         if ([[NSFileManager defaultManager] fileExistsAtPath:romPath]) {
-            command[rom] = [NSData dataWithContentsOfFile:rom];
+            command[rom] = [NSData dataWithContentsOfFile:romPath];
         }
     }
     [self sendMessage:command

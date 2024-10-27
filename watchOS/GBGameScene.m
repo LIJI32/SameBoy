@@ -40,7 +40,20 @@ static void vblank(GB_gameboy_t *gb)
     [self vblank];
 }
 
-- (void) loadBootROM: (GB_boot_rom_t)type
+- (NSString *)bootROMPathForName:(NSString *)name
+{
+    NSString *path = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true)[0];
+    path = [path stringByAppendingPathComponent:@"Boot ROMs"];
+    path = [path stringByAppendingPathComponent:name];
+    path = [path stringByAppendingPathExtension:@"bin"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        return path;
+    }
+    
+    return [[NSBundle mainBundle] pathForResource:name ofType:@"bin"];
+}
+
+- (void) loadBootROM:(GB_boot_rom_t)type
 {
     static NSString *const names[] = {
         [GB_BOOT_ROM_DMG_0] = @"dmg0_boot",
@@ -50,14 +63,24 @@ static void vblank(GB_gameboy_t *gb)
         [GB_BOOT_ROM_SGB2] = @"sgb2_boot",
         [GB_BOOT_ROM_CGB_0] = @"cgb0_boot",
         [GB_BOOT_ROM_CGB] = @"cgb_boot",
+        [GB_BOOT_ROM_CGB_E] = @"cgbE_boot",
+        [GB_BOOT_ROM_AGB_0] = @"agb0_boot",
         [GB_BOOT_ROM_AGB] = @"agb_boot",
     };
-    GB_load_boot_rom(&_gb, [[self bootROMPathForName:names[type]] UTF8String]);
-}
-
-- (NSString *)bootROMPathForName:(NSString *)name
-{
-    return [[NSBundle mainBundle] pathForResource:name ofType:@"bin"];
+    NSString *name = names[type];
+    NSString *path = [self bootROMPathForName:name];
+    /* These boot types are not commonly available, and they are indentical
+     from an emulator perspective, so fall back to the more common variants
+     if they can't be found. */
+    if (!path && type == GB_BOOT_ROM_CGB_E) {
+        [self loadBootROM:GB_BOOT_ROM_CGB];
+        return;
+    }
+    if (!path && type == GB_BOOT_ROM_AGB_0) {
+        [self loadBootROM:GB_BOOT_ROM_AGB];
+        return;
+    }
+    GB_load_boot_rom(&_gb, [path UTF8String]);
 }
 
 - (void)addDefaultObserver:(void(^)(id newValue))block forKey:(NSString *)key
@@ -239,19 +262,17 @@ static void vblank(GB_gameboy_t *gb)
         GB_set_interference_volume(gb, [newValue doubleValue]);
     } forKey:@"GBInterferenceVolume"];
     [self addDefaultObserver:^(id newValue) {
-        GB_set_rewind_length(gb, [newValue unsignedIntValue]);
+        if (weakSelf.isRunning) {
+            [weakSelf stop];
+            GB_set_rewind_length(gb, [newValue unsignedIntValue]);
+            [weakSelf start];
+        }
+        else {
+            GB_set_rewind_length(gb, [newValue unsignedIntValue]);
+        }
     } forKey:@"GBRewindLength"];
     GB_set_log_callback(&_gb, (GB_log_callback_t)nop_log_callback);
     
-    [[GBPhoneManager sharedManager] validateUUID:^(bool valid) {
-        if (valid) {
-            [self loadROM];
-            _label.hidden = _romLoaded;
-            _iPhoneIcon.hidden = _romLoaded;
-            _screen.hidden = !_romLoaded;
-            [self start];
-        }
-    }];
     [[NSNotificationCenter defaultCenter] addObserverForName:@"GBROMChanged"
                                                       object:nil
                                                        queue:nil
@@ -262,6 +283,12 @@ static void vblank(GB_gameboy_t *gb)
         _iPhoneIcon.hidden = _romLoaded;
         _screen.hidden = !_romLoaded;
         [self start];
+    }];
+    
+    [[GBPhoneManager sharedManager] validateUUID:^(bool valid) {
+        if (valid) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
+        }
     }];
 }
     
