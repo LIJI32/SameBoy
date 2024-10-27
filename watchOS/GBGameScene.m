@@ -299,21 +299,23 @@ static void vblank(GB_gameboy_t *gb)
         }
     } forKey:@"GBRewindLength"];
     [self addDefaultObserver:^(id newValue) {
-        if ([newValue isEqual:@"off"]) {
-            GB_set_sample_rate(gb, 0);
-            [_audioClient stop];
-        }
-        else {
-            GB_set_sample_rate(gb, _audioClient.rate);
-            if (self.isRunning) {
-                [_audioClient start];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([newValue isEqual:@"off"]) {
+                GB_set_sample_rate(gb, 0);
+                [_audioClient stop];
             }
-        }
-        [[AVAudioSession sharedInstance] setCategory:[newValue isEqual:@"on"]? AVAudioSessionCategoryPlayback :  AVAudioSessionCategorySoloAmbient
-                                                mode:AVAudioSessionModeMeasurement // Reduces latency on BT
-                                  routeSharingPolicy:AVAudioSessionRouteSharingPolicyDefault
-                                             options:AVAudioSessionCategoryOptionAllowBluetoothA2DP
-                                               error:nil];
+            else {
+                GB_set_sample_rate(gb, _audioClient.rate);
+                if (self.isRunning) {
+                    [_audioClient start];
+                }
+            }
+            [[AVAudioSession sharedInstance] setCategory:[newValue isEqual:@"on"]? AVAudioSessionCategoryPlayback :  AVAudioSessionCategorySoloAmbient
+                                                    mode:AVAudioSessionModeMeasurement // Reduces latency on BT
+                                      routeSharingPolicy:AVAudioSessionRouteSharingPolicyDefault
+                                                 options:AVAudioSessionCategoryOptionAllowBluetoothA2DP
+                                                   error:nil];
+        });
     } forKey:@"GBAudioMode"];
     GB_set_log_callback(&_gb, (GB_log_callback_t)nop_log_callback);
     
