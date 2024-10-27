@@ -148,7 +148,7 @@
     [self.tableView reloadData];
 }
 
-- (void)duplicateROMAtIndex:(unsigned int)index
+- (void)duplicateROMAtIndex:(unsigned)index
 {
     self.view.window.userInteractionEnabled = false;
     [[GBROMManager sharedManager] duplicateCloudROM:_roms[index]
@@ -170,7 +170,7 @@
     }];
 }
 
-- (void)deleteROMAtIndex:(unsigned int)index
+- (void)deleteROMAtIndex:(unsigned)index
 {
     self.view.window.userInteractionEnabled = false;
     NSString *rom = _roms[index];

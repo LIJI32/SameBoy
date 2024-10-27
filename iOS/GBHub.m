@@ -291,7 +291,7 @@ static NSURL *StringToWebURL(NSString *string)
     }] resume];
 }
 
-- (unsigned int)countForTag:(NSString *)tag
+- (unsigned)countForTag:(NSString *)tag
 {
     return _tags[tag].unsignedIntValue;
 }

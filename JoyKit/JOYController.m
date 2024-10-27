@@ -1450,7 +1450,7 @@ typedef union {
     }
 }
 
-- (uint8_t)LEDMaskForPlayer:(unsigned int)player
+- (uint8_t)LEDMaskForPlayer:(unsigned)player
 {
     return player;
 }

@@ -1,7 +1,10 @@
 #import "GBGameScene.h"
 #import "GBPhoneManager.h"
+#import "GBGizmoAudioClient.h"
+#import <AVFAudio/AVFAudio.h>
 #import <mach/mach.h>
 #import <Core/gb.h>
+#pragma clang diagnostic ignored "-Warc-retain-cycles"
 
 @implementation GBGameScene
 {
@@ -16,6 +19,7 @@
     bool _activeBuffer;
     bool _romLoaded;
     NSMutableSet *_defaultsObservers;
+    GBGizmoAudioClient *_audioClient;
 }
 
 static void nop_log_callback()
@@ -26,6 +30,12 @@ static void nop_log_callback()
 static uint32_t rgbEncode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
 {
     return (r << 0) | (g << 8) | (b << 16) | 0xFF000000;
+}
+
+static void sampleCallback(GB_gameboy_t *gb, GB_sample_t *sample)
+{
+    GBGameScene *self = (__bridge GBGameScene *)GB_get_user_data(gb);
+    [self sampleCallback:sample];
 }
 
 static void loadBootROM(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -107,6 +117,9 @@ static void vblank(GB_gameboy_t *gb)
     if (_running) return;
     if (!_romLoaded) return;
     _running = true;
+    if (![[[NSUserDefaults standardUserDefaults] stringForKey:@"GBAudioMode"] isEqual:@"off"]) {
+        [_audioClient start];
+    }
     [NSThread detachNewThreadWithBlock:^{
         while (_running) {
             GB_run(&_gb);
@@ -121,6 +134,7 @@ static void vblank(GB_gameboy_t *gb)
     _stopping = true;
     _running = false;
     while (_stopping);
+    [_audioClient stop];
     
     GB_save_state(&_gb, GBPhoneManager.sharedManager.saveStatePath.UTF8String);
     const uint32_t *buffer = !_activeBuffer? _pixels : _pixels + 256 * 224;
@@ -240,6 +254,8 @@ static void vblank(GB_gameboy_t *gb)
     _iPhoneIcon.position = CGPointMake(0, _iPhoneIcon.size.height / 2 + 4);
     [self addChild: _iPhoneIcon];
     
+    _audioClient = [[GBGizmoAudioClient alloc] init];
+    
     GB_init(&_gb, GB_MODEL_CGB_E);
     GB_set_user_data(&_gb, (__bridge void *)(self));
     GB_set_rgb_encode_callback(&_gb, rgbEncode);
@@ -247,6 +263,8 @@ static void vblank(GB_gameboy_t *gb)
     GB_set_vblank_callback(&_gb, (GB_vblank_callback_t) vblank);
     GB_set_border_mode(&_gb, GB_BORDER_ALWAYS);
     GB_set_pixels_output(&_gb, _pixels);
+    GB_set_sample_rate(&_gb, _audioClient.rate);
+    GB_apu_set_sample_callback(&_gb, sampleCallback);
         
     GB_gameboy_t *gb = &_gb;
     [self addDefaultObserver:^(id newValue) {
@@ -255,9 +273,8 @@ static void vblank(GB_gameboy_t *gb)
     [self addDefaultObserver:^(id newValue) {
         GB_set_light_temperature(gb, [newValue doubleValue]);
     } forKey:@"GBLightTemperature"];
-    __weak typeof(self) weakSelf = self;
     [self addDefaultObserver:^(id newValue) {
-        GB_set_palette(gb, [weakSelf currentPalette]);
+        GB_set_palette(gb, [self currentPalette]);
     } forKey:@"GBCurrentTheme"];
     GB_set_rgb_encode_callback(gb, rgbEncode);
     [self addDefaultObserver:^(id newValue) {
@@ -267,15 +284,32 @@ static void vblank(GB_gameboy_t *gb)
         GB_set_interference_volume(gb, [newValue doubleValue]);
     } forKey:@"GBInterferenceVolume"];
     [self addDefaultObserver:^(id newValue) {
-        if (weakSelf.isRunning) {
-            [weakSelf stop];
+        if (_running) {
+            [self stop];
             GB_set_rewind_length(gb, [newValue unsignedIntValue]);
-            [weakSelf start];
+            [self start];
         }
         else {
             GB_set_rewind_length(gb, [newValue unsignedIntValue]);
         }
     } forKey:@"GBRewindLength"];
+    [self addDefaultObserver:^(id newValue) {
+        if ([newValue isEqual:@"off"]) {
+            GB_set_sample_rate(gb, 0);
+            [_audioClient stop];
+        }
+        else {
+            GB_set_sample_rate(gb, _audioClient.rate);
+            if (self.isRunning) {
+                [_audioClient start];
+            }
+        }
+        [[AVAudioSession sharedInstance] setCategory:[newValue isEqual:@"on"]? AVAudioSessionCategoryPlayback :  AVAudioSessionCategorySoloAmbient
+                                                mode:AVAudioSessionModeMeasurement // Reduces latency on BT
+                                  routeSharingPolicy:AVAudioSessionRouteSharingPolicyDefault
+                                             options:AVAudioSessionCategoryOptionAllowBluetoothA2DP
+                                               error:nil];
+    } forKey:@"GBAudioMode"];
     GB_set_log_callback(&_gb, (GB_log_callback_t)nop_log_callback);
     
     [[NSNotificationCenter defaultCenter] addObserverForName:@"GBROMChanged"
@@ -292,7 +326,9 @@ static void vblank(GB_gameboy_t *gb)
     
     [[GBPhoneManager sharedManager] validateUUID:^(bool valid) {
         if (valid) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
+            });
         }
     }];
 }
@@ -312,6 +348,11 @@ static void vblank(GB_gameboy_t *gb)
         }];
         busy = false;
     });
+}
+
+- (void)sampleCallback:(GB_sample_t *)sample
+{
+    [_audioClient pushSample:sample];
 }
 
 - (void)holdButton:(GB_key_t)button duration:(double)seconds

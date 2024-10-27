@@ -23,7 +23,7 @@ static OSStatus render(
     AudioComponentInstance audioUnit;
 }
 
--(id) initWithRendererBlock:(void (^)(UInt32 sampleRate, UInt32 nFrames, GB_sample_t *buffer)) block
+- (id)initWithRendererBlock:(void (^)(UInt32 sampleRate, UInt32 nFrames, GB_sample_t *buffer)) block
               andSampleRate:(UInt32) rate
 {
     if (!(self = [super init])) { 
