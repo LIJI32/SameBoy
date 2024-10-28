@@ -59,7 +59,10 @@
         [[GBPhoneManager sharedManager] refreshSettings:nil];
     });
     [super willActivate];
-    [_scene start];
+    // This slight delay fixes audio start-up issues
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [_scene start];
+    });
     self.crownSequencer.delegate = self;
     [self.crownSequencer focus];
 }
