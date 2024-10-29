@@ -91,20 +91,41 @@
         return;
     }
     
+    
     NSString *uuid = [NSDictionary dictionaryWithContentsOfFile:self.metadataPath][@"uuid"];
     if (!uuid) {
         completion(false);
         return;
     }
+    
+    static dispatch_once_t onceToken;
+    
+    [NSTimer scheduledTimerWithTimeInterval:2 repeats:false block:^(NSTimer *timer) {
+        dispatch_once(&onceToken, ^{
+            // Didn' respond in time
+            completion(true);
+        });
+    }];
     [self sendMessage:@{
         @"cmd": @"validateUUID",
         @"uuid": uuid,
     }
          replyHandler:^(NSDictionary<NSString *,id> *replyMessage) {
-        if (completion) completion(!replyMessage[@"error"]);
+        dispatch_once(&onceToken, ^{
+            if (completion) completion(!replyMessage[@"error"]);
+            if (replyMessage[@"error"]) {
+                unlink(self.saveStatePath.UTF8String);
+                unlink(self.pngPath.UTF8String);
+                unlink(self.romPath.UTF8String);
+                unlink(self.metadataPath.UTF8String);
+                unlink(self.batteryPath.UTF8String);
+            }
+        });
     }
          errorHandler:^(NSString *error) {
-        if (completion) completion(true); // Assume the UUID is still valid if the phone can't be accessed
+        dispatch_once(&onceToken, ^{
+            if (completion) completion(true); // Assume the UUID is still valid if the phone can't be accessed
+        });
     }];
 }
 

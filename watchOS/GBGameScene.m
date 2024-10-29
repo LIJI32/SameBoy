@@ -322,7 +322,7 @@ static void vblank(GB_gameboy_t *gb)
     [[NSNotificationCenter defaultCenter] addObserverForName:@"GBROMChanged"
                                                       object:nil
                                                        queue:nil
-                                                  usingBlock:^(NSNotification * _Nonnull note) {
+                                                  usingBlock:^(NSNotification *note) {
         [self stop];
         [self loadROM];
         _label.hidden = _romLoaded;
