@@ -328,6 +328,9 @@ static void vblank(GB_gameboy_t *gb)
         _label.hidden = _romLoaded;
         _iPhoneIcon.hidden = _romLoaded;
         _screen.hidden = !_romLoaded;
+        if (!_romLoaded) {
+            [self setLabelString:@"Open SameBoy on your iPhone to transfer a ROM to your Apple Watch."];
+        }
         [self start];
     }];
     
