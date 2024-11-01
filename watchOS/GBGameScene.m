@@ -289,6 +289,9 @@ static void vblank(GB_gameboy_t *gb)
         GB_set_interference_volume(gb, [newValue doubleValue]);
     } forKey:@"GBInterferenceVolume"];
     [self addDefaultObserver:^(id newValue) {
+        _audioClient.volume = [newValue doubleValue];
+    } forKey:@"GBWatchVolume"];
+    [self addDefaultObserver:^(id newValue) {
         if (_running) {
             [self stop];
             GB_set_rewind_length(gb, [newValue unsignedIntValue]);
@@ -380,8 +383,8 @@ static void vblank(GB_gameboy_t *gb)
 {
     [_holdSprite removeFromParent];
     _holdSprite = [SKSpriteNode spriteNodeWithImageNamed:@"Hold"];
-    position.x *= 2;
-    position.y *= 2;
+    
+    _holdSprite.xScale = _holdSprite.yScale = 1.0 / [WKInterfaceDevice currentDevice].screenScale;
 
     position.y = self.size.height - position.y;
     position.x -= self.size.width / 2;

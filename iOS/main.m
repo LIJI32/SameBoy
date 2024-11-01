@@ -13,9 +13,12 @@ int main(int argc, char * argv[])
             @"GBColorCorrection": @(GB_COLOR_CORRECTION_MODERN_BALANCED),
             @"GBAudioMode": @"switch",
             @"GBHighpassFilter": @(GB_HIGHPASS_ACCURATE),
-            @"GBRewindLength": @(120),
+            @"GBRewindLength": @120,
 #if !defined(APPSTORE) || !TARGET_OS_WATCH
             @"GBFrameBlendingMode": @(GB_FRAME_BLENDING_MODE_ACCURATE),
+#endif
+#ifdef APPSTORE
+            @"GBWatchVolume": @1.0,
 #endif
             
             @"GBDMGModel": @(GB_MODEL_DMG_B),

@@ -245,7 +245,6 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                 @{@"type": typeRadio, @"pref": @"GBAudioMode", @"title": @"Controlled by Silent Mode", @"value": @"switch",},
                 @{@"type": typeRadio, @"pref": @"GBAudioMode", @"title": @"Always",                    @"value": @"on",},
             ],
-
         },
         @{
             @"header": @"High-pass Filter",
@@ -355,48 +354,82 @@ static NSString const *typeLightTemp = @"typeLightTemp";
         },
     ];
     
-    return @[
-        @{
-            @"items": @[
-                    @{
-                        @"title": @"Emulation",
-                        @"type": typeSubmenu,
-                        @"submenu": emulationMenu,
-                        @"image": [UIImage imageNamed:@"emulationSettings"],
-                    },
-                    @{
-                        @"title": @"Video",
-                        @"type": typeSubmenu,
-                        @"submenu": videoMenu,
-                        @"image": [UIImage imageNamed:@"videoSettings"],
-                    },
-                    @{
-                        @"title": @"Audio",
-                        @"type": typeSubmenu,
-                        @"submenu": audioMenu,
-                        @"image": [UIImage imageNamed:@"audioSettings"],
-                    },
-                    @{
-                        @"title": @"Controls",
-                        @"type": typeSubmenu,
-                        @"submenu": controlsMenu,
-                        @"image": [UIImage imageNamed:@"controlsSettings"],
-                    },
-                    @{
-                        @"title": @"Themes",
-                        @"type": typeSubmenu,
-                        @"class": [GBThemesViewController class],
-                        @"image": [UIImage imageNamed:@"themeSettings"],
-                    },
 #ifdef APPSTORE
-                    @{
-                        @"title": @"Support SameBoy",
-                        @"type": typeSubmenu,
-                        @"class": [GBSubscriptionViewController class],
-                        @"image": [UIImage imageNamed:@"subscriptionSettings"],
-                    },
-#endif
+    NSArray<NSDictionary *> *watchMenu = @[
+        @{
+            @"header": @"Enable Audio",
+            @"items": @[
+                @{@"type": typeRadio, @"pref": @"GBWatchAudioMode", @"title": @"Follow Setting on iPhone",  @"getter": ^id(void) {return [[NSUserDefaults standardUserDefaults] objectForKey:@"GBWatchAudioMode"];}},
+                @{@"type": typeRadio, @"pref": @"GBWatchAudioMode", @"title": @"Never",                     @"value": @"off",},
+                @{@"type": typeRadio, @"pref": @"GBWatchAudioMode", @"title": @"Controlled by Silent Mode", @"value": @"switch",},
+                @{@"type": typeRadio, @"pref": @"GBWatchAudioMode", @"title": @"Always",                    @"value": @"on",},
             ],
+        },
+        @{
+            @"header": @"Audio volume",
+            @"items": @[
+                @{@"type": typeSlider, @"pref": @"GBWatchVolume", @"min": @0, @"max": @1, @"minImage": @"speaker.fill", @"maxImage": @"speaker.3.fill"}
+            ],
+        },
+    ];
+#endif
+    
+    NSArray *rootItems = @[
+        @{
+            @"title": @"Emulation",
+            @"type": typeSubmenu,
+            @"submenu": emulationMenu,
+            @"image": [UIImage imageNamed:@"emulationSettings"],
+        },
+        @{
+            @"title": @"Video",
+            @"type": typeSubmenu,
+            @"submenu": videoMenu,
+            @"image": [UIImage imageNamed:@"videoSettings"],
+        },
+        @{
+            @"title": @"Audio",
+            @"type": typeSubmenu,
+            @"submenu": audioMenu,
+            @"image": [UIImage imageNamed:@"audioSettings"],
+        },
+        @{
+            @"title": @"Controls",
+            @"type": typeSubmenu,
+            @"submenu": controlsMenu,
+            @"image": [UIImage imageNamed:@"controlsSettings"],
+        },
+        @{
+            @"title": @"Themes",
+            @"type": typeSubmenu,
+            @"class": [GBThemesViewController class],
+            @"image": [UIImage imageNamed:@"themeSettings"],
+        },
+#ifdef APPSTORE
+        @{
+            @"title": @"Support SameBoy",
+            @"type": typeSubmenu,
+            @"class": [GBSubscriptionViewController class],
+            @"image": [UIImage imageNamed:@"subscriptionSettings"],
+        },
+#endif
+    ];
+    
+#ifdef APPSTORE
+    if ([GBWatchManager sharedManager].isPaired) {
+        rootItems = rootItems.mutableCopy;
+        [(NSMutableArray *)rootItems insertObject:@{
+            @"title": @"Apple Watch",
+            @"type": typeSubmenu,
+            @"submenu": watchMenu,
+            @"image": [UIImage imageNamed:@"watchSettings"],
+        } atIndex:4];
+    }
+#endif
+
+     return @[
+        @{
+            @"items": rootItems,
 #ifdef APPSTORE
             @"footer": ^NSString *(){
                 if ([GBWatchManager sharedManager].isPaired) {
@@ -736,7 +769,9 @@ static id ValueForItem(NSDictionary *item)
         }
     }
     else if (item[@"type"] == typeRadio) {
-        if ([ValueForItem(item) isEqual:item[@"value"]]) {
+        id settingValue = ValueForItem(item);
+        id itemValue = item[@"value"];
+        if (settingValue == itemValue || [settingValue isEqual:itemValue]) {
             cell.accessoryType = UITableViewCellAccessoryCheckmark;
         }
     }

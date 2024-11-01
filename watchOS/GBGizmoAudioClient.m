@@ -56,6 +56,16 @@
     return _acitve;
 }
 
+- (double)volume
+{
+    return _engine.mainMixerNode.outputVolume;
+}
+
+- (void)setVolume:(double)volume
+{
+    _engine.mainMixerNode.outputVolume = volume;
+}
+
 - (void)pushSample:(GB_sample_t *)sample
 {
     if (GB_unlikely(!_acitve)) return;

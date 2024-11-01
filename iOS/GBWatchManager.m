@@ -196,6 +196,10 @@
             [ret removeObjectForKey:key];
         }
     }
+    if (ret[@"GBWatchAudioMode"]) {
+        ret[@"GBAudioMode"] = ret[@"GBWatchAudioMode"];
+        [ret removeObjectForKey:@"GBWatchAudioMode"];
+    }
     return ret;
 }
 
