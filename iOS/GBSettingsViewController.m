@@ -371,6 +371,63 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                 @{@"type": typeSlider, @"pref": @"GBWatchVolume", @"min": @0, @"max": @1, @"minImage": @"speaker.fill", @"maxImage": @"speaker.3.fill"}
             ],
         },
+        @{
+            @"header": @"Control Scheme",
+            @"items": @[
+                @{@"type": typeRadio, @"pref": @"GBWatchSwipe", @"title": @"Standard", @"value": @NO,},
+                @{@"type": typeRadio, @"pref": @"GBWatchSwipe", @"title": @"Swipe",    @"value": @YES,},
+                @{@"type": typeCheck, @"pref": @"GBWatchHints", @"title": @"Show Hints When Idle"},
+            ],
+            @"footer": ^NSString *(){
+                if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchSwipe"]) {
+                    return [NSString stringWithFormat:@"Swipe to move in a direction. Tap anywhere for %@. Long press anywhere for other action buttons.", [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"]];
+                }
+                return [NSString stringWithFormat:@"Touch the edges to move in a direction. Tap the center for %@. Long press in the center for other action buttons.", [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"]];
+            },
+        },
+        @{
+            @"header": @"Main Action Button",
+            @"items": @[
+                @{@"type": typeRadio, @"pref": @"GBWatchDefaultAction", @"title": @"A", @"value": @"A",},
+                @{@"type": typeRadio, @"pref": @"GBWatchDefaultAction", @"title": @"B", @"value": @"B",},
+                @{@"type": typeRadio, @"pref": @"GBWatchDefaultAction", @"title": @"A+B", @"value": @"A+B",},
+            ],
+        },
+        @{
+            @"header": @"Digital Crown Rotation Actions",
+            @"items": @[
+                @{
+                    @"title": @"Forward",
+                    @"type": typeOptionSubmenu,
+                    @"submenu": @[
+                        @{
+                            @"items": @[
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownForward", @"title": @"Fast Forward", @"value": @"turbo",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownForward", @"title": @"Rapid A", @"value": @"a",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownForward", @"title": @"Rapid B", @"value": @"b",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownForward", @"title": @"Fast Forward + Rapid A", @"value": @"turbo+a",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownForward", @"title": @"Fast Forward + Rapid B", @"value": @"turbo+b",},
+                            ]
+                        },
+                    ],
+                },
+                @{
+                    @"title": @"Backwards",
+                    @"type": typeOptionSubmenu,
+                    @"submenu": @[
+                        @{
+                            @"items": @[
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rewind", @"value": @"rewind",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rapid A", @"value": @"a",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rapid B", @"value": @"b",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rapid Start", @"value": @"start",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rapid Select", @"value": @"select",},
+                            ]
+                        },
+                    ],
+                },
+            ],
+        },
     ];
 #endif
     

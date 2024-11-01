@@ -13,21 +13,11 @@
                     <items>
                         <spriteKitScene height="1" alignment="left" preferredFramesPerSecond="60" id="ARY-87-yzO">
                             <gestureRecognizers>
-                                <tapGestureRecognizer id="ikV-wi-swg">
+                                <longPressGestureRecognizer allowableMovement="0.0" minimumPressDuration="0.0" id="hXm-SO-X6Z">
                                     <connections>
-                                        <action selector="singleTap:" destination="AgC-eL-Hgc" id="Xxm-bi-wLX"/>
-                                    </connections>
-                                </tapGestureRecognizer>
-                                <longPressGestureRecognizer id="hXm-SO-X6Z">
-                                    <connections>
-                                        <action selector="longPress:" destination="AgC-eL-Hgc" id="SK9-nX-tUi"/>
+                                        <action selector="touchEvent:" destination="AgC-eL-Hgc" id="K56-pE-y8s"/>
                                     </connections>
                                 </longPressGestureRecognizer>
-                                <panGestureRecognizer id="jZ8-rG-1qF">
-                                    <connections>
-                                        <action selector="pan:" destination="AgC-eL-Hgc" id="YZP-lj-z2Y"/>
-                                    </connections>
-                                </panGestureRecognizer>
                             </gestureRecognizers>
                         </spriteKitScene>
                     </items>

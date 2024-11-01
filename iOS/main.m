@@ -19,6 +19,11 @@ int main(int argc, char * argv[])
 #endif
 #ifdef APPSTORE
             @"GBWatchVolume": @1.0,
+            @"GBWatchSwipe": @NO,
+            @"GBWatchHints": @YES,
+            @"GBWatchDefaultAction": @"A",
+            @"GBWatchCrownForward": @"turbo",
+            @"GBWatchCrownBackwards": @"rewind",
 #endif
             
             @"GBDMGModel": @(GB_MODEL_DMG_B),

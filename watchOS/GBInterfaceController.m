@@ -6,6 +6,9 @@
 #include "../iOS/main.m"
 #undef main
 
+// This ratio guaranteed equal area for each button
+#define BUTTON_WIDTH 0.2763932022500210303590826331268723764559381640388474275729102754
+
 @interface GBInterfaceController ()
 @property (strong, nonatomic) IBOutlet WKInterfaceSKScene *skInterface;
 @end
@@ -74,8 +77,62 @@
     [super didDeactivate];
 }
 
-- (IBAction)singleTap:(id)sender
+- (IBAction)touchEvent:(WKLongPressGestureRecognizer *)sender
 {
+    static NSTimer *_timer = nil;
+    static bool isLong = false, isTap = false;;
+    
+    if (sender.state == WKGestureRecognizerStateBegan) {
+        isLong = false;
+        isTap = true;
+        if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchSwipe"]) {
+            double x = sender.locationInObject.x / _scene.size.width;
+            double y = sender.locationInObject.y / _scene.size.height;
+            if (x < BUTTON_WIDTH || x > (1 - BUTTON_WIDTH) ||
+                y < BUTTON_WIDTH || y > (1 - BUTTON_WIDTH)) {
+                isTap = false;
+                [self pan:sender];
+                return;
+            }
+        }
+        else {
+            [self pan:sender];
+        }
+        _timer = [NSTimer scheduledTimerWithTimeInterval:0.5 repeats:false block:^(NSTimer *timer) {
+            isLong = true;
+            isTap = false;
+            timer = nil;
+            [self longPress:sender];
+        }];
+    }
+    else {
+        if (sender.state == WKGestureRecognizerStateEnded && isTap) {
+            [self singleTap:sender];
+        }
+        else if (sender.state == WKGestureRecognizerStateChanged) {
+            isTap = false;
+        }
+        [_timer invalidate];
+        _timer = nil;
+        if (isLong) {
+            [self longPress:sender];
+        }
+        else if (!isTap) {
+            [self pan:sender];
+        }
+    }
+}
+
+- (IBAction)singleTap:(WKLongPressGestureRecognizer *)sender
+{    
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchSwipe"]) {
+        double x = sender.locationInObject.x / _scene.size.width;
+        double y = sender.locationInObject.y / _scene.size.height;
+        if (x < BUTTON_WIDTH || x > (1 - BUTTON_WIDTH) ||
+            y < BUTTON_WIDTH || y > (1 - BUTTON_WIDTH)) {
+            return;
+        }
+    }
     [_scene holdButton:GB_KEY_A duration:0.1];
 }
 
@@ -84,6 +141,18 @@
     static CGPoint start;
     if (sender.state == WKGestureRecognizerStateBegan) {
         start = sender.locationInObject;
+    }
+    
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchSwipe"]) {
+        double x = start.x / _scene.size.width;
+        double y = start.y / _scene.size.height;
+        if (x < BUTTON_WIDTH || x > (1 - BUTTON_WIDTH) ||
+            y < BUTTON_WIDTH || y > (1 - BUTTON_WIDTH)) {
+            return;
+        }
+    }
+    
+    if (sender.state == WKGestureRecognizerStateBegan) {
         [_scene showHoldAt:sender.locationInObject];
     }
     else if (sender.state == WKGestureRecognizerStateEnded) {
@@ -102,8 +171,41 @@
     }
 }
 
-- (IBAction)pan:(WKPanGestureRecognizer *)sender
+- (IBAction)pan:(WKLongPressGestureRecognizer *)sender
 {
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchSwipe"]) {
+        if (sender.state == WKGestureRecognizerStateBegan ||
+            sender.state == WKGestureRecognizerStateChanged) {
+            double x = sender.locationInObject.x / _scene.size.width;
+            double y = sender.locationInObject.y / _scene.size.height;
+            
+            GB_key_mask_t mask = 0;
+            if (x < BUTTON_WIDTH) {
+                mask |= GB_KEY_LEFT_MASK;
+            }
+            else if (x > (1 - BUTTON_WIDTH)) {
+                mask |= GB_KEY_RIGHT_MASK;
+            }
+            
+            if (y < BUTTON_WIDTH) {
+                mask |= GB_KEY_UP_MASK;
+            }
+            else if (y > (1 - BUTTON_WIDTH)) {
+                mask |= GB_KEY_DOWN_MASK;
+            }
+            
+            if (mask == 0) {
+                mask = GB_KEY_A_MASK;
+            }
+            [_scene setInput:mask];
+            return;
+
+        }
+        else {
+            [_scene setInput:0];
+        }
+        return;
+    }
     static CGPoint start;
     if (sender.state == WKGestureRecognizerStateBegan) {
         start = sender.locationInObject;
