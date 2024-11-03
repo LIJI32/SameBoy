@@ -313,16 +313,42 @@
 {
     [_crownIdleTimer invalidate];
     _crownIdleTimer = nil;
-    static bool b = false;
+    static bool rapidFire = false;
     if (rotationalDelta > 0) {
-        b ^= true;
-        [_scene setInput:b? GB_KEY_B_MASK : 0];
         [_scene start];
-        [_scene setSpeedMultiplayer:rotationalDelta * 32 + 1];
+        NSString *action = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchCrownForward"];
+        rapidFire ^= true;
+        if ([action hasSuffix:@"b"]) {
+            [_scene setInput:rapidFire? GB_KEY_B_MASK : 0];
+        }
+        else if ([action hasSuffix:@"a"]) {
+            [_scene setInput:rapidFire? GB_KEY_A_MASK : 0];
+        }
+        
+        if ([action hasPrefix:@"turbo"]) {
+            [_scene setSpeedMultiplayer:rotationalDelta * 32 + 1];
+        }
     }
     else {
-        [_scene stop];
-        [_scene rewindFrames:ceil(-rotationalDelta * 32)];
+        NSString *action = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchCrownBackward"];
+        if ([action isEqual:@"rewind"]) {
+            [_scene stop];
+            [_scene rewindFrames:ceil(-rotationalDelta * 32)];
+            return;
+        }
+        rapidFire ^= true;
+        static NSDictionary *mapping = nil;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            mapping = @{
+                @"a": @(GB_KEY_A_MASK),
+                @"b": @(GB_KEY_B_MASK),
+                @"start": @(GB_KEY_START_MASK),
+                @"select": @(GB_KEY_SELECT_MASK),
+            };
+        });
+        [_scene setInput:rapidFire? [mapping[action] unsignedIntValue] : 0];
+
     }
 }
 

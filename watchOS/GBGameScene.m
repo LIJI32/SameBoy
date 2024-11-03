@@ -485,6 +485,7 @@ static void vblank(GB_gameboy_t *gb)
 - (void)showHoldAt:(CGPoint)position
 {
     [_holdSprite removeFromParent];
+    if (!_running) return;
     _holdSprite = [SKSpriteNode spriteNodeWithTexture:[SKTexture textureWithImage:self.holdImage]];
     
     position.y = self.size.height - position.y;

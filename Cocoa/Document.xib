@@ -225,7 +225,7 @@
                                     <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="onn-R8-3vg" customClass="GBDebuggerButton">
                                         <rect key="frame" x="102" y="26" width="26" height="26"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <buttonCell key="cell" type="bevel" title="Step Backwards" alternateTitle="backstep" bezelStyle="rounded" image="BackstepTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="WtK-kD-bf6">
+                                        <buttonCell key="cell" type="bevel" title="Step Backward" alternateTitle="backstep" bezelStyle="rounded" image="BackstepTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="WtK-kD-bf6">
                                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                             <font key="font" metaFont="system"/>
                                         </buttonCell>

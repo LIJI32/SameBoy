@@ -2144,7 +2144,7 @@ static const debugger_command_t commands[] = {
     {"step", 1, step, "Run the next instruction, stepping into function calls"},
     {"finish", 1, finish, "Run until the current function returns"},
 #ifndef DISABLE_REWIND
-    {"backstep", 5, backstep, "Step one instruction backwards, assuming constant inputs"},
+    {"backstep", 5, backstep, "Step one instruction backward, assuming constant inputs"},
     {"bs", 2, }, /* Alias */
 #endif
     {"undo", 1, undo, "Revert the last command"},

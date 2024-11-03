@@ -412,16 +412,16 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                     ],
                 },
                 @{
-                    @"title": @"Backwards",
+                    @"title": @"Backward",
                     @"type": typeOptionSubmenu,
                     @"submenu": @[
                         @{
                             @"items": @[
-                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rewind", @"value": @"rewind",},
-                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rapid A", @"value": @"a",},
-                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rapid B", @"value": @"b",},
-                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rapid Start", @"value": @"start",},
-                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackwards", @"title": @"Rapid Select", @"value": @"select",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackward", @"title": @"Rewind", @"value": @"rewind",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackward", @"title": @"Rapid A", @"value": @"a",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackward", @"title": @"Rapid B", @"value": @"b",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackward", @"title": @"Rapid Start", @"value": @"start",},
+                                @{@"type": typeRadio, @"pref": @"GBWatchCrownBackward", @"title": @"Rapid Select", @"value": @"select",},
                             ]
                         },
                     ],

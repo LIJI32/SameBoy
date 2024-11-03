@@ -23,7 +23,7 @@ int main(int argc, char * argv[])
             @"GBWatchHints": @YES,
             @"GBWatchDefaultAction": @"A",
             @"GBWatchCrownForward": @"turbo",
-            @"GBWatchCrownBackwards": @"rewind",
+            @"GBWatchCrownBackward": @"rewind",
 #endif
             
             @"GBDMGModel": @(GB_MODEL_DMG_B),
