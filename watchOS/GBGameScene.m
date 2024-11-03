@@ -136,7 +136,10 @@ static void vblank(GB_gameboy_t *gb)
     while (_stopping);
     [_audioClient stop];
     
-    GB_save_state(&_gb, GBPhoneManager.sharedManager.saveStatePath.UTF8String);
+    NSString *tempPath = [GBPhoneManager.sharedManager.saveStatePath stringByAppendingPathExtension:@"tmp"];
+    if (!GB_save_state(&_gb, tempPath.UTF8String)) {
+        rename(tempPath.UTF8String, GBPhoneManager.sharedManager.saveStatePath.UTF8String);
+    }
     const uint32_t *buffer = !_activeBuffer? _pixels : _pixels + 256 * 224;
     CGDataProviderRef provider = CGDataProviderCreateWithData(NULL,
                                                               buffer + 48 + 40 * 256,

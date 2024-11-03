@@ -645,7 +645,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)saveStateToFile:(NSString *)file
 {
-    GB_save_state(&_gb, file.fileSystemRepresentation);
+    NSString *tempPath = [file stringByAppendingPathExtension:@"tmp"];
+    if (!GB_save_state(&_gb, tempPath.UTF8String)) {
+        rename(tempPath.UTF8String, file.UTF8String);
+    }
     NSData *data = [NSData dataWithBytes:_gbView.previousBuffer
                                   length:GB_get_screen_width(&_gb) *
                     GB_get_screen_height(&_gb) *
