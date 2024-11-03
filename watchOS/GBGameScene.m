@@ -20,6 +20,7 @@
     bool _romLoaded;
     NSMutableSet *_defaultsObservers;
     GBGizmoAudioClient *_audioClient;
+    UIImage *_holdImage;
 }
 
 static void nop_log_callback()
@@ -110,6 +111,98 @@ static void vblank(GB_gameboy_t *gb)
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context
 {
     ((__bridge void(^)(id))context)(change[NSKeyValueChangeNewKey]);
+}
+
+- (UIImage *)holdImage
+{
+    if (_holdImage) return _holdImage;
+    static const double size = 128;
+    static const double ringSize = 52;
+    static const double lineWidth = 4;
+    static const double lineRadians = lineWidth * 1.5 / ringSize * M_PI;
+    static const double labelDistance = 4;
+    double factor = [WKInterfaceDevice currentDevice].screenScale;
+    
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), false, factor);
+    
+    NSArray *labels = nil;
+    NSString *defaultAction = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"];
+    if ([defaultAction isEqualToString:@"A+B"]) {
+        labels = @[@"A", @"B", @"Select", @"Start"];
+    }
+    else {
+        labels = @[[defaultAction isEqualToString:@"B"]? @"A" : @"B", @"Select", @"Start"];
+    }
+    UIFont *font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    UIFontDescriptor *descriptor = [font.fontDescriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
+    font = [UIFont fontWithDescriptor:descriptor size:font.pointSize] ?: font;
+    
+    double shift = labels.count == 3? 0.25 : 0;
+    
+    NSShadow *shadow = [[NSShadow alloc] init];
+    [shadow setShadowBlurRadius:3];
+    [shadow setShadowColor:[UIColor colorWithWhite:0 alpha:0.75]];
+
+    for (unsigned i = labels.count; i--;) {
+        UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:CGPointMake(size / 2, size / 2)
+                                                            radius:ringSize / 2 - lineWidth / 2
+                                                        startAngle:M_PI * 2 / labels.count * (i + shift) + lineRadians / 2
+                                                          endAngle:M_PI * 2 / labels.count * (i + 1 + shift) - lineRadians / 2
+                                                         clockwise:true];
+        path.lineCapStyle = kCGLineCapRound;
+        path.lineWidth = lineWidth + 1;
+        [[UIColor blackColor] setStroke];
+        CGContextSaveGState(UIGraphicsGetCurrentContext());
+        CGContextSetShadowWithColor(UIGraphicsGetCurrentContext(), CGSizeMake(0, 0), 3, [UIColor colorWithWhite:0 alpha:0.75].CGColor);
+        [path stroke];
+        CGContextRestoreGState(UIGraphicsGetCurrentContext());
+        
+        path.lineWidth = lineWidth;
+        [[UIColor whiteColor] setStroke];
+        [path stroke];
+        
+        NSAttributedString *string = [[NSAttributedString alloc] initWithString:labels[i]
+                                                                     attributes:@{
+            NSFontAttributeName: font,
+            NSForegroundColorAttributeName: [UIColor blackColor],
+            NSShadowAttributeName: shadow,
+        }];
+        
+        CGSize labelSize = [string size];
+        double labelAngle = M_PI * 2 / labels.count * (i + 0.5 + shift);
+        double labelX = round(size / 2 + (ringSize / 2 + labelDistance) * cos(labelAngle));
+        double labelY = round(size / 2 + (ringSize / 2 + labelDistance) * sin(labelAngle));
+#define sign(x) ((x) > 0? 1: -1)
+        if (fabs(labelX - size / 2) < labelDistance) {
+            labelY += labelSize.height / 2;
+        }
+        else {
+            labelX += labelSize.width / 2 * sign(labelX - size / 2);
+            labelY += labelSize.height / 2 * sign(labelY - size / 2);
+        }
+#undef sign
+        
+        CGRect labelRect = CGRectMake(labelX - labelSize.width / 2, labelY - labelSize.height / 2, labelSize.width, labelSize.height);
+        
+        for (unsigned i = 4; i--;) {
+            CGRect strokeRect = labelRect;
+            strokeRect.origin.x += cos(M_PI * 2 / 4 * i) / factor;
+            strokeRect.origin.y += sin(M_PI * 2 / 4 * i) / factor;
+            [string drawInRect:strokeRect];
+        }
+        
+        string = [[NSAttributedString alloc] initWithString:labels[i]
+                                                 attributes:@{
+            NSFontAttributeName: font,
+            NSForegroundColorAttributeName: [UIColor whiteColor],
+        }];
+        
+        [string drawInRect:labelRect];
+    }
+    
+    _holdImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return _holdImage;
 }
 
 - (void)start
@@ -295,6 +388,13 @@ static void vblank(GB_gameboy_t *gb)
         _audioClient.volume = [newValue doubleValue];
     } forKey:@"GBWatchVolume"];
     [self addDefaultObserver:^(id newValue) {
+        _holdImage = nil;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self hideHold];
+        });
+    } forKey:@"GBWatchDefaultAction"];
+    
+    [self addDefaultObserver:^(id newValue) {
         if (_running) {
             [self stop];
             GB_set_rewind_length(gb, [newValue unsignedIntValue]);
@@ -385,10 +485,8 @@ static void vblank(GB_gameboy_t *gb)
 - (void)showHoldAt:(CGPoint)position
 {
     [_holdSprite removeFromParent];
-    _holdSprite = [SKSpriteNode spriteNodeWithImageNamed:@"Hold"];
+    _holdSprite = [SKSpriteNode spriteNodeWithTexture:[SKTexture textureWithImage:self.holdImage]];
     
-    _holdSprite.xScale = _holdSprite.yScale = 1.0 / [WKInterfaceDevice currentDevice].screenScale;
-
     position.y = self.size.height - position.y;
     position.x -= self.size.width / 2;
     position.y -= self.size.height / 2;

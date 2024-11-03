@@ -382,7 +382,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                 if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchSwipe"]) {
                     return [NSString stringWithFormat:@"Swipe to move in a direction. Tap anywhere for %@. Long press anywhere for other action buttons.", [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"]];
                 }
-                return [NSString stringWithFormat:@"Touch the edges to move in a direction. Tap the center for %@. Long press in the center for other action buttons.", [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"]];
+                return [NSString stringWithFormat:@"Touch the edges of the screen to move in a direction. Tap the center for %@. Long press in the center for other action buttons.", [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"]];
             },
         },
         @{

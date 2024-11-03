@@ -17,6 +17,7 @@
 {
     GBGameScene *_scene;
     NSTimer *_crownIdleTimer;
+    bool _forceBegin;
 }
 - (void)awakeWithContext:(id)context
 {
@@ -81,10 +82,22 @@
 {
     static NSTimer *_timer = nil;
     static bool isLong = false, isTap = false;;
+    static bool down = false;
     
-    if (sender.state == WKGestureRecognizerStateBegan) {
+    if (!down && sender.state != WKGestureRecognizerStateBegan) {
+        _forceBegin = true;
+    }
+    else {
+        _forceBegin = false;
+    }
+    
+    if (sender.state == WKGestureRecognizerStateEnded) {
+        down = false;
+    }
+    if (sender.state == WKGestureRecognizerStateBegan || _forceBegin) {
+        down = true;
         isLong = false;
-        isTap = true;
+        isTap = !_forceBegin;
         if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchSwipe"]) {
             double x = sender.locationInObject.x / _scene.size.width;
             double y = sender.locationInObject.y / _scene.size.height;
@@ -99,6 +112,9 @@
             [self pan:sender];
         }
         _timer = [NSTimer scheduledTimerWithTimeInterval:0.5 repeats:false block:^(NSTimer *timer) {
+            if (sender.state != WKGestureRecognizerStateBegan) {
+                return;
+            }
             isLong = true;
             isTap = false;
             timer = nil;
@@ -133,13 +149,20 @@
             return;
         }
     }
-    [_scene holdButton:GB_KEY_A duration:0.1];
+    const char *action = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"].UTF8String;
+    if (strchr(action, 'A')) {
+        [_scene holdButton:GB_KEY_A duration:0.25];
+    }
+    if (strchr(action, 'B')) {
+        [_scene holdButton:GB_KEY_B duration:0.25];
+    }
+
 }
 
 - (IBAction)longPress:(WKLongPressGestureRecognizer *)sender
 {
     static CGPoint start;
-    if (sender.state == WKGestureRecognizerStateBegan) {
+    if (sender.state == WKGestureRecognizerStateBegan || _forceBegin) {
         start = sender.locationInObject;
     }
     
@@ -152,20 +175,42 @@
         }
     }
     
-    if (sender.state == WKGestureRecognizerStateBegan) {
+    if (sender.state == WKGestureRecognizerStateBegan || _forceBegin) {
         [_scene showHoldAt:sender.locationInObject];
     }
     else if (sender.state == WKGestureRecognizerStateEnded) {
+        NSString *action = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"];
         CGPoint end = sender.locationInObject;
-        double angle = atan2(end.x - start.x, end.y - start.y) / M_PI * 180;
-        if (angle > 60) {
-            [_scene holdButton:GB_KEY_START duration:0.1];
-        }
-        else if (angle < -60) {
-            [_scene holdButton:GB_KEY_SELECT duration:0.1];
+        if (![action isEqual:@"A+B"]) {
+            double angle = atan2(end.x - start.x, end.y - start.y) / M_PI * 180;
+
+            if (angle > 60) {
+                [_scene holdButton:GB_KEY_START duration:0.25];
+            }
+            else if (angle < -60) {
+                [_scene holdButton:GB_KEY_SELECT duration:0.25];
+            }
+            else {
+                [_scene holdButton:[action isEqual:@"A"]? GB_KEY_B :  GB_KEY_A duration:0.25];
+            }
         }
         else {
-            [_scene holdButton:GB_KEY_B duration:0.1];
+            if (end.y >= start.y) {
+                if (end.x >= start.x) {
+                    [_scene holdButton:GB_KEY_A duration:0.25];
+                }
+                else {
+                    [_scene holdButton:GB_KEY_B duration:0.25];
+                }
+            }
+            else {
+                if (end.x >= start.x) {
+                    [_scene holdButton:GB_KEY_START duration:0.25];
+                }
+                else {
+                    [_scene holdButton:GB_KEY_SELECT duration:0.25];
+                }
+            }
         }
         [_scene hideHold];
     }
@@ -207,7 +252,7 @@
         return;
     }
     static CGPoint start;
-    if (sender.state == WKGestureRecognizerStateBegan) {
+    if (sender.state == WKGestureRecognizerStateBegan || _forceBegin) {
         start = sender.locationInObject;
     }
     else if (sender.state == WKGestureRecognizerStateChanged) {
