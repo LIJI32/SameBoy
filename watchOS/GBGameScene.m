@@ -9,6 +9,7 @@
 @implementation GBGameScene
 {
     SKSpriteNode *_screen;
+    SKSpriteNode *_hint;
     SKLabelNode *_label;
     SKSpriteNode *_iPhoneIcon;
     SKMutableTexture *_texture;
@@ -20,7 +21,8 @@
     bool _romLoaded;
     NSMutableSet *_defaultsObservers;
     GBGizmoAudioClient *_audioClient;
-    UIImage *_holdImage;
+    UIImage *_holdImage, *_hintImage;
+    NSTimer *_idleTimer;
 }
 
 static void nop_log_callback()
@@ -113,14 +115,141 @@ static void vblank(GB_gameboy_t *gb)
     ((__bridge void(^)(id))context)(change[NSKeyValueChangeNewKey]);
 }
 
+- (NSAttributedString *)attributedStringForDefaultAction:(UIImageSymbolConfiguration *)configuration
+{
+    NSString *defaultAction = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"];
+    NSMutableAttributedString *actionString = [[NSMutableAttributedString alloc] init];
+    
+    if ([defaultAction hasPrefix:@"A"]) {
+        NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+        attachment.image = [[UIImage systemImageNamed:@"a.circle" withConfiguration:configuration] imageWithTintColor:[UIColor whiteColor] renderingMode:UIImageRenderingModeAlwaysTemplate];
+        [actionString appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+    }
+    
+    if (defaultAction.length == 3) {
+        NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+        attachment.image = [[UIImage systemImageNamed:@"plus" withConfiguration:configuration] imageWithTintColor:[UIColor whiteColor] renderingMode:UIImageRenderingModeAlwaysTemplate];
+        [actionString appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+    }
+    
+    if ([defaultAction hasSuffix:@"B"]) {
+        NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+        attachment.image = [[UIImage systemImageNamed:@"b.circle" withConfiguration:configuration] imageWithTintColor:[UIColor whiteColor] renderingMode:UIImageRenderingModeAlwaysTemplate];
+        [actionString appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+    }
+    return actionString;
+}
+
+- (UIImage *)hintImage
+{
+    if (_hintImage) return _hintImage;
+    double factor = [WKInterfaceDevice currentDevice].screenScale;
+    UIGraphicsBeginImageContextWithOptions([WKInterfaceDevice currentDevice].screenBounds.size, false, factor);
+    
+    [[UIColor colorWithWhite:0 alpha:0.4] setFill];
+    CGContextFillRect(UIGraphicsGetCurrentContext(), [WKInterfaceDevice currentDevice].screenBounds);
+    
+    NSShadow *shadow = [[NSShadow alloc] init];
+    [shadow setShadowBlurRadius:3];
+    [shadow setShadowColor:[UIColor colorWithWhite:0 alpha:0.75]];
+    UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightMedium];
+
+    CGContextSaveGState(UIGraphicsGetCurrentContext());
+    CGContextSetShadowWithColor(UIGraphicsGetCurrentContext(), CGSizeMake(0, 0), 2, [UIColor colorWithWhite:0 alpha:0.875].CGColor);
+    NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
+    style.alignment = NSTextAlignmentCenter;
+    style.paragraphSpacing = 8;
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchSwipe"]) {
+        NSDictionary *attributes = @{
+            NSParagraphStyleAttributeName: style,
+            NSForegroundColorAttributeName: [UIColor whiteColor],
+            NSFontAttributeName: [UIFont systemFontOfSize:16 weight:UIFontWeightMedium],
+        };
+        NSMutableAttributedString *string = [[NSMutableAttributedString alloc] initWithString:@"Swipe for D-pad movement.\nTap for {action}.\nLong press for other buttons."
+                                                                                   attributes:attributes];
+        
+        [string replaceCharactersInRange:[string.string rangeOfString:@"{action}"] withAttributedString:[self attributedStringForDefaultAction:configuration]];
+        
+        [string drawInRect:CGRectMake(12, 32, [WKInterfaceDevice currentDevice].screenBounds.size.width - 24, [WKInterfaceDevice currentDevice].screenBounds.size.height - 32)];
+    }
+    else {
+        CGSize screenSize = [WKInterfaceDevice currentDevice].screenBounds.size;
+        unsigned width = screenSize.width * BUTTON_WIDTH;
+        unsigned height = screenSize.height * BUTTON_WIDTH;
+        
+        UIBezierPath *path = [UIBezierPath bezierPathWithRect:CGRectMake(width, height,
+                                                                         screenSize.width - width * 2,
+                                                                         screenSize.height - height * 2)];
+        
+        UIBezierPath *line = [[UIBezierPath alloc] init];
+        [line moveToPoint:CGPointZero];
+        [line addLineToPoint:CGPointMake(width, height)];
+        [path appendPath: line];
+        
+        line = [[UIBezierPath alloc] init];
+        [line moveToPoint:CGPointMake(0, screenSize.height)];
+        [line addLineToPoint:CGPointMake(width, screenSize.height - height)];
+        [path appendPath: line];
+        
+        line = [[UIBezierPath alloc] init];
+        [line moveToPoint:CGPointMake(screenSize.width, screenSize.height)];
+        [line addLineToPoint:CGPointMake(screenSize.width - width, screenSize.height - height)];
+        [path appendPath: line];
+        
+        line = [[UIBezierPath alloc] init];
+        [line moveToPoint:CGPointMake(screenSize.width, 0)];
+        [line addLineToPoint:CGPointMake(screenSize.width - width, height)];
+        [path appendPath: line];
+        
+        [[UIColor whiteColor] setStroke];
+        path.lineWidth = 2;
+        [path stroke];
+        
+        NSDictionary *attributes = @{
+            NSParagraphStyleAttributeName: style,
+            NSForegroundColorAttributeName: [UIColor whiteColor],
+            NSFontAttributeName: [UIFont systemFontOfSize:13 weight:UIFontWeightMedium],
+        };
+        
+        NSMutableAttributedString *string = [[NSMutableAttributedString alloc] initWithString:@"\u200b{action}\nLong press for other buttons"
+                                                                                   attributes:attributes];
+        
+        [string replaceCharactersInRange:[string.string rangeOfString:@"{action}"] withAttributedString:[self attributedStringForDefaultAction:configuration]];
+        CGSize stringSize = [string boundingRectWithSize:CGSizeMake(screenSize.width - width * 2, screenSize.height - height * 2)
+                                                 options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                                 context:nil].size;
+        [string drawInRect:CGRectMake(width, (screenSize.height - stringSize.height) / 2, screenSize.width - width * 2, stringSize.height)];
+        
+#define DrawCentered(name, x, y) {\
+            NSTextAttachment *attachment = [[NSTextAttachment alloc] init]; \
+            attachment.image = [[UIImage systemImageNamed:name withConfiguration:configuration] imageWithTintColor:[UIColor whiteColor] renderingMode:UIImageRenderingModeAlwaysTemplate];\
+            NSAttributedString *string = [NSAttributedString attributedStringWithAttachment:attachment];\
+            CGSize size = [string size];\
+            [string drawInRect:(CGRect){{(x) - size.width / 2, (y) - size.height / 2}, size}];\
+        }
+        
+        DrawCentered(@"arrowtriangle.up.circle", screenSize.width / 2, height / 2);
+        DrawCentered(@"arrowtriangle.left.circle", width / 2, screenSize.height / 2);
+        DrawCentered(@"arrowtriangle.right.circle", screenSize.width - width / 2, screenSize.height / 2);
+        DrawCentered(@"arrowtriangle.down.circle", screenSize.width / 2, screenSize.height - height / 2);
+#undef DrawCentered
+    }
+    CGContextRestoreGState(UIGraphicsGetCurrentContext());
+
+    
+    _hintImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return _hintImage;
+}
+
 - (UIImage *)holdImage
 {
     if (_holdImage) return _holdImage;
-    static const double size = 128;
-    static const double ringSize = 52;
+    static const double size = 160;
+    static const double ringSize = 72;
     static const double lineWidth = 4;
     static const double lineRadians = lineWidth * 1.5 / ringSize * M_PI;
-    static const double labelDistance = 4;
+    static const double labelDistance = 6;
     double factor = [WKInterfaceDevice currentDevice].screenScale;
     
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), false, factor);
@@ -205,6 +334,20 @@ static void vblank(GB_gameboy_t *gb)
     return _holdImage;
 }
 
+- (void)displayHint
+{
+    [_hint removeFromParent];
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchHints"]) return;
+    _hint = [SKSpriteNode spriteNodeWithTexture:[SKTexture textureWithImage:self.hintImage]];
+    _hint.alpha = 0;
+    [self addChild:_hint];
+    [_hint runAction:[SKAction sequence:@[
+        [SKAction fadeInWithDuration:0.5],
+        [SKAction waitForDuration:3],
+        [SKAction fadeOutWithDuration:0.5],
+    ]]];
+}
+
 - (void)start
 {
     if (_running) return;
@@ -213,6 +356,10 @@ static void vblank(GB_gameboy_t *gb)
     if (![[[NSUserDefaults standardUserDefaults] stringForKey:@"GBAudioMode"] isEqual:@"off"]) {
         [_audioClient start];
     }
+    [_idleTimer invalidate];
+    _idleTimer = [NSTimer scheduledTimerWithTimeInterval:8 repeats:false block:^(NSTimer *timer) {
+        [self displayHint];
+    }];
     [NSThread detachNewThreadWithBlock:^{
         while (_running) {
             GB_run(&_gb);
@@ -324,8 +471,8 @@ static void vblank(GB_gameboy_t *gb)
 {
     NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
     style.alignment = NSTextAlignmentCenter;
-    _label.attributedText = [[NSMutableAttributedString alloc] initWithString:string
-                                                                   attributes:@{
+    _label.attributedText = [[NSAttributedString alloc] initWithString:string
+                                                            attributes:@{
         NSParagraphStyleAttributeName: style,
         NSForegroundColorAttributeName: [UIColor whiteColor],
         NSFontAttributeName: [UIFont systemFontOfSize:16],
@@ -389,10 +536,14 @@ static void vblank(GB_gameboy_t *gb)
     } forKey:@"GBWatchVolume"];
     [self addDefaultObserver:^(id newValue) {
         _holdImage = nil;
+        _hintImage = nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             [self hideHold];
         });
     } forKey:@"GBWatchDefaultAction"];
+    [self addDefaultObserver:^(id newValue) {
+        _hintImage = nil;
+    } forKey:@"GBWatchSwipe"];
     
     [self addDefaultObserver:^(id newValue) {
         if (_running) {
@@ -436,6 +587,8 @@ static void vblank(GB_gameboy_t *gb)
         _screen.hidden = !_romLoaded;
         if (!_romLoaded) {
             [self setLabelString:@"Open SameBoy on your iPhone to transfer a ROM to your Apple Watch."];
+            [_hint removeFromParent];
+            _hint = nil;
         }
         [self start];
     }];
@@ -476,6 +629,12 @@ static void vblank(GB_gameboy_t *gb)
 
 - (void)holdButton:(GB_key_t)button duration:(double)seconds
 {
+    [_idleTimer invalidate];
+    _idleTimer = [NSTimer scheduledTimerWithTimeInterval:8 repeats:false block:^(NSTimer *timer) {
+        [self displayHint];
+    }];
+    [_hint removeFromParent];
+    _hint = nil;
     GB_set_key_state(&_gb, button, true);
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, seconds * (NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         GB_set_key_state(&_gb, button, false);
@@ -503,17 +662,37 @@ static void vblank(GB_gameboy_t *gb)
 
 - (void)setInput:(GB_key_mask_t)mask
 {
+    [_idleTimer invalidate];
+    if (!mask) {
+        _idleTimer = [NSTimer scheduledTimerWithTimeInterval:8 repeats:false block:^(NSTimer *timer) {
+            [self displayHint];
+        }];
+    }
+    [_hint removeFromParent];
+    _hint = nil;
     GB_set_key_mask(&_gb, mask);
 }
 
 - (void)setSpeedMultiplayer:(double)factor
 {
+    [_idleTimer invalidate];
+    _idleTimer = [NSTimer scheduledTimerWithTimeInterval:8 repeats:false block:^(NSTimer *timer) {
+        [self displayHint];
+    }];
+    [_hint removeFromParent];
+    _hint = nil;
     GB_set_clock_multiplier(&_gb, factor);
 }
 
 - (void)rewindFrames:(unsigned)count
 {
     if (!_romLoaded) return;
+    [_idleTimer invalidate];
+    _idleTimer = [NSTimer scheduledTimerWithTimeInterval:8 repeats:false block:^(NSTimer *timer) {
+        [self displayHint];
+    }];
+    [_hint removeFromParent];
+    _hint = nil;
     for (unsigned i = 0; i <= count; i++) {
         if (!GB_rewind_pop(&_gb)) {
             return;

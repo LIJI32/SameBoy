@@ -6,9 +6,6 @@
 #include "../iOS/main.m"
 #undef main
 
-// This ratio guaranteed equal area for each button
-#define BUTTON_WIDTH 0.2763932022500210303590826331268723764559381640388474275729102754
-
 @interface GBInterfaceController ()
 @property (strong, nonatomic) IBOutlet WKInterfaceSKScene *skInterface;
 @end
