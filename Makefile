@@ -315,7 +315,7 @@ else ifeq ($(MAKECMDGOALS),_watchos)
 	LDFLAGS += -arch arm64
 	OCFLAGS += -x objective-c -fobjc-arc -Wno-deprecated-declarations -isysroot $(SYSROOT)
 	LDFLAGS += -mwatchos-version-min=7.0  -isysroot $(SYSROOT)
-	LDFLAGS += -e _WKExtensionMain -lobjc -framework Foundation -framework WatchKit -framework SpriteKit
+	LDFLAGS += -e _WKExtensionMain -lobjc -framework Foundation -framework WatchKit -framework SpriteKit -framework UIKit -framework AVFAudio -framework CoreGraphics
 	CODESIGN := codesign -fs -
 else ifeq ($(PLATFORM),Darwin)
 	SYSROOT := $(shell xcodebuild -sdk macosx -version Path 2> $(NULL))
@@ -560,6 +560,7 @@ $(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExten
 							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/sgb_boot.bin \
 							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/sgb2_boot.bin \
 							$(BIN)/SameBoy-watchOS.app/Interface.plist \
+                            $(BIN)/SameBoy-watchOS.app/Assets.car \
 							$(shell ls watchOS/*.png) \
 							watchOS/GBGameScene.sks \
 							watchOS/ExtensionInfo.plist \
@@ -590,6 +591,9 @@ $(BIN)/SameBoy-iOS.app/Watch/SameBoy-watchOS.app: watchos
 	-@$(MKDIR) -p $(dir $@)
 	cp -rf $(BIN)/SameBoy-watchOS.app $@
 	
+$(BIN)/SameBoy-watchOS.app/Assets.car: $(shell find watchOS/Assets.xcassets)
+	actool --notices --warnings --app-icon AppIcon --target-device watch --minimum-deployment-target 6.0 --output-format human-readable-text --platform watchos --compile $(BIN)/SameBoy-watchOS.app watchOS/Assets.xcassets --output-partial-info-plist /dev/null
+
 # Cocoa Port
 
 $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
