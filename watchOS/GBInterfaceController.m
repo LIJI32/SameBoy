@@ -6,6 +6,68 @@
 #include "../iOS/main.m"
 #undef main
 
+static double CGPointSquaredDistance(CGPoint a, CGPoint b)
+{
+    double deltaX = a.x - b.x;
+    double deltaY = a.y - b.y;
+    return deltaX * deltaX + deltaY * deltaY;
+}
+
+static double CGPointAngle(CGPoint a, CGPoint b)
+{
+    double deltaX = a.x - b.x;
+    double deltaY = a.y - b.y;
+    return atan2(deltaY, deltaX);
+}
+
+static GB_key_mask_t angleToKeyMask(double angle)
+{
+    signed quantizedAngle = round(angle / M_PI * 16);
+    if (quantizedAngle < 0) {
+        quantizedAngle += 32;
+    }
+    switch (quantizedAngle) {
+        case 32:
+        case  0: return GB_KEY_RIGHT_MASK;
+        case  1: return GB_KEY_RIGHT_MASK;
+        case  2: return GB_KEY_RIGHT_MASK;
+        case  3: return GB_KEY_RIGHT_MASK | GB_KEY_DOWN_MASK;
+        case  4: return GB_KEY_RIGHT_MASK | GB_KEY_DOWN_MASK;
+        case  5: return GB_KEY_DOWN_MASK;
+        case  6: return GB_KEY_DOWN_MASK;
+        case  7: return GB_KEY_DOWN_MASK;
+            
+        case  8: return GB_KEY_DOWN_MASK;
+        case  9: return GB_KEY_DOWN_MASK;
+        case 10: return GB_KEY_DOWN_MASK;
+        case 11: return GB_KEY_LEFT_MASK | GB_KEY_DOWN_MASK;
+        case 12: return GB_KEY_LEFT_MASK | GB_KEY_DOWN_MASK;
+        case 13: return GB_KEY_LEFT_MASK;
+        case 14: return GB_KEY_LEFT_MASK;
+        case 15: return GB_KEY_LEFT_MASK;
+            
+        case 16: return GB_KEY_LEFT_MASK;
+        case 17: return GB_KEY_LEFT_MASK;
+        case 18: return GB_KEY_LEFT_MASK;
+        case 19: return GB_KEY_LEFT_MASK | GB_KEY_UP_MASK;
+        case 20: return GB_KEY_LEFT_MASK | GB_KEY_UP_MASK;
+        case 21: return GB_KEY_UP_MASK;
+        case 22: return GB_KEY_UP_MASK;
+        case 23: return GB_KEY_UP_MASK;
+            
+        case 24: return GB_KEY_UP_MASK;
+        case 25: return GB_KEY_UP_MASK;
+        case 26: return GB_KEY_UP_MASK;
+        case 27: return GB_KEY_RIGHT_MASK | GB_KEY_UP_MASK;
+        case 28: return GB_KEY_RIGHT_MASK | GB_KEY_UP_MASK;
+        case 29: return GB_KEY_RIGHT_MASK;
+        case 30: return GB_KEY_RIGHT_MASK;
+        case 31: return GB_KEY_RIGHT_MASK;
+    }
+    
+    return 0;
+}
+
 @interface GBInterfaceController ()
 @property (strong, nonatomic) IBOutlet WKInterfaceSKScene *skInterface;
 @end
@@ -253,39 +315,21 @@
         start = sender.locationInObject;
     }
     else if (sender.state == WKGestureRecognizerStateChanged) {
-        CGPoint end = sender.locationInObject;
-        double distance = sqrt(pow(end.x - start.x, 2) + pow(end.y - start.y, 2));
-        if (distance > 32) {
-            start.x = end.x + (start.x - end.x) / distance * 32;
-            start.y = end.y + (start.y - end.y) / distance * 32;
-        }
-        double angle = atan2(end.x - start.x, end.y - start.y) / M_PI * 180;
-        if (angle < -22.5 - 135) {
-            [_scene setInput: GB_KEY_UP_MASK];
-        }
-        else if (angle < -22.5 - 90) {
-            [_scene setInput:GB_KEY_UP_MASK | GB_KEY_LEFT_MASK];
-        }
-        else if (angle < -22.5 - 45) {
-            [_scene setInput: GB_KEY_LEFT_MASK];
-        }
-        else if (angle < -22.5) {
-            [_scene setInput:GB_KEY_DOWN_MASK | GB_KEY_LEFT_MASK];
-        }
-        else if (angle < 22.5) {
-            [_scene setInput:GB_KEY_DOWN_MASK];
-        }
-        else if (angle < 22.5 + 45) {
-            [_scene setInput:GB_KEY_DOWN_MASK | GB_KEY_RIGHT_MASK];
-        }
-        else if (angle < 22.5 + 90) {
-            [_scene setInput:GB_KEY_RIGHT_MASK];
-        }
-        else if (angle < 22.5 + 135) {
-            [_scene setInput:GB_KEY_UP_MASK | GB_KEY_RIGHT_MASK];
+        CGPoint point = sender.locationInObject;
+        double squaredDistance = CGPointSquaredDistance(point, start);
+        if (squaredDistance > 8 * 8) {
+            double angle = CGPointAngle(point, start);
+            [_scene setInput:angleToKeyMask(angle)];
+            if (squaredDistance > 16 * 16) {
+                double deltaX = point.x - start.x;
+                double deltaY = point.y - start.y;
+                double distance = sqrt(squaredDistance);
+                start.x = point.x - deltaX / distance * 16;
+                start.y = point.y - deltaY / distance * 16;
+            }
         }
         else {
-            [_scene setInput:GB_KEY_UP_MASK];
+            [_scene setInput:0];;
         }
     }
     else {

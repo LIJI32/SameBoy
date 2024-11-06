@@ -5,14 +5,14 @@
 #import "GBViewController.h"
 #import "GBROMManager.h"
 
-double CGPointSquaredDistance(CGPoint a, CGPoint b)
+static double CGPointSquaredDistance(CGPoint a, CGPoint b)
 {
     double deltaX = a.x - b.x;
     double deltaY = a.y - b.y;
     return deltaX * deltaX + deltaY * deltaY;
 }
 
-double CGPointAngle(CGPoint a, CGPoint b)
+static double CGPointAngle(CGPoint a, CGPoint b)
 {
     double deltaX = a.x - b.x;
     double deltaY = a.y - b.y;
