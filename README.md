@@ -53,11 +53,17 @@ On Windows, SameBoy also requires:
 To compile, simply run `make`. The targets are:
  * `cocoa` (Default for macOS)
  * `sdl` (Default for everything else)
- * `lib` (Creates libsameboy.o and libsameboy.a for statically linking SameBoy, as well as a headers directory with corresponding headers; currently not supported on Windows due to linker limitations)
+ * `lib` (Creates libsameboy.o, libsameboy.a and libsameboy.so for linking SameBoy, as well as a headers directory with corresponding headers; currently not supported on Windows due to linker limitations)
  * `ios` (Plain iOS .app bundle), `ios-ipa` (iOS IPA archive for side-loading), `ios-deb` (iOS deb package for jailbroken devices)
  * `libretro`
  * `bootroms`
  * `tester` 
+
+For convenience, when installing the static and shared libraries is
+desired, you can specify the LIBRARY=1 make variable to have the
+libraries built as part of the default target, as well as installed,
+along the headers. Alternatively, `LIBRARY=shared` will install just
+the shared library, while `LIBRARY=static` only the static one.
 
 You may also specify `CONF=debug` (default), `CONF=release`, `CONF=native_release` or `CONF=fat_release`  to control optimization, symbols and multi-architectures. `native_release` is faster than `release`, but is optimized to the host's CPU and therefore is not portable. `fat_release` is exclusive to macOS and builds x86-64 and ARM64 fat binaries; this requires using a recent enough `clang` and macOS SDK using `xcode-select`, or setting them explicitly with `CC=` and `SYSROOT=`, respectively. All other configurations will build to your host architecture, except for the iOS targets. You may set `BOOTROMS_DIR=...` to a directory containing precompiled boot ROM files, otherwise the build system will compile and use SameBoy's own boot ROMs.
 
