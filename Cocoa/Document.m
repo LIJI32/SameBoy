@@ -2067,7 +2067,7 @@ enum GBWindowResizeAction
                 NSError *error;
                 AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType: AVMediaTypeVideo];
                 AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice: device error: &error];
-                CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions([[[device formats] lastObject] formatDescription]);
+                CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions([[device activeFormat] formatDescription]);
 
                 if (!input) {
                     GB_camera_updated(&_gb);
