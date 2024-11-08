@@ -494,7 +494,7 @@ __attribute__((objc_direct_members))
 
 - (void)enterGraceMode
 {
-    if (_state == GBSubscriptionPermanent) return;
+    if (_themeState == GBSubscriptionPermanent && _watchState == GBSubscriptionPermanent) return;
     
     NSString *cacheFolder = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true)[0];
     NSString *path = [cacheFolder stringByAppendingPathComponent:@"SKGrace"];
@@ -518,28 +518,37 @@ __attribute__((objc_direct_members))
     }
     
     if (restoreTime >= [self.expiredSubscription[@"expires_date"] timeIntervalSince1970] + graceTime) {
-        _state = GBSubscriptionInactive;
+        if (_themeState != GBSubscriptionPermanent) _themeState = GBSubscriptionInactive;
+        if (_watchState != GBSubscriptionPermanent) _watchState = GBSubscriptionInactive;
         return;
     }
     
     time_t now = time(NULL);
     if (now < graceStart || now > graceStart + graceTime) {
-        _state = GBSubscriptionInactive;
+        if (_themeState != GBSubscriptionPermanent) _themeState = GBSubscriptionInactive;
+        if (_watchState != GBSubscriptionPermanent) _watchState = GBSubscriptionInactive;
     }
     else {
-        _state = GBSubscriptionGrace;
+        if (_themeState != GBSubscriptionPermanent) _themeState = GBSubscriptionGrace;
+        if (_watchState != GBSubscriptionPermanent) _watchState = GBSubscriptionGrace;
     }
 }
 
-- (void)enterPermanentMode
+- (void)enterPermanentMode:(bool)watch
 {
-    _state = GBSubscriptionPermanent;
+    if (watch) {
+        _watchState = GBSubscriptionPermanent;
+    }
+    else {
+        _themeState = GBSubscriptionPermanent;
+    }
 }
 
 - (void)enterActiveMode
 {
-    if (_state == GBSubscriptionPermanent) return;
-    _state = GBSubscriptionActive;
+    if (_themeState == GBSubscriptionPermanent && _watchState == GBSubscriptionPermanent) return;
+    if (_themeState != GBSubscriptionPermanent) _themeState = GBSubscriptionActive;
+    if (_watchState != GBSubscriptionPermanent) _watchState = GBSubscriptionActive;
     NSString *cacheFolder = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true)[0];
     NSString *path = [cacheFolder stringByAppendingPathComponent:@"SKGrace"];
     unlink(path.UTF8String);
@@ -555,7 +564,8 @@ __attribute__((objc_direct_members))
     NSData *data = [NSData dataWithBytes:&restoreTime length:sizeof(restoreTime)];
     [data writeToFile:path atomically:false];
     
-    if (_state == GBSubscriptionGrace) {
+    if (_themeState == GBSubscriptionGrace ||
+        _watchState == GBSubscriptionGrace) {
         [self enterGraceMode]; // Re-enter grace modes in case it needs to become inactive
     }
 
@@ -594,11 +604,19 @@ __attribute__((objc_direct_members))
 
     _activeSubscriptions = [NSMutableArray array];
     NSDate *now = [NSDate date];
+    bool hadSubscription = false;
     for (NSDictionary *item in iap) {
         if ([item[@"product_id"] containsString:@"Lifetime"]) {
-            [self enterPermanentMode];
+            [self enterPermanentMode:false];
             continue;
         }
+        if ([item[@"product_id"] containsString:@"Watch"]) {
+            [self enterPermanentMode:true];
+            continue;
+        }
+        if (!item[@"expires_date"]) continue; // Future one-time purchase
+        hadSubscription = true;
+        
         if ([now compare:item[@"purchase_date"]] == NSOrderedDescending &&
             [now compare:item[@"expires_date"]] == NSOrderedAscending) {
             [_activeSubscriptions addObject:item];
@@ -611,7 +629,7 @@ __attribute__((objc_direct_members))
     if (_activeSubscriptions.count) {
         [self enterActiveMode];
     }
-    else if (iap.count) {
+    else if (hadSubscription) {
         [self enterGraceMode];
         if (self.usesPaidTheme) {
             [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];

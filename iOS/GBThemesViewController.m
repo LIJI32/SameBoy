@@ -116,7 +116,7 @@
     UIGraphicsEndImageContext();
     
 #ifdef APPSTORE
-    if (indexPath.section != 0 && GBSubscriptionManager.defaultManager.state == GBSubscriptionInactive) {
+    if (indexPath.section != 0 && GBSubscriptionManager.defaultManager.themeState == GBSubscriptionInactive) {
         NSString *currencySymbol = [NSLocale currentLocale].currencySymbol;
         NSString *currencyName = @{
             @"$":  @"dollar",

@@ -58,11 +58,15 @@
 {
     unsigned sections = 0;
     _sections[sections++] = SubscriptionsSection;
-    if (GBSubscriptionManager.defaultManager.state != GBSubscriptionPermanent && _products.count != _subscriptionsCount) {
+    if ((GBSubscriptionManager.defaultManager.themeState != GBSubscriptionPermanent ||
+         GBSubscriptionManager.defaultManager.watchState != GBSubscriptionPermanent) &&
+        _products.count != _subscriptionsCount) {
         _sections[sections++] = LifetimeSection;
     }
-    if (GBSubscriptionManager.defaultManager.state != GBSubscriptionActive &&
-        GBSubscriptionManager.defaultManager.state != GBSubscriptionPermanent) {
+    if ((GBSubscriptionManager.defaultManager.themeState != GBSubscriptionActive &&
+         GBSubscriptionManager.defaultManager.themeState != GBSubscriptionPermanent) ||
+        (GBSubscriptionManager.defaultManager.watchState != GBSubscriptionActive &&
+         GBSubscriptionManager.defaultManager.watchState != GBSubscriptionPermanent)) {
         _sections[sections++] = RestoreSection;
     }
     return sections;
@@ -87,6 +91,12 @@
         }
         case LifetimeSection: {
             SKPayment *payment = [SKPayment paymentWithProduct:_products[indexPath.row + _subscriptionsCount]];
+            GBSubscriptionManager *subManager = GBSubscriptionManager.defaultManager;
+            if (([payment.productIdentifier hasPrefix:@"Lifetime"] && subManager.themeState == GBSubscriptionPermanent) ||
+                ([payment.productIdentifier hasPrefix:@"Watch"] && subManager.watchState == GBSubscriptionPermanent)) {
+                [self.tableView deselectRowAtIndexPath:indexPath animated:true];
+                return;
+            }
             [[SKPaymentQueue defaultQueue] addPayment:payment];
             return;
         }
@@ -149,7 +159,12 @@
     dateFormatter.locale = [NSLocale currentLocale];
     dateFormatter.dateStyle = NSDateFormatterShortStyle;
     
-    if ([tier.productIdentifier isEqual:subManager.activeSubscription[@"product_id"]]) {
+    if (([tier.productIdentifier hasPrefix:@"Lifetime"] && subManager.themeState == GBSubscriptionPermanent) ||
+        ([tier.productIdentifier hasPrefix:@"Watch"] && subManager.watchState == GBSubscriptionPermanent)) {
+        priceLabel = nil;
+        cell.accessoryType = UITableViewCellAccessoryCheckmark;
+    }
+    else if ([tier.productIdentifier isEqual:subManager.activeSubscription[@"product_id"]]) {
         if (@available(iOS 13.0, *)) {
             UIImage *check = [[UIImage systemImageNamed:@"checkmark.circle.fill"] imageWithTintColor:[UIColor systemBlueColor]];
             NSMutableAttributedString *string = [NSAttributedString attributedStringWithAttachment:[NSTextAttachment textAttachmentWithImage:check]].mutableCopy;
@@ -196,8 +211,9 @@
          }];
          NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
          style.paragraphSpacing = -8;
-         if (GBSubscriptionManager.defaultManager.state == GBSubscriptionPermanent) {
-             NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"\nThank you for purchasing lifetime theme access! If you wish to further support SameBoy's development, you can do so with a monthly supporter subscription."
+         if (GBSubscriptionManager.defaultManager.themeState == GBSubscriptionPermanent &&
+             GBSubscriptionManager.defaultManager.watchState == GBSubscriptionPermanent) {
+             NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"\nThank you for purchasing lifetime access for themes and SameBoy for Apple Watch! If you wish to further support SameBoy's development, you can do so with a monthly supporter subscription."
                                                                              attributes:@{
                 NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
                 NSParagraphStyleAttributeName: style,
@@ -205,7 +221,7 @@
              [string appendAttributedString:paragraph];
          }
          else {
-             NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"\nSameBoy is free and open source. Support SameBoy's development with a monthly subscription and gain access to exclusive themes."
+             NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"\nSameBoy is free and open source. Support SameBoy's development with a monthly subscription and gain access to SameBoy for Apple Watch and exclusive themes."
                                                                              attributes:@{
                 NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
                 NSParagraphStyleAttributeName: style,
@@ -214,7 +230,7 @@
              
              style = style.mutableCopy;
              style.paragraphSpacing = 0;
-             paragraph = [[NSAttributedString alloc] initWithString:@"\n\nAll subscription tiers offer access to all available themes. Choose the price that suits you best."
+             paragraph = [[NSAttributedString alloc] initWithString:@"\n\nAll subscription tiers offer access to all available themes and features. Choose the price that suits you best."
                                                          attributes:@{
                 NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
                 NSParagraphStyleAttributeName: style,
@@ -231,7 +247,7 @@
 - (void)configureLifetimeHeaderLabel:(UILabel *)label
 {
     if (@available(iOS 13.0, *)) {
-        NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"You can alternatively purchase lifetime access to all themes with a single payment.\n"
+        NSAttributedString *paragraph = [[NSAttributedString alloc] initWithString:@"You can alternatively purchase lifetime access to SameBoy for Apple Watch or all themes with a single payment.\n"
                                                                         attributes:@{
             NSFontAttributeName: [UIFont preferredFontForTextStyle:UIFontTextStyleCallout],
         }];
@@ -330,7 +346,7 @@
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
     if (section != [self numberOfSectionsInTableView:nil] - 1) return nil;
-    return @"You can additionally further support SameBoy's development on GitHub Sponsors. Note that GitHub sponsorships do not unlock in-app themes.\n\nTransactions are subject to the Privacy Policy and the standard Apple Terms of Use (EULA).";
+    return @"You can additionally further support SameBoy's development on GitHub Sponsors. Note that GitHub sponsorships do not unlock in-app features or themes.\n\nTransactions are subject to the Privacy Policy and the standard Apple Terms of Use (EULA).";
 }
 
 - (void)viewDidLoad
@@ -350,7 +366,8 @@
                                                                       @"Subscription7", @"Subscription8", @"Subscription9",
                                                                       @"Lifetime1", @"Lifetime2", @"Lifetime3",
                                                                       @"Lifetime4", @"Lifetime5", @"Lifetime6",
-                                                                      @"Lifetime7", @"Lifetime8", @"Lifetime9", nil]];
+                                                                      @"Lifetime7", @"Lifetime8", @"Lifetime9",
+                                                                      @"Watch1", @"Watch2", @"Watch3", nil]];
     
     [request setDelegate: self];
     [request start];

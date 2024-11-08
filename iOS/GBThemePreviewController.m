@@ -76,11 +76,11 @@
                                                             preferredStyle:[UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad?
                                               UIAlertControllerStyleAlert : UIAlertControllerStyleActionSheet];
 #ifdef APPSTORE
-    if (_isPaid && GBSubscriptionManager.defaultManager.state == GBSubscriptionInactive) {
+    if (_isPaid && GBSubscriptionManager.defaultManager.themeState == GBSubscriptionInactive) {
         [alert addAction:[UIAlertAction actionWithTitle:@"Support SameBoy to Unlock"
                                                   style:UIAlertActionStyleDefault
                                                 handler:^(UIAlertAction *action) {
-            UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:[GBSubscriptionViewController new]];
+            UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:[[GBSubscriptionViewController alloc] init]];
             UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithTitle:@"Close"
                                                                       style:UIBarButtonItemStylePlain
                                                                      target:self

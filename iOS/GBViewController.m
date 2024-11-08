@@ -876,7 +876,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
     [self stop];
 #ifdef APPSTORE
-    if (GBSubscriptionManager.defaultManager.usesPaidTheme && GBSubscriptionManager.defaultManager.state == GBSubscriptionInactive) {
+    if (GBSubscriptionManager.defaultManager.usesPaidTheme && GBSubscriptionManager.defaultManager.themeState == GBSubscriptionInactive) {
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"GBInterfaceTheme"];
     }
 #endif

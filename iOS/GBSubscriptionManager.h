@@ -15,6 +15,7 @@ typedef enum {
 @property (direct, readonly) NSDictionary *activeSubscription;
 @property (direct, readonly) NSDictionary *pendingSubscription;
 @property (direct, readonly) NSDictionary *expiredSubscription;
-@property (direct, readonly) GBSubscriptionState state;
+@property (direct, readonly) GBSubscriptionState themeState;
+@property (direct, readonly) GBSubscriptionState watchState;
 @property (direct, readonly) bool usesPaidTheme;
 @end

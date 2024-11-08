@@ -6,6 +6,8 @@
 #import <objc/runtime.h>
 #ifdef APPSTORE
 #import "GBWatchManager.h"
+#import "GBSubscriptionManager.h"
+#import "GBSubscriptionViewController.h"
 #endif
 
 @implementation GBROMViewController
@@ -407,6 +409,18 @@
 
 - (void)moveToWatch:(unsigned)index
 {
+    if (GBSubscriptionManager.defaultManager.watchState == GBSubscriptionInactive) {
+        UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:[[GBSubscriptionViewController alloc] init]];
+        UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithTitle:@"Close"
+                                                                  style:UIBarButtonItemStylePlain
+                                                                 target:self
+                                                                 action:@selector(dismissViewController)];
+        [navController.visibleViewController.navigationItem setLeftBarButtonItem:close];
+        
+        [self presentViewController:navController animated:true completion:nil];
+        return;
+    }
+    
     if (![GBWatchManager sharedManager].isReachable) {
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Launch SameBoy on your Apple Watch"
                                                                        message:@"Launch SameBoy on the Apple Watch you wish to move this ROM to."
@@ -656,4 +670,8 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     return [GBROMManager sharedManager].localRoot;
 }
 
+- (void)dismissViewController
+{
+    [self dismissViewControllerAnimated:true completion:nil];
+}
 @end
