@@ -191,9 +191,9 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     } forKey:@"GBRewindLength"];
     [self addDefaultObserver:^(id newValue) {
         [[AVAudioSession sharedInstance] setCategory:[newValue isEqual:@"on"]? AVAudioSessionCategoryPlayback :  AVAudioSessionCategorySoloAmbient
-                                                mode:AVAudioSessionModeMeasurement // Reduces latency on BT
+                                                mode:AVAudioSessionModeDefault
                                   routeSharingPolicy:AVAudioSessionRouteSharingPolicyDefault
-                                             options:AVAudioSessionCategoryOptionAllowBluetoothA2DP | AVAudioSessionCategoryOptionAllowAirPlay
+                                             options:0
                                                error:nil];
     } forKey:@"GBAudioMode"];
 }

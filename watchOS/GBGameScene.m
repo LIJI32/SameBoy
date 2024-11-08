@@ -585,9 +585,9 @@ static void vblank(GB_gameboy_t *gb)
                 }
             }
             [[AVAudioSession sharedInstance] setCategory:[newValue isEqual:@"on"]? AVAudioSessionCategoryPlayback :  AVAudioSessionCategorySoloAmbient
-                                                    mode:AVAudioSessionModeMeasurement // Reduces latency on BT
+                                                    mode:AVAudioSessionModeDefault
                                       routeSharingPolicy:AVAudioSessionRouteSharingPolicyDefault
-                                                 options:AVAudioSessionCategoryOptionAllowBluetoothA2DP
+                                                 options:0
                                                    error:nil];
         });
     } forKey:@"GBAudioMode"];

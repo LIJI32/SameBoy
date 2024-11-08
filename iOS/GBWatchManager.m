@@ -205,6 +205,9 @@
 
 - (void)updateSettings:(void (^)(NSString *error))completion
 {
+    if (!self.isReachable && !completion) {
+        return;
+    }
     [self sendMessage:@{
         @"cmd": @"updateSettings",
         @"settings": [self settingsDict]
