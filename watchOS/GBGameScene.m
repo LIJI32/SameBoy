@@ -23,6 +23,7 @@
     GBGizmoAudioClient *_audioClient;
     UIImage *_holdImage, *_hintImage;
     NSTimer *_idleTimer;
+    bool _invalidating;
 }
 
 static void nop_log_callback()
@@ -336,6 +337,7 @@ static void vblank(GB_gameboy_t *gb)
 
 - (void)displayHint
 {
+    if (!_running) return;
     [_hint removeFromParent];
     if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBWatchHints"]) return;
     _hint = [SKSpriteNode spriteNodeWithTexture:[SKTexture textureWithImage:self.hintImage]];
@@ -366,6 +368,20 @@ static void vblank(GB_gameboy_t *gb)
         }
         _stopping = false;
     }];
+    [[GBPhoneManager sharedManager] validateUUID:^(NSString *error) {
+        if (error) {
+            _invalidating = true;
+            [self stop];
+            _invalidating = false;
+            [self setLabelString:error];
+            _romLoaded = false;
+            _label.hidden = false;
+            _iPhoneIcon.hidden = false;
+            _screen.hidden = true;
+            [_hint removeFromParent];
+            _hint = nil;
+        }
+    }];
 }
 
 - (void)stop
@@ -375,6 +391,7 @@ static void vblank(GB_gameboy_t *gb)
     _running = false;
     while (_stopping);
     [_audioClient stop];
+    if (_invalidating) return;
     
     NSString *tempPath = [GBPhoneManager.sharedManager.saveStatePath stringByAppendingPathExtension:@"tmp"];
     if (!GB_save_state(&_gb, tempPath.UTF8String)) {
@@ -593,14 +610,14 @@ static void vblank(GB_gameboy_t *gb)
         [self start];
     }];
     
-    [[GBPhoneManager sharedManager] validateUUID:^(bool valid) {
-        if (valid) {
+    [[GBPhoneManager sharedManager] validateUUID:^(NSString *error) {
+        if (!error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
             });
         }
         else {
-            [self setLabelString:@"Open SameBoy on your iPhone to transfer a ROM to your Apple Watch."];
+            [self setLabelString:error];
         }
     }];
 }

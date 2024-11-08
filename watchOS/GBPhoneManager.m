@@ -84,26 +84,27 @@
     }];
 }
 
-- (void)validateUUID:(void (^)(bool valid))completion
+- (void)validateUUID:(void (^)(NSString *error))completion
 {
     if (_disableCommands) {
-        completion(true);
+        completion(nil);
         return;
     }
     
     
     NSString *uuid = [NSDictionary dictionaryWithContentsOfFile:self.metadataPath][@"uuid"];
     if (!uuid) {
-        completion(false);
+        completion(@"Open SameBoy on your iPhone to transfer a ROM to your Apple Watch.");
         return;
     }
     
     static dispatch_once_t onceToken;
+    onceToken = 0;
     
     [NSTimer scheduledTimerWithTimeInterval:2 repeats:false block:^(NSTimer *timer) {
         dispatch_once(&onceToken, ^{
-            // Didn' respond in time
-            completion(true);
+            // Didn't respond in time
+            completion(nil);
         });
     }];
     [self sendMessage:@{
@@ -112,7 +113,7 @@
     }
          replyHandler:^(NSDictionary<NSString *,id> *replyMessage) {
         dispatch_once(&onceToken, ^{
-            if (completion) completion(!replyMessage[@"error"]);
+            if (completion) completion(replyMessage[@"error"]);
             if (replyMessage[@"error"]) {
                 unlink(self.saveStatePath.UTF8String);
                 unlink(self.pngPath.UTF8String);
@@ -124,7 +125,7 @@
     }
          errorHandler:^(NSString *error) {
         dispatch_once(&onceToken, ^{
-            if (completion) completion(true); // Assume the UUID is still valid if the phone can't be accessed
+            if (completion) completion(nil); // Assume the UUID is still valid if the phone can't be accessed
         });
     }];
 }

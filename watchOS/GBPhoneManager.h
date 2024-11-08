@@ -9,6 +9,6 @@
 @property (readonly) NSString *metadataPath;
 @property (readonly) NSString *batteryPath;
 - (void)updateSaveState:(void (^)(NSString *error))completion;
-- (void)validateUUID:(void (^)(bool valid))completion;
+- (void)validateUUID:(void (^)(NSString *error))completion;
 - (void)refreshSettings:(void (^)(void))completion;
 @end

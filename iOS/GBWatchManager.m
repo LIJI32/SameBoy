@@ -273,7 +273,7 @@
     GBROMManager *romManager = [GBROMManager sharedManager];
     NSString *rom = [romManager watchUUIDMap][uuid];
     if (!rom) {
-        return @{@"error": @"The ROM currently loaded on this Apple Watch has been removed from its paired iPhone"};
+        return @{@"error": @"The ROM currently loaded on this Apple Watch has been removed from its paired iPhone."};
     }
     
     return @{};
