@@ -23,7 +23,7 @@ static char *async_input_callback(GB_gameboy_t *gb)
     return NULL;
 }
 
-static void log_callback(GB_gameboy_t *gb, const char *string, GB_log_attributes attributes)
+static void log_callback(GB_gameboy_t *gb, const char *string, GB_log_attributes_t attributes)
 {
     (void)gb, (void)string, (void)attributes; // Swallow any logs.
 }

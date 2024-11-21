@@ -195,7 +195,7 @@ static void vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
     }
 }
 
-static void log_callback(GB_gameboy_t *gb, const char *string, GB_log_attributes attributes)
+static void log_callback(GB_gameboy_t *gb, const char *string, GB_log_attributes_t attributes)
 {
     if (!log_file) log_file = fopen(log_filename, "w");
     fprintf(log_file, "%s", string);

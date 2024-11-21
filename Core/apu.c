@@ -12,20 +12,24 @@ static int32_t band_limited_steps[GB_BAND_LIMITED_PHASES][GB_BAND_LIMITED_WIDTH]
 static void __attribute__((constructor)) band_limited_init(void)
 {
     const unsigned master_size = GB_BAND_LIMITED_WIDTH * GB_BAND_LIMITED_PHASES;
-    double *master = malloc(master_size * sizeof(*master));
-    nounroll for (unsigned i = 0; i < master_size; i++) {
-        master[i] = 0.5;
-    }
+    double *master = malloc(master_size  * sizeof(*master));
     
     const unsigned sine_size = 256 * GB_BAND_LIMITED_PHASES + 2;
     const unsigned max_harmonic = sine_size / 2 / GB_BAND_LIMITED_PHASES;
     nounroll for (unsigned harmonic = 1; harmonic <= max_harmonic; harmonic += 2) {
-        double amplitude = 4 / M_PI / harmonic / 2;
+        double amplitude = 1.0 / harmonic / 2;
         double to_angle = M_PI * 2 / sine_size * harmonic;
         nounroll for (unsigned i = 0; i < master_size; i++) {
-            master[i] += sin(((signed)i - (signed)master_size / 2) * to_angle) * amplitude;
+            master[i] += sin(((signed)(i + 1) - (signed)master_size / 2) * to_angle) * amplitude;
         }
     }
+    
+    // Normalize master waveform
+    nounroll for (unsigned i = 0; i < master_size - 1; i++) {
+        master[i] += master[master_size - 1];
+        master[i] /= master[master_size - 1] * 2;
+    }
+    master[master_size - 1] = 1;
     
     nounroll for (unsigned phase = 0; phase < GB_BAND_LIMITED_PHASES; phase++) {
         int32_t error = GB_BAND_LIMITED_ONE;
