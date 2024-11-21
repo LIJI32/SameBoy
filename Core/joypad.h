@@ -28,6 +28,8 @@ typedef enum {
 // For example, for player 2's (0-based; logical player 3) A button, use GB_MASK_FOR_PLAYER(GB_KEY_A_MASK, 2)
 #define GB_MASK_FOR_PLAYER(mask, player) ((x) << (player * 8))
 
+typedef void (*GB_update_input_hint_callback_t)(GB_gameboy_t *gb);
+
 void GB_set_key_state(GB_gameboy_t *gb, GB_key_t index, bool pressed);
 void GB_set_key_state_for_player(GB_gameboy_t *gb, GB_key_t index, unsigned player, bool pressed);
 void GB_set_key_mask(GB_gameboy_t *gb, GB_key_mask_t mask);
@@ -37,6 +39,7 @@ bool GB_get_joyp_accessed(GB_gameboy_t *gb);
 void GB_clear_joyp_accessed(GB_gameboy_t *gb);
 void GB_set_allow_illegal_inputs(GB_gameboy_t *gb, bool allow);
 void GB_set_emulate_joypad_bouncing(GB_gameboy_t *gb, bool emulate);
+void GB_set_update_input_hint_callback(GB_gameboy_t *gb, GB_update_input_hint_callback_t callback);
 
 #ifdef GB_INTERNAL
 internal void GB_update_joyp(GB_gameboy_t *gb);

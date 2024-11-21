@@ -338,7 +338,6 @@ int GB_save_cheats(GB_gameboy_t *gb, const char *path)
         }
     }
     
-    errno = 0;
     fclose(f);
-    return errno;
+    return 0;
 }

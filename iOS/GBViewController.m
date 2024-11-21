@@ -110,7 +110,7 @@ static void printDone(GB_gameboy_t *gb)
 }
 
 
-static void consoleLog(GB_gameboy_t *gb, const char *string, GB_log_attributes attributes)
+static void consoleLog(GB_gameboy_t *gb, const char *string, GB_log_attributes_t attributes)
 {
     static NSString *buffer = @"";
     buffer = [buffer stringByAppendingString:@(string)];

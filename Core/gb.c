@@ -13,8 +13,9 @@
 #include "gb.h"
 
 
-void GB_attributed_logv(GB_gameboy_t *gb, GB_log_attributes attributes, const char *fmt, va_list args)
+void GB_attributed_logv(GB_gameboy_t *gb, GB_log_attributes_t attributes, const char *fmt, va_list args)
 {
+    int errno_backup = errno;
     char *string = NULL;
     vasprintf(&string, fmt, args);
     if (string) {
@@ -27,9 +28,10 @@ void GB_attributed_logv(GB_gameboy_t *gb, GB_log_attributes attributes, const ch
         }
     }
     free(string);
+    errno = errno_backup;
 }
 
-void GB_attributed_log(GB_gameboy_t *gb, GB_log_attributes attributes, const char *fmt, ...)
+void GB_attributed_log(GB_gameboy_t *gb, GB_log_attributes_t attributes, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -877,8 +879,7 @@ int GB_save_battery_to_buffer(GB_gameboy_t *gb, uint8_t *buffer, size_t size)
         memcpy(buffer + gb->mbc_ram_size, &rtc_save.vba64, sizeof(rtc_save.vba64));
     }
 
-    errno = 0;
-    return errno;
+    return 0;
 }
 
 int GB_save_battery(GB_gameboy_t *gb, const char *path)
@@ -942,9 +943,8 @@ int GB_save_battery(GB_gameboy_t *gb, const char *path)
 
     }
 
-    errno = 0;
     fclose(f);
-    return errno;
+    return 0;
 }
 
 static void load_tpp1_save_data(GB_gameboy_t *gb, const tpp1_rtc_save_t *data)
@@ -1234,20 +1234,9 @@ uint64_t GB_run_frame(GB_gameboy_t *gb)
     return gb->cycles_since_last_sync * 1000000000LL / 2 / GB_get_clock_rate(gb); /* / 2 because we use 8MHz units */
 }
 
-void GB_set_pixels_output(GB_gameboy_t *gb, uint32_t *output)
-{
-    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
-    gb->screen = output;
-}
-
 uint32_t *GB_get_pixels_output(GB_gameboy_t *gb)
 {
     return gb->screen;
-}
-
-void GB_set_vblank_callback(GB_gameboy_t *gb, GB_vblank_callback_t callback)
-{
-    gb->vblank_callback = callback;
 }
 
 void GB_set_log_callback(GB_gameboy_t *gb, GB_log_callback_t callback)
@@ -1272,11 +1261,6 @@ void GB_set_async_input_callback(GB_gameboy_t *gb, GB_input_callback_t callback)
 #endif
 }
 
-void GB_set_debugger_reload_callback(GB_gameboy_t *gb, GB_debugger_reload_callback_t callback)
-{
-    gb->debugger_reload_callback = callback;
-}
-
 void GB_set_execution_callback(GB_gameboy_t *gb, GB_execution_callback_t callback)
 {
     gb->execution_callback = callback;
@@ -1290,53 +1274,6 @@ void GB_set_lcd_line_callback(GB_gameboy_t *gb, GB_lcd_line_callback_t callback)
 void GB_set_lcd_status_callback(GB_gameboy_t *gb, GB_lcd_status_callback_t callback)
 {
     gb->lcd_status_callback = callback;
-}
-
-const GB_palette_t GB_PALETTE_GREY = {{{0x00, 0x00, 0x00}, {0x55, 0x55, 0x55}, {0xAA, 0xAA, 0xAA}, {0xFF, 0xFF, 0xFF}, {0xFF, 0xFF, 0xFF}}};
-const GB_palette_t GB_PALETTE_DMG  = {{{0x08, 0x18, 0x10}, {0x39, 0x61, 0x39}, {0x84, 0xA5, 0x63}, {0xC6, 0xDE, 0x8C}, {0xD2, 0xE6, 0xA6}}};
-const GB_palette_t GB_PALETTE_MGB  = {{{0x07, 0x10, 0x0E}, {0x3A, 0x4C, 0x3A}, {0x81, 0x8D, 0x66}, {0xC2, 0xCE, 0x93}, {0xCF, 0xDA, 0xAC}}};
-const GB_palette_t GB_PALETTE_GBL  = {{{0x0A, 0x1C, 0x15}, {0x35, 0x78, 0x62}, {0x56, 0xB4, 0x95}, {0x7F, 0xE2, 0xC3}, {0x91, 0xEA, 0xD0}}};
-
-static void update_dmg_palette(GB_gameboy_t *gb)
-{
-    const GB_palette_t *palette = gb->dmg_palette ?: &GB_PALETTE_GREY;
-    if (gb->rgb_encode_callback && !GB_is_cgb(gb)) {
-        gb->object_palettes_rgb[4] = gb->object_palettes_rgb[0] = gb->background_palettes_rgb[0] =
-        gb->rgb_encode_callback(gb, palette->colors[3].r, palette->colors[3].g, palette->colors[3].b);
-        gb->object_palettes_rgb[5] = gb->object_palettes_rgb[1] = gb->background_palettes_rgb[1] =
-        gb->rgb_encode_callback(gb, palette->colors[2].r, palette->colors[2].g, palette->colors[2].b);
-        gb->object_palettes_rgb[6] = gb->object_palettes_rgb[2] = gb->background_palettes_rgb[2] =
-        gb->rgb_encode_callback(gb, palette->colors[1].r, palette->colors[1].g, palette->colors[1].b);
-        gb->object_palettes_rgb[7] = gb->object_palettes_rgb[3] = gb->background_palettes_rgb[3] =
-        gb->rgb_encode_callback(gb, palette->colors[0].r, palette->colors[0].g, palette->colors[0].b);
-        
-        // LCD off color
-        gb->background_palettes_rgb[4] =
-        gb->rgb_encode_callback(gb, palette->colors[4].r, palette->colors[4].g, palette->colors[4].b);
-    }
-}
-
-void GB_set_palette(GB_gameboy_t *gb, const GB_palette_t *palette)
-{
-    gb->dmg_palette = palette;
-    update_dmg_palette(gb);
-}
-
-const GB_palette_t *GB_get_palette(GB_gameboy_t *gb)
-{
-    return gb->dmg_palette;
-}
-
-void GB_set_rgb_encode_callback(GB_gameboy_t *gb, GB_rgb_encode_callback_t callback)
-{
-
-    gb->rgb_encode_callback = callback;
-    update_dmg_palette(gb);
-    
-    for (unsigned i = 0; i < 32; i++) {
-        GB_palette_changed(gb, true, i * 2);
-        GB_palette_changed(gb, false, i * 2);
-    }
 }
 
 void GB_set_infrared_callback(GB_gameboy_t *gb, GB_infrared_callback_t callback)
@@ -1728,7 +1665,7 @@ static void GB_reset_internal(GB_gameboy_t *gb, bool quick)
     memset(gb, 0, GB_SECTION_OFFSET(unsaved));
     memcpy(GB_GET_SECTION(gb, rtc), rtc_section, sizeof(rtc_section));
     gb->model = model;
-    gb->version = GB_STRUCT_VERSION;
+    gb->version = STRUCT_VERSION;
     
     GB_reset_mbc(gb);
     
@@ -1747,9 +1684,8 @@ static void GB_reset_internal(GB_gameboy_t *gb, bool quick)
         gb->ram_size = 0x2000;
         gb->vram_size = 0x2000;
         memset(gb->vram, 0, gb->vram_size);
-        gb->object_priority = GB_OBJECT_PRIORITY_X;
-        
-        update_dmg_palette(gb);
+        gb->object_priority = GB_OBJECT_PRIORITY_X;        
+        GB_update_dmg_palette(gb);
     }
     
     gb->serial_mask = 0x80;
@@ -1996,11 +1932,6 @@ unsigned GB_get_screen_height(GB_gameboy_t *gb)
 unsigned GB_get_player_count(GB_gameboy_t *gb)
 {
     return GB_is_hle_sgb(gb)? gb->sgb->player_count : 1;
-}
-
-void GB_set_update_input_hint_callback(GB_gameboy_t *gb, GB_update_input_hint_callback_t callback)
-{
-    gb->update_input_hint_callback = callback;
 }
 
 double GB_get_usual_frame_rate(GB_gameboy_t *gb)

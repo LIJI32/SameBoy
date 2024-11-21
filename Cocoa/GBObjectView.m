@@ -57,6 +57,9 @@
     uint8_t length = document.oamCount;
     bool cgb = GB_is_cgb(document.gb);
     uint8_t height = document.oamHeight;
+    NSFont *font = [document debuggerFontOfSize:11];
+    NSFont *boldFont = [[NSFontManager sharedFontManager] convertFont:font toHaveTrait:NSBoldFontMask];
+    
     for (unsigned i = 0; i < 40; i++) {
         GBObjectViewItem *item = _items[i];
         if (i >= length) {
@@ -64,6 +67,13 @@
         }
         else {
             item.view.hidden = false;
+            
+            item.oamAddress.font = boldFont;
+            item.position.font = font;
+            item.attributes.font = font;
+            item.tile.font = font;
+            item.tileAddress.font = font;
+            
             item.oamAddress.stringValue = [NSString stringWithFormat:@"$%04X", info[i].oam_addr];
             item.position.stringValue = [NSString stringWithFormat:@"(%d, %d)",
                                          ((signed)(unsigned)info[i].x) - 8,

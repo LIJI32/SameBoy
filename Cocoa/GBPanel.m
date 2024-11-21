@@ -3,7 +3,9 @@
 @implementation GBPanel
 - (void)becomeKeyWindow
 {
-    [_ownerWindow makeMainWindow];
+    if ([_ownerWindow canBecomeMainWindow]) {
+        [_ownerWindow makeMainWindow];
+    }
     [super becomeKeyWindow];
 }
 @end

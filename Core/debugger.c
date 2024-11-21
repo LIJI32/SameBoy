@@ -2783,6 +2783,11 @@ void GB_debugger_set_disabled(GB_gameboy_t *gb, bool disabled)
     update_debug_active(gb);
 }
 
+void GB_debugger_set_reload_callback(GB_gameboy_t *gb, GB_debugger_reload_callback_t callback)
+{
+    gb->debugger_reload_callback = callback;
+}
+
 /* Jump-to breakpoints */
 
 static bool is_in_trivial_memory(uint16_t addr)

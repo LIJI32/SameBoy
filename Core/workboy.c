@@ -140,8 +140,8 @@ static bool serial_end(GB_gameboy_t *gb)
 }
 
 void GB_connect_workboy(GB_gameboy_t *gb,
-                        GB_workboy_set_time_callback set_time_callback,
-                        GB_workboy_get_time_callback get_time_callback)
+                        GB_workboy_set_time_callback_t set_time_callback,
+                        GB_workboy_get_time_callback_t get_time_callback)
 {
     memset(&gb->workboy, 0, sizeof(gb->workboy));
     GB_set_serial_transfer_bit_start_callback(gb, serial_start);

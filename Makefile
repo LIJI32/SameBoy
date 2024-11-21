@@ -273,7 +273,8 @@ endif
 
 ifeq ($(PLATFORM),windows32)
 CFLAGS += -IWindows -Drandom=rand --target=x86_64-pc-windows
-LDFLAGS += -lmsvcrt -lcomdlg32 -luser32 -lshell32 -lole32 -lSDL2main -Wl,/MANIFESTFILE:NUL --target=x86_64-pc-windows
+LDFLAGS += -lmsvcrt -lcomdlg32 -luser32 -lshell32 -lole32 -ladvapi32 -lSDL2main -Wl,/MANIFESTFILE:NUL --target=x86_64-pc-windows
+
 SDL_LDFLAGS := -lSDL2
 GL_LDFLAGS := -lopengl32
 ifneq ($(REDIST_XAUDIO),)

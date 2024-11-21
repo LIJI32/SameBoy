@@ -89,5 +89,6 @@ enum model {
 - (void) connectLinkCable:(NSMenuItem *)sender;
 - (int)loadStateFile:(const char *)path noErrorOnNotFound:(bool)noErrorOnFileNotFound;
 - (NSString *)captureOutputForBlock: (void (^)())block;
+- (NSFont *)debuggerFontOfSize:(unsigned)size;
 @end
 

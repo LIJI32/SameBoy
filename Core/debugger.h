@@ -5,6 +5,8 @@
 #include "defs.h"
 #include "symbol_hash.h"
 
+typedef void (*GB_debugger_reload_callback_t)(GB_gameboy_t *gb);
+
 void GB_debugger_break(GB_gameboy_t *gb);
 #ifdef GB_INTERNAL
 bool /* Returns true if debugger waits for more commands. Not relevant for non-GB_INTERNAL */
@@ -21,6 +23,7 @@ bool GB_debugger_evaluate(GB_gameboy_t *gb, const char *string, uint16_t *result
 bool GB_debugger_is_stopped(GB_gameboy_t *gb);
 void GB_debugger_set_disabled(GB_gameboy_t *gb, bool disabled);
 void GB_debugger_clear_symbols(GB_gameboy_t *gb);
+void GB_debugger_set_reload_callback(GB_gameboy_t *gb, GB_debugger_reload_callback_t callback);
 
 #ifdef GB_INTERNAL
 internal void GB_debugger_run(GB_gameboy_t *gb);

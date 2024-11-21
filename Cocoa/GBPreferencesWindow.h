@@ -1,6 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <JoyKit/JoyKit.h>
 #import "GBPaletteEditorController.h"
+#import "GBTitledPopUpButton.h"
 
 @interface GBPreferencesWindow : NSWindow <NSTableViewDelegate, NSTableViewDataSource, JOYListener>
 @property IBOutlet NSTableView *controlsTableView;
@@ -18,4 +19,7 @@
 @property IBOutlet NSPopUpButton *colorPalettePopupButton;
 @property IBOutlet NSPopUpButton *hotkey1PopupButton;
 @property IBOutlet NSPopUpButton *hotkey2PopupButton;
+
+@property IBOutlet GBTitledPopUpButton *fontPopupButton;
+@property IBOutlet NSStepper *fontSizeStepper;
 @end

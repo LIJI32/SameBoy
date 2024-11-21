@@ -19,8 +19,8 @@ typedef struct {
     uint8_t buffer_index; // In nibbles during read, in bytes during write
 } GB_workboy_t;
 
-typedef void (*GB_workboy_set_time_callback)(GB_gameboy_t *gb, time_t time);
-typedef time_t (*GB_workboy_get_time_callback)(GB_gameboy_t *gb);
+typedef void (*GB_workboy_set_time_callback_t)(GB_gameboy_t *gb, time_t time);
+typedef time_t (*GB_workboy_get_time_callback_t)(GB_gameboy_t *gb);
 
 enum {
     GB_WORKBOY_NONE = 0xFF,
@@ -110,7 +110,7 @@ enum {
 
 
 void GB_connect_workboy(GB_gameboy_t *gb,
-                        GB_workboy_set_time_callback set_time_callback,
-                        GB_workboy_get_time_callback get_time_callback);
+                        GB_workboy_set_time_callback_t set_time_callback,
+                        GB_workboy_get_time_callback_t get_time_callback);
 bool GB_workboy_is_enabled(GB_gameboy_t *gb);
 void GB_workboy_set_key(GB_gameboy_t *gb, uint8_t key);

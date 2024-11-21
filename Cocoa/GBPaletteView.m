@@ -43,6 +43,7 @@
     GB_gameboy_t *gb = document.gb;
     uint8_t *bg = GB_get_direct_access(gb, GB_DIRECT_ACCESS_BGP, NULL, NULL);
     uint8_t *obj = GB_get_direct_access(gb, GB_DIRECT_ACCESS_OBP, NULL, NULL);
+    NSFont *font = [document debuggerFontOfSize:13];
     
     for (unsigned i = 0; i < 4 * 8 * 2; i++) {
         uint8_t index = i % (4 * 8);
@@ -58,6 +59,7 @@
         field.stringValue = [NSString stringWithFormat:@"$%04X", color];
         field.textColor = r * 3 + g * 4 + b * 2 > 120? [NSColor blackColor] : [NSColor whiteColor];
         field.toolTip = [NSString stringWithFormat:@"Red: %d, Green: %d, Blue: %d", r, g, b];
+        field.font = font;
         field.backgroundColor = [NSColor colorWithRed:(nativeColor & 0xFF) / 255.0
                                                 green:((nativeColor >> 8) & 0xFF) / 255.0
                                                  blue:((nativeColor >> 16) & 0xFF) / 255.0

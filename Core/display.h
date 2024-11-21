@@ -4,12 +4,40 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef struct {
+    struct GB_color_s {
+        uint8_t r, g, b;
+    } colors[5];
+} GB_palette_t;
+
+extern const GB_palette_t GB_PALETTE_GREY;
+extern const GB_palette_t GB_PALETTE_DMG;
+extern const GB_palette_t GB_PALETTE_MGB;
+extern const GB_palette_t GB_PALETTE_GBL;
+
 typedef enum {
     GB_VBLANK_TYPE_NORMAL_FRAME, // An actual Vblank-triggered frame
     GB_VBLANK_TYPE_LCD_OFF, // An artificial frame pushed while the LCD was off
     GB_VBLANK_TYPE_ARTIFICIAL, // An artificial frame pushed for some other reason
     GB_VBLANK_TYPE_REPEAT, // A frame that would not render on actual hardware, but the screen should retain the previous frame
 } GB_vblank_type_t;
+
+typedef void (*GB_vblank_callback_t)(GB_gameboy_t *gb, GB_vblank_type_t type);
+typedef uint32_t (*GB_rgb_encode_callback_t)(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b);
+
+typedef struct {
+    uint8_t pixel; // Color, 0-3
+    uint8_t palette; // Palette, 0 - 7 (CGB); 0-1 in DMG (or just 0 for BG)
+    uint8_t priority; // Object priority – 0 in DMG, OAM index in CGB
+    bool bg_priority; // For object FIFO – the BG priority bit. For the BG FIFO – the CGB attributes priority bit
+} GB_fifo_item_t;
+
+#define GB_FIFO_LENGTH 8
+typedef struct {
+    GB_fifo_item_t fifo[GB_FIFO_LENGTH];
+    uint8_t read_end;
+    uint8_t size;
+} GB_fifo_t;
 
 #ifdef GB_INTERNAL
 internal void GB_display_run(GB_gameboy_t *gb, unsigned cycles, bool force);
@@ -18,13 +46,13 @@ internal void GB_STAT_update(GB_gameboy_t *gb);
 internal void GB_lcd_off(GB_gameboy_t *gb);
 internal void GB_display_vblank(GB_gameboy_t *gb, GB_vblank_type_t type);
 internal void GB_update_wx_glitch(GB_gameboy_t *gb);
+internal void GB_update_dmg_palette(GB_gameboy_t *gb);
 #define GB_display_sync(gb) GB_display_run(gb, 0, true)
 
 enum {
   GB_OBJECT_PRIORITY_X,
   GB_OBJECT_PRIORITY_INDEX,
 };
-
 #endif
 
 typedef enum {
@@ -66,13 +94,20 @@ typedef enum {
 static const GB_color_correction_mode_t __attribute__((deprecated("Use GB_COLOR_CORRECTION_MODERN_BALANCED instead"))) GB_COLOR_CORRECTION_EMULATE_HARDWARE = GB_COLOR_CORRECTION_MODERN_BALANCED;
 static const GB_color_correction_mode_t __attribute__((deprecated("Use GB_COLOR_CORRECTION_MODERN_BOOST_CONTRAST instead"))) GB_COLOR_CORRECTION_PRESERVE_BRIGHTNESS = GB_COLOR_CORRECTION_MODERN_BOOST_CONTRAST;
 
+void GB_set_vblank_callback(GB_gameboy_t *gb, GB_vblank_callback_t callback);
+void GB_set_rgb_encode_callback(GB_gameboy_t *gb, GB_rgb_encode_callback_t callback);
+void GB_set_palette(GB_gameboy_t *gb, const GB_palette_t *palette);
+const GB_palette_t *GB_get_palette(GB_gameboy_t *gb);
+void GB_set_color_correction_mode(GB_gameboy_t *gb, GB_color_correction_mode_t mode);
+void GB_set_light_temperature(GB_gameboy_t *gb, double temperature);
+void GB_set_pixels_output(GB_gameboy_t *gb, uint32_t *output);
+
+bool GB_is_odd_frame(GB_gameboy_t *gb);
+uint32_t GB_convert_rgb15(GB_gameboy_t *gb, uint16_t color, bool for_border);
+
 void GB_draw_tileset(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette_type, uint8_t palette_index);
 void GB_draw_tilemap(GB_gameboy_t *gb, uint32_t *dest, GB_palette_type_t palette_type, uint8_t palette_index, GB_map_type_t map_type, GB_tileset_type_t tileset_type);
 uint8_t GB_get_oam_info(GB_gameboy_t *gb, GB_oam_info_t *dest, uint8_t *object_height);
-uint32_t GB_convert_rgb15(GB_gameboy_t *gb, uint16_t color, bool for_border);
-void GB_set_color_correction_mode(GB_gameboy_t *gb, GB_color_correction_mode_t mode);
-void GB_set_light_temperature(GB_gameboy_t *gb, double temperature);
-bool GB_is_odd_frame(GB_gameboy_t *gb);
 
 void GB_set_object_rendering_disabled(GB_gameboy_t *gb, bool disabled);
 void GB_set_background_rendering_disabled(GB_gameboy_t *gb, bool disabled);

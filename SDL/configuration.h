@@ -143,7 +143,6 @@ typedef struct {
     bool osd;
     
     struct __attribute__((packed, aligned(4))) {
-        
         /* v0.15 */
         bool allow_mouse_controls;
         uint8_t cgb_revision;
@@ -155,6 +154,9 @@ typedef struct {
         char dmg_palette_name[25];
         hotkey_action_t hotkey_actions[2];
         uint16_t agb_revision;
+        
+        /* v1.0 */
+        bool windows_associations_prompted; // Windows only
     };
 } configuration_t;
 

@@ -6,20 +6,97 @@
 #include <stdlib.h>
 #include "gb.h"
 
+/* Band limited synthesis based on: http://www.slack.net/~ant/bl-synth/ */
+static int32_t band_limited_steps[GB_BAND_LIMITED_PHASES][GB_BAND_LIMITED_WIDTH];
+
+static void __attribute__((constructor)) band_limited_init(void)
+{
+    const unsigned master_size = GB_BAND_LIMITED_WIDTH * GB_BAND_LIMITED_PHASES;
+    double *master = malloc(master_size * sizeof(*master));
+    nounroll for (unsigned i = 0; i < master_size; i++) {
+        master[i] = 0.5;
+    }
+    
+    const unsigned sine_size = 256 * GB_BAND_LIMITED_PHASES + 2;
+    const unsigned max_harmonic = sine_size / 2 / GB_BAND_LIMITED_PHASES;
+    nounroll for (unsigned harmonic = 1; harmonic <= max_harmonic; harmonic += 2) {
+        double amplitude = 4 / M_PI / harmonic / 2;
+        double to_angle = M_PI * 2 / sine_size * harmonic;
+        nounroll for (unsigned i = 0; i < master_size; i++) {
+            master[i] += sin(((signed)i - (signed)master_size / 2) * to_angle) * amplitude;
+        }
+    }
+    
+    nounroll for (unsigned phase = 0; phase < GB_BAND_LIMITED_PHASES; phase++) {
+        int32_t error = GB_BAND_LIMITED_ONE;
+        int32_t prev = 0;
+        nounroll for (unsigned i = 0; i < GB_BAND_LIMITED_WIDTH; i++) {
+            int32_t cur = master[(GB_BAND_LIMITED_PHASES - 1 - phase) + i * GB_BAND_LIMITED_PHASES] * GB_BAND_LIMITED_ONE;
+            int32_t delta = cur - prev;
+            error = error - delta;
+            prev = cur;
+            band_limited_steps[phase][i] = delta;
+        }
+        
+        // Make sure the deltas sum to 1.0
+        band_limited_steps[phase][GB_BAND_LIMITED_WIDTH / 2 - 1] += error / 2;
+        band_limited_steps[phase][0] += error - (error / 2);
+    }
+    free(master);
+}
+
+static void band_limited_update(GB_band_limited_t *band_limited, const GB_sample_t *input, unsigned phase)
+{
+    if (input->packed == band_limited->input.packed) return;
+    unsigned delay = phase / GB_BAND_LIMITED_PHASES;
+    phase = phase & (GB_BAND_LIMITED_PHASES - 1);
+    
+    GB_sample_t delta = {
+        .left = input->left - band_limited->input.left,
+        .right = input->right - band_limited->input.right,
+    };
+    band_limited->input.packed = input->packed;
+    
+    for (unsigned i = 0; i < GB_BAND_LIMITED_WIDTH; i++) {
+        unsigned offset = (i + band_limited->pos + delay) & (sizeof(band_limited->buffer) / sizeof(band_limited->buffer[0]) - 1);
+        band_limited->buffer[offset].left += delta.left * band_limited_steps[phase][i];
+        band_limited->buffer[offset].right += delta.right * band_limited_steps[phase][i];
+    }
+}
+
+static void band_limited_update_unfiltered(GB_band_limited_t *band_limited, const GB_sample_t *input, unsigned delay)
+{
+    if (input->packed == band_limited->input.packed) return;
+    
+    GB_sample_t delta = {
+        .left = input->left - band_limited->input.left,
+        .right = input->right - band_limited->input.right,
+    };
+    band_limited->input.packed = input->packed;
+    
+    unsigned offset = (band_limited->pos + delay) & (sizeof(band_limited->buffer) / sizeof(band_limited->buffer[0]) - 1);
+    band_limited->buffer[offset].left += delta.left * GB_BAND_LIMITED_ONE;
+    band_limited->buffer[offset].right += delta.right * GB_BAND_LIMITED_ONE;
+}
+
+static void band_limited_read(GB_band_limited_t *band_limited, GB_sample_t *output, uint32_t multiplier)
+{
+    band_limited->output.left += band_limited->buffer[band_limited->pos].left;
+    band_limited->output.right += band_limited->buffer[band_limited->pos].right;
+    
+    band_limited->buffer[band_limited->pos].left = band_limited->buffer[band_limited->pos].right = 0;
+    band_limited->pos = (band_limited->pos + 1) & (sizeof(band_limited->buffer) / sizeof(band_limited->buffer[0]) - 1);
+    
+    output->left = band_limited->output.left * multiplier / GB_BAND_LIMITED_ONE;
+    output->right = band_limited->output.right * multiplier / GB_BAND_LIMITED_ONE;
+}
+
 static const uint8_t duties[] = {
     0, 0, 0, 0, 0, 0, 0, 1,
     1, 0, 0, 0, 0, 0, 0, 1,
     1, 0, 0, 0, 0, 1, 1, 1,
     0, 1, 1, 1, 1, 1, 1, 0,
 };
-
-static void refresh_channel(GB_gameboy_t *gb, GB_channel_t index, unsigned cycles_offset)
-{
-    unsigned multiplier = gb->apu_output.cycles_since_render + cycles_offset - gb->apu_output.last_update[index];
-    gb->apu_output.summed_samples[index].left += gb->apu_output.current_sample[index].left * multiplier;
-    gb->apu_output.summed_samples[index].right += gb->apu_output.current_sample[index].right * multiplier;
-    gb->apu_output.last_update[index] = gb->apu_output.cycles_since_render + cycles_offset;
-}
 
 bool GB_apu_is_DAC_enabled(GB_gameboy_t *gb, GB_channel_t index)
 {
@@ -69,7 +146,6 @@ static uint8_t agb_bias_for_channel(GB_gameboy_t *gb, GB_channel_t index)
 
 static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, unsigned cycles_offset)
 {
-        
     if (gb->model > GB_MODEL_CGB_E) {
         /* On the AGB, because no analog mixing is done, the behavior of NR51 is a bit different.
            A channel that is not connected to a terminal is idenitcal to a connected channel
@@ -100,9 +176,13 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
                 output.left = output.right = 0;
             }
             
-            if (gb->apu_output.current_sample[index].packed != output.packed) {
-                refresh_channel(gb, index, cycles_offset);
-                gb->apu_output.current_sample[index] = output;
+            if (unlikely(gb->apu_output.max_cycles_per_sample == 1)) {
+                band_limited_update_unfiltered(&gb->apu_output.band_limited[index], &output, cycles_offset);
+            }
+            else {
+                band_limited_update(&gb->apu_output.band_limited[index],
+                                    &output,
+                                    (gb->apu_output.cycles_since_render + cycles_offset) * GB_BAND_LIMITED_PHASES / gb->apu_output.max_cycles_per_sample);
             }
         }
         
@@ -131,9 +211,13 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
         if (likely(!gb->apu_output.channel_muted[index])) {
             output = (GB_sample_t){(0xF - value * 2) * left_volume, (0xF - value * 2) * right_volume};
         }
-        if (gb->apu_output.current_sample[index].packed != output.packed) {
-            refresh_channel(gb, index, cycles_offset);
-            gb->apu_output.current_sample[index] = output;
+        if (unlikely(gb->apu_output.max_cycles_per_sample == 1)) {
+            band_limited_update_unfiltered(&gb->apu_output.band_limited[index], &output, cycles_offset);
+        }
+        else {
+            band_limited_update(&gb->apu_output.band_limited[index],
+                                &output,
+                                (gb->apu_output.cycles_since_render + cycles_offset) * GB_BAND_LIMITED_PHASES / gb->apu_output.max_cycles_per_sample);
         }
     }
 }
@@ -210,27 +294,19 @@ static void render(GB_gameboy_t *gb)
                 }
             }
         }
+        
+        GB_sample_t channel_output;
+        band_limited_read(&gb->apu_output.band_limited[i], &channel_output, multiplier);
 
-        if (likely(gb->apu_output.last_update[i] == 0 || gb->apu_output.cycles_since_render == 0)) {
-            output.left += gb->apu_output.current_sample[i].left * multiplier;
-            output.right += gb->apu_output.current_sample[i].right * multiplier;
-        }
-        else {
-            refresh_channel(gb, i, 0);
-            output.left += (signed long) gb->apu_output.summed_samples[i].left * multiplier
-                            / gb->apu_output.cycles_since_render;
-            output.right += (signed long) gb->apu_output.summed_samples[i].right * multiplier
-                            / gb->apu_output.cycles_since_render;
-            gb->apu_output.summed_samples[i] = (GB_sample_t){0, 0};
-        }
-        gb->apu_output.last_update[i] = 0;
+        output.left += channel_output.left;
+        output.right += channel_output.right;
     }
     gb->apu_output.cycles_since_render = 0;
     
     if (gb->sgb && gb->sgb->intro_animation < GB_SGB_INTRO_ANIMATION_LENGTH) return;
 
     GB_sample_t filtered_output = gb->apu_output.highpass_mode?
-        (GB_sample_t) {output.left - gb->apu_output.highpass_diff.left,
+        (GB_sample_t) {output.left  - gb->apu_output.highpass_diff.left,
                        output.right - gb->apu_output.highpass_diff.right} :
         output;
 
@@ -239,9 +315,10 @@ static void render(GB_gameboy_t *gb)
             gb->apu_output.highpass_diff = (GB_double_sample_t) {0, 0};
             break;
         case GB_HIGHPASS_ACCURATE:
-            gb->apu_output.highpass_diff = (GB_double_sample_t)
-                {output.left - filtered_output.left * gb->apu_output.highpass_rate,
-                    output.right - filtered_output.right * gb->apu_output.highpass_rate};
+            gb->apu_output.highpass_diff = (GB_double_sample_t) {
+                output.left  - (output.left  - gb->apu_output.highpass_diff.left)  * gb->apu_output.highpass_rate,
+                output.right - (output.right - gb->apu_output.highpass_diff.right) * gb->apu_output.highpass_rate
+            };
             break;
         case GB_HIGHPASS_REMOVE_DC_OFFSET: {
             unsigned mask = gb->io_registers[GB_IO_NR51];
@@ -258,9 +335,10 @@ static void render(GB_gameboy_t *gb)
                 }
                 mask >>= 1;
             }
-            gb->apu_output.highpass_diff = (GB_double_sample_t)
-            {left_volume * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.left * gb->apu_output.highpass_rate,
-                right_volume * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.right * gb->apu_output.highpass_rate};
+            gb->apu_output.highpass_diff = (GB_double_sample_t) {
+                left_volume  * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.left * gb->apu_output.highpass_rate,
+                right_volume * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.right * gb->apu_output.highpass_rate
+            };
 
         case GB_HIGHPASS_MAX:;
         }
@@ -295,7 +373,7 @@ static void render(GB_gameboy_t *gb)
     }
 }
 
-static void update_square_sample(GB_gameboy_t *gb, GB_channel_t index)
+static void update_square_sample(GB_gameboy_t *gb, GB_channel_t index, unsigned cycles)
 {
     if (gb->apu.square_channels[index].sample_surpressed) {
         if (gb->model > GB_MODEL_CGB_E) {
@@ -308,7 +386,7 @@ static void update_square_sample(GB_gameboy_t *gb, GB_channel_t index)
     update_sample(gb, index,
                   duties[gb->apu.square_channels[index].current_sample_index + duty * 8]?
                   gb->apu.square_channels[index].current_volume : 0,
-                  0);
+                  cycles);
 }
 
 static inline void update_wave_sample(GB_gameboy_t *gb, unsigned cycles)
@@ -424,7 +502,7 @@ static void tick_square_envelope(GB_gameboy_t *gb, GB_channel_t index)
         }
 
     if (gb->apu.is_active[index]) {
-        update_square_sample(gb, index);
+        update_square_sample(gb, index, 0);
     }
 }
 
@@ -785,7 +863,7 @@ restart:;
                         gb->apu.pcm_mask[0] &= i == GB_SQUARE_1? 0xF0 : 0x0F;
                     }
                     gb->apu.square_channels[i].did_tick = true;
-                    update_square_sample(gb, i);
+                    update_square_sample(gb, i, cycles - cycles_left);
 
                     uint8_t duty = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
                     uint8_t edge_sample_index = inline_const(uint8_t[], {7, 7, 5, 1})[duty];
@@ -1250,7 +1328,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 nrx2_glitch(gb, &gb->apu.square_channels[index].current_volume,
                             value, gb->io_registers[reg], &gb->apu.square_channels[index].volume_countdown,
                             &gb->apu.square_channels[index].envelope_clock);
-                update_square_sample(gb, index);
+                update_square_sample(gb, index, 0);
             }
 
             break;
@@ -1335,7 +1413,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                    started sound). The playback itself is not instant which is why we don't update the sample for other
                    cases. */
                 if (gb->apu.is_active[index]) {
-                    update_square_sample(gb, index);
+                    update_square_sample(gb, index, 0);
                 }
 
                 gb->apu.square_channels[index].volume_countdown = gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] & 7;
@@ -1672,7 +1750,7 @@ void GB_set_sample_rate(GB_gameboy_t *gb, unsigned sample_rate)
 {
     gb->apu_output.sample_rate = sample_rate;
     if (sample_rate) {
-        gb->apu_output.highpass_rate = pow(0.999958,  GB_get_clock_rate(gb) / (double)sample_rate);
+        gb->apu_output.highpass_rate = pow(0.999958, GB_get_clock_rate(gb) / (double)sample_rate);
         gb->apu_output.max_cycles_per_sample = ceil(GB_get_clock_rate(gb) / 2.0 / sample_rate);
     }
     else {
@@ -1776,18 +1854,20 @@ int GB_start_audio_recording(GB_gameboy_t *gb, const char *path, GB_audio_format
         case GB_AUDIO_FORMAT_AIFF: {
             aiff_header_t header = {0,};
             if (fwrite(&header, sizeof(header), 1, gb->apu_output.output_file) != 1) {
+                int ret = errno ?: EIO;
                 fclose(gb->apu_output.output_file);
                 gb->apu_output.output_file = NULL;
-                return errno;
+                return ret;
             }
             return 0;
         }
         case GB_AUDIO_FORMAT_WAV: {
             wav_header_t header = {0,};
             if (fwrite(&header, sizeof(header), 1, gb->apu_output.output_file) != 1) {
+                int ret = errno ?: EIO;
                 fclose(gb->apu_output.output_file);
                 gb->apu_output.output_file = NULL;
-                return errno;
+                return ret;
             }
             return 0;
         }

@@ -5,7 +5,12 @@
 #include <stdio.h>
 #include "defs.h"
 
+#define GB_BAND_LIMITED_WIDTH 16
+#define GB_BAND_LIMITED_PHASES 32
+
 #ifdef GB_INTERNAL
+#define GB_BAND_LIMITED_ONE 0x10000 // fixed point value equal to 1
+
 /* Speed = 1 / Length (in seconds) */
 #define DAC_DECAY_SPEED 20000
 #define DAC_ATTACK_SPEED 20000
@@ -166,16 +171,21 @@ typedef enum {
 } GB_audio_format_t;
 
 typedef struct {
+    struct {
+        int32_t left, right;
+    } buffer[GB_BAND_LIMITED_WIDTH * 2], output;
+    uint8_t pos;
+    GB_sample_t input;
+} GB_band_limited_t;
+
+typedef struct {
     unsigned sample_rate;
 
     unsigned sample_cycles; // Counts by sample_rate until it reaches the clock frequency
     unsigned max_cycles_per_sample;
 
-    // Samples are NOT normalized to MAX_CH_AMP * 4 at this stage!
-    unsigned cycles_since_render;
-    unsigned last_update[GB_N_CHANNELS];
-    GB_sample_t current_sample[GB_N_CHANNELS];
-    GB_sample_t summed_samples[GB_N_CHANNELS];
+    uint32_t cycles_since_render;
+    GB_band_limited_t band_limited[GB_N_CHANNELS];
     double dac_discharge[GB_N_CHANNELS];
     bool channel_muted[GB_N_CHANNELS];
     bool edge_triggered[GB_N_CHANNELS];

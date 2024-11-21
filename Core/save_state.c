@@ -834,9 +834,8 @@ static int save_state_internal(GB_gameboy_t *gb, virtual_file_t *file, bool appe
         goto error;
     }
     
-    errno = 0;
 error:
-    return errno;
+    return 0;
 }
 
 int GB_save_state(GB_gameboy_t *gb, const char *path)

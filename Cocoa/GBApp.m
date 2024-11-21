@@ -48,6 +48,11 @@ static uint32_t color_to_int(NSColor *color)
             [defaults removeObjectForKey:button_to_preference_name(i, 0)];
         }
     }
+    
+    bool hasSFMono = false;
+    if (@available(macOS 10.15, *)) {
+        hasSFMono = [[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular].displayName containsString:@"SF"];
+    }
     [[NSUserDefaults standardUserDefaults] registerDefaults:@{
                                                               @"GBRight": @(kVK_RightArrow),
                                                               @"GBLeft": @(kVK_LeftArrow),
@@ -84,6 +89,9 @@ static uint32_t color_to_int(NSColor *color)
                                                               @"GBJoyConsDefaultsToHorizontal": @YES,
                                                               
                                                               @"GBEmulatedModel": @(MODEL_AUTO),
+                                                              
+                                                              @"GBDebuggerFont": hasSFMono? @"SF Mono" : @"Menlo",
+                                                              @"GBDebuggerFontSize": @12,
                                                               
                                                               // Default themes
                                                               @"GBThemes": @{

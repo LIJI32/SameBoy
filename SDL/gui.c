@@ -11,6 +11,10 @@
 #include "font.h"
 #include "audio/audio.h"
 
+#ifdef _WIN32
+#include <associations.h>
+#endif
+
 static const SDL_Color gui_palette[4] = {{8, 24, 16,}, {57, 97, 57,}, {132, 165, 99}, {198, 222, 140}};
 static uint32_t gui_palette_native[4];
 
@@ -399,14 +403,37 @@ static void return_to_root_menu(unsigned index)
     recalculate_menu_height();
 }
 
-static const struct menu_item options_menu[] = {
+#ifdef _WIN32
+static void associate_rom_files(unsigned index);
+#endif
+
+static
+#ifndef _WIN32
+const
+#endif
+struct menu_item options_menu[] = {
     {"Emulation Options", enter_emulation_menu},
     {"Graphic Options", enter_graphics_menu},
     {"Audio Options", enter_audio_menu},
     {"Control Options", enter_controls_menu},
+#ifdef _WIN32
+    {"Associate ROM Files", associate_rom_files},
+#endif
     {"Back", return_to_root_menu},
     {NULL,}
 };
+
+#ifdef _WIN32
+static void associate_rom_files(unsigned index)
+{
+    if (GB_do_windows_association()) {
+        options_menu[index].string = "ROM Files Associated";
+    }
+    else {
+        options_menu[index].string = "Files Association Failed";
+    }
+}
+#endif
 
 static void enter_options_menu(unsigned index)
 {
