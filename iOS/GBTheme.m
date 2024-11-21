@@ -459,6 +459,16 @@ __attribute__((objc_direct_members))
 
 #endif
 
+- (UIColor *)buttonColor
+{
+    double r, g, b;
+    [_brandColor getRed:&r green:&g blue:&b alpha:NULL];
+    if (r == 1.0 && g == 1.0 && b == 1.0) {
+        return _backgroundGradientTop;
+    }
+    return [UIColor colorWithRed:r green:g blue:b alpha:1.0];
+}
+
 - (bool)isDark
 {
     double r, g, b;

@@ -503,7 +503,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
     
     if (@available(iOS 13.0, *)) {
         self.overrideUserInterfaceStyle = layout.theme.isDark? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
-        self.tintColor = layout.theme.brandColor;
+        self.tintColor = layout.theme.buttonColor;
     }
 
     _screenLabel.frame = screenFrame;

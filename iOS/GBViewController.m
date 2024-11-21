@@ -232,7 +232,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:true] :
             _horizontalLayoutLeft;
         _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];
-        _printerSpinner.color = theme.brandColor;
+        _printerSpinner.color = theme.buttonColor;
 
         [self willRotateToInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation
                                           duration:0];
@@ -379,7 +379,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     _printerButton = [[UIButton alloc] init];
     _printerSpinner = [[UIActivityIndicatorView alloc] init];
     _printerSpinner.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhite;
-    _printerSpinner.color = _verticalLayout.theme.brandColor;
+    _printerSpinner.color = _verticalLayout.theme.buttonColor;
     [self didRotateFromInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation];
     
     if (@available(iOS 13.0, *)) {

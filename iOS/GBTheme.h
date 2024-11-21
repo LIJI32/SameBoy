@@ -2,6 +2,7 @@
 
 @interface GBTheme : NSObject
 @property (readonly, direct) UIColor *brandColor;
+@property (readonly, direct) UIColor *buttonColor;
 @property (readonly, direct) UIColor *backgroundGradientTop;
 @property (readonly, direct) UIColor *backgroundGradientBottom;
 @property (readonly, direct) UIColor *bezelsGradientTop;
