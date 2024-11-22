@@ -455,6 +455,7 @@ static void vblank(GB_gameboy_t *gb)
             unlink(phoneManager.batteryPath.UTF8String);
         }
     }
+    GB_rewind_reset(&_gb);
 }
 
 - (const GB_palette_t *)currentPalette
