@@ -77,6 +77,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
     GBGameScene *_scene;
     NSTimer *_crownIdleTimer;
     bool _forceBegin;
+    NSTimer *_tapTimer;
 }
 - (void)awakeWithContext:(id)context
 {
@@ -154,6 +155,10 @@ static GB_key_mask_t angleToKeyMask(double angle)
         down = false;
     }
     if (sender.state == WKGestureRecognizerStateBegan || _forceBegin) {
+        if (_tapTimer.valid) {
+            [_tapTimer fire];
+            _tapTimer = nil;
+        }
         down = true;
         isLong = false;
         isTap = !_forceBegin;
@@ -210,10 +215,10 @@ static GB_key_mask_t angleToKeyMask(double angle)
     }
     const char *action = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchDefaultAction"].UTF8String;
     if (strchr(action, 'A')) {
-        [_scene holdButton:GB_KEY_A duration:0.25];
+        _tapTimer = [_scene holdButton:GB_KEY_A duration:0.25];
     }
     if (strchr(action, 'B')) {
-        [_scene holdButton:GB_KEY_B duration:0.25];
+        _tapTimer = [_scene holdButton:GB_KEY_B duration:0.25];
     }
 
 }

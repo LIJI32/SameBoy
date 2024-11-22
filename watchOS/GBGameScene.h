@@ -6,7 +6,7 @@
 #define BUTTON_WIDTH 0.2763932022500210303590826331268723764559381640388474275729102754
 
 @interface GBGameScene : SKScene
-- (void)holdButton:(GB_key_t)button duration:(double)seconds;
+- (NSTimer *)holdButton:(GB_key_t)button duration:(double)seconds;
 - (void)showHoldAt:(CGPoint)position;
 - (void)hideHold;
 - (void)setInput:(GB_key_mask_t)mask;

@@ -645,7 +645,7 @@ static void vblank(GB_gameboy_t *gb)
     [_audioClient pushSample:sample];
 }
 
-- (void)holdButton:(GB_key_t)button duration:(double)seconds
+- (NSTimer *)holdButton:(GB_key_t)button duration:(double)seconds
 {
     [_idleTimer invalidate];
     _idleTimer = [NSTimer scheduledTimerWithTimeInterval:8 repeats:false block:^(NSTimer *timer) {
@@ -654,9 +654,11 @@ static void vblank(GB_gameboy_t *gb)
     [_hint removeFromParent];
     _hint = nil;
     GB_set_key_state(&_gb, button, true);
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, seconds * (NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    return [NSTimer scheduledTimerWithTimeInterval:seconds
+                                    repeats:false
+                                      block:^(NSTimer * _Nonnull timer) {
         GB_set_key_state(&_gb, button, false);
-    });
+    }];
 }
 
 - (void)showHoldAt:(CGPoint)position
