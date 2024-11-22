@@ -352,6 +352,10 @@ static GB_key_mask_t angleToKeyMask(double angle)
 
 - (void)crownDidRotate:(WKCrownSequencer *)crownSequencer rotationalDelta:(double)rotationalDelta
 {
+    if (rotationalDelta == 0) {
+        return;
+    }
+    
     [_crownIdleTimer invalidate];
     _crownIdleTimer = nil;
     static bool rapidFire = false;
@@ -367,14 +371,14 @@ static GB_key_mask_t angleToKeyMask(double angle)
         }
         
         if ([action hasPrefix:@"turbo"]) {
-            [_scene setSpeedMultiplayer:rotationalDelta * 32 + 1];
+            [_scene setSpeedMultiplayer:rotationalDelta * 64 + 2];
         }
     }
     else {
         NSString *action = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBWatchCrownBackward"];
         if ([action isEqual:@"rewind"]) {
             [_scene stop];
-            [_scene rewindFrames:ceil(-rotationalDelta * 32)];
+            [_scene rewindFrames:ceil(-rotationalDelta * 64)];
             return;
         }
         rapidFire ^= true;
