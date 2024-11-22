@@ -217,7 +217,7 @@
 {
     dispatch_sync(dispatch_get_main_queue(), ^{
         _disableCommands = true;
-        [(GBInterfaceController *)[[WKExtension sharedExtension] rootInterfaceController] stop];
+        [(GBInterfaceController *)[[WKExtension sharedExtension] rootInterfaceController] stopAndSave];
         unlink(self.saveStatePath.UTF8String);
         unlink(self.pngPath.UTF8String);
         unlink(self.romPath.UTF8String);
@@ -238,7 +238,7 @@
         GBInterfaceController *controller = (GBInterfaceController *)[[WKExtension sharedExtension] rootInterfaceController];
         bool running = controller.isRunning;
         if (running) {
-            [controller stop];
+            [controller stopAndSave];
         }
         NSString *uuid = [NSDictionary dictionaryWithContentsOfFile:self.metadataPath][@"uuid"];
         if (uuid) {

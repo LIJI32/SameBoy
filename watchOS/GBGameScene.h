@@ -12,6 +12,7 @@
 - (void)setInput:(GB_key_mask_t)mask;
 - (void)start;
 - (void)stop;
+- (void)stopAndSave;
 - (void)setSpeedMultiplayer:(double)factor;
 - (void)rewindFrames:(unsigned)count;
 @property (readonly) bool isRunning;

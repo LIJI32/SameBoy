@@ -4,5 +4,6 @@
 @interface GBInterfaceController : WKInterfaceController<WKCrownDelegate>
 - (void)stop;
 - (void)start;
+- (void)stopAndSave;
 @property (readonly) bool isRunning;
 @end

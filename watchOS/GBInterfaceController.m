@@ -106,6 +106,11 @@ static GB_key_mask_t angleToKeyMask(double angle)
     [_scene stop];
 }
 
+- (void)stopAndSave
+{
+    [_scene stopAndSave];
+}
+
 - (void)start
 {
     [_scene start];
@@ -134,7 +139,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
 - (void)didDeactivate
 {
     // This method is called when watch view controller is no longer visible
-    [_scene stop];
+    [_scene stopAndSave];
     [super didDeactivate];
 }
 

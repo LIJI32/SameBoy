@@ -370,9 +370,7 @@ static void vblank(GB_gameboy_t *gb)
     }];
     [[GBPhoneManager sharedManager] validateUUID:^(NSString *error) {
         if (error) {
-            _invalidating = true;
             [self stop];
-            _invalidating = false;
             [self setLabelString:error];
             _romLoaded = false;
             _label.hidden = false;
@@ -391,6 +389,13 @@ static void vblank(GB_gameboy_t *gb)
     _running = false;
     while (_stopping);
     [_audioClient stop];
+}
+
+- (void)stopAndSave
+{
+    if (!_romLoaded) return;
+    
+    [self stop];
     if (_invalidating) return;
     
     NSString *tempPath = [GBPhoneManager.sharedManager.saveStatePath stringByAppendingPathExtension:@"tmp"];
@@ -598,7 +603,7 @@ static void vblank(GB_gameboy_t *gb)
                                                       object:nil
                                                        queue:nil
                                                   usingBlock:^(NSNotification *note) {
-        [self stop];
+        [self stopAndSave];
         [self loadROM];
         _label.hidden = _romLoaded;
         _iPhoneIcon.hidden = _romLoaded;
