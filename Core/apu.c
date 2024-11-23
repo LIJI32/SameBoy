@@ -310,8 +310,8 @@ static void render(GB_gameboy_t *gb)
     if (gb->sgb && gb->sgb->intro_animation < GB_SGB_INTRO_ANIMATION_LENGTH) return;
 
     GB_sample_t filtered_output = gb->apu_output.highpass_mode?
-        (GB_sample_t) {output.left  - gb->apu_output.highpass_diff.left,
-                       output.right - gb->apu_output.highpass_diff.right} :
+        (GB_sample_t) {output.left  - (int16_t)gb->apu_output.highpass_diff.left,
+                       output.right - (int16_t)gb->apu_output.highpass_diff.right} :
         output;
 
     switch (gb->apu_output.highpass_mode) {
@@ -1752,6 +1752,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
 
 void GB_set_sample_rate(GB_gameboy_t *gb, unsigned sample_rate)
 {
+    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     gb->apu_output.sample_rate = sample_rate;
     if (sample_rate) {
         gb->apu_output.highpass_rate = pow(0.999958, GB_get_clock_rate(gb) / (double)sample_rate);
@@ -1764,7 +1765,7 @@ void GB_set_sample_rate(GB_gameboy_t *gb, unsigned sample_rate)
 
 void GB_set_sample_rate_by_clocks(GB_gameboy_t *gb, double cycles_per_sample)
 {
-
+    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     if (cycles_per_sample == 0) {
         GB_set_sample_rate(gb, 0);
         return;

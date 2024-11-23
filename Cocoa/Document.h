@@ -83,8 +83,6 @@ enum model {
 
 
 + (NSImage *) imageFromData:(NSData *)data width:(NSUInteger) width height:(NSUInteger) height scale:(double) scale;
-- (uint8_t) readMemory:(uint16_t) addr;
-- (void) writeMemory:(uint16_t) addr value:(uint8_t)value;
 - (void) performAtomicBlock: (void (^)())block;
 - (void) connectLinkCable:(NSMenuItem *)sender;
 - (int)loadStateFile:(const char *)path noErrorOnNotFound:(bool)noErrorOnFileNotFound;

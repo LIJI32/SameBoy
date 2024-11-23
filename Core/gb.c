@@ -836,6 +836,8 @@ int GB_save_battery_size(GB_gameboy_t *gb)
 
 int GB_save_battery_to_buffer(GB_gameboy_t *gb, uint8_t *buffer, size_t size)
 {
+    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+
     if (!gb->cartridge_type->has_battery) return 0; // Nothing to save.
     if (gb->cartridge_type->mbc_type == GB_TPP1 && !(gb->rom[0x153] & 8)) return 0; // Nothing to save.
     if (gb->mbc_ram_size == 0 && !gb->cartridge_type->has_rtc) return 0; /* Claims to have battery, but has no RAM or RTC */
@@ -1241,12 +1243,18 @@ uint32_t *GB_get_pixels_output(GB_gameboy_t *gb)
 
 void GB_set_log_callback(GB_gameboy_t *gb, GB_log_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->log_callback = callback;
 }
 
 void GB_set_input_callback(GB_gameboy_t *gb, GB_input_callback_t callback)
 {
 #ifndef GB_DISABLE_DEBUGGER
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     if (gb->input_callback == default_input_callback) {
         gb->async_input_callback = NULL;
     }
@@ -1257,27 +1265,42 @@ void GB_set_input_callback(GB_gameboy_t *gb, GB_input_callback_t callback)
 void GB_set_async_input_callback(GB_gameboy_t *gb, GB_input_callback_t callback)
 {
 #ifndef GB_DISABLE_DEBUGGER
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->async_input_callback = callback;
 #endif
 }
 
 void GB_set_execution_callback(GB_gameboy_t *gb, GB_execution_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->execution_callback = callback;
 }
 
 void GB_set_lcd_line_callback(GB_gameboy_t *gb, GB_lcd_line_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->lcd_line_callback = callback;
 }
 
 void GB_set_lcd_status_callback(GB_gameboy_t *gb, GB_lcd_status_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->lcd_status_callback = callback;
 }
 
 void GB_set_infrared_callback(GB_gameboy_t *gb, GB_infrared_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->infrared_callback = callback;
 }
 
@@ -1288,16 +1311,25 @@ void GB_set_infrared_input(GB_gameboy_t *gb, bool state)
 
 void GB_set_rumble_callback(GB_gameboy_t *gb, GB_rumble_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->rumble_callback = callback;
 }
 
 void GB_set_serial_transfer_bit_start_callback(GB_gameboy_t *gb, GB_serial_transfer_bit_start_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->serial_transfer_bit_start_callback = callback;
 }
 
 void GB_set_serial_transfer_bit_end_callback(GB_gameboy_t *gb, GB_serial_transfer_bit_end_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->serial_transfer_bit_end_callback = callback;
 }
 
@@ -1341,6 +1373,7 @@ void GB_serial_set_data_bit(GB_gameboy_t *gb, bool data)
 
 void GB_disconnect_serial(GB_gameboy_t *gb)
 {
+    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     gb->serial_transfer_bit_start_callback = NULL;
     gb->serial_transfer_bit_end_callback = NULL;
     
@@ -1941,22 +1974,34 @@ double GB_get_usual_frame_rate(GB_gameboy_t *gb)
 
 void GB_set_joyp_write_callback(GB_gameboy_t *gb, GB_joyp_write_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->joyp_write_callback = callback;
 }
 
 void GB_set_icd_pixel_callback(GB_gameboy_t *gb, GB_icd_pixel_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->icd_pixel_callback = callback;
 }
 
 void GB_set_icd_hreset_callback(GB_gameboy_t *gb, GB_icd_hreset_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->icd_hreset_callback = callback;
 }
 
 
 void GB_set_icd_vreset_callback(GB_gameboy_t *gb, GB_icd_vreset_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->icd_vreset_callback = callback;
 }
 

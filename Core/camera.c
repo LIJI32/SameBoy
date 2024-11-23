@@ -110,11 +110,17 @@ uint8_t GB_camera_read_image(GB_gameboy_t *gb, uint16_t addr)
 
 void GB_set_camera_get_pixel_callback(GB_gameboy_t *gb, GB_camera_get_pixel_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->camera_get_pixel_callback = callback;
 }
 
 void GB_set_camera_update_request_callback(GB_gameboy_t *gb, GB_camera_update_request_callback_t callback)
 {
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     if (gb->camera_countdown > 0 && callback) {
         GB_log(gb, "Camera update request callback set while camera was proccessing, clearing camera countdown.\n");
         gb->camera_countdown = 0;

@@ -64,9 +64,10 @@
     AVCaptureDevicePosition _cameraPosition;
     UIButton *_cameraPositionButton;
     UIButton *_changeCameraButton;
-    NSArray *_allCaptureDevices;
-    NSArray *_backCaptureDevices;
-    AVCaptureDevice *_selectedBackCaptureDevice;
+    AVCaptureDevice *_frontCaptureDevice;
+    AVCaptureDevice *_backCaptureDevice;
+    NSMutableArray<NSNumber *> *_zoomLevels;
+    unsigned _currentZoomIndex;
     
     __weak GCController *_lastController;
     
@@ -81,6 +82,9 @@
     UIButton *_printerButton;
     UIActivityIndicatorView *_printerSpinner;
     NSMutableData *_currentPrinterImageData;
+    
+    NSString *_lastSavedROM;
+    NSDate *_saveDate;
 }
 
 static void loadBootROM(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -285,32 +289,42 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     
     _motionManager = [[CMMotionManager alloc] init];
     _cameraPosition = AVCaptureDevicePositionBack;
-    _selectedBackCaptureDevice = [AVCaptureDevice defaultDeviceWithMediaType: AVMediaTypeVideo];
 
     // Back camera setup
     NSArray *deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera,
-                             AVCaptureDeviceTypeBuiltInTelephotoCamera];
+                             AVCaptureDeviceTypeBuiltInTelephotoCamera,
+                             AVCaptureDeviceTypeBuiltInDualCamera];
     if (@available(iOS 13.0, *)) {
         // AVCaptureDeviceTypeBuiltInUltraWideCamera is only available in iOS 13+
         deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera,
                         AVCaptureDeviceTypeBuiltInUltraWideCamera,
-                        AVCaptureDeviceTypeBuiltInTelephotoCamera];
+                        AVCaptureDeviceTypeBuiltInTelephotoCamera,
+                        AVCaptureDeviceTypeBuiltInTripleCamera,
+                        AVCaptureDeviceTypeBuiltInDualWideCamera,
+                        AVCaptureDeviceTypeBuiltInDualCamera];
     }
 
     // Use a discovery session to gather the capture devices (all back cameras as well as the front camera)
     AVCaptureDeviceDiscoverySession *cameraDiscoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
                                                                                                                      mediaType:AVMediaTypeVideo
                                                                                                                       position:AVCaptureDevicePositionUnspecified];
-    _allCaptureDevices = cameraDiscoverySession.devices;
-
-    // Filter only the back cameras into a list used for switching between them
-    NSMutableArray *filteredBackCameras = [NSMutableArray array];
-    for (AVCaptureDevice *device in _allCaptureDevices) {
+    for (AVCaptureDevice *device in cameraDiscoverySession.devices) {
         if ([device position] == AVCaptureDevicePositionBack) {
-            [filteredBackCameras addObject:device];
+            if (!_backCaptureDevice ||
+                _backCaptureDevice.virtualDeviceSwitchOverVideoZoomFactors.count < device.virtualDeviceSwitchOverVideoZoomFactors.count) {
+                _backCaptureDevice = device;
+            }
+        }
+        else if ([device position] == AVCaptureDevicePositionFront) {
+            _frontCaptureDevice = device;
         }
     }
-    _backCaptureDevices = filteredBackCameras;
+    
+    _zoomLevels = _backCaptureDevice.virtualDeviceSwitchOverVideoZoomFactors.mutableCopy;
+    [_zoomLevels insertObject:@1 atIndex:0];
+    if (_zoomLevels.count == 3 && _zoomLevels[2].doubleValue > 5.5 && _zoomLevels[1].doubleValue < 3.5) {
+        [_zoomLevels insertObject:@4 atIndex:2];
+    }
 
     _cameraPositionButton = [[UIButton alloc] init];
     [self didRotateFromInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation];
@@ -332,7 +346,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                                 action:@selector(changeCamera)
                       forControlEvents:UIControlEventTouchUpInside];
         // Only show the change camera button if we have more than one back camera to swap between.
-        if ([_backCaptureDevices count] > 1) {
+        if (_zoomLevels.count > 1) {
             [_backgroundView addSubview:_changeCameraButton];
         }
     }
@@ -702,7 +716,17 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                     }
                 }
             }
-            GB_rewind_reset(&_gb);
+            
+            NSDate *date = nil;
+            [[NSURL fileURLWithPath:[GBROMManager sharedManager].autosaveStateFile] getResourceValue:&date
+                                                                                              forKey:NSURLContentModificationDateKey
+                                                                                               error:nil];
+            
+            // Reset the rewind buffer only if we switched ROMs or had the save state change externally
+            if (![_lastSavedROM isEqual:[GBROMManager sharedManager].currentROM] ||
+                ![_saveDate isEqual:date]) {
+                GB_rewind_reset(&_gb);
+            }
         }
     }
     else {
@@ -1194,6 +1218,14 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     if (!_swappingROM) {
         GB_save_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
         [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
+
+        NSDate *date;
+        [[NSURL fileURLWithPath:[GBROMManager sharedManager].autosaveStateFile] getResourceValue:&date
+                                                                                          forKey:NSURLContentModificationDateKey
+                                                                                           error:nil];
+        _saveDate = date;
+        _lastSavedROM = [GBROMManager sharedManager].currentROM;
+
     }
     [[GBHapticManager sharedManager] setRumbleStrength:0];
     if (@available(iOS 14.0, *)) {
@@ -1640,21 +1672,10 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 - (AVCaptureDevice *)captureDevice
 {
-    for (AVCaptureDevice *device in _allCaptureDevices) {
-        if ([device position] == _cameraPosition) {
-            // There is only one front camera, return it
-            if (_cameraPosition == AVCaptureDevicePositionFront) {
-                return device;
-            }
-
-            // There may be several back cameras, return the one with the matching type
-            if ([device deviceType] == [_selectedBackCaptureDevice deviceType]) {
-                return device;
-            }
-        }
+    if (_cameraPosition == AVCaptureDevicePositionFront) {
+        return _frontCaptureDevice ?: [AVCaptureDevice defaultDeviceWithMediaType: AVMediaTypeVideo];
     }
-    // Return the default camera
-    return [AVCaptureDevice defaultDeviceWithMediaType: AVMediaTypeVideo];
+    return _backCaptureDevice ?: [AVCaptureDevice defaultDeviceWithMediaType: AVMediaTypeVideo];
 }
 
 - (void)cameraRequestUpdate
@@ -1835,19 +1856,13 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 - (void)changeCamera
 {
     dispatch_async(_cameraQueue, ^{
-        // Get index of selected camera and select the next one, wrapping to the beginning
-        NSUInteger i = [_backCaptureDevices indexOfObject:_selectedBackCaptureDevice];
-        int nextIndex = (i + 1) % _backCaptureDevices.count;
-        _selectedBackCaptureDevice = _backCaptureDevices[nextIndex];
-
-        [_cameraSession stopRunning];
-        _cameraSession = nil;
-        _cameraConnection = nil;
-        _cameraOutput = nil;
-        if (_cameraNeedsUpdate) {
-            _cameraNeedsUpdate = false;
-            GB_camera_updated(&_gb);
+        if (![_backCaptureDevice lockForConfiguration:nil]) return;
+        _currentZoomIndex++;
+        if (_currentZoomIndex == _zoomLevels.count) {
+            _currentZoomIndex = 0;
         }
+        [_backCaptureDevice rampToVideoZoomFactor:_zoomLevels[_currentZoomIndex].doubleValue withRate:2];
+        [_backCaptureDevice unlockForConfiguration];
     });
 }
 

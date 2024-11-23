@@ -1784,18 +1784,6 @@ enum GBWindowResizeAction
     [self log:log withAttributes:0];
 }
 
-- (uint8_t) readMemory:(uint16_t)addr
-{
-    while (!GB_is_inited(&_gb));
-    return GB_safe_read_memory(&_gb, addr);
-}
-
-- (void) writeMemory:(uint16_t)addr value:(uint8_t)value
-{
-    while (!GB_is_inited(&_gb));
-    GB_write_memory(&_gb, addr, value);
-}
-
 - (void)performAtomicBlock: (void (^)())block
 {
     while (!GB_is_inited(&_gb));

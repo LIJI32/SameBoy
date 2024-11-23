@@ -430,6 +430,10 @@ static void sanitize_state(GB_gameboy_t *gb)
         gb->apu.apu_cycles >>= 2;
         gb->apu.apu_cycles_in_2mhz = true;
     }
+    
+    if (gb->n_visible_objs > 10) {
+        gb->n_visible_objs = 10;
+    }
 }
 
 static bool dump_section(virtual_file_t *file, const void *src, uint32_t size)

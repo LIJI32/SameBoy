@@ -214,6 +214,7 @@ static bool serial_end(GB_gameboy_t *gb)
 
 void GB_connect_printer(GB_gameboy_t *gb, GB_print_image_callback_t callback, GB_printer_done_callback_t done_callback)
 {
+    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     memset(&gb->printer, 0, sizeof(gb->printer));
     GB_set_serial_transfer_bit_start_callback(gb, serial_start);
     GB_set_serial_transfer_bit_end_callback(gb, serial_end);
