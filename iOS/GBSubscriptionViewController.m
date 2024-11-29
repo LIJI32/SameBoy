@@ -351,6 +351,7 @@
 
 - (void)viewDidLoad
 {
+    [super viewDidLoad];
     [[NSNotificationCenter defaultCenter] addObserver:self.tableView
                                              selector:@selector(reloadData)
                                                  name:GBSubscriptionInfoUpdatedNotification
