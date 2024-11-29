@@ -571,11 +571,11 @@ static void vblank(GB_gameboy_t *gb)
     [self addDefaultObserver:^(id newValue) {
         if (_running) {
             [self stop];
-            GB_set_rewind_length(gb, [newValue unsignedIntValue]);
+            GB_set_rewind_length(gb, MIN([newValue unsignedIntValue], 120));
             [self start];
         }
         else {
-            GB_set_rewind_length(gb, [newValue unsignedIntValue]);
+            GB_set_rewind_length(gb, MIN([newValue unsignedIntValue], 120));
         }
     } forKey:@"GBRewindLength"];
     [self addDefaultObserver:^(id newValue) {

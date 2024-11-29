@@ -42,7 +42,15 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                 @{@"type": typeRadio, @"pref": @"GBRewindLength", @"title": @"2 Minutes",  @"value": @120,},
                 @{@"type": typeRadio, @"pref": @"GBRewindLength", @"title": @"5 Minutes",  @"value": @300,},
                 @{@"type": typeRadio, @"pref": @"GBRewindLength", @"title": @"10 Minutes", @"value": @600,},
-            ]
+            ],
+#ifdef APPSTORE
+            @"footer": ^NSString *() {
+                if ([GBWatchManager sharedManager].isPaired && [[NSUserDefaults standardUserDefaults] integerForKey:@"GBRewindLength"] > 120) {
+                    return @"The rewind duration will be capped to 2 minutes on your Apple Watch.";
+                }
+                return nil;
+            },
+#endif
         },
         @{
             @"header": @"Real Time Clock Emulation",
