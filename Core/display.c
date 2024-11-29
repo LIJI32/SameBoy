@@ -2432,3 +2432,33 @@ bool GB_is_background_rendering_disabled(GB_gameboy_t *gb)
     return gb->background_disabled;
 }
 
+unsigned GB_get_screen_width(GB_gameboy_t *gb)
+{
+    switch (gb->border_mode) {
+        default:
+        case GB_BORDER_SGB:
+            return GB_is_hle_sgb(gb)? 256 : 160;
+        case GB_BORDER_NEVER:
+            return 160;
+        case GB_BORDER_ALWAYS:
+            return 256;
+    }
+}
+
+unsigned GB_get_screen_height(GB_gameboy_t *gb)
+{
+    switch (gb->border_mode) {
+        default:
+        case GB_BORDER_SGB:
+            return GB_is_hle_sgb(gb)? 224 : 144;
+        case GB_BORDER_NEVER:
+            return 144;
+        case GB_BORDER_ALWAYS:
+            return 224;
+    }
+}
+
+double GB_get_usual_frame_rate(GB_gameboy_t *gb)
+{
+    return GB_get_clock_rate(gb) / (double)LCDC_PERIOD;
+}

@@ -147,6 +147,7 @@ static NSString *const tips[] = {
     [UIView animateWithDuration:0.25 animations:^{
         _effectView.alpha = 0;
     }];
+    [super viewWillDisappear:animated];
 }
 
 - (void)viewDidLayoutSubviews

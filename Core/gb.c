@@ -1365,8 +1365,8 @@ void GB_serial_set_data_bit(GB_gameboy_t *gb, bool data)
     gb->io_registers[GB_IO_SB] |= data;
     gb->serial_count++;
     if (gb->serial_count == 8) {
-        gb->io_registers[GB_IO_IF] |= 8;
         gb->io_registers[GB_IO_SC] &= ~0x80;
+        gb->io_registers[GB_IO_IF] |= 8;
         gb->serial_count = 0;
     }
 }
@@ -1934,42 +1934,6 @@ void GB_set_border_mode(GB_gameboy_t *gb, GB_border_mode_t border_mode)
 {
     if (gb->border_mode > GB_BORDER_ALWAYS) return;
     gb->border_mode = border_mode;
-}
-
-unsigned GB_get_screen_width(GB_gameboy_t *gb)
-{
-    switch (gb->border_mode) {
-        default:
-        case GB_BORDER_SGB:
-            return GB_is_hle_sgb(gb)? 256 : 160;
-        case GB_BORDER_NEVER:
-            return 160;
-        case GB_BORDER_ALWAYS:
-            return 256;
-    }
-}
-
-unsigned GB_get_screen_height(GB_gameboy_t *gb)
-{
-    switch (gb->border_mode) {
-        default:
-        case GB_BORDER_SGB:
-            return GB_is_hle_sgb(gb)? 224 : 144;
-        case GB_BORDER_NEVER:
-            return 144;
-        case GB_BORDER_ALWAYS:
-            return 224;
-    }
-}
-
-unsigned GB_get_player_count(GB_gameboy_t *gb)
-{
-    return GB_is_hle_sgb(gb)? gb->sgb->player_count : 1;
-}
-
-double GB_get_usual_frame_rate(GB_gameboy_t *gb)
-{
-    return GB_get_clock_rate(gb) / (double)LCDC_PERIOD;
 }
 
 void GB_set_joyp_write_callback(GB_gameboy_t *gb, GB_joyp_write_callback_t callback)

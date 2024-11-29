@@ -102,6 +102,10 @@ void GB_set_color_correction_mode(GB_gameboy_t *gb, GB_color_correction_mode_t m
 void GB_set_light_temperature(GB_gameboy_t *gb, double temperature);
 void GB_set_pixels_output(GB_gameboy_t *gb, uint32_t *output);
 
+unsigned GB_get_screen_width(GB_gameboy_t *gb);
+unsigned GB_get_screen_height(GB_gameboy_t *gb);
+double GB_get_usual_frame_rate(GB_gameboy_t *gb);
+
 bool GB_is_odd_frame(GB_gameboy_t *gb);
 uint32_t GB_convert_rgb15(GB_gameboy_t *gb, uint16_t color, bool for_border);
 

@@ -227,6 +227,7 @@
 
 - (void)viewWillAppear:(BOOL)animated
 {
+    [super viewWillAppear:animated];
     [self.navigationController setToolbarHidden:false animated:false];
     self.navigationController.toolbar.disableCompactLayout = true;
 }

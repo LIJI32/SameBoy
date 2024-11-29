@@ -13,6 +13,7 @@ static void __attribute__((constructor)) band_limited_init(void)
 {
     const unsigned master_size = GB_BAND_LIMITED_WIDTH * GB_BAND_LIMITED_PHASES;
     double *master = malloc(master_size  * sizeof(*master));
+    memset(master, 0, master_size  * sizeof(*master));
     
     const unsigned sine_size = 256 * GB_BAND_LIMITED_PHASES + 2;
     const unsigned max_harmonic = sine_size / 2 / GB_BAND_LIMITED_PHASES;
@@ -1752,7 +1753,9 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
 
 void GB_set_sample_rate(GB_gameboy_t *gb, unsigned sample_rate)
 {
-    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    if (gb->apu_output.sample_rate != sample_rate) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
     gb->apu_output.sample_rate = sample_rate;
     if (sample_rate) {
         gb->apu_output.highpass_rate = pow(0.999958, GB_get_clock_rate(gb) / (double)sample_rate);

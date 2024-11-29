@@ -67,3 +67,4 @@ internal void GB_sgb_render(GB_gameboy_t *gb);
 internal void GB_sgb_load_default_data(GB_gameboy_t *gb);
 
 #endif
+unsigned GB_get_player_count(GB_gameboy_t *gb);

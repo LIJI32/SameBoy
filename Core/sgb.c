@@ -909,3 +909,7 @@ static void render_jingle(GB_gameboy_t *gb, size_t count)
     return;
 }
 
+unsigned GB_get_player_count(GB_gameboy_t *gb)
+{
+    return GB_is_hle_sgb(gb)? gb->sgb->player_count : 1;
+}

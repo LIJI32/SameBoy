@@ -990,11 +990,6 @@ uint32_t GB_get_clock_rate(GB_gameboy_t *gb);
 uint32_t GB_get_unmultiplied_clock_rate(GB_gameboy_t *gb);
 void GB_set_clock_multiplier(GB_gameboy_t *gb, double multiplier);
 
-unsigned GB_get_screen_width(GB_gameboy_t *gb);
-unsigned GB_get_screen_height(GB_gameboy_t *gb);
-double GB_get_usual_frame_rate(GB_gameboy_t *gb);
-unsigned GB_get_player_count(GB_gameboy_t *gb);
-
 /* Handy ROM info APIs */
 // `title` must be at least 17 bytes in size
 void GB_get_rom_title(GB_gameboy_t *gb, char *title);
