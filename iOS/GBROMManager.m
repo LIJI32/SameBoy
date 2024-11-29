@@ -294,7 +294,7 @@
             }
             struct stat first, second;
             stat([self romDirectoryForROM:rom].UTF8String, &first);
-            stat([self romDirectoryForROM:ret[uuid]].UTF8String, &first);
+            stat([self romDirectoryForROM:ret[uuid]].UTF8String, &second);
             if (first.st_ino > second.st_ino) {
                 [self invalidateWatchUUIDForROM:rom];
             }
