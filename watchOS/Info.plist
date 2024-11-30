@@ -2,45 +2,47 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleExecutable</key>
-	<string>SameBoy</string>
+    <key>CFBundleExecutable</key>
+    <string>SameBoy</string>
     <key>CFBundleIdentifier</key>
     <string>com.github.liji32.sameboy.ios.watchapp</string>
-	<key>CFBundleIcons</key>
-	<dict>
-		<key>CFBundlePrimaryIcon</key>
-		<dict>
-			<key>CFBundleIconName</key>
-			<string>AppIcon</string>
-		</dict>
-	</dict>
-	<key>CFBundleName</key>
-	<string>SameBoy</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
+    <key>CFBundleIcons</key>
+    <dict>
+        <key>CFBundlePrimaryIcon</key>
+        <dict>
+            <key>CFBundleIconName</key>
+            <string>AppIcon</string>
+        </dict>
+    </dict>
+    <key>CFBundleName</key>
+    <string>SameBoy</string>
+    <key>CFBundleDisplayName</key>
+    <string>SameBoy</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
     <key>CFBundleShortVersionString</key>
     <string>@VERSION</string>
     <key>CFBundleVersion</key>
     <string>@COMMITS</string>
-	<key>CFBundleSupportedPlatforms</key>
-	<array>
-		<string>WatchOS</string>
-	</array>
-	<key>MinimumOSVersion</key>
-	<string>6.0</string>
-	<key>UIDeviceFamily</key>
-	<array>
-		<integer>4</integer>
-	</array>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-	</array>
-	<key>WKCompanionAppBundleIdentifier</key>
-	<string>com.github.liji32.sameboy.ios</string>
-	<key>WKWatchKitApp</key>
-	<true/>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>WatchOS</string>
+    </array>
+    <key>MinimumOSVersion</key>
+    <string>7.0</string>
+    <key>UIDeviceFamily</key>
+    <array>
+        <integer>4</integer>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    </array>
+    <key>WKCompanionAppBundleIdentifier</key>
+    <string>com.github.liji32.sameboy.ios</string>
+    <key>WKWatchKitApp</key>
+    <true/>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2015-@COPYRIGHT_YEAR Lior Halphon</string>
     <key>DTCompiler</key>
@@ -57,7 +59,5 @@
     <string>1530</string>
     <key>DTXcodeBuild</key>
     <string>15E204a</string>
-    <key>ITSAppUsesNonExemptEncryption</key>
-    <false/>
 </dict>
 </plist>

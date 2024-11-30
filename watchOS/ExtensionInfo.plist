@@ -8,6 +8,8 @@
     <string>com.github.liji32.sameboy.ios.watchapp.ext</string>
 	<key>CFBundleName</key>
 	<string>SameBoy</string>
+    <key>CFBundleDisplayName</key>
+    <string>SameBoy</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>CFBundleShortVersionString</key>
@@ -19,7 +21,7 @@
 		<string>WatchOS</string>
 	</array>
 	<key>MinimumOSVersion</key>
-	<string>6.0</string>
+	<string>7.0</string>
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>4</integer>

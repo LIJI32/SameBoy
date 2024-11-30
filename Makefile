@@ -552,14 +552,14 @@ $(OBJ)/installer: iOS/installer.m
 
 # watchOS Port
 
-$(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/SameBoy \
-							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/dmg_boot.bin \
-							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/mgb_boot.bin \
-							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/cgb0_boot.bin \
-							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/cgb_boot.bin \
-							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/agb_boot.bin \
-							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/sgb_boot.bin \
-							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/sgb2_boot.bin \
+$(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/SameBoy \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/dmg_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/mgb_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/cgb0_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/cgb_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/agb_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/sgb_boot.bin \
+							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/sgb2_boot.bin \
 							$(BIN)/SameBoy-watchOS.app/Interface.plist \
                             $(BIN)/SameBoy-watchOS.app/Assets.car \
 							$(shell ls watchOS/*.png) \
@@ -568,17 +568,17 @@ $(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExten
 							watchOS/Info.plist
 	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app
 	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/;s/@IOS_MIN/$(IOS_MIN)/;s/@COMMITS/$(COMMITS)/" < watchOS/Info.plist > $(BIN)/SameBoy-watchOS.app/Info.plist
-	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/
-	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/;s/@IOS_MIN/$(IOS_MIN)/;s/@COMMITS/$(COMMITS)/" < watchOS/ExtensionInfo.plist > $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/Info.plist
+	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/
+	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/;s/@IOS_MIN/$(IOS_MIN)/;s/@COMMITS/$(COMMITS)/" < watchOS/ExtensionInfo.plist > $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/Info.plist
 	cp watchOS/WatchKitStub $(BIN)/SameBoy-watchOS.app/SameBoy
 	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app/_WatchKitStub
 	cp watchOS/WatchKitStub $(BIN)/SameBoy-watchOS.app/_WatchKitStub/WK
-	cp watchOS/GBGameScene.sks $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/
-	cp watchOS/*.png $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/
-	$(CODESIGN) $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex
+	cp watchOS/GBGameScene.sks $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/
+	cp watchOS/*.png $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/
+	$(CODESIGN) $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex
 	$(CODESIGN) $@
 
-$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/SameBoy: $(CORE_OBJECTS) $(WATCHOS_OBJECTS)
+$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/SameBoy: $(CORE_OBJECTS) $(WATCHOS_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(FAT_FLAGS) $^ -o $@ $(LDFLAGS)
 ifeq ($(CONF), release)
@@ -741,7 +741,7 @@ $(BIN)/SameBoy-iOS.app/%.bin: $(BOOTROMS_DIR)/%.bin
 	-@$(MKDIR) -p $(dir $@)
 	cp -f $< $@
 	
-$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoyWatchExtension.appex/%.bin: $(BOOTROMS_DIR)/%.bin
+$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/%.bin: $(BOOTROMS_DIR)/%.bin
 	-@$(MKDIR) -p $(dir $@)
 	cp -f $< $@
 
