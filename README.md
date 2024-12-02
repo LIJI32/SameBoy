@@ -43,7 +43,7 @@ SameBoy requires the following tools and libraries to build:
  * macOS Cocoa frontend: macOS SDK and Xcode (For command line tools and ibtool)
  * SDL frontend: libsdl2
  * [rgbds](https://github.com/gbdev/rgbds/releases/), for boot ROM compilation
- * [cppp](https://github.com/BR903/cppp), for cleaning up headers when compiling SameBoy as a library
+ * [cppp](https://github.com/LIJI32/cppp), for cleaning up headers when compiling SameBoy as a library
 
 On Windows, SameBoy also requires:
  * Visual Studio (For headers, etc.)

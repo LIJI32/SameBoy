@@ -167,7 +167,7 @@ enum {
     GB_IO_NR41       = 0x20, // Channel 4 Sound Length (R/W)
     GB_IO_NR42       = 0x21, // Channel 4 Volume Envelope (R/W)
     GB_IO_NR43       = 0x22, // Channel 4 Polynomial Counter (R/W)
-    GB_IO_NR44       = 0x23, // Channel 4 Counter/consecutive, Inital (R/W)
+    GB_IO_NR44       = 0x23, // Channel 4 Counter/consecutive, Initial (R/W)
     GB_IO_NR50       = 0x24, // Channel control / ON-OFF / Volume (R/W)
     GB_IO_NR51       = 0x25, // Selection of Sound output terminal (R/W)
     GB_IO_NR52       = 0x26, // Sound on/off

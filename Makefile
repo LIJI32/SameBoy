@@ -13,6 +13,8 @@ ifneq ($(findstring MSYS,$(PLATFORM)),)
 PLATFORM := windows32
 endif
 
+DL_EXT := so
+
 ifeq ($(PLATFORM),windows32)
 _ := $(shell chcp 65001)
 EXESUFFIX:=.exe
@@ -29,6 +31,7 @@ PB12_COMPRESS := build/pb12$(EXESUFFIX)
 ifeq ($(PLATFORM),Darwin)
 DEFAULT := cocoa
 ENABLE_OPENAL ?= 1
+DL_EXT := dylib
 else
 DEFAULT := sdl
 endif
@@ -205,7 +208,7 @@ endif
 
 CFLAGS += $(WARNINGS)
 
-CFLAGS += -std=gnu11 -D_GNU_SOURCE -DGB_VERSION='"$(VERSION)"' -DGB_COPYRIGHT_YEAR='"$(COPYRIGHT_YEAR)"' -I. -D_USE_MATH_DEFINES
+CFLAGS += -std=gnu11 -D_GNU_SOURCE -DGB_VERSION='"$(VERSION)"' -DGB_COPYRIGHT_YEAR='"$(COPYRIGHT_YEAR)"' -I. -D_USE_MATH_DEFINES -fPIC
 ifneq (,$(UPDATE_SUPPORT))
 CFLAGS += -DUPDATE_SUPPORT
 endif
@@ -366,9 +369,6 @@ LDFLAGS += -Wl,-exported_symbols_list,$(NULL)
 STRIP := strip -x
 CODESIGN := codesign -fs -
 endif
-ifeq ($(PLATFORM),windows32)
-LDFLAGS +=  -fuse-ld=lld
-endif
 LDFLAGS += -flto
 CFLAGS += -flto
 LDFLAGS += -Wno-lto-type-mismatch # For GCC's LTO
@@ -377,6 +377,9 @@ else
 $(error Invalid value for CONF: $(CONF). Use "debug", "release" or "native_release")
 endif
 
+ifeq ($(PLATFORM),windows32)
+LDFLAGS +=  -fuse-ld=lld
+endif
 
 
 # Define our targets
@@ -398,9 +401,9 @@ _ios: $(BIN)/SameBoy-iOS.app $(OBJ)/installer
 ios-ipa: $(BIN)/SameBoy-iOS.ipa
 ios-deb: $(BIN)/SameBoy-iOS.deb
 ifeq ($(PLATFORM),windows32)
-lib: lib-unsupported
+lib: $(LIBDIR)/libsameboy.dll
 else
-lib: $(LIBDIR)/libsameboy.o $(LIBDIR)/libsameboy.a
+lib: $(LIBDIR)/libsameboy.o $(LIBDIR)/libsameboy.a $(LIBDIR)/libsameboy.$(DL_EXT)
 endif
 all: sdl tester libretro lib
 ifeq ($(PLATFORM),Darwin)
@@ -627,7 +630,7 @@ endif
 
 $(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy.dylib
 	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -rpath @executable_path/../../ -Wl,-reexport_library,$^
-    
+	
 $(BIN)/SameBoy.app/Contents/MacOS/SameBoy.dylib: $(COCOA_OBJECTS) $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -shared -install_name @rpath/Contents/MacOS/SameBoy.dylib -framework OpenGL -framework AudioUnit -framework AVFoundation -framework CoreVideo -framework CoreMedia -framework IOKit -framework PreferencePanes -framework Carbon -framework QuartzCore -framework Security -framework WebKit -weak_framework Metal -weak_framework MetalKit -framework Quicklook -framework AppKit -Wl,-exported_symbols_list,QuickLook/exports.sym -Wl,-exported_symbol,_main
@@ -687,7 +690,7 @@ ifeq ($(CONF), release)
 	$(CODESIGN) $@
 endif
 
-# Windows version builds two, one with a conole and one without it
+# Windows version builds two, one with a console and one without it
 $(BIN)/SDL/sameboy.exe: $(CORE_OBJECTS) $(SDL_OBJECTS) $(OBJ)/Windows/resources.o
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) -Wl,/subsystem:windows
@@ -878,14 +881,39 @@ $(LIBDIR)/libsameboy.a: $(LIBDIR)/libsameboy.o
 	-@rm -f $@
 	ar -crs $@ $^
 	
+$(LIBDIR)/libsameboy.$(DL_EXT): $(CORE_OBJECTS)
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(LDFLAGS) -shared $(FAT_FLAGS) $(CFLAGS) $^ -o $@
+ifeq ($(CONF), release)
+	$(STRIP) $@
+	$(CODESIGN)$@
+endif
+
+
+# Windows dll
+
+# To avoid Windows' sort.exe
+SORT = $(dir $(shell which grep))\sort.exe
+
+$(OBJ)/names: $(CORE_OBJECTS)
+	llvm-nm -gU $(CORE_OBJECTS) -P | grep -Eo "^GB_[^ ]+" | $(SORT) -u > $@
+
+$(OBJ)/exports: $(PUBLIC_HEADERS)
+	grep -Eho "\bGB_[a-zA-Z0-9_]+\b" $^ | $(dir $(shell which grep))\sort.exe -u > $@
+
+$(OBJ)/exports.def: $(OBJ)/exports $(OBJ)/names
+	echo LIBRARY libsameboy > $@
+	echo EXPORTS >> $@
+	comm -12 $^ >> $@
+
+$(LIBDIR)/libsameboy.dll: $(CORE_OBJECTS) | $(OBJ)/exports.def
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(LDFLAGS) -Wl,-lldmingw -Wl,/def:$(OBJ)/exports.def -shared $(CFLAGS) $^ -o $@
+	
+# CPPP doesn't like multibyte characters, so we replace the single quote character before processing so it doesn't complain
 $(INC)/%.h: Core/%.h
 	-@$(MKDIR) -p $(dir $@)
-	-@# CPPP doesn't like multibyte characters, so we replace the single quote character before processing so it doesn't complain
 	sed "s/'/@SINGLE_QUOTE@/g" $^ | cppp $(CPPP_FLAGS) | sed "s/@SINGLE_QUOTE@/'/g" > $@
-
-lib-unsupported:
-	@echo Due to limitations of lld-link, compiling SameBoy as a library on Windows is not supported.
-	@false
 	
 # Clean
 clean:
