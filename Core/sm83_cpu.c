@@ -25,7 +25,7 @@ typedef enum {
     GB_CONFLICT_LCDC_CGB_DOUBLE,
     GB_CONFLICT_STAT_CGB_DOUBLE,
     GB_CONFLICT_NR10_CGB_DOUBLE,
-    GB_CONFLICT_SCX_CGB_DOUBLE,
+    GB_CONFLICT_SCX_DMG_AND_CGB_DOUBLE,
 } conflict_t;
 
 static const conflict_t cgb_conflict_map[0x80] = {
@@ -48,7 +48,7 @@ static const conflict_t cgb_double_conflict_map[0x80] = {
     [GB_IO_WY] = GB_CONFLICT_READ_OLD,
     [GB_IO_STAT] = GB_CONFLICT_STAT_CGB_DOUBLE,
     [GB_IO_NR10] = GB_CONFLICT_NR10_CGB_DOUBLE,
-    [GB_IO_SCX] = GB_CONFLICT_SCX_CGB_DOUBLE,
+    [GB_IO_SCX] = GB_CONFLICT_SCX_DMG_AND_CGB_DOUBLE,
     [GB_IO_WX] = GB_CONFLICT_READ_OLD,
 };
 
@@ -59,15 +59,12 @@ static const conflict_t dmg_conflict_map[0x80] = {
     [GB_IO_LCDC] = GB_CONFLICT_DMG_LCDC,
     [GB_IO_SCY] = GB_CONFLICT_READ_NEW,
     [GB_IO_STAT] = GB_CONFLICT_STAT_DMG,
- 
     [GB_IO_BGP] = GB_CONFLICT_PALETTE_DMG,
     [GB_IO_OBP0] = GB_CONFLICT_PALETTE_DMG,
     [GB_IO_OBP1] = GB_CONFLICT_PALETTE_DMG,
     [GB_IO_WY] = GB_CONFLICT_READ_OLD,
     [GB_IO_WX] = GB_CONFLICT_WX_DMG,
-    
-    /* Todo: these were not verified at all */
-    [GB_IO_SCX] = GB_CONFLICT_READ_NEW,
+    [GB_IO_SCX] = GB_CONFLICT_SCX_DMG_AND_CGB_DOUBLE,
 };
 
 /* Todo: Verify on an SGB1 */
@@ -77,15 +74,12 @@ static const conflict_t sgb_conflict_map[0x80] = {
     [GB_IO_LCDC] = GB_CONFLICT_SGB_LCDC,
     [GB_IO_SCY] = GB_CONFLICT_READ_NEW,
     [GB_IO_STAT] = GB_CONFLICT_STAT_DMG,
-    
     [GB_IO_BGP] = GB_CONFLICT_READ_NEW,
     [GB_IO_OBP0] = GB_CONFLICT_READ_NEW,
     [GB_IO_OBP1] = GB_CONFLICT_READ_NEW,
     [GB_IO_WY] = GB_CONFLICT_READ_OLD,
     [GB_IO_WX] = GB_CONFLICT_WX_DMG,
-    
-    /* Todo: these were not verified at all */
-    [GB_IO_SCX] = GB_CONFLICT_READ_NEW,
+    [GB_IO_SCX] = GB_CONFLICT_SCX_DMG_AND_CGB_DOUBLE,
 };
 
 static uint8_t cycle_read(GB_gameboy_t *gb, uint16_t addr)
@@ -302,7 +296,7 @@ static void cycle_write(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
             break;
         }
             
-        case GB_CONFLICT_SCX_CGB_DOUBLE:
+        case GB_CONFLICT_SCX_DMG_AND_CGB_DOUBLE:
             GB_advance_cycles(gb, gb->pending_cycles - 2);
             GB_write_memory(gb, addr, value);
             gb->pending_cycles = 6;
