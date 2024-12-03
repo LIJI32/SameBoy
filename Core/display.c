@@ -2389,6 +2389,14 @@ uint8_t GB_get_oam_info(GB_gameboy_t *gb, GB_oam_info_t *dest, uint8_t *object_h
         if (GB_is_cgb(gb) && (flags & 0x8)) {
             vram_address += 0x2000;
         }
+        
+        uint8_t dmg_palette = gb->io_registers[palette? GB_IO_OBP1:GB_IO_OBP0];
+        if (dmg_palette == 0xFF) {
+            dmg_palette = 0xFC;
+        }
+        else if (dmg_palette == 0x00) {
+            dmg_palette = 0x03;
+        }
 
         for (unsigned y = 0; y < *object_height; y++) {
             unrolled for (unsigned x = 0; x < 8; x++) {
@@ -2396,7 +2404,7 @@ uint8_t GB_get_oam_info(GB_gameboy_t *gb, GB_oam_info_t *dest, uint8_t *object_h
                                  ((gb->vram[vram_address + 1] >> ((~x)&7)) & 1) << 1 );
                 
                 if (!gb->cgb_mode) {
-                    color = (gb->io_registers[palette? GB_IO_OBP1:GB_IO_OBP0] >> (color << 1)) & 3;
+                    color = (dmg_palette >> (color << 1)) & 3;
                 }
                 dest[i].image[((flags & 0x20)?7-x:x) + ((flags & 0x40)?*object_height - 1 -y:y) * 8] = gb->object_palettes_rgb[palette * 4 + color];
             }
