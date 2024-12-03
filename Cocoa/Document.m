@@ -811,6 +811,28 @@ again:;
     NSFont *newFont = [self debuggerFontOfSize:0];
     NSFont *newBoldFont = [[NSFontManager sharedFontManager] convertFont:newFont toHaveTrait:NSBoldFontMask];
     self.debuggerSideViewInput.font = newFont;
+    
+    unsigned inputHeight = MAX(ceil([@" " sizeWithAttributes:@{
+        NSFontAttributeName: newFont
+    }].height) + 6, 26);
+    
+    
+    NSRect frame = _consoleInput.frame;
+    unsigned oldHeight = frame.size.height;
+    frame.size.height = inputHeight;
+    _consoleInput.frame = frame;
+    
+    frame = _debugBar.frame;
+    frame.origin.y += (signed)(inputHeight - oldHeight);
+    _debugBar.frame = frame;
+    
+    frame = _debuggerScrollView.frame;
+    frame.origin.y += (signed)(inputHeight - oldHeight);
+    frame.size.height -= (signed)(inputHeight - oldHeight);
+    _debuggerScrollView.frame = frame;
+    
+    _consoleInput.font = newFont;
+    
     for (NSTextView *view in @[_debuggerSideView, _consoleOutput]) {
         NSMutableAttributedString *newString = view.attributedString.mutableCopy;
         [view.attributedString enumerateAttribute:NSFontAttributeName

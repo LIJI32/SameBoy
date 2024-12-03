@@ -15,15 +15,12 @@
                 <outlet property="consoleInput" destination="l22-S8-uji" id="Heu-am-YgB"/>
                 <outlet property="consoleOutput" destination="doS-dM-hnl" id="Gn5-ju-Wb0"/>
                 <outlet property="consoleWindow" destination="21F-Ah-yHX" id="eQ4-ug-LsT"/>
-                <outlet property="debuggerBackstepButton" destination="onn-R8-3vg" id="gi1-dC-tJj"/>
-                <outlet property="debuggerContinueButton" destination="G4h-KO-Z3g" id="Dad-5e-XYM"/>
-                <outlet property="debuggerFinishButton" destination="vtb-n5-Qlz" id="9vv-fJ-gxp"/>
-                <outlet property="debuggerNextButton" destination="cOi-Rs-9gS" id="Xjx-uM-D0u"/>
+                <outlet property="debugBar" destination="sah-kv-6KJ" id="24d-aM-rs5"/>
+                <outlet property="debuggerScrollView" destination="oTo-zx-o6N" id="EbZ-Le-dZJ"/>
                 <outlet property="debuggerSideView" destination="JgV-7E-iwp" id="RaA-fw-3i1"/>
                 <outlet property="debuggerSideViewInput" destination="w0g-eK-jM4" id="GBf-WK-ryI"/>
                 <outlet property="debuggerSidebarEffectView" destination="4Z2-33-dYY" id="Ja6-bC-rQg"/>
                 <outlet property="debuggerSplitView" destination="pUc-ZN-vl5" id="0sG-0D-cID"/>
-                <outlet property="debuggerStepButton" destination="DsN-Ce-QoH" id="Ts4-uK-pvI"/>
                 <outlet property="debuggerVerticalLine" destination="7bR-gM-1At" id="rfy-7Z-388"/>
                 <outlet property="feedImageView" destination="Ar0-nN-eop" id="wHa-St-o4G"/>
                 <outlet property="gridButton" destination="fL6-2S-Rgd" id="jtV-jh-GHC"/>
@@ -153,87 +150,93 @@
                                             <action selector="consoleInput:" target="-2" id="ylQ-vw-ARS"/>
                                         </connections>
                                     </textField>
-                                    <box verticalHuggingPriority="750" fixedFrame="YES" boxType="separator" translatesAutoresizingMaskIntoConstraints="NO" id="xJr-K6-B4B">
-                                        <rect key="frame" x="0.0" y="49" width="591" height="4"/>
+                                    <customView id="sah-kv-6KJ">
+                                        <rect key="frame" x="0.0" y="26" width="591" height="26"/>
                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxY="YES"/>
-                                    </box>
-                                    <box verticalHuggingPriority="750" fixedFrame="YES" boxType="separator" translatesAutoresizingMaskIntoConstraints="NO" id="9DF-fj-a2v">
-                                        <rect key="frame" x="0.0" y="24" width="591" height="4"/>
-                                        <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxY="YES"/>
-                                    </box>
-                                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="G4h-KO-Z3g" customClass="GBDebuggerButton">
-                                        <rect key="frame" x="2" y="26" width="26" height="26"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <buttonCell key="cell" type="bevel" title="Interrupt" alternateTitle="interrupt" bezelStyle="rounded" image="InterruptTemplate" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="wfO-32-eG5">
-                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                            <font key="font" metaFont="system"/>
-                                        </buttonCell>
-                                        <color key="contentTintColor" name="controlAccentColor" catalog="System" colorSpace="catalog"/>
-                                        <connections>
-                                            <action selector="debuggerButtonPressed:" target="-2" id="SjG-90-8dJ"/>
-                                            <outlet property="textField" destination="l22-S8-uji" id="NZ8-eJ-Uyd"/>
-                                        </connections>
-                                    </button>
-                                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="cOi-Rs-9gS" customClass="GBDebuggerButton">
-                                        <rect key="frame" x="28" y="26" width="26" height="26"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <buttonCell key="cell" type="bevel" title="Step Over" alternateTitle="next" bezelStyle="rounded" image="NextTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="buW-ke-lgF">
-                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                            <font key="font" metaFont="system"/>
-                                        </buttonCell>
-                                        <connections>
-                                            <action selector="debuggerButtonPressed:" target="-2" id="g7E-UM-SHV"/>
-                                            <outlet property="textField" destination="l22-S8-uji" id="1uM-AA-yHi"/>
-                                        </connections>
-                                    </button>
-                                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="DsN-Ce-QoH" customClass="GBDebuggerButton">
-                                        <rect key="frame" x="54" y="26" width="26" height="26"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <buttonCell key="cell" type="bevel" title="Step Into" alternateTitle="step" bezelStyle="rounded" image="StepTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="ATJ-Vx-zbo">
-                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                            <font key="font" metaFont="system"/>
-                                        </buttonCell>
-                                        <connections>
-                                            <action selector="debuggerButtonPressed:" target="-2" id="QMw-82-HKJ"/>
-                                            <outlet property="textField" destination="l22-S8-uji" id="qaF-TF-cwg"/>
-                                        </connections>
-                                    </button>
-                                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="vtb-n5-Qlz" customClass="GBDebuggerButton">
-                                        <rect key="frame" x="78" y="26" width="26" height="26"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <buttonCell key="cell" type="bevel" title="Step Out" alternateTitle="finish" bezelStyle="rounded" image="FinishTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="8mF-ii-5Hx">
-                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                            <font key="font" metaFont="system"/>
-                                        </buttonCell>
-                                        <connections>
-                                            <action selector="debuggerButtonPressed:" target="-2" id="krr-9m-Jfz"/>
-                                            <outlet property="textField" destination="l22-S8-uji" id="uYK-tU-BnO"/>
-                                        </connections>
-                                    </button>
-                                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="oCa-UH-1mi" customClass="GBDebuggerButton">
-                                        <rect key="frame" x="563" y="26" width="26" height="26"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
-                                        <buttonCell key="cell" type="bevel" title="Help" alternateTitle="help" bezelStyle="rounded" image="HelpTemplate" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="tvn-kY-8FO">
-                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                            <font key="font" metaFont="system"/>
-                                        </buttonCell>
-                                        <connections>
-                                            <action selector="debuggerButtonPressed:" target="-2" id="PwN-rf-AcB"/>
-                                            <outlet property="textField" destination="l22-S8-uji" id="blK-B3-MWI"/>
-                                        </connections>
-                                    </button>
-                                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="onn-R8-3vg" customClass="GBDebuggerButton">
-                                        <rect key="frame" x="102" y="26" width="26" height="26"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <buttonCell key="cell" type="bevel" title="Step Backward" alternateTitle="backstep" bezelStyle="rounded" image="BackstepTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="WtK-kD-bf6">
-                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                            <font key="font" metaFont="system"/>
-                                        </buttonCell>
-                                        <connections>
-                                            <action selector="debuggerButtonPressed:" target="-2" id="S9a-jV-Z6g"/>
-                                            <outlet property="textField" destination="l22-S8-uji" id="1gw-Lc-QFS"/>
-                                        </connections>
-                                    </button>
+                                        <subviews>
+                                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="ybQ-jy-NgI" customClass="GBDebuggerButton">
+                                                <rect key="frame" x="0.0" y="0.0" width="26" height="26"/>
+                                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                                <buttonCell key="cell" type="bevel" title="Interrupt" alternateTitle="interrupt" bezelStyle="rounded" image="InterruptTemplate" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="Yd7-kY-21r">
+                                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                    <font key="font" metaFont="system"/>
+                                                </buttonCell>
+                                                <color key="contentTintColor" name="controlAccentColor" catalog="System" colorSpace="catalog"/>
+                                                <connections>
+                                                    <action selector="debuggerButtonPressed:" target="-2" id="8pX-u8-oFG"/>
+                                                    <outlet property="textField" destination="l22-S8-uji" id="cIZ-tr-dAu"/>
+                                                </connections>
+                                            </button>
+                                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="jdD-yP-Nr6" customClass="GBDebuggerButton">
+                                                <rect key="frame" x="76" y="0.0" width="26" height="26"/>
+                                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                                <buttonCell key="cell" type="bevel" title="Step Out" alternateTitle="finish" bezelStyle="rounded" image="FinishTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="16t-ix-lOh">
+                                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                    <font key="font" metaFont="system"/>
+                                                </buttonCell>
+                                                <connections>
+                                                    <action selector="debuggerButtonPressed:" target="-2" id="FXb-hO-cEh"/>
+                                                    <outlet property="textField" destination="l22-S8-uji" id="IPT-hF-MHv"/>
+                                                </connections>
+                                            </button>
+                                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tTP-Zs-Ohu" customClass="GBDebuggerButton">
+                                                <rect key="frame" x="26" y="0.0" width="26" height="26"/>
+                                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                                <buttonCell key="cell" type="bevel" title="Step Over" alternateTitle="next" bezelStyle="rounded" image="NextTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="835-qy-CNq">
+                                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                    <font key="font" metaFont="system"/>
+                                                </buttonCell>
+                                                <connections>
+                                                    <action selector="debuggerButtonPressed:" target="-2" id="qL6-Mz-v2a"/>
+                                                    <outlet property="textField" destination="l22-S8-uji" id="MRn-cs-a9T"/>
+                                                </connections>
+                                            </button>
+                                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="E87-Uq-f2l" customClass="GBDebuggerButton">
+                                                <rect key="frame" x="100" y="0.0" width="26" height="26"/>
+                                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                                <buttonCell key="cell" type="bevel" title="Step Backward" alternateTitle="backstep" bezelStyle="rounded" image="BackstepTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="yr5-aU-Fli">
+                                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                    <font key="font" metaFont="system"/>
+                                                </buttonCell>
+                                                <connections>
+                                                    <action selector="debuggerButtonPressed:" target="-2" id="vyO-14-k3A"/>
+                                                    <outlet property="textField" destination="l22-S8-uji" id="f5e-xA-0En"/>
+                                                </connections>
+                                            </button>
+                                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="fsQ-dD-A8C" customClass="GBDebuggerButton">
+                                                <rect key="frame" x="52" y="0.0" width="26" height="26"/>
+                                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                                <buttonCell key="cell" type="bevel" title="Step Into" alternateTitle="step" bezelStyle="rounded" image="StepTemplate" imagePosition="only" alignment="center" enabled="NO" imageScaling="proportionallyDown" inset="2" id="lau-41-TYH">
+                                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                    <font key="font" metaFont="system"/>
+                                                </buttonCell>
+                                                <connections>
+                                                    <action selector="debuggerButtonPressed:" target="-2" id="6DD-pu-gwc"/>
+                                                    <outlet property="textField" destination="l22-S8-uji" id="ILQ-oy-iGc"/>
+                                                </connections>
+                                            </button>
+                                            <box verticalHuggingPriority="750" fixedFrame="YES" boxType="separator" translatesAutoresizingMaskIntoConstraints="NO" id="8bt-2t-EIG">
+                                                <rect key="frame" x="-2" y="23" width="593" height="4"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxY="YES"/>
+                                            </box>
+                                            <box verticalHuggingPriority="750" fixedFrame="YES" boxType="separator" translatesAutoresizingMaskIntoConstraints="NO" id="eSO-2z-QHX">
+                                                <rect key="frame" x="-2" y="-2" width="593" height="4"/>
+                                                <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxY="YES"/>
+                                            </box>
+                                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="0Jt-TO-8CM" customClass="GBDebuggerButton">
+                                                <rect key="frame" x="565" y="0.0" width="26" height="26"/>
+                                                <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxY="YES"/>
+                                                <buttonCell key="cell" type="bevel" title="Help" alternateTitle="help" bezelStyle="rounded" image="HelpTemplate" imagePosition="only" alignment="center" imageScaling="proportionallyDown" inset="2" id="fVh-bT-eYs">
+                                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                    <font key="font" metaFont="system"/>
+                                                </buttonCell>
+                                                <connections>
+                                                    <action selector="debuggerButtonPressed:" target="-2" id="hKh-wH-W5U"/>
+                                                    <outlet property="textField" destination="l22-S8-uji" id="PMA-QA-gwg"/>
+                                                </connections>
+                                            </button>
+                                        </subviews>
+                                    </customView>
                                 </subviews>
                             </customView>
                             <customView fixedFrame="YES" id="4Z2-33-dYY" customClass="GBOptionalVisualEffectView">
