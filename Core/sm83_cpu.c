@@ -227,7 +227,10 @@ static void cycle_write(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
             uint8_t old_value = GB_read_memory(gb, addr);
             GB_advance_cycles(gb, gb->pending_cycles - 2);
             GB_display_sync(gb);
-            if (gb->model != GB_MODEL_MGB && gb->position_in_line == 0 && (old_value & GB_LCDC_OBJ_EN) && !(value & GB_LCDC_OBJ_EN)) {
+            if (gb->model != GB_MODEL_MGB && gb->position_in_line == 0 && !(value & GB_LCDC_OBJ_EN)) {
+                old_value &= ~GB_LCDC_OBJ_EN;
+            }
+            else if (gb->during_object_fetch && !(value & GB_LCDC_OBJ_EN)) {
                 old_value &= ~GB_LCDC_OBJ_EN;
             }
             
