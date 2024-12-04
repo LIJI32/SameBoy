@@ -554,11 +554,13 @@ ifeq ($(CONF), release)
 	$(CODESIGN) $@
 endif
 
+# We place the dylib inside the Quick Look plugin, because Quick Look plugins run in a very strict sandbox
 
-$(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy.dylib
-	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -rpath @executable_path/../../ -Wl,-reexport_library,$^
+$(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -rpath @executable_path/../Library/QuickLook/SameBoy.qlgenerator/ -Wl,-reexport_library,$^
 	
-$(BIN)/SameBoy.app/Contents/MacOS/SameBoy.dylib: $(COCOA_OBJECTS) $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
+$(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib: $(COCOA_OBJECTS) $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -shared -install_name @rpath/Contents/MacOS/SameBoy.dylib -framework OpenGL -framework AudioUnit -framework AVFoundation -framework CoreVideo -framework CoreMedia -framework IOKit -framework PreferencePanes -framework Carbon -framework QuartzCore -framework Security -framework WebKit -weak_framework Metal -weak_framework MetalKit -framework Quicklook -framework AppKit -Wl,-exported_symbols_list,QuickLook/exports.sym -Wl,-exported_symbol,_main
 ifeq ($(CONF), release)
@@ -585,11 +587,9 @@ ifeq ($(CONF), release)
 	$(CODESIGN) $@
 endif
 
-# Currently, SameBoy.app includes two "copies" of each Core .o file once in the app itself and
-# once in the QL Generator. It should probably become a dylib instead.
-$(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy.dylib
+$(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL: $(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -bundle -Wl,-reexport_library,$^ -rpath @loader_path/../../../../../../
+	$(CC) -o $@ $(LDFLAGS) $(FAT_FLAGS) -bundle -Wl,-reexport_library,$^ -rpath @loader_path/../../
 ifeq ($(CONF), release)
 	$(STRIP) $@
 endif
