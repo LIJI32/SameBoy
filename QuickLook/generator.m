@@ -2,7 +2,7 @@
 #include <Cocoa/Cocoa.h>
 #include "get_image_for_rom.h"
 
-static OSStatus render(CGContextRef cgContext, CFURLRef url, bool showBorder)
+OSStatus GBQuickLookRender(CGContextRef cgContext, CFURLRef url, bool showBorder)
 {
     /* Load the template NSImages when generating the first thumbnail */
     static NSImage *template = nil;
@@ -11,7 +11,7 @@ static OSStatus render(CGContextRef cgContext, CFURLRef url, bool showBorder)
     static NSBundle *bundle = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        bundle = [NSBundle bundleWithIdentifier:@"com.github.liji32.sameboy.previewer"];
+        bundle = [NSBundle bundleForClass:NSClassFromString(@"GBPanel")];
     });
     if (showBorder) {
         static dispatch_once_t onceToken;
@@ -53,11 +53,13 @@ static OSStatus render(CGContextRef cgContext, CFURLRef url, bool showBorder)
     [NSGraphicsContext setCurrentContext:context];
     
     
+    double ratio = CGBitmapContextGetWidth(cgContext) / 1024.0;
+    
     /* Convert the screenshot to a magnified NSImage */
     NSImage *screenshot = [[NSImage alloc] initWithCGImage:iref size:NSMakeSize(160, 144)];
     /* Draw the screenshot */
     if (showBorder) {
-        [screenshot drawInRect:NSMakeRect(192, 150, 640, 576)];
+        [screenshot drawInRect:NSMakeRect(192 * ratio, 150 * ratio, 640 * ratio, 576 * ratio)];
     }
     else {
         [screenshot drawInRect:NSMakeRect(0, 0, 640, 576)];
@@ -82,7 +84,7 @@ static OSStatus render(CGContextRef cgContext, CFURLRef url, bool showBorder)
         }
         
         /* Mask it with the template (The middle part of the template image is transparent) */
-        [effectiveTemplate drawInRect:(NSRect){{0, 0}, template.size}];
+        [effectiveTemplate drawInRect:(NSRect){{0, 0}, {CGBitmapContextGetWidth(cgContext), CGBitmapContextGetHeight(cgContext)}}];
     }
     
     CGColorSpaceRelease(colorSpaceRef);
@@ -96,7 +98,7 @@ OSStatus GeneratePreviewForURL(void *thisInterface, QLPreviewRequestRef preview,
 {
     @autoreleasepool {
         CGContextRef cgContext = QLPreviewRequestCreateContext(preview, ((NSSize){640, 576}), true, nil);
-        if (render(cgContext, url, false) == noErr) {
+        if (GBQuickLookRender(cgContext, url, false) == noErr) {
             QLPreviewRequestFlushContext(preview, cgContext);
             CGContextRelease(cgContext);
             return noErr;
@@ -111,7 +113,7 @@ OSStatus GenerateThumbnailForURL(void *thisInterface, QLThumbnailRequestRef thum
     extern NSString *kQLThumbnailPropertyIconFlavorKey;
     @autoreleasepool {
         CGContextRef cgContext = QLThumbnailRequestCreateContext(thumbnail, ((NSSize){1024, 1024}), true, (__bridge CFDictionaryRef)(@{kQLThumbnailPropertyIconFlavorKey : @(0)}));
-        if (render(cgContext, url, true) == noErr) {
+        if (GBQuickLookRender(cgContext, url, true) == noErr) {
             QLThumbnailRequestFlushContext(thumbnail, cgContext);
             CGContextRelease(cgContext);
             return noErr;

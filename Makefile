@@ -342,18 +342,19 @@ LDFLAGS += -mno-outline
 endif
 
 STRIP := strip
-CODESIGN := true
-ifeq ($(PLATFORM),Darwin)
-LDFLAGS += -Wl,-exported_symbols_list,$(NULL)
-STRIP := strip -x
-CODESIGN := codesign -fs -
-endif
 LDFLAGS += -flto
 CFLAGS += -flto
 LDFLAGS += -Wno-lto-type-mismatch # For GCC's LTO
 
 else
 $(error Invalid value for CONF: $(CONF). Use "debug", "release" or "native_release")
+endif
+
+CODESIGN := true
+ifeq ($(PLATFORM),Darwin)
+LDFLAGS += -Wl,-exported_symbols_list,$(NULL)
+STRIP := strip -x
+CODESIGN := codesign -fs -
 endif
 
 ifeq ($(PLATFORM),windows32)
@@ -540,7 +541,9 @@ $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
                     $(BIN)/SameBoy.app/Contents/Resources/sgb_boot.bin \
                     $(BIN)/SameBoy.app/Contents/Resources/sgb2_boot.bin \
                     $(patsubst %.xib,%.nib,$(addprefix $(BIN)/SameBoy.app/Contents/Resources/,$(shell cd Cocoa;ls *.xib))) \
-                    $(BIN)/SameBoy.qlgenerator \
+                    $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator \
+					$(BIN)/SameBoy.app/Contents/PlugIns/Thumbnailer.appex \
+					$(BIN)/SameBoy.app/Contents/PlugIns/Previewer.appex \
                     Shaders
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Resources
 	cp Cocoa/*.icns Cocoa/*.png Misc/registers.sym $(BIN)/SameBoy.app/Contents/Resources/
@@ -549,20 +552,19 @@ $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Resources/Shaders
 	cp Shaders/*.fsh Shaders/*.metal $(BIN)/SameBoy.app/Contents/Resources/Shaders
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Library/QuickLook/
-	cp -rf $(BIN)/SameBoy.qlgenerator $(BIN)/SameBoy.app/Contents/Library/QuickLook/
 ifeq ($(CONF), release)
 	$(CODESIGN) $@
 endif
 
 # We place the dylib inside the Quick Look plugin, because Quick Look plugins run in a very strict sandbox
 
-$(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib
+$(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -rpath @executable_path/../Library/QuickLook/SameBoy.qlgenerator/ -Wl,-reexport_library,$^
 	
-$(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib: $(COCOA_OBJECTS) $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
+$(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib: $(COCOA_OBJECTS) $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -shared -install_name @rpath/Contents/MacOS/SameBoy.dylib -framework OpenGL -framework AudioUnit -framework AVFoundation -framework CoreVideo -framework CoreMedia -framework IOKit -framework PreferencePanes -framework Carbon -framework QuartzCore -framework Security -framework WebKit -weak_framework Metal -weak_framework MetalKit -framework Quicklook -framework AppKit -Wl,-exported_symbols_list,QuickLook/exports.sym -Wl,-exported_symbol,_main
+	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -shared -install_name @rpath/Contents/MacOS/SameBoy.dylib -framework OpenGL -framework AudioUnit -framework AVFoundation -framework CoreVideo -framework CoreMedia -framework IOKit -framework PreferencePanes -framework Carbon -framework QuartzCore -framework Security -framework WebKit -weak_framework Metal -weak_framework MetalKit -weak_framework QuickLookThumbnailing -weak_framework QuickLookUI -framework Quicklook -framework AppKit -Wl,-exported_symbols_list,QuickLook/exports.sym -Wl,-exported_symbol,_main
 ifeq ($(CONF), release)
 	$(STRIP) $@
 	$(CODESIGN) $@
@@ -574,29 +576,55 @@ $(BIN)/SameBoy.app/Contents/Resources/%.nib: Cocoa/%.xib
 $(BIN)/SameBoy-iOS.app/%.storyboardc: iOS/%.storyboard
 	ibtool --target-device iphone --target-device ipad --minimum-deployment-target $(IOS_MIN) --compile $@ $^ 2>&1 | cat -
 
-# Quick Look generator
+# Quick Look generators
 
-$(BIN)/SameBoy.qlgenerator: $(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL \
-                            $(shell ls QuickLook/*.png) \
-                            QuickLook/Info.plist \
-                            $(BIN)/SameBoy.qlgenerator/Contents/Resources/cgb_boot_fast.bin
-	$(MKDIR) -p $(BIN)/SameBoy.qlgenerator/Contents/Resources
-	cp QuickLook/*.png $(BIN)/SameBoy.qlgenerator/Contents/Resources/
-	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < QuickLook/Info.plist > $(BIN)/SameBoy.qlgenerator/Contents/Info.plist
+$(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator: $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL \
+                            									   $(shell ls QuickLook/*.png) \
+										                           QuickLook/Info.plist \
+										                           $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/Resources/cgb_boot_fast.bin
+	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/Resources
+	cp QuickLook/*.png $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/Resources/
+	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < QuickLook/Info.plist > $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/Info.plist
 ifeq ($(CONF), release)
 	$(CODESIGN) $@
 endif
 
-$(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL: $(BIN)/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib
+$(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/MacOS/SameBoyQL: $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) -o $@ $(LDFLAGS) $(FAT_FLAGS) -bundle -Wl,-reexport_library,$^ -rpath @loader_path/../../
 ifeq ($(CONF), release)
 	$(STRIP) $@
 endif
 
+$(BIN)/SameBoy.app/Contents/PlugIns/Thumbnailer.appex: $(BIN)/SameBoy.app/Contents/PlugIns/Thumbnailer.appex/Contents/MacOS/Thumbnailer \
+   													   QuickLook/Thumbnailer.plist \
+													   QuickLook/plugin.entitlements
+	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < QuickLook/Thumbnailer.plist > $(BIN)/SameBoy.app/Contents/PlugIns/Thumbnailer.appex/Contents/Info.plist
+	$(CODESIGN) --entitlements QuickLook/plugin.entitlements $@
+
+$(BIN)/SameBoy.app/Contents/PlugIns/Thumbnailer.appex/Contents/MacOS/Thumbnailer: $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) -o $@ $(LDFLAGS) $(FAT_FLAGS) -e _NSExtensionMain -framework Foundation -Wl,-reexport_library,$^ -rpath @loader_path/../../../../Library/QuickLook/SameBoy.qlgenerator/ 
+ifeq ($(CONF), release)
+	$(STRIP) $@
+endif
+
+$(BIN)/SameBoy.app/Contents/PlugIns/Previewer.appex: $(BIN)/SameBoy.app/Contents/PlugIns/Previewer.appex/Contents/MacOS/Previewer \
+  													 QuickLook/Previewer.plist \
+													 QuickLook/plugin.entitlements
+	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < QuickLook/Previewer.plist > $(BIN)/SameBoy.app/Contents/PlugIns/Previewer.appex/Contents/Info.plist
+	$(CODESIGN) --entitlements QuickLook/plugin.entitlements $@
+
+$(BIN)/SameBoy.app/Contents/PlugIns/Previewer.appex/Contents/MacOS/Previewer: $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) -o $@ $(LDFLAGS) $(FAT_FLAGS) -e _NSExtensionMain -framework Foundation -Wl,-reexport_library,$^ -rpath @loader_path/../../../../Library/QuickLook/SameBoy.qlgenerator/ 
+ifeq ($(CONF), release)
+	$(STRIP) $@
+endif
+
 # cgb_boot_fast.bin is not a standard boot ROM, we don't expect it to exist in the user-provided
 # boot ROM directory.
-$(BIN)/SameBoy.qlgenerator/Contents/Resources/cgb_boot_fast.bin: $(BIN)/BootROMs/cgb_boot_fast.bin
+$(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/Resources/cgb_boot_fast.bin: $(BIN)/BootROMs/cgb_boot_fast.bin
 	-@$(MKDIR) -p $(dir $@)
 	cp -f $^ $@
 
