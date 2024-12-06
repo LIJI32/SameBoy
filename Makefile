@@ -560,7 +560,7 @@ endif
 
 $(BIN)/SameBoy.app/Contents/MacOS/SameBoy: $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(FAT_FLAGS) -rpath @executable_path/../Library/QuickLook/SameBoy.qlgenerator/ -Wl,-reexport_library,$^
+	$(CC) -o $@ $(LDFLAGS) $(FAT_FLAGS) -rpath @executable_path/../Library/QuickLook/SameBoy.qlgenerator/ -Wl,-reexport_library,$^
 	
 $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/MacOS/SameBoy.dylib: $(COCOA_OBJECTS) $(CORE_OBJECTS) $(QUICKLOOK_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)

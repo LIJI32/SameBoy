@@ -16,11 +16,16 @@
                 <outlet property="consoleOutput" destination="doS-dM-hnl" id="Gn5-ju-Wb0"/>
                 <outlet property="consoleWindow" destination="21F-Ah-yHX" id="eQ4-ug-LsT"/>
                 <outlet property="debugBar" destination="sah-kv-6KJ" id="24d-aM-rs5"/>
+                <outlet property="debuggerBackstepButton" destination="E87-Uq-f2l" id="PI7-Wu-f0v"/>
+                <outlet property="debuggerContinueButton" destination="ybQ-jy-NgI" id="fRF-S3-xSh"/>
+                <outlet property="debuggerFinishButton" destination="jdD-yP-Nr6" id="V7Y-wP-nSS"/>
+                <outlet property="debuggerNextButton" destination="tTP-Zs-Ohu" id="mfm-Yl-UZA"/>
                 <outlet property="debuggerScrollView" destination="oTo-zx-o6N" id="EbZ-Le-dZJ"/>
                 <outlet property="debuggerSideView" destination="JgV-7E-iwp" id="RaA-fw-3i1"/>
                 <outlet property="debuggerSideViewInput" destination="w0g-eK-jM4" id="GBf-WK-ryI"/>
                 <outlet property="debuggerSidebarEffectView" destination="4Z2-33-dYY" id="Ja6-bC-rQg"/>
                 <outlet property="debuggerSplitView" destination="pUc-ZN-vl5" id="0sG-0D-cID"/>
+                <outlet property="debuggerStepButton" destination="fsQ-dD-A8C" id="1Vi-Pi-rsI"/>
                 <outlet property="debuggerVerticalLine" destination="7bR-gM-1At" id="rfy-7Z-388"/>
                 <outlet property="feedImageView" destination="Ar0-nN-eop" id="wHa-St-o4G"/>
                 <outlet property="gridButton" destination="fL6-2S-Rgd" id="jtV-jh-GHC"/>
