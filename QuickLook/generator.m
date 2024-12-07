@@ -83,6 +83,7 @@ OSStatus GBQuickLookRender(CGContextRef cgContext, CFURLRef url, bool showBorder
                 effectiveTemplate = template;
         }
         
+        CGContextSetInterpolationQuality(cgContext, kCGInterpolationMedium);
         /* Mask it with the template (The middle part of the template image is transparent) */
         [effectiveTemplate drawInRect:(NSRect){{0, 0}, {CGBitmapContextGetWidth(cgContext), CGBitmapContextGetHeight(cgContext)}}];
     }

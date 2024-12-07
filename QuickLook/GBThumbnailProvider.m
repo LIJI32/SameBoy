@@ -12,8 +12,8 @@ extern OSStatus GBQuickLookRender(CGContextRef cgContext, CFURLRef url, bool sho
 {
     CGSize size = {64, 64};
     CGSize maximumSize = request.maximumSize;
-    while (size.width < maximumSize.width / 2 &&
-           size.width < maximumSize.height / 2) {
+    while (size.width <= maximumSize.width / 2 &&
+           size.width <= maximumSize.height / 2) {
         size.width *= 2;
     }
     size.height = size.width;
