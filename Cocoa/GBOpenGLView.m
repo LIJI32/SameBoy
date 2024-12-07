@@ -29,11 +29,12 @@
 - (instancetype)initWithFrame:(NSRect)frameRect pixelFormat:(NSOpenGLPixelFormat *)format
 {
     __unsafe_unretained GBOpenGLView *weakSelf = self;
+    self = [super initWithFrame:frameRect pixelFormat:format];
     [self observeStandardDefaultsKey:@"GBFilter" withBlock:^(id newValue) {
         weakSelf.shader = nil;
         [weakSelf setNeedsDisplay:true];
 
     }];
-    return [super initWithFrame:frameRect pixelFormat:format];
+    return self;
 }
 @end

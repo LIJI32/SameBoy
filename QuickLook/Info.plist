@@ -14,7 +14,7 @@
 				<string>com.github.liji32.sameboy.gb</string>
 				<string>com.github.liji32.sameboy.gbc</string>
 				<string>com.github.liji32.sameboy.isx</string>
-                <string>public.gbrom</string>
+				<string>public.gbrom</string>
 			</array>
 		</dict>
 	</array>
@@ -27,7 +27,7 @@
 	<key>CFBundleName</key>
 	<string>SameBoy</string>
 	<key>CFBundleShortVersionString</key>
-	<string>Version @VERSION</string>
+	<string>@VERSION</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFPlugInDynamicRegisterFunction</key>
