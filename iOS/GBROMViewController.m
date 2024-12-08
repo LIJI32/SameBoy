@@ -25,15 +25,9 @@
     self.navigationItem.rightBarButtonItem = self.editButtonItem;
     
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(deselectRow)
+                                             selector:@selector(reactivate)
                                                  name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
-    
-    [[NSNotificationCenter defaultCenter] addObserver:self.tableView
-                                             selector:@selector(reloadData)
-                                                 name:UIApplicationDidBecomeActiveNotification
-                                               object:nil];
-    
     return self;
 }
 
@@ -68,7 +62,7 @@
     cell.textLabel.text = rom.lastPathComponent;
     bool isCurrentROM = [rom isEqualToString:[GBROMManager sharedManager].currentROM];
 #ifdef APPSTORE
-    bool isWatchROM = [[GBROMManager sharedManager] watchUUIDForROM:rom generateIfMissing:false];
+    bool isWatchROM = [[GBROMManager sharedManager] watchUUIDForROM:rom];
     bool checkmark = _watchMode? isWatchROM : isCurrentROM;
 #else
     bool checkmark = isCurrentROM;
@@ -148,7 +142,7 @@
     NSString *rom = _roms[index];
 #ifdef APPSTORE
     if (_watchMode) {
-        if ([[GBROMManager sharedManager] watchUUIDForROM:[GBROMManager sharedManager].allROMs[index] generateIfMissing:false]) {
+        if ([[GBROMManager sharedManager] watchUUIDForROM:[GBROMManager sharedManager].allROMs[index]]) {
             [self deselectRow];
             return;
         }
@@ -156,7 +150,7 @@
         return;
     }
     
-    if ([[GBROMManager sharedManager] watchUUIDForROM:[GBROMManager sharedManager].allROMs[index] generateIfMissing:false]) {
+    if ([[GBROMManager sharedManager] watchUUIDForROM:[GBROMManager sharedManager].allROMs[index]]) {
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"“%@” needs to be moved from Apple Watch.", rom]
                                                                        message:[NSString stringWithFormat:@"“%@” needs to be moved from Apple Watch before being played on this iPhone.", rom]
                                                                 preferredStyle:UIAlertControllerStyleAlert];
@@ -265,7 +259,7 @@
     NSString *rom = _roms[index];
     
 #ifdef APPSTORE
-    if ([[GBROMManager sharedManager] watchUUIDForROM:rom generateIfMissing:false]) {
+    if ([[GBROMManager sharedManager] watchUUIDForROM:rom]) {
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"“%@” needs to be moved from Apple Watch.", rom]
                                                                        message:[NSString stringWithFormat:@"“%@” needs to be moved from Apple Watch before being deleted.", rom]
                                                                 preferredStyle:UIAlertControllerStyleAlert];
@@ -556,7 +550,7 @@
     [spinner startAnimating];
 
     
-    NSUUID *targetUUID = [[GBROMManager sharedManager] watchUUIDForROM:rom generateIfMissing:false];
+    NSUUID *targetUUID = [[GBROMManager sharedManager] watchUUIDForROM:rom];
     [[GBWatchManager sharedManager] getSaveState:^(NSString *error, NSData *saveState, NSData *png, NSUUID *currentUUID) {
         if (error) {
             doErrorTryForce(error);
@@ -631,8 +625,7 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
         ].mutableCopy;
 #ifdef APPSTORE
         if (self.class == [GBROMViewController class] && [GBWatchManager sharedManager].isPaired && !_watchMode) {
-            if ([[GBROMManager sharedManager] watchUUIDForROM:[GBROMManager sharedManager].allROMs[indexPath.row]
-                                            generateIfMissing:false]) {
+            if ([[GBROMManager sharedManager] watchUUIDForROM:[GBROMManager sharedManager].allROMs[indexPath.row]]) {
                 [items addObject:[UIAction actionWithTitle:@"Move from Apple Watch"
                                                      image:[UIImage systemImageNamed:@"applewatch"] ?: [UIImage systemImageNamed:@"arrow.up.doc"]
                                                 identifier:nil
@@ -663,6 +656,15 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (self.tableView.indexPathForSelectedRow) {
         [self.tableView deselectRowAtIndexPath:self.tableView.indexPathForSelectedRow animated:true];
+    }
+}
+
+- (void)reactivate
+{
+    [self deselectRow];
+    // Do not auto-reload if busy
+    if (self.view.window.userInteractionEnabled) {
+        [self.tableView reloadData];
     }
 }
 

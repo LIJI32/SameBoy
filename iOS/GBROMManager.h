@@ -26,7 +26,8 @@
 
 #ifdef APPSTORE
 - (NSDictionary<NSUUID *,NSString *> *)watchUUIDMap;
-- (NSUUID *)watchUUIDForROM:(NSString *)rom generateIfMissing:(bool)generate;
+- (NSUUID *)watchUUIDForROM:(NSString *)rom;
+- (void)setWatchUUID:(NSUUID *)uuid forROM:(NSString *)rom;
 - (void)invalidateWatchUUIDForROM:(NSString *)rom;
 
 - (void)obtainCloudROMList:(void (^)(NSString *error, NSArray<NSString *> *list))completion;

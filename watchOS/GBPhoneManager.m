@@ -176,7 +176,7 @@
 
 - (NSDictionary<NSString *,id> *)loadROM:(NSDictionary<NSString *,id> *)command
 {
-    NSString *uuid = command[@"uuid"];
+    NSString *uuid = [[NSUUID UUID] UUIDString];
     unlink(self.saveStatePath.UTF8String);
     unlink(self.pngPath.UTF8String);
     
@@ -210,7 +210,9 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:@"GBROMChanged" object:nil];
     });
-    return @{};
+    return @{
+        @"uuid": uuid
+    };
 }
 
 - (NSDictionary<NSString *,id> *)closeROM:(NSDictionary<NSString *,id> *)command

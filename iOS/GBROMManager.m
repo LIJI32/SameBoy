@@ -286,7 +286,7 @@
 {
     NSMutableDictionary<NSUUID *,NSString *> *ret = [NSMutableDictionary dictionary];
     for (NSString *rom in self.allROMs) {
-        NSUUID *uuid = [self watchUUIDForROM:rom generateIfMissing:false];
+        NSUUID *uuid = [self watchUUIDForROM:rom];
         if (uuid) {
             if (!ret[uuid]) {
                 ret[uuid] = rom;
@@ -307,7 +307,7 @@
     return ret;
 }
 
-- (NSUUID *)watchUUIDForROM:(NSString *)rom generateIfMissing:(bool)generate
+- (NSUUID *)watchUUIDForROM:(NSString *)rom
 {
     NSString *root = self.localRoot;
     NSString *path = [[root stringByAppendingPathComponent:rom] stringByAppendingPathComponent:@".watch"];
@@ -315,10 +315,14 @@
     if (contents) {
         return [[NSUUID alloc] initWithUUIDString:contents];
     }
-    if (!generate) return nil;
-    NSUUID *uuid = [NSUUID UUID];
+    return nil;
+}
+
+- (void)setWatchUUID:(NSUUID *)uuid forROM:(NSString *)rom
+{
+    NSString *root = self.localRoot;
+    NSString *path = [[root stringByAppendingPathComponent:rom] stringByAppendingPathComponent:@".watch"];
     [uuid.UUIDString writeToFile:path atomically:false encoding:NSUTF8StringEncoding error:nil];
-    return uuid;
 }
 
 - (void)invalidateWatchUUIDForROM:(NSString *)rom

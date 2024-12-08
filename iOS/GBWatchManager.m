@@ -41,13 +41,11 @@
 - (void)loadROM:(NSString *)rom completion:(void (^)(NSString *error))completion
 {
     GBROMManager *romManager = [GBROMManager sharedManager];
-    NSUUID *uuid = [romManager watchUUIDForROM:rom generateIfMissing:true];
     NSData *romData = [NSData dataWithContentsOfFile:[romManager romFileForROM:rom]];
     bool isISX = [[romManager romFileForROM:rom].pathExtension.lowercaseString isEqual:@"isx"];
     
     NSMutableDictionary *command = [NSMutableDictionary dictionary];
     command[@"cmd"] = @"load";
-    command[@"uuid"] = uuid.UUIDString;
     command[@"rom"] = romData;
     command[@"isx"] = isISX? @YES : @NO;
     
@@ -89,11 +87,12 @@
     }
     [self sendMessage:command
          replyHandler:^(NSDictionary<NSString *,id> *replyMessage) {
-        if (!replyMessage[@"error"] && [rom isEqual:romManager.currentROM]) {
-            romManager.currentROM = nil;
-        }
-        else if (replyMessage[@"error"]) {
-            [romManager invalidateWatchUUIDForROM:rom];
+        if (!replyMessage[@"error"]) {
+            if ([rom isEqual:romManager.currentROM]) {
+                romManager.currentROM = nil;
+            }
+            [romManager setWatchUUID:[[NSUUID alloc] initWithUUIDString:replyMessage[@"uuid"]]
+                              forROM:rom];
         }
         if (completion) completion(replyMessage[@"error"]);
     }
