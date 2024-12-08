@@ -17,15 +17,9 @@
     self.navigationItem.rightBarButtonItem = self.editButtonItem;
     
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(deselectRow)
+                                             selector:@selector(reactivate)
                                                  name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
-    
-    [[NSNotificationCenter defaultCenter] addObserver:self.tableView
-                                             selector:@selector(reloadData)
-                                                 name:UIApplicationDidBecomeActiveNotification
-                                               object:nil];
-    
     return self;
 }
 
@@ -318,6 +312,15 @@ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (self.tableView.indexPathForSelectedRow) {
         [self.tableView deselectRowAtIndexPath:self.tableView.indexPathForSelectedRow animated:true];
+    }
+}
+
+- (void)reactivate
+{
+    [self deselectRow];
+    // Do not auto-reload if busy
+    if (self.view.window.userInteractionEnabled) {
+        [self.tableView reloadData];
     }
 }
 
