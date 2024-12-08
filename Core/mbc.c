@@ -229,7 +229,7 @@ void GB_configure_cart(GB_gameboy_t *gb)
             }
         }
         
-        if (gb->mbc_ram_size && gb->mbc_ram_size < 0x2000) {
+        if (gb->mbc_ram_size && gb->mbc_ram_size < 0x2000 && gb->cartridge_type->mbc_type != GB_MBC2) {
             GB_log(gb, "This ROM requests a RAM size smaller than a bank, it may misbehave if this was not done intentionally.\n");
         }
         
