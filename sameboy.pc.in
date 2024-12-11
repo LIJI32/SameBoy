@@ -1,0 +1,11 @@
+prefix=@prefix@
+exec_prefix=${prefix}
+includedir=${prefix}/include
+libdir=${prefix}/lib
+ 
+Name: sameboy
+Description: SameBoy's emulation core as a library
+Version: @version@
+Cflags: -I${includedir}
+Libs: -L${libdir} -lsameboy
+Libs.private: -lm -lc

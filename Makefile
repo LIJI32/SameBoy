@@ -41,10 +41,10 @@ ifeq ($(PLATFORM),windows32)
 NULL := NUL
 endif
 
+PREFIX ?= /usr/local
 ifneq ($(shell which xdg-open 2> $(NULL))$(FREEDESKTOP),)
 # Running on an FreeDesktop environment, configure for (optional) installation
 DESTDIR ?= 
-PREFIX ?= /usr/local
 DATA_DIR ?= $(PREFIX)/share/sameboy/
 FREEDESKTOP ?= true
 endif
@@ -114,6 +114,8 @@ BIN := build/bin
 OBJ := build/obj
 INC := build/include/sameboy
 LIBDIR := build/lib
+PKGCONF_DIR := $(LIBDIR)/pkgconfig
+PKGCONF_FILE := $(PKGCONF_DIR)/sameboy.pc
 
 BOOTROMS_DIR ?= $(BIN)/BootROMs
 
@@ -837,7 +839,19 @@ ifeq ($(CONF), release)
 	$(CODESIGN)$@
 endif
 
+$(PKGCONF_FILE): sameboy.pc.in
+	-@$(MKDIR) -p $(dir $@)
+	-@rm -f $@
+	sed -e 's,@prefix@,$(PREFIX),' \
+		-e 's/@version@/$(VERSION)/' $< > $@
 
+lib-install: lib $(PKGCONF_FILE)
+	install -d $(DESTDIR)$(PREFIX)/lib/pkgconfig
+	install -d $(DESTDIR)$(PREFIX)/include/sameboy
+	install -m 644 $(LIBDIR)/libsameboy.a $(LIBDIR)/libsameboy.$(DL_EXT) $(DESTDIR)$(PREFIX)/lib/
+	install -m 644 $(INC)/* $(DESTDIR)$(PREFIX)/include/sameboy/
+	install -m 644 $(PKGCONF_FILE) $(DESTDIR)$(PREFIX)/lib/pkgconfig
+	
 # Windows dll
 
 # To avoid Windows' sort.exe
