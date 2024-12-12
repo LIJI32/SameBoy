@@ -763,10 +763,18 @@ libretro:
 # Install for Linux, and other FreeDesktop platforms.
 ifneq ($(FREEDESKTOP),)
 install: $(BIN)/XdgThumbnailer/sameboy-thumbnailer sdl $(shell find FreeDesktop) XdgThumbnailer/sameboy.thumbnailer
-	(cd $(BIN)/SDL && find . \! -name sameboy -type f -exec install -Dm 644 -T {} "$(DESTDIR)$(DATA_DIR)/{}" \; )
-	install -Dm 755 -s $(BIN)/SDL/sameboy $(DESTDIR)$(PREFIX)/bin/sameboy
-	install -Dm 755 -s $(BIN)/XdgThumbnailer/sameboy-thumbnailer $(DESTDIR)$(PREFIX)/bin/sameboy-thumbnailer
-	install -Dm 644 XdgThumbnailer/sameboy.thumbnailer $(DESTDIR)$(PREFIX)/share/thumbnailers/sameboy.thumbnailer
+	install -d $(DESTDIR)$(DATA_DIR)/Shaders
+	install -d $(DESTDIR)$(DATA_DIR)/Palettes
+	install -d $(DESTDIR)$(DATA_DIR)/BootROMs
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -d $(DESTDIR)$(PREFIX)/share/thumbnailers
+	install -d $(DESTDIR)$(PREFIX)/share/mime
+	install -d $(DESTDIR)$(PREFIX)/share/applications
+	
+	(cd $(BIN)/SDL && find . \! -name sameboy -type f -exec install -m 644 {} "$(abspath $(DESTDIR))$(DATA_DIR)/{}" \; )
+	install -m 755 -s $(BIN)/SDL/sameboy $(DESTDIR)$(PREFIX)/bin/sameboy
+	install -m 755 -s $(BIN)/XdgThumbnailer/sameboy-thumbnailer $(DESTDIR)$(PREFIX)/bin/sameboy-thumbnailer
+	install -m 644 XdgThumbnailer/sameboy.thumbnailer $(DESTDIR)$(PREFIX)/share/thumbnailers/sameboy.thumbnailer
 ifeq ($(DESTDIR),)
 	xdg-mime install --novendor FreeDesktop/sameboy.xml
 	xdg-desktop-menu install --novendor FreeDesktop/sameboy.desktop
@@ -776,12 +784,14 @@ ifeq ($(DESTDIR),)
 		xdg-icon-resource install --novendor --theme hicolor --size $$size --context mimetypes FreeDesktop/ColorCartridge/$${size}x$${size}.png x-gameboy-color-rom; \
 	done
 else
-	install -Dm 644 FreeDesktop/sameboy.xml $(DESTDIR)$(PREFIX)/share/mime/sameboy.xml
-	install -Dm 644 FreeDesktop/sameboy.desktop $(DESTDIR)$(PREFIX)/share/applications/sameboy.desktop
+	install -m 644 FreeDesktop/sameboy.xml $(DESTDIR)$(PREFIX)/share/mime/sameboy.xml
+	install -m 644 FreeDesktop/sameboy.desktop $(DESTDIR)$(PREFIX)/share/applications/sameboy.desktop
 	for size in 16x16 32x32 64x64 128x128 256x256 512x512; do \
-		install -Dm 644 FreeDesktop/AppIcon/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/apps/sameboy.png; \
-		install -Dm 644 FreeDesktop/Cartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-rom.png; \
-		install -Dm 644 FreeDesktop/ColorCartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-color-rom.png; \
+		install -d $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/apps; \
+		install -d $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes; \
+		install -m 644 FreeDesktop/AppIcon/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/apps/sameboy.png; \
+		install -m 644 FreeDesktop/Cartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-rom.png; \
+		install -m 644 FreeDesktop/ColorCartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-color-rom.png; \
 	done
 endif
 endif
