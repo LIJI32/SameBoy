@@ -1,5 +1,6 @@
 #import "GBPaletteEditorController.h"
 #import "GBHueSliderCell.h"
+#import "GBApp.h"
 #import <Core/gb.h>
 
 #define MAGIC 'SBPL'
@@ -199,11 +200,17 @@ static double blend(double from, double to, double position)
     if (theme && themes[theme]) {
         unsigned index = [[themes.allKeys sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)] indexOfObject:theme];
         [_themesList selectRowIndexes:[NSIndexSet indexSetWithIndex:index] byExtendingSelection:false];
+        [_themesList scrollRowToVisible:index];
     }
     else {
         [_themesList selectRowIndexes:[NSIndexSet indexSetWithIndex:0] byExtendingSelection:false];
+        [_themesList scrollRowToVisible:0];
     }
     [self tableViewSelectionDidChange:nil];
+    if (@available(macOS 10.10, *)) {
+        _themesList.enclosingScrollView.contentView.automaticallyAdjustsContentInsets = false;
+        _themesList.enclosingScrollView.contentView.contentInsets = NSEdgeInsetsMake(0, 0, 10, 0);
+    }
 }
 
 - (IBAction)addTheme:(id)sender
@@ -363,6 +370,29 @@ static double blend(double from, double to, double position)
         [self.themesList reloadData];
         [self awakeFromNib];
     }
+}
+
+- (IBAction)segmentAction:(NSSegmentedControl *)sender
+{
+    switch (sender.selectedSegment) {
+        case 0: [self addTheme:sender]; return;
+        case 1: [self deleteTheme:sender]; return;
+        case 3: {
+            NSSize menuSize = _segmentMenu.size;
+            NSSize buttonSize = _segmentControl.bounds.size;
+            [_segmentMenu popUpMenuPositioningItem:_segmentMenu.itemArray.lastObject
+                                        atLocation:NSMakePoint(buttonSize.width,
+                                                               0)
+                                            inView:sender];
+            return;
+        }
+    }
+}
+
+- (IBAction)restoreDefaultPalettes:(id)sender
+{
+    [(GBApp *)NSApp updateThemesDefault:true];
+    [self awakeFromNib];
 }
 
 - (IBAction)done:(NSButton *)sender

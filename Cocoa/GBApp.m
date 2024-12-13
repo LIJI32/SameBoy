@@ -235,6 +235,27 @@ static uint32_t color_to_int(NSColor *color)
     if ([[NSProcessInfo processInfo].arguments containsObject:@"--update-launch"]) {
         [NSApp activateIgnoringOtherApps:true];
     }
+    
+    if (![[[NSUserDefaults standardUserDefaults] stringForKey:@"GBThemesVersion"] isEqualToString:@(GB_VERSION)]) {
+        [[NSUserDefaults standardUserDefaults] setObject:@(GB_VERSION) forKey:@"GBThemesVersion"];
+        [self updateThemesDefault:false];
+    }
+}
+
+- (void)updateThemesDefault:(bool)overwrite
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSMutableDictionary *currentThemes = [defaults dictionaryForKey:@"GBThemes"].mutableCopy;
+    [defaults removeObjectForKey:@"GBThemes"];
+    NSMutableDictionary *defaultThemes = [defaults dictionaryForKey:@"GBThemes"].mutableCopy;
+    if (overwrite) {
+        [currentThemes addEntriesFromDictionary:defaultThemes];
+        [defaults setObject:currentThemes forKey:@"GBThemes"];
+    }
+    else {
+        [defaultThemes addEntriesFromDictionary:currentThemes];
+        [defaults setObject:defaultThemes forKey:@"GBThemes"];
+    }
 }
 
 - (IBAction)toggleDeveloperMode:(id)sender
