@@ -378,7 +378,6 @@ static double blend(double from, double to, double position)
         case 0: [self addTheme:sender]; return;
         case 1: [self deleteTheme:sender]; return;
         case 3: {
-            NSSize menuSize = _segmentMenu.size;
             NSSize buttonSize = _segmentControl.bounds.size;
             [_segmentMenu popUpMenuPositioningItem:_segmentMenu.itemArray.lastObject
                                         atLocation:NSMakePoint(buttonSize.width,
