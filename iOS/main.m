@@ -6,7 +6,8 @@
 int main(int argc, char * argv[])
 {
     @autoreleasepool {
-        [[NSUserDefaults standardUserDefaults] registerDefaults:@{
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        [defaults registerDefaults:@{
             @"GBFilter": @"NearestNeighbor",
             @"GBColorCorrection": @(GB_COLOR_CORRECTION_MODERN_BALANCED),
             @"GBAudioMode": @"switch",
@@ -108,7 +109,7 @@ int main(int argc, char * argv[])
                             @"Colors": @[@0xff28140a, @0xff7c42cb, @0xffaa83de, @0xffd1ceeb, @0xffd5d8ec],
                             @"DisabledLCDColor": @YES,
                             @"HueBias": @0.9477411056868732,
-                            @"HueBiasStrength": @0.3433764940239044,
+                            @"HueBiasStrength": @0.80024421215057373,
                             @"Manual": @NO,
                     },
                     @"Radioactive Pea": @{
@@ -145,6 +146,19 @@ int main(int argc, char * argv[])
                     },
             },
         }];
+        
+        if (![[defaults stringForKey:@"GBThemesVersion"] isEqualToString:@(GB_VERSION)]) {
+            NSMutableDictionary *currentThemes = [defaults dictionaryForKey:@"GBThemes"].mutableCopy;
+            [defaults removeObjectForKey:@"GBThemes"];
+            NSMutableDictionary *defaultThemes = [defaults dictionaryForKey:@"GBThemes"].mutableCopy;
+            if (![[NSUserDefaults standardUserDefaults] stringForKey:@"GBThemesVersion"]) {
+                // Force update the Pink Pop theme, it was glitchy in 1.0
+                [currentThemes removeObjectForKey:@"Pink Pop"];
+            }
+            [defaultThemes addEntriesFromDictionary:currentThemes];
+            [defaults setObject:defaultThemes forKey:@"GBThemes"];
+            [[NSUserDefaults standardUserDefaults] setObject:@(GB_VERSION) forKey:@"GBThemesVersion"];
+        }
     }
     return UIApplicationMain(argc, argv, nil, NSStringFromClass([GBViewController class]));
 }

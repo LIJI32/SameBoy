@@ -172,7 +172,7 @@ static uint32_t color_to_int(NSColor *color)
                                                                               @"Colors": @[@0xff28140a, @0xff7c42cb, @0xffaa83de, @0xffd1ceeb, @0xffd5d8ec],
                                                                               @"DisabledLCDColor": @YES,
                                                                               @"HueBias": @0.9477411056868732,
-                                                                              @"HueBiasStrength": @0.3433764940239044,
+                                                                              @"HueBiasStrength": @0.80024421215057373,
                                                                               @"Manual": @NO,
                                                                       },
                                                                       @"Radioactive Pea": @{
@@ -237,8 +237,8 @@ static uint32_t color_to_int(NSColor *color)
     }
     
     if (![[[NSUserDefaults standardUserDefaults] stringForKey:@"GBThemesVersion"] isEqualToString:@(GB_VERSION)]) {
-        [[NSUserDefaults standardUserDefaults] setObject:@(GB_VERSION) forKey:@"GBThemesVersion"];
         [self updateThemesDefault:false];
+        [[NSUserDefaults standardUserDefaults] setObject:@(GB_VERSION) forKey:@"GBThemesVersion"];
     }
 }
 
@@ -248,6 +248,10 @@ static uint32_t color_to_int(NSColor *color)
     NSMutableDictionary *currentThemes = [defaults dictionaryForKey:@"GBThemes"].mutableCopy;
     [defaults removeObjectForKey:@"GBThemes"];
     NSMutableDictionary *defaultThemes = [defaults dictionaryForKey:@"GBThemes"].mutableCopy;
+    if (![[NSUserDefaults standardUserDefaults] stringForKey:@"GBThemesVersion"]) {
+        // Force update the Pink Pop theme, it was glitchy in 1.0
+        [currentThemes removeObjectForKey:@"Pink Pop"];
+    }
     if (overwrite) {
         [currentThemes addEntriesFromDictionary:defaultThemes];
         [defaults setObject:currentThemes forKey:@"GBThemes"];
