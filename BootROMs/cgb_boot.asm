@@ -1085,11 +1085,11 @@ LoadBGPalettes:
 LoadPalettes:
     ld a, $80
     or e
-    ld [c], a
+    ldh [c], a
     inc c
 .loop
     ld a, [hli]
-    ld [c], a
+    ldh [c], a
     dec d
     jr nz, .loop
     ret
