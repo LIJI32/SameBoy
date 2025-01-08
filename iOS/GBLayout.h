@@ -41,7 +41,7 @@
 
 - (void)drawBackground;
 - (void)drawScreenBezels;
-- (void)drawLogoInVerticalRange:(NSRange)range;
+- (void)drawLogoInVerticalRange:(NSRange)range controlPadding:(double)padding;
 - (void)drawLabels;
 - (void)drawThemedLabelsWithBlock:(void (^)(void))block;
 
