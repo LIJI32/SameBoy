@@ -850,7 +850,7 @@ $(LIBDIR)/libsameboy.$(DL_EXT): $(CORE_OBJECTS)
 	$(CC) $(LDFLAGS) -shared $(FAT_FLAGS) $(CFLAGS) $^ -o $@
 ifeq ($(CONF), release)
 	$(STRIP) $@
-	$(CODESIGN)$@
+	$(CODESIGN) $@
 endif
 
 $(PKGCONF_FILE): sameboy.pc.in

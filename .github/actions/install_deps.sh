@@ -1,7 +1,7 @@
 case `echo $1 | cut -d '-' -f 1` in
         ubuntu)
                 sudo apt-get -qq update
-                sudo apt-get install -yq bison libpng-dev pkg-config libsdl2-dev
+                sudo apt-get install -yq bison libpng-dev pkg-config libsdl2-dev libgdk-pixbuf2.0-dev
                 (
                 cd `mktemp -d`
                 curl -L https://github.com/rednex/rgbds/archive/v0.6.0.zip > rgbds.zip
