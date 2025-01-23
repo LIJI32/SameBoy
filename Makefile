@@ -639,6 +639,9 @@ $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/Resou
 $(BIN)/XdgThumbnailer/sameboy-thumbnailer: $(CORE_OBJECTS) $(XDG_THUMBNAILER_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) $(GIO_LDFLAGS) $(GDK_PIXBUF_LDFLAGS)
+ifeq ($(CONF), release)
+	$(STRIP) $@
+endif
 
 # SDL Port
 
@@ -772,8 +775,8 @@ install: $(BIN)/XdgThumbnailer/sameboy-thumbnailer sdl $(shell find FreeDesktop)
 	install -d $(DESTDIR)$(PREFIX)/share/applications
 	
 	(cd $(BIN)/SDL && find . \! -name sameboy -type f -exec install -m 644 {} "$(abspath $(DESTDIR))$(DATA_DIR)/{}" \; )
-	install -m 755 -s $(BIN)/SDL/sameboy $(DESTDIR)$(PREFIX)/bin/sameboy
-	install -m 755 -s $(BIN)/XdgThumbnailer/sameboy-thumbnailer $(DESTDIR)$(PREFIX)/bin/sameboy-thumbnailer
+	install -m 755 $(BIN)/SDL/sameboy $(DESTDIR)$(PREFIX)/bin/sameboy
+	install -m 755 $(BIN)/XdgThumbnailer/sameboy-thumbnailer $(DESTDIR)$(PREFIX)/bin/sameboy-thumbnailer
 	install -m 644 XdgThumbnailer/sameboy.thumbnailer $(DESTDIR)$(PREFIX)/share/thumbnailers/sameboy.thumbnailer
 ifeq ($(DESTDIR),)
 	xdg-mime install --novendor FreeDesktop/sameboy.xml
