@@ -4,7 +4,6 @@
 #import "GBCloudROMViewController.h"
 #import "GBWatchManager.h"
 #endif
-#import "GBHubViewController.h"
 #import "GBViewController.h"
 #import "GBROMManager.h"
 
@@ -26,63 +25,50 @@
     return ret;
 }
 
+#ifdef APPSTORE
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-#ifdef APPSTORE
     self.delegate = (id)self;
-#endif
-    
     self.viewControllers = @[
         [self.class wrapViewController:[[GBROMViewController alloc] init]],
-#ifdef APPSTORE
         [self.class wrapViewController:[[GBCloudROMViewController alloc] init]],
-#endif
-        [self.class wrapViewController:[[GBHubViewController alloc] init]],
     ];
-#ifdef APPSTORE
     if ([GBWatchManager sharedManager].isPaired) {
         NSMutableArray<UIViewController *> *viewControllers = self.viewControllers.mutableCopy;
         [viewControllers insertObject:[self.class wrapViewController:[[GBROMViewController alloc] initForWatch]] atIndex:2],
         self.viewControllers = viewControllers;
         viewControllers[2].tabBarItem.image = [UIImage systemImageNamed:@"applewatch"] ?: [UIImage systemImageNamed:@"clock"];
     }
-#endif
-    if (@available(iOS 13.0, *)) {
-        UIEdgeInsets insets = [UIApplication sharedApplication].keyWindow.safeAreaInsets;
-        bool hasHomeButton = insets.bottom == 0;
-        bool isPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
-        NSString *symbol = isPad? @"ipad" : @"iphone";
-        if (hasHomeButton) {
-            symbol = [symbol stringByAppendingString:@".homebutton"];
-        }
-        else if (!isPad) {
-            if (@available(iOS 16.1, *)) {
-                if (MAX(insets.left, MAX(insets.right, MAX(insets.top, insets.bottom))) > 51) {
-                    symbol = @"iphone.gen3";
-                }
-                else {
-                    symbol = @"iphone.gen2";
-                }
+    UIEdgeInsets insets = [UIApplication sharedApplication].keyWindow.safeAreaInsets;
+    bool hasHomeButton = insets.bottom == 0;
+    bool isPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    NSString *symbol = isPad? @"ipad" : @"iphone";
+    if (hasHomeButton) {
+        symbol = [symbol stringByAppendingString:@".homebutton"];
+    }
+    else if (!isPad) {
+        if (@available(iOS 16.1, *)) {
+            if (MAX(insets.left, MAX(insets.right, MAX(insets.top, insets.bottom))) > 51) {
+                symbol = @"iphone.gen3";
+            }
+            else {
+                symbol = @"iphone.gen2";
             }
         }
-        self.viewControllers[0].tabBarItem.image = [UIImage systemImageNamed:symbol] ?: [UIImage systemImageNamed:@"folder.fill"];
-#ifdef APPSTORE
-        self.viewControllers[1].tabBarItem.image = [UIImage systemImageNamed:@"icloud"];
-#endif
-        self.viewControllers.lastObject.tabBarItem.image = [UIImage systemImageNamed:@"globe"];
     }
-#ifndef APPSTORE
-    else {
-        self.viewControllers[0].tabBarItem.image = [UIImage imageNamed:@"FolderTemplate"];
-        self.viewControllers[1].tabBarItem.image = [UIImage imageNamed:@"GlobeTemplate"];
-    }
-#else
+    self.viewControllers[0].tabBarItem.image = [UIImage systemImageNamed:symbol] ?: [UIImage systemImageNamed:@"folder.fill"];
+    self.viewControllers[1].tabBarItem.image = [UIImage systemImageNamed:@"icloud"];
     if ([[GBROMManager sharedManager].currentROM hasPrefix:@"icloud/"]) {
         self.selectedIndex = 1;
     }
-#endif
 }
+#else
+- (instancetype)init
+{
+    return (GBLibraryViewController *)[self.class wrapViewController:[[GBROMViewController alloc] init]];
+}
+#endif
 
 #ifdef APPSTORE
 - (NSTimeInterval)transitionDuration:(id <UIViewControllerContextTransitioning>)transitionContext
