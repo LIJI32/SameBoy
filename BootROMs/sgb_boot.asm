@@ -86,9 +86,9 @@ Start:
 
 .sendCommand
     xor a
-    ld [c], a
+    ldh [c], a
     ld a, $30
-    ld [c], a
+    ldh [c], a
 
     ldh a, [hCommand]
     call SendByte
@@ -116,9 +116,9 @@ Start:
 
     ; Done bit
     ld a, $20
-    ld [c], a
+    ldh [c], a
     ld a, $30
-    ld [c], a
+    ldh [c], a
 
     ; Wait 4 frames
     ld e, 4
@@ -145,10 +145,10 @@ Start:
     ; Write to sound registers for DMG compatibility
     ld c, LOW(rNR13)
     ld a, $C1
-    ld [c], a
+    ldh [c], a
     inc c
     ld a, $7
-    ld [c], a
+    ldh [c], a
 
     ; Init BG palette
     ld a, %11_11_11_00
@@ -185,9 +185,9 @@ SendByte:
     jr c, .zeroBit
     add a ; 10 -> 20
 .zeroBit
-    ld [c], a
+    ldh [c], a
     ld a, $30
-    ld [c], a
+    ldh [c], a
     dec d
     ret z
     jr .loop

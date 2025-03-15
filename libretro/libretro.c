@@ -7,12 +7,8 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#ifndef WIIU
-#define AUDIO_FREQUENCY 384000
-#else
-/* Use the internal sample rate for the Wii U */
-#define AUDIO_FREQUENCY 48000
-#endif
+
+#define WIIU_SAMPLE_RATE 48000
 
 #ifdef _WIN32
 #include <direct.h>
@@ -642,7 +638,11 @@ static void init_for_current_model(unsigned id)
     GB_set_pixels_output(&gameboy[i],
                          (uint32_t *)(frame_buf + GB_get_screen_width(&gameboy[0]) * GB_get_screen_height(&gameboy[0]) * i));
     GB_set_rgb_encode_callback(&gameboy[i], rgb_encode);
-    GB_set_sample_rate(&gameboy[i], AUDIO_FREQUENCY);
+#ifdef WIIU
+    GB_set_sample_rate(&gameboy[i], WIIU_SAMPLE_RATE);
+#else
+    GB_set_sample_rate(&gameboy[i], GB_get_clock_rate(&gameboy[i]) / 2);
+#endif
     GB_apu_set_sample_callback(&gameboy[i], audio_callback);
     GB_set_rumble_callback(&gameboy[i], rumble_callback);
 
@@ -1230,7 +1230,7 @@ void retro_get_system_info(struct retro_system_info *info)
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
     struct retro_game_geometry geom;
-    struct retro_system_timing timing = { GB_get_usual_frame_rate(&gameboy[0]), AUDIO_FREQUENCY };
+    struct retro_system_timing timing = { GB_get_usual_frame_rate(&gameboy[0]), GB_get_sample_rate(&gameboy[audio_out])};
 
     if (emulated_devices == 2) {
         if (screen_layout == LAYOUT_TOP_DOWN) {

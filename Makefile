@@ -41,10 +41,10 @@ ifeq ($(PLATFORM),windows32)
 NULL := NUL
 endif
 
+PREFIX ?= /usr/local
 ifneq ($(shell which xdg-open 2> $(NULL))$(FREEDESKTOP),)
 # Running on an FreeDesktop environment, configure for (optional) installation
 DESTDIR ?= 
-PREFIX ?= /usr/local
 DATA_DIR ?= $(PREFIX)/share/sameboy/
 FREEDESKTOP ?= true
 endif
@@ -115,6 +115,8 @@ BIN := build/bin
 OBJ := build/obj
 INC := build/include/sameboy
 LIBDIR := build/lib
+PKGCONF_DIR := $(LIBDIR)/pkgconfig
+PKGCONF_FILE := $(PKGCONF_DIR)/sameboy.pc
 
 BOOTROMS_DIR ?= $(BIN)/BootROMs
 
@@ -208,7 +210,11 @@ endif
 
 CFLAGS += $(WARNINGS)
 
-CFLAGS += -std=gnu11 -D_GNU_SOURCE -DGB_VERSION='"$(VERSION)"' -DGB_COPYRIGHT_YEAR='"$(COPYRIGHT_YEAR)"' -I. -D_USE_MATH_DEFINES -fPIC
+CFLAGS += -std=gnu11 -D_GNU_SOURCE -DGB_VERSION='"$(VERSION)"' -DGB_COPYRIGHT_YEAR='"$(COPYRIGHT_YEAR)"' -I. -D_USE_MATH_DEFINES
+ifneq ($(PLATFORM),windows32)
+CFLAGS += -fPIC
+endif
+
 ifneq (,$(UPDATE_SUPPORT))
 CFLAGS += -DUPDATE_SUPPORT
 endif
@@ -706,6 +712,9 @@ $(BIN)/SameBoy.app/Contents/Library/QuickLook/SameBoy.qlgenerator/Contents/Resou
 $(BIN)/XdgThumbnailer/sameboy-thumbnailer: $(CORE_OBJECTS) $(XDG_THUMBNAILER_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) $(GIO_LDFLAGS) $(GDK_PIXBUF_LDFLAGS)
+ifeq ($(CONF), release)
+	$(STRIP) $@
+endif
 
 # SDL Port
 
@@ -834,10 +843,18 @@ libretro:
 # Install for Linux, and other FreeDesktop platforms.
 ifneq ($(FREEDESKTOP),)
 install: $(BIN)/XdgThumbnailer/sameboy-thumbnailer sdl $(shell find FreeDesktop) XdgThumbnailer/sameboy.thumbnailer
-	(cd $(BIN)/SDL && find . \! -name sameboy -type f -exec install -Dm 644 -T {} "$(DESTDIR)$(DATA_DIR)/{}" \; )
-	install -Dm 755 -s $(BIN)/SDL/sameboy $(DESTDIR)$(PREFIX)/bin/sameboy
-	install -Dm 755 -s $(BIN)/XdgThumbnailer/sameboy-thumbnailer $(DESTDIR)$(PREFIX)/bin/sameboy-thumbnailer
-	install -Dm 644 XdgThumbnailer/sameboy.thumbnailer $(DESTDIR)$(PREFIX)/share/thumbnailers/sameboy.thumbnailer
+	install -d $(DESTDIR)$(DATA_DIR)/Shaders
+	install -d $(DESTDIR)$(DATA_DIR)/Palettes
+	install -d $(DESTDIR)$(DATA_DIR)/BootROMs
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -d $(DESTDIR)$(PREFIX)/share/thumbnailers
+	install -d $(DESTDIR)$(PREFIX)/share/mime
+	install -d $(DESTDIR)$(PREFIX)/share/applications
+	
+	(cd $(BIN)/SDL && find . \! -name sameboy -type f -exec install -m 644 {} "$(abspath $(DESTDIR))$(DATA_DIR)/{}" \; )
+	install -m 755 $(BIN)/SDL/sameboy $(DESTDIR)$(PREFIX)/bin/sameboy
+	install -m 755 $(BIN)/XdgThumbnailer/sameboy-thumbnailer $(DESTDIR)$(PREFIX)/bin/sameboy-thumbnailer
+	install -m 644 XdgThumbnailer/sameboy.thumbnailer $(DESTDIR)$(PREFIX)/share/thumbnailers/sameboy.thumbnailer
 ifeq ($(DESTDIR),)
 	xdg-mime install --novendor FreeDesktop/sameboy.xml
 	xdg-desktop-menu install --novendor FreeDesktop/sameboy.desktop
@@ -847,12 +864,14 @@ ifeq ($(DESTDIR),)
 		xdg-icon-resource install --novendor --theme hicolor --size $$size --context mimetypes FreeDesktop/ColorCartridge/$${size}x$${size}.png x-gameboy-color-rom; \
 	done
 else
-	install -Dm 644 FreeDesktop/sameboy.xml $(DESTDIR)$(PREFIX)/share/mime/sameboy.xml
-	install -Dm 644 FreeDesktop/sameboy.desktop $(DESTDIR)$(PREFIX)/share/applications/sameboy.desktop
+	install -m 644 FreeDesktop/sameboy.xml $(DESTDIR)$(PREFIX)/share/mime/sameboy.xml
+	install -m 644 FreeDesktop/sameboy.desktop $(DESTDIR)$(PREFIX)/share/applications/sameboy.desktop
 	for size in 16x16 32x32 64x64 128x128 256x256 512x512; do \
-		install -Dm 644 FreeDesktop/AppIcon/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/apps/sameboy.png; \
-		install -Dm 644 FreeDesktop/Cartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-rom.png; \
-		install -Dm 644 FreeDesktop/ColorCartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-color-rom.png; \
+		install -d $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/apps; \
+		install -d $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes; \
+		install -m 644 FreeDesktop/AppIcon/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/apps/sameboy.png; \
+		install -m 644 FreeDesktop/Cartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-rom.png; \
+		install -m 644 FreeDesktop/ColorCartridge/$$size.png $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/mimetypes/x-gameboy-color-rom.png; \
 	done
 endif
 endif
@@ -914,10 +933,22 @@ $(LIBDIR)/libsameboy.$(DL_EXT): $(CORE_OBJECTS)
 	$(CC) $(LDFLAGS) -shared $(FAT_FLAGS) $(CFLAGS) $^ -o $@
 ifeq ($(CONF), release)
 	$(STRIP) $@
-	$(CODESIGN)$@
+	$(CODESIGN) $@
 endif
 
+$(PKGCONF_FILE): sameboy.pc.in
+	-@$(MKDIR) -p $(dir $@)
+	-@rm -f $@
+	sed -e 's,@prefix@,$(PREFIX),' \
+		-e 's/@version@/$(VERSION)/' $< > $@
 
+lib-install: lib $(PKGCONF_FILE)
+	install -d $(DESTDIR)$(PREFIX)/lib/pkgconfig
+	install -d $(DESTDIR)$(PREFIX)/include/sameboy
+	install -m 644 $(LIBDIR)/libsameboy.a $(LIBDIR)/libsameboy.$(DL_EXT) $(DESTDIR)$(PREFIX)/lib/
+	install -m 644 $(INC)/* $(DESTDIR)$(PREFIX)/include/sameboy/
+	install -m 644 $(PKGCONF_FILE) $(DESTDIR)$(PREFIX)/lib/pkgconfig
+	
 # Windows dll
 
 # To avoid Windows' sort.exe

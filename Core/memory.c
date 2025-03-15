@@ -735,7 +735,7 @@ static uint8_t read_high_memory(GB_gameboy_t *gb, uint16_t addr)
                 return GB_is_cgb(gb)? gb->io_registers[addr & 0xFF] : 0xFF;
             case GB_IO_PSW:
                 return gb->cgb_mode? gb->io_registers[addr & 0xFF] : 0xFF;
-            case GB_IO_UNKNOWN5:
+            case GB_IO_PGB:
                 return GB_is_cgb(gb)? gb->io_registers[addr & 0xFF] | 0x8F : 0xFF;
             default:
                 if ((addr & 0xFF) >= GB_IO_NR10 && (addr & 0xFF) <= GB_IO_WAV_END) {
@@ -1415,7 +1415,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
             case GB_IO_PSWX:
             case GB_IO_PSWY:
             case GB_IO_PSW:
-            case GB_IO_UNKNOWN5:
+            case GB_IO_PGB:
                 gb->io_registers[addr & 0xFF] = value;
                 return;
             case GB_IO_OPRI:

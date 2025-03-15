@@ -14,5 +14,7 @@
 @property (weak) IBOutlet NSSlider *hueStrengthSlider;
 @property (weak) IBOutlet NSTableView *themesList;
 @property (weak) IBOutlet NSMenu *menu;
+@property (weak) IBOutlet NSSegmentedControl *segmentControl;
+@property IBOutlet NSMenu *segmentMenu;
 + (const GB_palette_t *)userPalette;
 @end

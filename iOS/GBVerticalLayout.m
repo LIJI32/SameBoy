@@ -18,12 +18,11 @@
     screenRect.origin.y = (resolution.height - screenRect.size.height) / 2;
     self.fullScreenRect = screenRect;
     
-    double screenBorderWidth = screenRect.size.width / 40;
-    screenRect.origin.x = (resolution.width - screenRect.size.width) / 2;
-    screenRect.origin.y = self.minY + screenBorderWidth * 2;
+    double screenBorderWidth = MIN(screenRect.size.width / 40, 16 * self.factor);
+    screenRect.origin.y = self.minY + MIN(screenBorderWidth * 2, 20 * self.factor);
     self.screenRect = screenRect;
     
-    double controlAreaStart = screenRect.origin.y + screenRect.size.height + screenBorderWidth * 2;
+    double controlAreaStart = screenRect.origin.y + screenRect.size.height + MIN(screenBorderWidth * 2, 20 * self.factor);
     
     self.selectLocation = (CGPoint){
         MIN(resolution.width / 4, 120 * self.factor),
@@ -74,9 +73,13 @@
     [self drawScreenBezels];
     
     [self drawThemedLabelsWithBlock:^{
-        if (controlsTop - controlAreaStart > 24 * self.factor + screenBorderWidth * 2 ||
-            middleSpace > 160 * self.factor) {
-            [self drawLogoInVerticalRange:(NSRange){controlAreaStart + screenBorderWidth, 24 * self.factor}];
+        if (controlsTop - controlAreaStart > 24 * self.factor + screenBorderWidth * 2) {
+            [self drawLogoInVerticalRange:(NSRange){controlAreaStart + screenBorderWidth, 24 * self.factor}
+                           controlPadding:0];
+        }
+        else if (middleSpace > 160 * self.factor) {
+            [self drawLogoInVerticalRange:(NSRange){controlAreaStart + screenBorderWidth, 24 * self.factor}
+                           controlPadding:self.dpadLocation.x * 2];
         }
         
         [self drawLabels];

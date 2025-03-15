@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <ctype.h>
 #include "utils.h"
 #include "gui.h"
 #include "font.h"

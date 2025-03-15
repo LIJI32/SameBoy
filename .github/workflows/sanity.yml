@@ -35,7 +35,7 @@ jobs:
         run: |
           ./.github/actions/sanity_tests.sh
       - name: Upload binaries
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sameboy-canary-${{ matrix.os }}-${{ matrix.cc }}
           path: |

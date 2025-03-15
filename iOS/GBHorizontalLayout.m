@@ -35,8 +35,8 @@
         break;
     }
     
-    double screenBorderWidth = screenRect.size.width / 40;
-    
+    double screenBorderWidth = MIN(screenRect.size.width / 40, 16 * self.factor);
+
     screenRect.origin.x = (resolution.width - screenRect.size.width) / 2;
     bool drawSameBoyLogo = false;
     if (verticalMargin * 2 > screenBorderWidth * 7) {
@@ -100,7 +100,8 @@
         if (drawSameBoyLogo) {
             double bezelBottom = screenRect.origin.y + screenRect.size.height + screenBorderWidth;
             double freeSpace = resolution.height - bezelBottom;
-            [self drawLogoInVerticalRange:(NSRange){bezelBottom + screenBorderWidth * 2, freeSpace - screenBorderWidth * 4}];
+            [self drawLogoInVerticalRange:(NSRange){bezelBottom + screenBorderWidth * 2, freeSpace - screenBorderWidth * 4}
+                           controlPadding:0];
         }
         
         [self drawLabels];

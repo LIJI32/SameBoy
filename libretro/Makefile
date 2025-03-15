@@ -386,7 +386,7 @@ endif
 	echo "const unsigned $(notdir $(@:%.c=%))_length = sizeof($(notdir $(@:%.c=%)));" >> $@
 
 $(abspath $(CORE_DIR))/build/bin/BootROMs/%_boot.bin:
-	$(MAKE) -C $(CORE_DIR) $(patsubst $(abspath $(CORE_DIR))/%,%,$@)
+	$(MAKE) -C $(CORE_DIR) $@
 
 $(TARGET): $(OBJECTS)
 	-@$(MKDIR) -p $(dir $@)

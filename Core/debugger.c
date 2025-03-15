@@ -1276,12 +1276,18 @@ static bool watch(GB_gameboy_t *gb, char *arguments, char *modifiers, const debu
         .inclusive = inclusive,
     };
 
+    const char *flags_string = inline_const(const char *[], {
+        [WATCHPOINT_READ] = "read-only",
+        [WATCHPOINT_WRITE] = "write-only",
+        [WATCHPOINT_READ | WATCHPOINT_WRITE] = "read-write",
+    })[flags];
+    
     GB_log(gb, "Watchpoint %u set at %s", id, debugger_value_to_string(gb, result, true, false));
     if (length) {
-        GB_log(gb, " - %s%s\n", debugger_value_to_string(gb, end, true, true), inclusive? " (inclusive)" : "");
+        GB_log(gb, " - %s%s, %s\n", debugger_value_to_string(gb, end, true, true), inclusive? " (inclusive)" : "", flags_string);
     }
     else {
-        GB_log(gb, "\n");
+        GB_log(gb, ", %s\n", flags_string);
     }
     return true;
 }

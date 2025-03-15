@@ -22,5 +22,6 @@
 @property (strong) IBOutlet NSButton *updateProgressButton;
 @property (strong) IBOutlet NSWindow *updateProgressWindow;
 @property (strong) IBOutlet NSProgressIndicator *updateProgressSpinner;
+- (void)updateThemesDefault:(bool)overwrite;
 @end
 
