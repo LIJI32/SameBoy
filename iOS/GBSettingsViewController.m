@@ -337,17 +337,24 @@ static NSString const *typeLightTemp = @"typeLightTemp";
             },
         },
         @{
+            @"header": @"Enable Rumble",
+            @"items": @[
+                @{@"type": typeRadio, @"pref": @"GBRumbleMode", @"title": @"Never",                        @"value": @(GB_RUMBLE_DISABLED),},
+                @{@"type": typeRadio, @"pref": @"GBRumbleMode", @"title": @"For Rumble-Enabled Game Paks", @"value": @(GB_RUMBLE_CARTRIDGE_ONLY),},
+                @{@"type": typeRadio, @"pref": @"GBRumbleMode", @"title": @"Always",                       @"value": @(GB_RUMBLE_ALL_GAMES),},
+            ],
+        },
+        @{
             @"items": @[
                 @{@"type": typeCheck, @"pref": @"GBControllersHideInterface", @"title": @"Hide UI While Using a Controller"},
             ],
             @"footer": @"When enabled, the on-screen user interface will be hidden while a game controller is being used."
         },
         @{
-            @"header": @"Enable Rumble",
+            @"header": @"Controller Joystick Behavior",
             @"items": @[
-                @{@"type": typeRadio, @"pref": @"GBRumbleMode", @"title": @"Never",                        @"value": @(GB_RUMBLE_DISABLED),},
-                @{@"type": typeRadio, @"pref": @"GBRumbleMode", @"title": @"For Rumble-Enabled Game Paks", @"value": @(GB_RUMBLE_CARTRIDGE_ONLY),},
-                @{@"type": typeRadio, @"pref": @"GBRumbleMode", @"title": @"Always",                       @"value": @(GB_RUMBLE_ALL_GAMES),},
+                @{@"type": typeRadio, @"pref": @"GBFauxAnalogInputs", @"title": @"Digital",     @"value": @NO},
+                @{@"type": typeRadio, @"pref": @"GBFauxAnalogInputs", @"title": @"Faux Analog", @"value": @YES},
             ],
         },
         @{
@@ -360,6 +367,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                 }
             ],
         },
+
     ];
     
 #ifdef APPSTORE

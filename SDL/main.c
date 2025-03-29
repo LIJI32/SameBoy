@@ -13,12 +13,11 @@
 #include "shader.h"
 #include "audio/audio.h"
 #include "console.h"
-
-#ifndef _WIN32
 #include <fcntl.h>
-#else
+
+#ifdef _WIN32
 #include <Windows.h>
-#include <associations.h>
+#include "windows_associations.h"
 #endif
 
 static bool stop_on_start = false;
@@ -40,6 +39,15 @@ static bool console_supported = false;
 bool uses_gl(void)
 {
     return gl_context;
+}
+
+void rerender_screen(void)
+{
+    render_texture(active_pixel_buffer, configuration.blending_mode? previous_pixel_buffer : NULL);
+#ifdef _WIN32
+    /* Required for some Windows 10 machines, god knows why */
+    render_texture(active_pixel_buffer, configuration.blending_mode? previous_pixel_buffer : NULL);
+#endif
 }
 
 void set_filename(const char *new_filename, typeof(free) *new_free_function)
@@ -93,22 +101,77 @@ static void handle_eof(void)
 
 static char *input_callback(GB_gameboy_t *gb)
 {
+    if (CON_no_csi_mode()) {
+        fprintf(stdout, "> ");
+        fflush(stdout);
+    }
+#ifdef _WIN32
+    DWORD pid;
+    GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+    if (pid == GetCurrentProcessId()) {
+        BringWindowToTop(GetConsoleWindow());
+    }
+#endif
 retry: {
-    char *ret = CON_readline("Stopped> ");
-    if (strcmp(ret, CON_EOF) == 0) {
-        handle_eof();
-        free(ret);
+    CON_set_async_prompt("Stopped> ");
+    char *ret = CON_readline_async();
+    if (!ret) {
+#ifdef _WIN32
+        HWND window = GetConsoleWindow();
+        if (pending_command == GB_SDL_HIDE_DEBUGGER_COMMAND || !window) return strdup("c");
+        ShowWindow(window, SW_SHOW);
+#endif
+        SDL_Event event;
+        SDL_WaitEvent(&event);
+        if (pending_command == GB_SDL_QUIT_COMMAND) {
+            return strdup("c");
+        }
+        switch (event.type) {
+            case SDL_DISPLAYEVENT:
+                update_swap_interval();
+                break;
+                
+            case SDL_WINDOWEVENT: {
+                if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                    update_viewport();
+                }
+                if (event.window.type == SDL_WINDOWEVENT_MOVED
+#if SDL_COMPILEDVERSION > 2018
+                    || event.window.type == SDL_WINDOWEVENT_DISPLAY_CHANGED
+#endif
+                    ) {
+                    update_swap_interval();
+                }
+                rerender_screen();
+                break;
+            }
+            case SDL_QUIT:
+                pending_command = GB_SDL_QUIT_COMMAND;
+                return strdup("c");
+            case SDL_KEYDOWN:
+                fputc('\a', stdout);
+                fflush(stdout);
+                break;
+            default:
+                break;
+        }
         goto retry;
     }
-    else {
+    if (strcmp(ret, CON_EOF) == 0) {
+        free(ret);
+        handle_eof();
+        goto retry;
+    }
+    else if (!CON_no_csi_mode()) {
         CON_attributes_t attributes = {.bold = true};
         CON_attributed_printf("> %s\n", &attributes, ret);
     }
+    CON_set_async_prompt("> ");
     return ret;
 }
 }
 
-static char *asyc_input_callback(GB_gameboy_t *gb)
+static char *async_input_callback(GB_gameboy_t *gb)
 {
 retry: {
     char *ret = CON_readline_async();
@@ -187,6 +250,7 @@ static void open_menu(void)
     }
     size_t previous_width = GB_get_screen_width(&gb);
     run_gui(true);
+    rerender_screen();
     SDL_ShowCursor(SDL_DISABLE);
     if (audio_playing) {
         GB_audio_set_paused(false);
@@ -202,6 +266,24 @@ static void open_menu(void)
     if (previous_width != GB_get_screen_width(&gb)) {
         screen_size_changed();
     }
+}
+
+static void console_line_ready(void)
+{
+    static SDL_Event event = {
+        .type = SDL_USEREVENT
+    };
+    SDL_PushEvent(&event);
+}
+
+static void configure_console(void)
+{
+    CON_set_async_prompt("> ");
+    CON_set_repeat_empty(true);
+    CON_set_line_ready_callback(console_line_ready);
+    GB_set_log_callback(&gb, log_callback);
+    GB_set_input_callback(&gb, input_callback);
+    GB_set_async_input_callback(&gb, async_input_callback);
 }
 
 static void handle_events(GB_gameboy_t *gb)
@@ -341,19 +423,25 @@ static void handle_events(GB_gameboy_t *gb)
             case SDL_JOYAXISMOTION: {
                 static bool axis_active[2] = {false, false};
                 static double accel_values[2] = {0, 0};
+                static double axis_values[2] = {0, 0};
                 joypad_axis_t axis = get_joypad_axis(event.jaxis.axis);
                 if (axis == JOYPAD_AXISES_X) {
                     if (GB_has_accelerometer(gb)) {
                         accel_values[0] = event.jaxis.value / (double)32768.0;
                         GB_set_accelerometer_values(gb, -accel_values[0], -accel_values[1]);
                     }
+                    else if (configuration.use_faux_analog_inputs) {
+                        axis_values[0] = event.jaxis.value / (double)32768.0;
+                    }
                     else if (event.jaxis.value > JOYSTICK_HIGH) {
                         axis_active[0] = true;
+                        GB_set_use_faux_analog_inputs(gb, 0, false);
                         GB_set_key_state(gb, GB_KEY_RIGHT, true);
                         GB_set_key_state(gb, GB_KEY_LEFT, false);
                     }
                     else if (event.jaxis.value < -JOYSTICK_HIGH) {
                         axis_active[0] = true;
+                        GB_set_use_faux_analog_inputs(gb, 0, false);
                         GB_set_key_state(gb, GB_KEY_RIGHT, false);
                         GB_set_key_state(gb, GB_KEY_LEFT, true);
                     }
@@ -368,13 +456,18 @@ static void handle_events(GB_gameboy_t *gb)
                         accel_values[1] = event.jaxis.value / (double)32768.0;
                         GB_set_accelerometer_values(gb, -accel_values[0], -accel_values[1]);
                     }
+                    else if (configuration.use_faux_analog_inputs) {
+                        axis_values[1] = event.jaxis.value / (double)32768.0;
+                    }
                     else if (event.jaxis.value > JOYSTICK_HIGH) {
                         axis_active[1] = true;
+                        GB_set_use_faux_analog_inputs(gb, 0, false);
                         GB_set_key_state(gb, GB_KEY_DOWN, true);
                         GB_set_key_state(gb, GB_KEY_UP, false);
                     }
                     else if (event.jaxis.value < -JOYSTICK_HIGH) {
                         axis_active[1] = true;
+                        GB_set_use_faux_analog_inputs(gb, 0, false);
                         GB_set_key_state(gb, GB_KEY_DOWN, false);
                         GB_set_key_state(gb, GB_KEY_UP, true);
                     }
@@ -384,8 +477,12 @@ static void handle_events(GB_gameboy_t *gb)
                         GB_set_key_state(gb, GB_KEY_UP, false);
                     }
                 }
-            }
+                if (configuration.use_faux_analog_inputs && !GB_has_accelerometer(gb)) {
+                    GB_set_use_faux_analog_inputs(gb, 0, true);
+                    GB_set_faux_analog_inputs(gb, 0, axis_values[0], axis_values[1]);
+                }
                 break;
+            }
                 
             case SDL_JOYHATMOTION: {
                 uint8_t value = event.jhat.value;
@@ -394,6 +491,7 @@ static void handle_events(GB_gameboy_t *gb)
                 int8_t leftright =
                 value == SDL_HAT_LEFTUP || value == SDL_HAT_LEFT || value == SDL_HAT_LEFTDOWN ? -1 : (value == SDL_HAT_RIGHTUP || value == SDL_HAT_RIGHT || value == SDL_HAT_RIGHTDOWN ? 1 : 0);
                 
+                GB_set_use_faux_analog_inputs(gb, 0, false);
                 GB_set_key_state(gb, GB_KEY_LEFT, leftright == -1);
                 GB_set_key_state(gb, GB_KEY_RIGHT, leftright == 1);
                 GB_set_key_state(gb, GB_KEY_UP, updown == -1);
@@ -409,14 +507,14 @@ static void handle_events(GB_gameboy_t *gb)
                     }
                     case SDL_SCANCODE_C:
                         if (event.type == SDL_KEYDOWN && (event.key.keysym.mod & KMOD_CTRL)) {
-                            CON_print("^C\a\n");
-                            GB_debugger_break(gb);
+                            pending_command = GB_SDL_DEBUGGER_INTERRUPT_COMMAND;
                         }
                         break;
                         
                     case SDL_SCANCODE_R:
                         if (event.key.keysym.mod & MODIFIER) {
                             pending_command = GB_SDL_RESET_COMMAND;
+                            paused = false;
                         }
                         break;
                         
@@ -516,6 +614,9 @@ static void handle_events(GB_gameboy_t *gb)
                 else {
                     for (unsigned i = 0; i < GB_KEY_MAX; i++) {
                         if (event.key.keysym.scancode == configuration.keys[i]) {
+                            if (i <= GB_KEY_DOWN) {
+                                GB_set_use_faux_analog_inputs(gb, 0, false);
+                            }
                             GB_set_key_state(gb, i, event.type == SDL_KEYDOWN);
                         }
                     }
@@ -594,16 +695,15 @@ static void rumble(GB_gameboy_t *gb, double amp)
 
 static void debugger_interrupt(int ignore)
 {
-    if (!GB_is_inited(&gb)) exit(0);
-    /* ^C twice to exit */
+#ifndef _WIN32
     if (GB_debugger_is_stopped(&gb)) {
-        GB_save_battery(&gb, battery_save_path_ptr);
-        exit(0);
+        pending_command = GB_SDL_QUIT_COMMAND;
+        console_line_ready(); // Force the debugger wait-loop to process the command
+        return;
     }
-    if (console_supported) {
-        CON_print("^C\n");
-    }
-    GB_debugger_break(&gb);
+#endif
+    pending_command = GB_SDL_DEBUGGER_INTERRUPT_COMMAND;
+
 }
 
 #ifndef _WIN32
@@ -638,6 +738,75 @@ static void gb_audio_callback(GB_gameboy_t *gb, GB_sample_t *sample)
     GB_audio_queue_sample(sample);
     
 }
+
+#ifdef _WIN32
+static BOOL windows_console_handler(DWORD signal)
+{
+    /*
+     Hack: prevents process termination on console close
+     https://twitter.com/yo_yo_yo_jbo/status/1904592584326218069
+     Thanks JBO!
+    */
+    if (signal == CTRL_C_EVENT) {
+        /* Only happens in no-csi mode */
+        pending_command = GB_SDL_DEBUGGER_INTERRUPT_COMMAND;
+        TerminateThread(GetCurrentThread(), 0);
+    }
+    
+    pending_command = GB_SDL_HIDE_DEBUGGER_COMMAND;
+    console_line_ready();
+    TerminateThread(GetCurrentThread(), 0);
+    return false;
+}
+
+static void initialize_windows_console(void)
+{
+    if (AllocConsole()) {
+        SetConsoleTitle("SameBoy Debugger Console");
+        freopen("CONIN$", "r", stdin);
+        setvbuf(stdin, NULL, _IONBF, 0);
+        freopen("CONOUT$", "w", stdout);
+        setvbuf(stdout, NULL, _IONBF, 0);
+        freopen("CONOUT$", "w", stderr);
+        setvbuf(stderr, NULL, _IONBF, 0);
+        
+        console_supported = CON_start(completer);
+        if (console_supported) {
+            configure_console();
+        }
+        
+        /* I would set a callback via SetConsoleCtrlHandler, but the function (CtrlRoutine) that
+           eventually calls our callback takes a lock and  doesn't release it (as it expects the
+           process to exit afterwards). The solution is to take a more violent approach and hook
+           it instead. */
+        
+#if defined(__x86_64__) || defined(__i386__)
+        uint8_t *patch_address = (void *)(GetProcAddress(GetModuleHandleA("KernelBase.dll"), "CtrlRoutine") ?:
+                                          GetProcAddress(GetModuleHandleA("Kernel32.dll"), "CtrlRoutine"));
+#else
+        uint8_t *patch_address = NULL;
+#endif
+        if (!patch_address) {
+            EnableMenuItem(GetSystemMenu(GetConsoleWindow(), false), SC_CLOSE, MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
+        }
+        else {
+            DWORD old_protection;
+            VirtualProtect(patch_address, 0x20, PAGE_READWRITE, &old_protection);
+            if (sizeof(&windows_console_handler) == 8) {
+                *(patch_address++) = 0x48; // movabs
+            }
+            *(patch_address++) = 0xb8; // mov
+            (*(uintptr_t *)patch_address) = (uintptr_t)&windows_console_handler;
+            patch_address += sizeof(&windows_console_handler);
+            // jmp rax/eax
+            *(patch_address++) = 0xff;
+            *(patch_address++) = 0xe0;
+            VirtualProtect(patch_address, 0x20, old_protection, &old_protection);
+        }
+    }
+}
+
+#endif
     
 static bool doing_hot_swap = false;
 static bool handle_pending_command(void)
@@ -705,6 +874,36 @@ static bool handle_pending_command(void)
         case GB_SDL_QUIT_COMMAND:
             GB_save_battery(&gb, battery_save_path_ptr);
             exit(0);
+        case GB_SDL_DEBUGGER_INTERRUPT_COMMAND:
+            if (!GB_is_inited(&gb)) exit(0);
+            
+#ifdef _WIN32
+            initialize_windows_console();
+#endif
+
+            /* ^C twice to exit */
+            if (GB_debugger_is_stopped(&gb)) {
+#ifndef _WIN32
+                GB_save_battery(&gb, battery_save_path_ptr);
+                exit(0);
+#else
+                break;
+#endif
+            }
+            if (console_supported) {
+                CON_print("^C\n");
+            }
+            GB_debugger_break(&gb);
+            break;
+#if _WIN32
+        case GB_SDL_HIDE_DEBUGGER_COMMAND:
+            HWND console_window = GetConsoleWindow();
+            ShowWindow(console_window, SW_HIDE);
+            FreeConsole();
+            SDL_RaiseWindow(window);
+            break;
+#endif
+
     }
     return false;
 }
@@ -869,10 +1068,7 @@ restart:;
         GB_apu_set_sample_callback(&gb, gb_audio_callback);
         
         if (console_supported) {
-            CON_set_async_prompt("> ");
-            GB_set_log_callback(&gb, log_callback);
-            GB_set_input_callback(&gb, input_callback);
-            GB_set_async_input_callback(&gb, asyc_input_callback);
+            configure_console();
         }
         
         GB_debugger_set_reload_callback(&gb, debugger_reload_callback);
@@ -1106,6 +1302,16 @@ static void handle_model_option(const char *model_string)
     }
 }
 
+#ifdef _WIN32
+/* raise is buggy and for some reason not always go through our signal handler, so
+   let's just place the implementation with a direct call to debugger_interrupt. */
+int raise(int signal)
+{
+    debugger_interrupt(signal);
+    return 0;
+}
+#endif
+
 int main(int argc, char **argv)
 {
 #ifdef _WIN32
@@ -1221,6 +1427,10 @@ int main(int argc, char **argv)
     if (fullscreen) {
         SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
     }
+
+#ifdef _WIN32
+    configure_window_corners();
+#endif
     
     gl_context = nogl? NULL : SDL_GL_CreateContext(window);
     

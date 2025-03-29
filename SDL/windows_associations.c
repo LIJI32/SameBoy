@@ -1,7 +1,8 @@
+#ifdef _WIN32
 #include <windows.h>
 #include <shlobj.h>
 #include <stdbool.h>
-#include "associations.h"
+#include "windows_associations.h"
 
 static bool set_registry_string(HKEY hive, const char *folder, const char *name, const char *value)
 {
@@ -88,3 +89,4 @@ bool GB_do_windows_association(void)
     
     return ret;
 }
+#endif

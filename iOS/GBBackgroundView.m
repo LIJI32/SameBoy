@@ -326,6 +326,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
             CGPoint point = [_padTouch locationInView:self];
             double squaredDistance = CGPointSquaredDistance(point, _padSwipeOrigin);
             if (squaredDistance > 16 * 16) {
+                GB_set_use_faux_analog_inputs(_gbView.gb, 0, false);
                 double angle = CGPointAngle(point, _padSwipeOrigin);
                 mask |= angleToKeyMask(angle);
                 if (squaredDistance > 24 * 24) {
@@ -394,6 +395,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
                  fabs(point.y - _layout.dpadLocation.y) <= dpadRadius)
             ) && (fabs(point.x - _layout.dpadLocation.x) >= dpadRadius / 5 ||
                   fabs(point.y - _layout.dpadLocation.y) >= dpadRadius / 5)) {
+            GB_set_use_faux_analog_inputs(_gbView.gb, 0, false);
             dpadHandled = true; // Don't handle the dpad twice
             double angle = CGPointAngle(point, _layout.dpadLocation);
             mask |= angleToKeyMask(angle);

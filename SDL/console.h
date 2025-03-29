@@ -47,3 +47,5 @@ void CON_printf(const char *fmt, ...) __printflike(1, 2);
 void CON_attributed_printf(const char *fmt, CON_attributes_t *attributes,...) __printflike(1, 3);
 void CON_set_async_prompt(const char *string);
 void CON_set_repeat_empty(bool repeat);
+void CON_set_line_ready_callback(void (*callback)(void));
+bool CON_no_csi_mode(void);

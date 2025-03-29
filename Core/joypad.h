@@ -37,8 +37,11 @@ void GB_clear_joyp_accessed(GB_gameboy_t *gb);
 void GB_set_allow_illegal_inputs(GB_gameboy_t *gb, bool allow);
 void GB_set_emulate_joypad_bouncing(GB_gameboy_t *gb, bool emulate);
 void GB_set_update_input_hint_callback(GB_gameboy_t *gb, GB_update_input_hint_callback_t callback);
+void GB_set_use_faux_analog_inputs(GB_gameboy_t *gb, unsigned player, bool use);
+void GB_set_faux_analog_inputs(GB_gameboy_t *gb, unsigned player, double x, double y);
 
 #ifdef GB_INTERNAL
 internal void GB_update_joyp(GB_gameboy_t *gb);
 internal void GB_joypad_run(GB_gameboy_t *gb, unsigned cycles);
+internal void GB_update_faux_analog(GB_gameboy_t *gb);
 #endif

@@ -678,6 +678,11 @@ struct GB_gameboy_internal_s {
         GB_color_correction_mode_t color_correction_mode;
         double light_temperature;
         bool keys[4][GB_KEY_MAX];
+        bool use_faux_analog[4];
+        struct {
+            int8_t x, y;
+        } faux_analog_inputs[4];
+        uint8_t faux_analog_ticks;
         double accelerometer_x, accelerometer_y;
         GB_border_mode_t border_mode;
         GB_sgb_border_t borrowed_border;

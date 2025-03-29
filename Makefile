@@ -282,10 +282,9 @@ endif
 
 ifeq ($(PLATFORM),windows32)
 CFLAGS += -IWindows -Drandom=rand --target=x86_64-pc-windows
-LDFLAGS += -lmsvcrt -lcomdlg32 -luser32 -lshell32 -lole32 -ladvapi32 -lSDL2main -Wl,/MANIFESTFILE:NUL --target=x86_64-pc-windows
-
-SDL_LDFLAGS := -lSDL2
-GL_LDFLAGS := -lopengl32
+LDFLAGS += -lmsvcrt -lkernel32 -Wl,/MANIFESTFILE:NUL --target=x86_64-pc-windows
+SDL_LDFLAGS := -lSDL2 -lcomdlg32 -luser32 -lshell32 -lole32 -ladvapi32 -ldwmapi -lSDL2main
+GL_LDFLAGS := -lopengl32 
 ifneq ($(REDIST_XAUDIO),)
 CFLAGS += -DREDIST_XAUDIO
 LDFLAGS += -lxaudio2_9redist
@@ -342,6 +341,11 @@ else ifeq ($(PLATFORM),Darwin)
 	GL_LDFLAGS := -framework OpenGL
 else ifeq ($(PLATFORM),windows32)
 	LDFLAGS += -Wl,/NODEFAULTLIB:libcmt.lib
+	ifneq ($(USE_MSVCRT_DLL),)
+		CFLAGS += -D_NO_CRT_STDIO_INLINE -DUSE_MSVCRT_DLL
+		$(BIN)/SDL/sameboy.exe: $(OBJ)/Windows/msvcrt.lib
+		$(LIBDIR)/libsameboy.dll: $(OBJ)/Windows/msvcrt.lib
+	endif
 endif
 
 CFLAGS += -Wno-deprecated-declarations
@@ -392,7 +396,7 @@ endif
 # Define our targets
 
 ifeq ($(PLATFORM),windows32)
-SDL_TARGET := $(BIN)/SDL/sameboy.exe $(BIN)/SDL/sameboy_debugger.exe $(BIN)/SDL/SDL2.dll
+SDL_TARGET := $(BIN)/SDL/sameboy.exe $(BIN)/SDL/SDL2.dll $(BIN)/SDL/sameboy_debugger.txt
 TESTER_TARGET := $(BIN)/tester/sameboy_tester.exe
 else
 SDL_TARGET := $(BIN)/SDL/sameboy
@@ -473,15 +477,15 @@ endif
 
 $(OBJ)/SDL/%.dep: SDL/%
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -MT $(OBJ)/$^.o -M $^ -c -o $@
+	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
 	
 $(OBJ)/OpenDialog/%.dep: OpenDialog/%
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -MT $(OBJ)/$^.o -M $^ -c -o $@
+	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
 
 $(OBJ)/%.dep: %
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) -MT $(OBJ)/$^.o -M $^ -c -o $@
+	$(CC) $(CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
 
 # Compilation rules
 
@@ -727,14 +731,18 @@ ifeq ($(CONF), release)
 	$(CODESIGN) $@
 endif
 
-# Windows version builds two, one with a console and one without it
 $(BIN)/SDL/sameboy.exe: $(CORE_OBJECTS) $(SDL_OBJECTS) $(OBJ)/Windows/resources.o
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) -Wl,/subsystem:windows
-
-$(BIN)/SDL/sameboy_debugger.exe: $(CORE_OBJECTS) $(SDL_OBJECTS) $(OBJ)/Windows/resources.o
-	-@$(MKDIR) -p $(dir $@)
-	$(CC) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) $(GL_LDFLAGS) -Wl,/subsystem:console
+	
+$(BIN)/SDL/sameboy_debugger.txt:
+	echo Looking for sameboy_debugger.exe? > $@
+	echo\>> $@
+	echo Starting with SameBoy v1.0.1, sameboy.exe and sameboy_debugger.exe >> $@
+	echo have been merged into a single executable. You can open a debugger >> $@
+	echo console at any time by pressing  Ctrl+C to interrupt the currently >> $@
+	echo open ROM.  Once you're done debugging,  you can close the debugger >> $@
+	echo console and resume normal execution. >> $@
 
 ifneq ($(USE_WINDRES),)
 $(OBJ)/%.o: %.rc
@@ -765,7 +773,7 @@ ifeq ($(CONF), release)
 	$(CODESIGN) $@
 endif
 
-$(BIN)/tester/sameboy_tester.exe: $(CORE_OBJECTS) $(SDL_OBJECTS)
+$(BIN)/tester/sameboy_tester.exe: $(CORE_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) -Wl,/subsystem:console
 
@@ -967,12 +975,16 @@ $(OBJ)/exports.def: $(OBJ)/exports $(OBJ)/names
 
 $(LIBDIR)/libsameboy.dll: $(CORE_OBJECTS) | $(OBJ)/exports.def
 	-@$(MKDIR) -p $(dir $@)
-	$(CC) $(LDFLAGS) -Wl,-lldmingw -Wl,/def:$(OBJ)/exports.def -shared $(CFLAGS) $^ -o $@
+	$(CC) $(LDFLAGS) -Wl,/def:$(OBJ)/exports.def -shared $(CFLAGS) $^ -o $@
 	
 # CPPP doesn't like multibyte characters, so we replace the single quote character before processing so it doesn't complain
 $(INC)/%.h: Core/%.h
 	-@$(MKDIR) -p $(dir $@)
 	sed "s/'/@SINGLE_QUOTE@/g" $^ | cppp $(CPPP_FLAGS) | sed "s/@SINGLE_QUOTE@/'/g" > $@
+	
+# Generate msvcrt.lib so we can use the always-present msvcrt.dll
+$(OBJ)/Windows/msvcrt.lib: Windows/msvcrt.def
+	lib.exe /MACHINE:X64 /def:$< /out:$@
 	
 # Clean
 clean:

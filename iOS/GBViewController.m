@@ -522,6 +522,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         case GBLeft:
         case GBUp:
         case GBDown:
+            GB_set_use_faux_analog_inputs(&_gb, 0, false);
         case GBA:
         case GBB:
         case GBSelect:
@@ -591,6 +592,11 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     if (_running && (left || right || up || down ) &&
         [[NSUserDefaults standardUserDefaults] boolForKey:@"GBControllersHideInterface"]) {
         _backgroundView.fullScreenMode = true;
+    }
+    
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBFauxAnalogInputs"]) {
+        GB_set_use_faux_analog_inputs(&_gb, 0, true);
+        GB_set_faux_analog_inputs(&_gb, 0, axis.right.value - axis.left.value, axis.down.value - axis.up.value);
     }
     
     GB_set_key_state(&_gb, GB_KEY_LEFT, left);

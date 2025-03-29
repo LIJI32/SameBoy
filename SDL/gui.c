@@ -13,7 +13,9 @@
 #include "audio/audio.h"
 
 #ifdef _WIN32
-#include <associations.h>
+#include <dwmapi.h>
+#include "windows_associations.h"
+#include <SDL_syswm.h>
 #endif
 
 static const SDL_Color gui_palette[4] = {{8, 24, 16,}, {57, 97, 57,}, {132, 165, 99}, {198, 222, 140}};
@@ -1591,6 +1593,50 @@ static const char *current_osd_mode(unsigned index)
     return configuration.osd? "Enabled" : "Disabled";
 }
 
+#ifdef _WIN32
+
+// Don't use the standard header definitions because we might not have the newest headers
+typedef enum {
+    DWM_CORNER_DEFAULT = 0,
+    DWM_CORNER_SQUARE = 1,
+    DWM_CORNER_ROUND = 2,
+    DWM_CORNER_ROUNDSMALL = 3
+} DMW_corner_settings_t;
+
+#define DWM_CORNER_PREFERENCE 33
+
+void configure_window_corners(void)
+{
+    SDL_SysWMinfo wmInfo;
+    SDL_VERSION(&wmInfo.version);
+    SDL_GetWindowWMInfo(window, &wmInfo);
+    HWND hwnd = wmInfo.info.win.window;
+    DMW_corner_settings_t pref = configuration.disable_rounded_corners? DWM_CORNER_SQUARE : DWM_CORNER_DEFAULT;
+    DwmSetWindowAttribute(hwnd, DWM_CORNER_PREFERENCE, &pref, sizeof(pref));
+}
+
+static void toggle_corners(unsigned index)
+{
+    configuration.disable_rounded_corners = !configuration.disable_rounded_corners;
+    configure_window_corners();
+}
+
+static const char *current_corner_mode(unsigned index)
+{
+    SDL_SysWMinfo wmInfo;
+    SDL_VERSION(&wmInfo.version);
+    SDL_GetWindowWMInfo(window, &wmInfo);
+    HWND hwnd = wmInfo.info.win.window;
+    DMW_corner_settings_t pref;
+    
+    if (DwmGetWindowAttribute(hwnd, DWM_CORNER_PREFERENCE, &pref, sizeof(pref)) ||
+        pref == DWM_CORNER_SQUARE) {
+        return "Square";
+    }
+    return "Rounded";
+}
+#endif
+
 static const struct menu_item graphics_menu[] = {
     {"Scaling Mode:", cycle_scaling, current_scaling_mode, cycle_scaling_backwards},
     {"Default Window Scale:", cycle_default_scale, current_default_scale, cycle_default_scale_backwards},
@@ -1601,6 +1647,9 @@ static const struct menu_item graphics_menu[] = {
     {"Mono Palette:", cycle_palette, current_palette, cycle_palette_backwards},
     {"Display Border:", cycle_border_mode, current_border_mode, cycle_border_mode_backwards},
     {"On-Screen Display:", toggle_osd, current_osd_mode, toggle_osd},
+#ifdef _WIN32
+    {"Window Corners:", toggle_corners, current_corner_mode, toggle_corners},
+#endif
     {"Back", enter_options_menu},
     {NULL,}
 };
@@ -1935,6 +1984,16 @@ static const char *current_rumble_mode(unsigned index)
         [configuration.rumble_mode];
 }
 
+static void toggle_use_faux_analog_inputs(unsigned index)
+{
+    configuration.use_faux_analog_inputs ^= true;
+}
+
+static const char *current_faux_analog_inputs(unsigned index)
+{
+    return configuration.use_faux_analog_inputs? "Faux Analog" : "Digital";
+}
+
 static void toggle_allow_background_controllers(unsigned index)
 {
     configuration.allow_background_controllers ^= true;
@@ -2005,6 +2064,7 @@ static const struct menu_item joypad_menu[] = {
     {"Hotkey 1 Action:", cycle_hotkey, current_hotkey, cycle_hotkey_backwards},
     {"Hotkey 2 Action:", cycle_hotkey, current_hotkey, cycle_hotkey_backwards},
     {"Rumble Mode:", cycle_rumble_mode, current_rumble_mode, cycle_rumble_mode_backwards},
+    {"Analog Stick Behavior:", toggle_use_faux_analog_inputs, current_faux_analog_inputs, toggle_use_faux_analog_inputs},
     {"Enable Control:", toggle_allow_background_controllers, current_background_control_mode, toggle_allow_background_controllers},
     {"Back", enter_controls_menu},
     {NULL,}

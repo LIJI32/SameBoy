@@ -17,6 +17,7 @@
 #define SGR(x) CSI(x "m")
 
 static bool initialized = false;
+static bool no_csi = false;
 typedef struct listent_s listent_t;
 
 struct listent_s {
@@ -111,12 +112,12 @@ static bool is_term(void)
     SetConsoleMode(stdin_handle, input_mode);
     SetConsoleMode(stdout_handle, output_mode);
 
-
     if (before.dwCursorPosition.X != after.dwCursorPosition.X ||
         before.dwCursorPosition.Y != after.dwCursorPosition.Y) {
         printf("\r      \r");
-        return false;
+        no_csi = true;
     }
+    
     return true;
 #else
     return getenv("TERM");
@@ -158,10 +159,12 @@ static unsigned long input_mode, output_mode;
 
 static void cleanup(void)
 {
-    printf(CSI("!p")); // reset
+    if (!no_csi) {
+        printf(CSI("!p")); // reset
+    }
+    fflush(stdout);
     SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), input_mode);
     SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), output_mode);
-    fflush(stdout);
 }
 
 static bool initialize(void)
@@ -179,10 +182,14 @@ static bool initialize(void)
         GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &output_mode);
         once = true;
     }
+    if (no_csi) {
+        initialized = true;
+        return true;
+    }
     SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), ENABLE_VIRTUAL_TERMINAL_INPUT);
     SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), ENABLE_WRAP_AT_EOL_OUTPUT | ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 
-    printf(CSI("%dB") "\n" CSI("A") ESC("7") CSI("B"), height);
+    fprintf(stdout, CSI("%dB") "\n" CSI("A") ESC("7") CSI("B"), height);
     
     fflush(stdout);
     initialized = true;
@@ -210,7 +217,9 @@ static struct termios terminal;
 
 static void cleanup(void)
 {
-    printf(CSI("!p")); // reset
+    if (!no_csi) {
+        printf(CSI("!p")); // reset
+    }
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &terminal);
     fflush(stdout);
 }
@@ -264,6 +273,8 @@ static bool repeat_empty = false;
 
 static bool redraw_prompt(bool force)
 {
+    if (no_csi) return true;
+    
     if (line.reverse_search) {
         if (!force) return false;
         if (line.length == 0) {
@@ -525,6 +536,7 @@ restart:
 static pthread_mutex_t terminal_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t lines_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t lines_cond = PTHREAD_COND_INITIALIZER;
+static void (*line_ready_callback)(void) = NULL;
 
 static char reverse_search_mainloop(void)
 {
@@ -549,14 +561,6 @@ static char reverse_search_mainloop(void)
                 delete_word(false);
                 redraw_prompt(true);
                 break;
-#ifndef _WIN32
-            case CTL('Z'):
-                set_line("");
-                raise(SIGSTOP);
-                initialize(); // Reinitialize
-                redraw_prompt(true);
-                break;
-#endif
             case CTL('H'):
             case 0x7F: // Backspace
                 delete(1, false);
@@ -583,6 +587,39 @@ static char reverse_search_mainloop(void)
     }
     
 }
+static void no_csi_mainloop(void)
+{
+    while (true) {
+        char *expression = NULL;
+        size_t size = 0;
+        
+        errno = 0;
+        if (getline(&expression, &size, stdin) <= 0) {
+            if (!errno) {
+                continue;
+            }
+            return;
+        }
+        
+        pthread_mutex_lock(&lines_lock);
+        if (!expression) {
+            add_entry(&lines, "");
+        }
+        else {
+            size_t length = strlen(expression);
+            if (expression[length - 1] == '\n') {
+                expression[length - 1] = 0;
+            }
+            add_entry(&lines, expression);
+            free(expression);
+        }
+        pthread_cond_signal(&lines_cond);
+        pthread_mutex_unlock(&lines_lock);
+        if (line_ready_callback) {
+            line_ready_callback();
+        }
+    }
+}
 
 
 static
@@ -593,6 +630,11 @@ void *
 #endif
 mainloop(char *(*completer)(const char *substring, uintptr_t *context))
 {
+    if (no_csi) {
+        no_csi_mainloop();
+        return 0;
+    }
+    
     listent_t *history_line = NULL;
     uintptr_t complete_context = 0;
     size_t completion_length = 0;
@@ -614,6 +656,10 @@ mainloop(char *(*completer)(const char *substring, uintptr_t *context))
         else {
             c = raw_getc();
         }
+        if (c == EOF) {
+            return 0;
+        }
+
         pthread_mutex_lock(&terminal_lock);
         
         switch (c) {
@@ -649,6 +695,9 @@ mainloop(char *(*completer)(const char *substring, uintptr_t *context))
                     add_entry(&lines, CON_EOF);
                     pthread_cond_signal(&lines_cond);
                     pthread_mutex_unlock(&lines_lock);
+                    if (line_ready_callback) {
+                        line_ready_callback();
+                    }
                 }
                 break;
             case CTL('E'):
@@ -695,14 +744,6 @@ mainloop(char *(*completer)(const char *substring, uintptr_t *context))
                 delete_word(false);
                 complete_context = completion_length = 0;
                 break;
-#ifndef _WIN32
-            case CTL('Z'):
-                set_line("");
-                complete_context = completion_length = 0;
-                raise(SIGSTOP);
-                initialize(); // Reinitialize
-                break;
-#endif
             case '\r':
             case '\n':
                 pthread_mutex_lock(&lines_lock);
@@ -714,6 +755,9 @@ mainloop(char *(*completer)(const char *substring, uintptr_t *context))
                 }
                 pthread_cond_signal(&lines_cond);
                 pthread_mutex_unlock(&lines_lock);
+                if (line_ready_callback) {
+                    line_ready_callback();
+                }
                 if (line.length) {
                     listent_t *dup = reverse_find(history.last, line.content, true);
                     if (dup) {
@@ -811,22 +855,24 @@ mainloop(char *(*completer)(const char *substring, uintptr_t *context))
                 }
                 break;
             case '\t': {
-                char temp = line.content[line.position - completion_length];
-                line.content[line.position - completion_length] = 0;
-                char *completion = completer? completer(line.content, &complete_context) : NULL;
-                line.content[line.position - completion_length] = temp;
-                if (completion) {
-                    if (completion_length) {
-                        delete(completion_length, false);
+                if (!no_csi) {
+                    char temp = line.content[line.position - completion_length];
+                    line.content[line.position - completion_length] = 0;
+                    char *completion = completer? completer(line.content, &complete_context) : NULL;
+                    line.content[line.position - completion_length] = temp;
+                    if (completion) {
+                        if (completion_length) {
+                            delete(completion_length, false);
+                        }
+                        insert(completion);
+                        completion_length = strlen(completion);
+                        free(completion);
                     }
-                    insert(completion);
-                    completion_length = strlen(completion);
-                    free(completion);
+                    else {
+                        printf("\a");
+                    }
+                    break;
                 }
-                else {
-                    printf("\a");
-                }
-                break;
             }
             default:
                 if (c >= ' ') {
@@ -843,6 +889,12 @@ mainloop(char *(*completer)(const char *substring, uintptr_t *context))
         pthread_mutex_unlock(&terminal_lock);
     }
     return 0;
+}
+
+
+void CON_set_line_ready_callback(void (*callback)(void))
+{
+    line_ready_callback = callback;
 }
 
 char *CON_readline(const char *new_prompt)
@@ -896,8 +948,8 @@ bool CON_start(char *(*completer)(const char *substring, uintptr_t *context))
 
 void CON_attributed_print(const char *string, CON_attributes_t *attributes)
 {
-    if (!initialized) {
-        printf("%s", string);
+    if (!initialized || no_csi) {
+        fprintf(stdout, "%s", string);
         return;
     }
     static bool pending_newline = false;
@@ -1020,4 +1072,9 @@ void CON_set_async_prompt(const char *string)
 void CON_set_repeat_empty(bool repeat)
 {
     repeat_empty = repeat;
+}
+
+bool CON_no_csi_mode(void)
+{
+    return no_csi;
 }

@@ -37,6 +37,7 @@ int main(int argc, char * argv[])
             @"GBTurboSpeed": @1,
             @"GBRewindSpeed": @1,
             @"GBDynamicSpeed": @NO,
+            @"GBFauxAnalogInputs": @NO,
             
             @"GBInterfaceTheme": @"SameBoy",
             @"GBControllersHideInterface": @YES,

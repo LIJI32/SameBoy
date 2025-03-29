@@ -431,13 +431,22 @@ static const uint8_t workboy_vk_to_key[] = {
                         if (self.document.partner) {
                             if (player == 0) {
                                 GB_set_key_state_for_player(_gb, (GB_key_t)button, 0, true);
+                                if (button <= GB_KEY_DOWN) {
+                                    GB_set_use_faux_analog_inputs(_gb, 0, false);
+                                }
                             }
                             else {
                                 GB_set_key_state_for_player(self.document.partner.gb, (GB_key_t)button, 0, true);
+                                if (button <= GB_KEY_DOWN) {
+                                    GB_set_use_faux_analog_inputs(self.document.partner.gb, 0, false);
+                                }
                             }
                         }
                         else {
                             GB_set_key_state_for_player(_gb, (GB_key_t)button, player, true);
+                            if (button <= GB_KEY_DOWN) {
+                                GB_set_use_faux_analog_inputs(_gb, player, false);
+                            }
                         }
                         break;
                 }
@@ -581,12 +590,63 @@ static const uint8_t workboy_vk_to_key[] = {
     }
 }
 
+- (bool)controller:(JOYController *)controller applicableForPlayer:(unsigned)player effectivePlayer:(unsigned *)effectivePlayer effectiveGB:(GB_gameboy_t **)effectiveGB
+{
+    NSDictionary<NSNumber *, JOYController *> *controllerMapping = [self controllerMapping];
+
+    JOYController *preferredJoypad = controllerMapping[@(player)];
+    if (preferredJoypad && preferredJoypad != controller) return false; // The player has a different assigned controller
+    if (!preferredJoypad && self.playerCount != 1) return false; // The player has no assigned controller in multiplayer mode, prevent controller inputs
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [controller setPlayerLEDs:[controller LEDMaskForPlayer:player]];
+    });
+    
+    *effectiveGB = _gb;
+    *effectivePlayer = player;
+    
+    if (player && self.document.partner) {
+        *effectiveGB = self.document.partner.gb;
+        *effectivePlayer = 0;
+        if (controller != self.document.partner.view->lastController) {
+            [self setRumble:0];
+            self.document.partner.view->lastController = controller;
+        }
+    }
+    else {
+        if (controller != lastController) {
+            [self setRumble:0];
+            lastController = controller;
+        }
+    }
+    return true;
+}
+
 - (void)controller:(JOYController *)controller movedAxes2D:(JOYAxes2D *)axes
 {
     if (!_gb) return;
-    if ([self shouldControllerUseJoystickForMotion:controller]) {
-        if (!self.mouseControlsActive) {
-            GB_set_accelerometer_values(_gb, -axes.value.x, -axes.value.y);
+    /* Always handle only the most dominant 2D input. */
+    for (JOYAxes2D *otherAxes in controller.axes2D) {
+        if (otherAxes == axes) continue;
+        if (otherAxes.distance > axes.distance) {
+            return;
+        }
+    }
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+
+    if ([self shouldControllerUseJoystickForMotion:controller] && !self.mouseControlsActive) {
+        GB_set_accelerometer_values(_gb, -axes.value.x, -axes.value.y);
+    }
+    else if ([defaults boolForKey:@"GBFauxAnalogInputs"]) {
+        unsigned playerCount = self.playerCount;
+        for (unsigned player = 0; player < playerCount; player++) {
+            unsigned effectivePlayer;
+            GB_gameboy_t *effectiveGB;
+            if (![self controller:controller applicableForPlayer:player effectivePlayer:&effectivePlayer effectiveGB:&effectiveGB]) continue;
+            
+            GB_set_use_faux_analog_inputs(effectiveGB, effectivePlayer, true);
+            NSPoint position = axes.value;
+            GB_set_faux_analog_inputs(effectiveGB, effectivePlayer, position.x, position.y);
         }
     }
 }
@@ -650,18 +710,17 @@ static const uint8_t workboy_vk_to_key[] = {
     IOPMAssertionDeclareUserActivity(CFSTR(""), kIOPMUserActiveLocal, &assertionID);
     
     
-    NSDictionary<NSNumber *, JOYController *> *controllerMapping = [self controllerMapping];
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    bool fauxAnalog = [defaults boolForKey:@"GBFauxAnalogInputs"];
+
     for (unsigned player = 0; player < playerCount; player++) {
-        JOYController *preferredJoypad = controllerMapping[@(player)];
-        if (preferredJoypad && preferredJoypad != controller) continue; // The player has a different assigned controller
-        if (!preferredJoypad && playerCount != 1) continue; // The player has no assigned controller in multiplayer mode, prevent controller inputs
+        unsigned effectivePlayer;
+        GB_gameboy_t *effectiveGB;
+        if (![self controller:controller applicableForPlayer:player effectivePlayer:&effectivePlayer effectiveGB:&effectiveGB]) continue;
         
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [controller setPlayerLEDs:[controller LEDMaskForPlayer:player]];
-        });
-        NSDictionary *mapping = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"JoyKitInstanceMapping"][controller.uniqueID];
+        NSDictionary *mapping = [defaults dictionaryForKey:@"JoyKitInstanceMapping"][controller.uniqueID];
         if (!mapping) {
-            mapping = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"JoyKitNameMapping"][controller.deviceName];
+            mapping = [defaults dictionaryForKey:@"JoyKitNameMapping"][controller.deviceName];
         }
         
         JOYButtonUsage usage = ((JOYButtonUsage)[mapping[n2s(button.uniqueID)] unsignedIntValue]) ?: button.usage;
@@ -669,21 +728,14 @@ static const uint8_t workboy_vk_to_key[] = {
             usage = GB_inline_const(JOYButtonUsage[], {JOYButtonUsageY, JOYButtonUsageA, JOYButtonUsageB, JOYButtonUsageX})[(usage - JOYButtonUsageGeneric0) & 3];
         }
         
-        GB_gameboy_t *effectiveGB = _gb;
-        unsigned effectivePlayer = player;
-        
-        if (player && self.document.partner) {
-            effectiveGB = self.document.partner.gb;
-            effectivePlayer = 0;
-            if (controller != self.document.partner.view->lastController) {
-                [self setRumble:0];
-                self.document.partner.view->lastController = controller;
+        if (usage >= JOYButtonUsageDPadLeft && usage <= JOYButtonUsageDPadDown) {
+            if (fauxAnalog && button.type == JOYButtonTypeAxes2DEmulated) {
+                // This isn't a real button, it's an emulated Axes2D. We want to handle it as an Axes2D instead
+                continue;
             }
-        }
-        else {
-            if (controller != lastController) {
-                [self setRumble:0];
-                lastController = controller;
+            else {
+                // User used a digital direction input, revert to non-analog inputs
+                GB_set_use_faux_analog_inputs(effectiveGB, effectivePlayer, false);
             }
         }
         
