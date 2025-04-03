@@ -431,20 +431,20 @@ static const uint8_t workboy_vk_to_key[] = {
                         if (self.document.partner) {
                             if (player == 0) {
                                 GB_set_key_state_for_player(_gb, (GB_key_t)button, 0, true);
-                                if (button <= GB_KEY_DOWN) {
+                                if ((GB_key_t)button <= GB_KEY_DOWN) {
                                     GB_set_use_faux_analog_inputs(_gb, 0, false);
                                 }
                             }
                             else {
                                 GB_set_key_state_for_player(self.document.partner.gb, (GB_key_t)button, 0, true);
-                                if (button <= GB_KEY_DOWN) {
+                                if ((GB_key_t)button <= GB_KEY_DOWN) {
                                     GB_set_use_faux_analog_inputs(self.document.partner.gb, 0, false);
                                 }
                             }
                         }
                         else {
                             GB_set_key_state_for_player(_gb, (GB_key_t)button, player, true);
-                            if (button <= GB_KEY_DOWN) {
+                            if ((GB_key_t)button <= GB_KEY_DOWN) {
                                 GB_set_use_faux_analog_inputs(_gb, player, false);
                             }
                         }

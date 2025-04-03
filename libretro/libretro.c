@@ -52,8 +52,9 @@ enum screen_layout {
 };
 
 enum audio_out {
-    GB_1,
-    GB_2
+    AUDIO_OUT_GB_1,
+    AUDIO_OUT_GB_2,
+    AUDIO_OUT_BOTH,
 };
 
 static GB_model_t model[2] = {
@@ -98,8 +99,8 @@ static bool link_cable_emulation = false;
 
 static struct {
     int16_t *data;
-    int32_t size;
-    int32_t capacity;
+    uint32_t sizes[2];
+    uint32_t capacity;
 } output_audio_buffer = {NULL, 0, 0};
 
 char retro_system_directory[4096];
@@ -185,7 +186,7 @@ static void ensure_output_audio_buffer_capacity(int32_t capacity)
 static void init_output_audio_buffer(int32_t capacity)
 {
     output_audio_buffer.data = NULL;
-    output_audio_buffer.size = 0;
+    output_audio_buffer.sizes[0] = output_audio_buffer.sizes[1] = 0;
     output_audio_buffer.capacity = 0;
     ensure_output_audio_buffer_capacity(capacity);
 }
@@ -194,13 +195,22 @@ static void free_output_audio_buffer()
 {
     free(output_audio_buffer.data);
     output_audio_buffer.data = NULL;
-    output_audio_buffer.size = 0;
+    output_audio_buffer.sizes[0] = output_audio_buffer.sizes[1] = 0;
     output_audio_buffer.capacity = 0;
 }
 
 static void upload_output_audio_buffer()
 {
-    int32_t remaining_frames = output_audio_buffer.size / 2;
+    
+    uint32_t remaining_frames;
+    if (emulated_devices == 2) {
+        remaining_frames = MIN(output_audio_buffer.sizes[0], output_audio_buffer.sizes[1]) / 2;
+        output_audio_buffer.sizes[1] -= remaining_frames * 2;
+    }
+    else {
+        remaining_frames = output_audio_buffer.sizes[0] / 2;
+    }
+    output_audio_buffer.sizes[0] -= remaining_frames * 2;
     int16_t *buf_pos = output_audio_buffer.data;
 
     while (remaining_frames > 0) {
@@ -208,22 +218,45 @@ static void upload_output_audio_buffer()
         buf_pos += uploaded_frames * 2;
         remaining_frames -= uploaded_frames;
     }
-    output_audio_buffer.size = 0;
+    if (emulated_devices == 2) {
+        memcpy(output_audio_buffer.data, buf_pos, MAX(output_audio_buffer.sizes[0], output_audio_buffer.sizes[1]));
+    }
 }
 
 static void audio_callback(GB_gameboy_t *gb, GB_sample_t *sample)
 {
-    if (!(audio_out == GB_1 && gb == &gameboy[0]) &&
-        !(audio_out == GB_2 && gb == &gameboy[1])) {
-        return;
+    unsigned index = 0;
+    if (gb == &gameboy[1]) {
+        index = 1;
     }
-
-    if (output_audio_buffer.capacity - output_audio_buffer.size < 2) {
+    
+    if (output_audio_buffer.capacity - MAX(output_audio_buffer.sizes[0], output_audio_buffer.sizes[1]) < 2) {
         ensure_output_audio_buffer_capacity(output_audio_buffer.capacity * 1.5);
     }
-
-    output_audio_buffer.data[output_audio_buffer.size++] = sample->left;
-    output_audio_buffer.data[output_audio_buffer.size++] = sample->right;
+    
+    if ((index == 0 && audio_out == AUDIO_OUT_GB_1) ||
+        (index == 1 && audio_out == AUDIO_OUT_GB_2)) {
+        output_audio_buffer.data[output_audio_buffer.sizes[0]++] = sample->left;
+        output_audio_buffer.data[output_audio_buffer.sizes[0]++] = sample->right;
+        output_audio_buffer.sizes[1] = output_audio_buffer.sizes[0];
+    }
+    else if (audio_out == AUDIO_OUT_BOTH) {
+        if (output_audio_buffer.sizes[index] < output_audio_buffer.sizes[!index]) {
+            // We're the second instance to reach this sample, add and divide (To prevent overflow)
+            output_audio_buffer.data[output_audio_buffer.sizes[index]] =
+                (output_audio_buffer.data[output_audio_buffer.sizes[index]] + (signed)sample->left) / 2;
+            output_audio_buffer.sizes[index]++;
+            
+            output_audio_buffer.data[output_audio_buffer.sizes[index]] =
+                (output_audio_buffer.data[output_audio_buffer.sizes[index]] + (signed)sample->right) / 2;
+            output_audio_buffer.sizes[index]++;
+        }
+        else {
+            // We're the first instance, set its contents
+            output_audio_buffer.data[output_audio_buffer.sizes[index]++] = sample->left;
+            output_audio_buffer.data[output_audio_buffer.sizes[index]++] = sample->right;
+        }
+    }
 }
 
 static void vblank1(GB_gameboy_t *gb, GB_vblank_type_t type)
@@ -911,10 +944,13 @@ static void check_variables()
         var.value = NULL;
         if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
             if (strcmp(var.value, "Game Boy #1") == 0) {
-                audio_out = GB_1;
+                audio_out = AUDIO_OUT_GB_1;
+            }
+            else if (strcmp(var.value, "Game Boy #2") == 0) {
+                audio_out = AUDIO_OUT_GB_2;
             }
             else {
-                audio_out = GB_2;
+                audio_out = AUDIO_OUT_BOTH;
             }
         }
 
@@ -1230,7 +1266,7 @@ void retro_get_system_info(struct retro_system_info *info)
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
     struct retro_game_geometry geom;
-    struct retro_system_timing timing = { GB_get_usual_frame_rate(&gameboy[0]), GB_get_sample_rate(&gameboy[audio_out])};
+    struct retro_system_timing timing = { GB_get_usual_frame_rate(&gameboy[0]), GB_get_sample_rate(&gameboy[audio_out == AUDIO_OUT_BOTH? 0 : audio_out])};
 
     if (emulated_devices == 2) {
         if (screen_layout == LAYOUT_TOP_DOWN) {
@@ -1300,6 +1336,15 @@ void retro_reset(void)
     for (int i = 0; i < emulated_devices; i++) {
         init_for_current_model(i);
         GB_reset(&gameboy[i]);
+    }
+    
+    if (emulated_devices == 2) {
+        if (GB_get_unmultiplied_clock_rate(&gameboy[0]) != GB_get_unmultiplied_clock_rate(&gameboy[1])) {
+            audio_out = AUDIO_OUT_GB_1;
+        }
+    }
+    else {
+        audio_out = AUDIO_OUT_GB_1;
     }
 
     geometry_updated = true;

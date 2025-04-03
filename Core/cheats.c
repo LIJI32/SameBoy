@@ -223,6 +223,7 @@ void GB_update_cheat(GB_gameboy_t *gb, const GB_cheat_t *_cheat, const char *des
     }
     
     assert(cheat);
+    if (!cheat) return;
     
     if (cheat->address != address) {
         /* Remove from old bucket */

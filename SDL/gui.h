@@ -45,6 +45,7 @@ enum pending_command {
 extern enum pending_command pending_command;
 extern unsigned command_parameter;
 extern char *dropped_state_file;
+extern bool screen_manually_resized;
 
 void update_viewport(void);
 void run_gui(bool is_running);

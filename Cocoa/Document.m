@@ -317,7 +317,7 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     
     GB_set_border_mode(&_gb, (GB_border_mode_t) [[NSUserDefaults standardUserDefaults] integerForKey:@"GBBorderMode"]);
     [self observeStandardDefaultsKey:@"GBBorderMode" withBlock:^(NSNumber *value) {
-        _borderModeChanged = true;
+        weakSelf->_borderModeChanged = true;
     }];
     
     [self observeStandardDefaultsKey:@"GBHighpassFilter" withBlock:^(NSNumber *value) {
@@ -339,11 +339,11 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     }];
     
     [self observeStandardDefaultsKey:@"GBDebuggerFont" withBlock:^(NSString *value) {
-        [self updateFonts];
+        [weakSelf updateFonts];
     }];
     
     [self observeStandardDefaultsKey:@"GBDebuggerFontSize" withBlock:^(NSString *value) {
-        [self updateFonts];
+        [weakSelf updateFonts];
     }];
 }
 

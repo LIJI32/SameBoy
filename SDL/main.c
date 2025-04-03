@@ -133,6 +133,7 @@ retry: {
                 
             case SDL_WINDOWEVENT: {
                 if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                    screen_manually_resized = true;
                     update_viewport();
                 }
                 if (event.window.type == SDL_WINDOWEVENT_MOVED
@@ -312,6 +313,7 @@ static void handle_events(GB_gameboy_t *gb)
                 
             case SDL_WINDOWEVENT: {
                 if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                    screen_manually_resized = true;
                     update_viewport();
                 }
                 if (event.window.type == SDL_WINDOWEVENT_MOVED
@@ -556,6 +558,7 @@ static void handle_events(GB_gameboy_t *gb)
                             }
                             update_swap_interval();
                             update_viewport();
+                            screen_manually_resized = true;
                         }
                         break;
                         
@@ -696,6 +699,9 @@ static void rumble(GB_gameboy_t *gb, double amp)
 static void debugger_interrupt(int ignore)
 {
 #ifndef _WIN32
+    if (!GB_is_inited(&gb)) {
+        exit(0);
+    }
     if (GB_debugger_is_stopped(&gb)) {
         pending_command = GB_SDL_QUIT_COMMAND;
         console_line_ready(); // Force the debugger wait-loop to process the command
@@ -1035,8 +1041,16 @@ static void run(void)
     pending_command = GB_SDL_NO_COMMAND;
 restart:;
     model = model_to_use();
+    bool should_resize = !screen_manually_resized;
+    signed current_window_width, current_window_height;
+    SDL_GetWindowSize(window, &current_window_width, &current_window_height);
+
     
     if (GB_is_inited(&gb)) {
+        should_resize =
+            current_window_width == GB_get_screen_width(&gb) * configuration.default_scale &&
+            current_window_height == GB_get_screen_height(&gb) * configuration.default_scale;
+        
         if (doing_hot_swap) {
             doing_hot_swap = false;
         }
@@ -1105,6 +1119,15 @@ restart:;
     if (model != updated_model) {
         model = updated_model;
         GB_switch_model_and_reset(&gb, model);
+    }
+    
+    if (should_resize) {
+        signed width = GB_get_screen_width(&gb) * configuration.default_scale;
+        signed height = GB_get_screen_height(&gb) * configuration.default_scale;
+        signed x, y;
+        SDL_GetWindowPosition(window, &x, &y);
+        SDL_SetWindowSize(window, width, height);
+        SDL_SetWindowPosition(window, x - (width - current_window_width) / 2, y - (height - current_window_height) / 2);
     }
     
     /* Configure battery */
@@ -1417,7 +1440,9 @@ int main(int argc, char **argv)
                 configuration.allow_background_controllers? "1" : "0");
 
     window = SDL_CreateWindow("SameBoy v" GB_VERSION, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                              160 * configuration.default_scale, 144 * configuration.default_scale, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+                              (configuration.border_mode == GB_BORDER_ALWAYS? 256 : 160) * configuration.default_scale,
+                              (configuration.border_mode == GB_BORDER_ALWAYS? 224 : 144) * configuration.default_scale,
+                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (window == NULL) {
         fputs(SDL_GetError(), stderr);
         exit(1);

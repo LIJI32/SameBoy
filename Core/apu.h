@@ -17,12 +17,7 @@
 
 
 /* Divides nicely and never overflows with 4 channels and 8 (1-8) volume levels */
-#ifdef WIIU
-/* Todo: Remove this hack once https://github.com/libretro/RetroArch/issues/6252 is fixed*/
-#define MAX_CH_AMP (0xFF0 / 2)
-#else
 #define MAX_CH_AMP 0xFF0
-#endif
 #define CH_STEP (MAX_CH_AMP/0xF/8)
 #endif
 
