@@ -146,7 +146,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
 - (IBAction)touchEvent:(WKLongPressGestureRecognizer *)sender
 {
     static NSTimer *_timer = nil;
-    static bool isLong = false, isTap = false;;
+    static bool isLong = false, isTap = false;
     static bool down = false;
     
     if (!down && sender.state != WKGestureRecognizerStateBegan) {
@@ -339,7 +339,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
             }
         }
         else {
-            [_scene setInput:0];;
+            [_scene setInput:0];
         }
     }
     else {

@@ -32,6 +32,13 @@
     _queueSize = 0;
     _pendingBuffer = nil;
     [_engine startAndReturnError:nil];
+    @try {
+        [_player play];
+    }
+    @catch (NSException *exception) {
+        [_engine stop];
+        return;
+    }
     [_player play];
     _acitve = true;
 }
@@ -43,7 +50,7 @@
 
 - (void)stop
 {
-    if (!_acitve) return;;
+    if (!_acitve) return;
     [_player stop];
     [_engine stop];
     _acitve = false;

@@ -20,7 +20,7 @@
 
 + (instancetype)sharedManager
 {
-    static GBPhoneManager *singleton = nil;;
+    static GBPhoneManager *singleton = nil;
     if (singleton) return singleton;
     
     if (![WCSession isSupported]) return nil;

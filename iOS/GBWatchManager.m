@@ -16,7 +16,7 @@
 
 + (instancetype)sharedManager
 {
-    static GBWatchManager *singleton = nil;;
+    static GBWatchManager *singleton = nil;
     if (singleton) return singleton;
     
     if (![WCSession isSupported]) return nil;
