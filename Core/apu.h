@@ -6,7 +6,7 @@
 #include "defs.h"
 
 #define GB_BAND_LIMITED_WIDTH 16
-#define GB_BAND_LIMITED_PHASES 32
+#define GB_BAND_LIMITED_PHASES 512
 
 #ifdef GB_INTERNAL
 #define GB_BAND_LIMITED_ONE 0x10000 // fixed point value equal to 1

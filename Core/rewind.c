@@ -226,7 +226,7 @@ void GB_set_rewind_length(GB_gameboy_t *gb, double seconds)
 
 void GB_rewind_invalidate_for_backstepping(GB_gameboy_t *gb)
 {
-    if (gb->rewind_disable_invalidation) return;;
+    if (gb->rewind_disable_invalidation) return;
     if (gb->rewind_sequences && gb->rewind_sequences[gb->rewind_pos].key_state) {
         typeof(gb->rewind_sequences[0]) *sequence = &gb->rewind_sequences[gb->rewind_pos];
         sequence->instruction_count[sequence->pos] |= 0x80000000;

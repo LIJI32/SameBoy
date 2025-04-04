@@ -1109,6 +1109,7 @@ static void write_mbc7_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 gb->mbc7.latch_ready = true;
                 gb->mbc7.x_latch = gb->mbc7.y_latch = 0x8000;
             }
+            break;
         }
         case 1: {
             if (value == 0xAA) {
@@ -1116,6 +1117,7 @@ static void write_mbc7_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 gb->mbc7.x_latch = 0x81D0 + 0x70 * gb->accelerometer_x;
                 gb->mbc7.y_latch = 0x81D0 + 0x70 * gb->accelerometer_y;
             }
+            break;
         }
         case 8: {
             gb->mbc7.eeprom_cs = value & 0x80;
@@ -1215,6 +1217,7 @@ static void write_mbc7_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 }
             }
             gb->mbc7.eeprom_clk = value & 0x40;
+            break;
         }
     }
 }

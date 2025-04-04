@@ -232,13 +232,25 @@ static void update_palette(void)
     GB_set_palette(&gb, current_dmg_palette());
 }
 
-static void screen_size_changed(void)
+static void screen_size_changed(bool resize_window)
 {
     SDL_DestroyTexture(texture);
     texture = SDL_CreateTexture(renderer, SDL_GetWindowPixelFormat(window), SDL_TEXTUREACCESS_STREAMING,
                                 GB_get_screen_width(&gb), GB_get_screen_height(&gb));
     
     SDL_SetWindowMinimumSize(window, GB_get_screen_width(&gb), GB_get_screen_height(&gb));
+    
+    if (resize_window) {
+        signed current_window_width, current_window_height;
+        SDL_GetWindowSize(window, &current_window_width, &current_window_height);
+
+        signed width = GB_get_screen_width(&gb) * configuration.default_scale;
+        signed height = GB_get_screen_height(&gb) * configuration.default_scale;
+        signed x, y;
+        SDL_GetWindowPosition(window, &x, &y);
+        SDL_SetWindowSize(window, width, height);
+        SDL_SetWindowPosition(window, x - (width - current_window_width) / 2, y - (height - current_window_height) / 2);
+    }
     
     update_viewport();
 }
@@ -250,6 +262,7 @@ static void open_menu(void)
         GB_audio_set_paused(true);
     }
     size_t previous_width = GB_get_screen_width(&gb);
+    size_t previous_height = GB_get_screen_height(&gb);
     run_gui(true);
     rerender_screen();
     SDL_ShowCursor(SDL_DISABLE);
@@ -265,7 +278,11 @@ static void open_menu(void)
     GB_set_rewind_length(&gb, configuration.rewind_length);
     GB_set_rtc_mode(&gb, configuration.rtc_mode);
     if (previous_width != GB_get_screen_width(&gb)) {
-        screen_size_changed();
+        signed current_window_width, current_window_height;
+        SDL_GetWindowSize(window, &current_window_width, &current_window_height);
+
+        screen_size_changed(current_window_width == previous_width * configuration.default_scale &&
+                            current_window_height == previous_height * configuration.default_scale);
     }
 }
 
@@ -1162,7 +1179,7 @@ restart:;
     replace_extension(filename, path_length, symbols_path, ".sym");
     GB_debugger_load_symbol_file(&gb, symbols_path);
         
-    screen_size_changed();
+    screen_size_changed(false);
 
     /* Run emulation */
     while (true) {

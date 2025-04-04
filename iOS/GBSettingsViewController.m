@@ -620,7 +620,10 @@ static UIImage *ImageForController(GCController *controller)
 static NSString *LocalizedNameForElement(GCControllerElement *element, GBControllerUsage usage)
 {
     if (@available(iOS 14.0, *)) {
-        return element.localizedName ?: @"Unknown Button";
+        NSString *ret = element.localizedName;
+        if (ret) {
+            return element.localizedName;
+        }
     }
     switch (usage) {
         case GBUsageDpad: return @"D-Pad";

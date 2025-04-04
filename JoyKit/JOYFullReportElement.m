@@ -46,7 +46,7 @@
 {
 
     [self updateValue:value];
-    return IOHIDDeviceSetReport(_device, kIOHIDReportTypeOutput, _reportID, [_data bytes], [_data length]);;
+    return IOHIDDeviceSetReport(_device, kIOHIDReportTypeOutput, _reportID, [_data bytes], [_data length]);
 }
 
 - (void)updateValue:(NSData *)value
