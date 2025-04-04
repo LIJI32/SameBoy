@@ -279,6 +279,8 @@
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnan-infinity-disabled"
     switch (_sections[section]) {
         case SubscriptionsSection: {
             UILabel *label = [[UILabel alloc] init];
@@ -293,6 +295,7 @@
         case RestoreSection:
             return 0;
     }
+#pragma clang diagnostic pop
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
