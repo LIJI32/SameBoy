@@ -16,7 +16,7 @@ char *do_open_rom_dialog(void)
         NSString *ret = [[[dialog URLs] firstObject] path];
         dup2(stderr_fd, STDERR_FILENO);
         if (ret) {
-            return strdup(ret.UTF8String);
+            return strdup(ret.fileSystemRepresentation);
         }
         return NULL;
     }
@@ -59,7 +59,7 @@ char *do_save_recording_dialog(unsigned frequency)
         NSString *ret = [[dialog URL] path];
         dup2(stderr_fd, STDERR_FILENO);
         if (ret) {
-            return strdup(ret.UTF8String);
+            return strdup(ret.fileSystemRepresentation);
         }
         return NULL;
     }
