@@ -1,6 +1,5 @@
 #pragma once
 
-#include "gb.h"
 #include <stdbool.h>
 #include <stdint.h>
 

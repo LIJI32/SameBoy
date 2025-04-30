@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include "defs.h"
+#include "save_state.h"
 
 #define GB_BAND_LIMITED_WIDTH 16
 #define GB_BAND_LIMITED_PHASES 512
