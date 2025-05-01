@@ -1,8 +1,8 @@
 #pragma once
 
-#include "gb.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "defs.h"
 
 typedef struct {
     struct GB_color_s {
