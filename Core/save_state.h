@@ -2,7 +2,10 @@
 
 /* Macros to make the GB_gameboy_t struct more future compatible when state saving */
 #include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include "model.h"
+#include "defs.h"
 
 #define GB_PADDING(type, old_usage) type old_usage##__do_not_use
 
