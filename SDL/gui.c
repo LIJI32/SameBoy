@@ -87,6 +87,7 @@ void render_texture(void *pixels,  void *previous)
 static const char *help[] = {
 "Keyboard Shortcuts:\n"
 " Open Menu:        Escape\n"
+" Menu Navigation:  Arrow keys or hjkl\n"
 " Open ROM:          " MODIFIER_NAME "+O\n"
 " Reset:             " MODIFIER_NAME "+R\n"
 " Pause:             " MODIFIER_NAME "+P\n"
@@ -2316,6 +2317,10 @@ void run_gui(bool is_running)
                         case SDL_SCANCODE_LEFT:
                         case SDL_SCANCODE_UP:
                         case SDL_SCANCODE_DOWN:
+                        case SDL_SCANCODE_H:
+                        case SDL_SCANCODE_J:
+                        case SDL_SCANCODE_K:
+                        case SDL_SCANCODE_L:
                             break;
                             
                         default:
@@ -2703,12 +2708,12 @@ void run_gui(bool is_running)
                     }
                 }
                 else if (gui_state == SHOWING_MENU) {
-                    if (event.key.keysym.scancode == SDL_SCANCODE_DOWN && current_menu[current_selection + 1].string) {
+                    if ((event.key.keysym.scancode == SDL_SCANCODE_DOWN || event.key.keysym.scancode == SDL_SCANCODE_J) && current_menu[current_selection + 1].string) {
                         current_selection++;
                         mouse_scroling = false;
                         should_render = true;
                     }
-                    else if (event.key.keysym.scancode == SDL_SCANCODE_UP && current_selection) {
+                    else if ((event.key.keysym.scancode == SDL_SCANCODE_UP || event.key.keysym.scancode == SDL_SCANCODE_K) && current_selection) {
                         current_selection--;
                         mouse_scroling = false;
                         should_render = true;
@@ -2732,11 +2737,11 @@ void run_gui(bool is_running)
                             return;
                         }
                     }
-                    else if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT && current_menu[current_selection].backwards_handler) {
+                    else if ((event.key.keysym.scancode == SDL_SCANCODE_RIGHT || event.key.keysym.scancode == SDL_SCANCODE_L) && current_menu[current_selection].backwards_handler) {
                         current_menu[current_selection].handler(current_selection);
                         should_render = true;
                     }
-                    else if (event.key.keysym.scancode == SDL_SCANCODE_LEFT && current_menu[current_selection].backwards_handler) {
+                    else if ((event.key.keysym.scancode == SDL_SCANCODE_LEFT || event.key.keysym.scancode == SDL_SCANCODE_H) && current_menu[current_selection].backwards_handler) {
                         current_menu[current_selection].backwards_handler(current_selection);
                         should_render = true;
                     }

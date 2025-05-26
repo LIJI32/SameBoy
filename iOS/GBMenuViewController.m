@@ -29,6 +29,7 @@ static NSString *const tips[] = {
 {
     UILabel *_tipLabel;
     UIVisualEffectView *_effectView;
+    NSMutableArray<UIButton *> *_buttons;
 }
 
 + (instancetype)menu
@@ -41,6 +42,8 @@ static NSString *const tips[] = {
     [ret addAction:[UIAlertAction actionWithTitle:@"Close"
                                             style:UIAlertActionStyleCancel
                                           handler:nil]];
+    ret.selectedButtonIndex = 0;
+    ret->_buttons = [[NSMutableArray alloc] init];
     return ret;
 }
 
@@ -80,6 +83,7 @@ static NSString *const tips[] = {
         button.frame = CGRectMake(round(width * x), height * y, round(width), height);
         button.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
         [self.view addSubview:button];
+        [_buttons addObject:button];
 
         if (!buttons[i].selector) {
             button.enabled = false;
@@ -101,6 +105,9 @@ static NSString *const tips[] = {
         objc_setAssociatedObject(button, "RetainedBlock", block, OBJC_ASSOCIATION_RETAIN);
         [button addTarget:block action:@selector(invoke) forControlEvents:UIControlEventTouchUpInside];
     }
+    
+    self.menuButtons = [_buttons copy];
+    [self updateSelectedButton];
     
     _effectView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleProminent]];
     _effectView.layer.cornerRadius = 8;
@@ -187,6 +194,90 @@ static NSString *const tips[] = {
 - (UIViewController *)contentViewController
 {
     return [[UIViewController alloc] init];
+}
+
+#pragma mark - Vim Navigation
+
+- (BOOL)canBecomeFirstResponder
+{
+    return YES;
+}
+
+- (NSArray<UIKeyCommand *> *)keyCommands
+{
+    return @[
+        [UIKeyCommand keyCommandWithInput:@"h" modifierFlags:0 action:@selector(moveLeft)],
+        [UIKeyCommand keyCommandWithInput:@"j" modifierFlags:0 action:@selector(moveDown)],
+        [UIKeyCommand keyCommandWithInput:@"k" modifierFlags:0 action:@selector(moveUp)],
+        [UIKeyCommand keyCommandWithInput:@"l" modifierFlags:0 action:@selector(moveRight)],
+        [UIKeyCommand keyCommandWithInput:@"\r" modifierFlags:0 action:@selector(activateSelected)],
+        [UIKeyCommand keyCommandWithInput:@" " modifierFlags:0 action:@selector(activateSelected)],
+    ];
+}
+
+- (void)moveLeft
+{
+    if (self.selectedButtonIndex % 4 > 0) {
+        self.selectedButtonIndex--;
+        [self updateSelectedButton];
+    }
+}
+
+- (void)moveRight
+{
+    if (self.selectedButtonIndex % 4 < 3 && self.selectedButtonIndex + 1 < self.menuButtons.count) {
+        self.selectedButtonIndex++;
+        [self updateSelectedButton];
+    }
+}
+
+- (void)moveUp
+{
+    if (self.selectedButtonIndex >= 4) {
+        self.selectedButtonIndex -= 4;
+        [self updateSelectedButton];
+    }
+}
+
+- (void)moveDown
+{
+    if (self.selectedButtonIndex + 4 < self.menuButtons.count) {
+        self.selectedButtonIndex += 4;
+        [self updateSelectedButton];
+    }
+}
+
+- (void)activateSelected
+{
+    if (self.selectedButtonIndex >= 0 && self.selectedButtonIndex < self.menuButtons.count) {
+        UIButton *button = self.menuButtons[self.selectedButtonIndex];
+        if (button.enabled) {
+            [button sendActionsForControlEvents:UIControlEventTouchUpInside];
+        }
+    }
+}
+
+- (void)updateSelectedButton
+{
+    for (NSInteger i = 0; i < self.menuButtons.count; i++) {
+        UIButton *button = self.menuButtons[i];
+        if (i == self.selectedButtonIndex) {
+            button.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.3];
+            button.layer.borderWidth = 2.0;
+            button.layer.borderColor = [UIColor systemBlueColor].CGColor;
+            button.layer.cornerRadius = 8.0;
+        } else {
+            button.backgroundColor = [UIColor clearColor];
+            button.layer.borderWidth = 0.0;
+            button.layer.borderColor = [UIColor clearColor].CGColor;
+        }
+    }
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [self becomeFirstResponder];
 }
 
 @end
