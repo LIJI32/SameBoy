@@ -454,6 +454,87 @@ static const uint8_t workboy_vk_to_key[] = {
         }
     }
 
+    // Add support for vim-style hjkl D-pad keys alongside arrow keys
+    if (!handled) {
+        unsigned short keyCode = theEvent.keyCode;
+        if (keyCode == kVK_ANSI_H) { // h = left
+            handled = true;
+            for (unsigned player = 0; player < player_count; player++) {
+                if (self.document.partner) {
+                    if (player == 0) {
+                        GB_set_key_state_for_player(_gb, GB_KEY_LEFT, 0, true);
+                        GB_set_use_faux_analog_inputs(_gb, 0, false);
+                    }
+                    else {
+                        GB_set_key_state_for_player(self.document.partner.gb, GB_KEY_LEFT, 0, true);
+                        GB_set_use_faux_analog_inputs(self.document.partner.gb, 0, false);
+                    }
+                }
+                else {
+                    GB_set_key_state_for_player(_gb, GB_KEY_LEFT, player, true);
+                    GB_set_use_faux_analog_inputs(_gb, player, false);
+                }
+            }
+        }
+        else if (keyCode == kVK_ANSI_J) { // j = down
+            handled = true;
+            for (unsigned player = 0; player < player_count; player++) {
+                if (self.document.partner) {
+                    if (player == 0) {
+                        GB_set_key_state_for_player(_gb, GB_KEY_DOWN, 0, true);
+                        GB_set_use_faux_analog_inputs(_gb, 0, false);
+                    }
+                    else {
+                        GB_set_key_state_for_player(self.document.partner.gb, GB_KEY_DOWN, 0, true);
+                        GB_set_use_faux_analog_inputs(self.document.partner.gb, 0, false);
+                    }
+                }
+                else {
+                    GB_set_key_state_for_player(_gb, GB_KEY_DOWN, player, true);
+                    GB_set_use_faux_analog_inputs(_gb, player, false);
+                }
+            }
+        }
+        else if (keyCode == kVK_ANSI_K) { // k = up
+            handled = true;
+            for (unsigned player = 0; player < player_count; player++) {
+                if (self.document.partner) {
+                    if (player == 0) {
+                        GB_set_key_state_for_player(_gb, GB_KEY_UP, 0, true);
+                        GB_set_use_faux_analog_inputs(_gb, 0, false);
+                    }
+                    else {
+                        GB_set_key_state_for_player(self.document.partner.gb, GB_KEY_UP, 0, true);
+                        GB_set_use_faux_analog_inputs(self.document.partner.gb, 0, false);
+                    }
+                }
+                else {
+                    GB_set_key_state_for_player(_gb, GB_KEY_UP, player, true);
+                    GB_set_use_faux_analog_inputs(_gb, player, false);
+                }
+            }
+        }
+        else if (keyCode == kVK_ANSI_L) { // l = right
+            handled = true;
+            for (unsigned player = 0; player < player_count; player++) {
+                if (self.document.partner) {
+                    if (player == 0) {
+                        GB_set_key_state_for_player(_gb, GB_KEY_RIGHT, 0, true);
+                        GB_set_use_faux_analog_inputs(_gb, 0, false);
+                    }
+                    else {
+                        GB_set_key_state_for_player(self.document.partner.gb, GB_KEY_RIGHT, 0, true);
+                        GB_set_use_faux_analog_inputs(self.document.partner.gb, 0, false);
+                    }
+                }
+                else {
+                    GB_set_key_state_for_player(_gb, GB_KEY_RIGHT, player, true);
+                    GB_set_use_faux_analog_inputs(_gb, player, false);
+                }
+            }
+        }
+    }
+
     if (!handled && [theEvent type] != NSEventTypeFlagsChanged) {
         [super keyDown:theEvent];
     }
@@ -533,6 +614,76 @@ static const uint8_t workboy_vk_to_key[] = {
             }
         }
     }
+    
+    // Add support for vim-style hjkl D-pad keys alongside arrow keys
+    if (!handled) {
+        unsigned short keyCode = theEvent.keyCode;
+        if (keyCode == kVK_ANSI_H) { // h = left
+            handled = true;
+            for (unsigned player = 0; player < player_count; player++) {
+                if (self.document.partner) {
+                    if (player == 0) {
+                        GB_set_key_state_for_player(_gb, GB_KEY_LEFT, 0, false);
+                    }
+                    else {
+                        GB_set_key_state_for_player(self.document.partner.gb, GB_KEY_LEFT, 0, false);
+                    }
+                }
+                else {
+                    GB_set_key_state_for_player(_gb, GB_KEY_LEFT, player, false);
+                }
+            }
+        }
+        else if (keyCode == kVK_ANSI_J) { // j = down
+            handled = true;
+            for (unsigned player = 0; player < player_count; player++) {
+                if (self.document.partner) {
+                    if (player == 0) {
+                        GB_set_key_state_for_player(_gb, GB_KEY_DOWN, 0, false);
+                    }
+                    else {
+                        GB_set_key_state_for_player(self.document.partner.gb, GB_KEY_DOWN, 0, false);
+                    }
+                }
+                else {
+                    GB_set_key_state_for_player(_gb, GB_KEY_DOWN, player, false);
+                }
+            }
+        }
+        else if (keyCode == kVK_ANSI_K) { // k = up
+            handled = true;
+            for (unsigned player = 0; player < player_count; player++) {
+                if (self.document.partner) {
+                    if (player == 0) {
+                        GB_set_key_state_for_player(_gb, GB_KEY_UP, 0, false);
+                    }
+                    else {
+                        GB_set_key_state_for_player(self.document.partner.gb, GB_KEY_UP, 0, false);
+                    }
+                }
+                else {
+                    GB_set_key_state_for_player(_gb, GB_KEY_UP, player, false);
+                }
+            }
+        }
+        else if (keyCode == kVK_ANSI_L) { // l = right
+            handled = true;
+            for (unsigned player = 0; player < player_count; player++) {
+                if (self.document.partner) {
+                    if (player == 0) {
+                        GB_set_key_state_for_player(_gb, GB_KEY_RIGHT, 0, false);
+                    }
+                    else {
+                        GB_set_key_state_for_player(self.document.partner.gb, GB_KEY_RIGHT, 0, false);
+                    }
+                }
+                else {
+                    GB_set_key_state_for_player(_gb, GB_KEY_RIGHT, player, false);
+                }
+            }
+        }
+    }
+    
     if (!handled && [theEvent type] != NSEventTypeFlagsChanged) {
         [super keyUp:theEvent];
     }

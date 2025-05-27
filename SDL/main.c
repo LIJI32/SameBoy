@@ -632,12 +632,34 @@ static void handle_events(GB_gameboy_t *gb)
                     GB_set_key_state(gb, GB_KEY_B, event.type == SDL_KEYDOWN);
                 }
                 else {
+                    bool key_handled = false;
                     for (unsigned i = 0; i < GB_KEY_MAX; i++) {
                         if (event.key.keysym.scancode == configuration.keys[i]) {
                             if (i <= GB_KEY_DOWN) {
                                 GB_set_use_faux_analog_inputs(gb, 0, false);
                             }
                             GB_set_key_state(gb, i, event.type == SDL_KEYDOWN);
+                            key_handled = true;
+                        }
+                    }
+                    
+                    // Add support for vim-style hjkl D-pad keys alongside arrow keys (only if not already mapped)
+                    if (!key_handled) {
+                        if (event.key.keysym.scancode == SDL_SCANCODE_H) {
+                            GB_set_use_faux_analog_inputs(gb, 0, false);
+                            GB_set_key_state(gb, GB_KEY_LEFT, event.type == SDL_KEYDOWN);
+                        }
+                        else if (event.key.keysym.scancode == SDL_SCANCODE_J) {
+                            GB_set_use_faux_analog_inputs(gb, 0, false);
+                            GB_set_key_state(gb, GB_KEY_DOWN, event.type == SDL_KEYDOWN);
+                        }
+                        else if (event.key.keysym.scancode == SDL_SCANCODE_K) {
+                            GB_set_use_faux_analog_inputs(gb, 0, false);
+                            GB_set_key_state(gb, GB_KEY_UP, event.type == SDL_KEYDOWN);
+                        }
+                        else if (event.key.keysym.scancode == SDL_SCANCODE_L) {
+                            GB_set_use_faux_analog_inputs(gb, 0, false);
+                            GB_set_key_state(gb, GB_KEY_RIGHT, event.type == SDL_KEYDOWN);
                         }
                     }
                 }
