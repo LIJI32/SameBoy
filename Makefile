@@ -292,9 +292,11 @@ sdl: $(BIN)/SDL/xaudio2_9redist.dll
 endif
 else
 LDFLAGS += -lc -lm
-# libdl is not available as a standalone library in Haiku
+# libdl is not available as a standalone library in Haiku or OpenBSD
 ifneq ($(PLATFORM),Haiku)
+ifneq ($(PLATFORM),OpenBSD)
 LDFLAGS += -ldl
+endif
 endif
 endif
 
@@ -612,7 +614,7 @@ $(BIN)/SameBoy-watchOS.app/Assets.car: $(shell find watchOS/Assets.xcassets)
 # Cocoa Port
 
 $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
-                    $(shell ls Cocoa/*.icns Cocoa/*.png) \
+                    $(shell ls Cocoa/*.icns Cocoa/*.png Cocoa/*.car) \
                     Cocoa/License.html \
                     Cocoa/Info.plist \
                     Misc/registers.sym \
@@ -629,7 +631,7 @@ $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
 					$(BIN)/SameBoy.app/Contents/PlugIns/Previewer.appex \
                     Shaders
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Resources
-	cp Cocoa/*.icns Cocoa/*.png Misc/registers.sym $(BIN)/SameBoy.app/Contents/Resources/
+	cp Cocoa/*.icns Cocoa/*.png Cocoa/*.car Misc/registers.sym $(BIN)/SameBoy.app/Contents/Resources/
 	sed "s/@VERSION/$(VERSION)/;s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < Cocoa/Info.plist > $(BIN)/SameBoy.app/Contents/Info.plist
 	sed "s/@COPYRIGHT_YEAR/$(COPYRIGHT_YEAR)/" < Cocoa/License.html > $(BIN)/SameBoy.app/Contents/Resources/Credits.html
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Resources/Shaders
@@ -856,7 +858,7 @@ install: $(BIN)/XdgThumbnailer/sameboy-thumbnailer sdl $(shell find FreeDesktop)
 	install -d $(DESTDIR)$(DATA_DIR)/BootROMs
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -d $(DESTDIR)$(PREFIX)/share/thumbnailers
-	install -d $(DESTDIR)$(PREFIX)/share/mime
+	install -d $(DESTDIR)$(PREFIX)/share/mime/packages
 	install -d $(DESTDIR)$(PREFIX)/share/applications
 	
 	(cd $(BIN)/SDL && find . \! -name sameboy -type f -exec install -m 644 {} "$(abspath $(DESTDIR))$(DATA_DIR)/{}" \; )
@@ -872,7 +874,7 @@ ifeq ($(DESTDIR),)
 		xdg-icon-resource install --novendor --theme hicolor --size $$size --context mimetypes FreeDesktop/ColorCartridge/$${size}x$${size}.png x-gameboy-color-rom; \
 	done
 else
-	install -m 644 FreeDesktop/sameboy.xml $(DESTDIR)$(PREFIX)/share/mime/sameboy.xml
+	install -m 644 FreeDesktop/sameboy.xml $(DESTDIR)$(PREFIX)/share/mime/packages/sameboy.xml
 	install -m 644 FreeDesktop/sameboy.desktop $(DESTDIR)$(PREFIX)/share/applications/sameboy.desktop
 	for size in 16x16 32x32 64x64 128x128 256x256 512x512; do \
 		install -d $(DESTDIR)$(PREFIX)/share/icons/hicolor/$$size/apps; \

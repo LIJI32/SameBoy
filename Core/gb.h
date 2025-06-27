@@ -1,6 +1,9 @@
 #pragma once
 
 #ifdef __cplusplus
+#if defined(__STRICT_ANSI__) && !defined(typeof)
+#define typeof decltype
+#endif
 extern "C" {
 #endif
 
@@ -782,6 +785,14 @@ struct GB_gameboy_internal_s {
                
         /* Callbacks */
         GB_debugger_reload_callback_t debugger_reload_callback;
+               
+        /* CPU usage */
+        uint32_t current_frame_idle_cycles, current_frame_busy_cycles;
+        uint32_t last_frame_idle_cycles, last_frame_busy_cycles;
+        
+        uint32_t current_second_idle_cycles, current_second_busy_cycles;
+        uint32_t last_second_idle_cycles, last_second_busy_cycles;
+        uint8_t usage_frame_count;
 #endif
 
 #ifndef GB_DISABLE_REWIND
@@ -822,6 +833,7 @@ struct GB_gameboy_internal_s {
         /* Misc */
         bool turbo;
         bool turbo_dont_skip;
+        bool enable_skipped_frame_vblank_callbacks;
         bool disable_rendering;
         uint8_t boot_rom[0x900];
         bool vblank_just_occured; // For slow operations involving syscalls; these should only run once per vblank

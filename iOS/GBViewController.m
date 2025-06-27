@@ -38,6 +38,9 @@
     bool _swappingROM;
     bool _skipAutoLoad;
     
+    bool _rapidA, _rapidB;
+    uint8_t _rapidACount, _rapidBCount;
+    
     UIInterfaceOrientation _orientation;
     GBHorizontalLayout *_horizontalLayoutLeft;
     GBHorizontalLayout *_horizontalLayoutRight;
@@ -528,6 +531,14 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         case GBSelect:
         case GBStart:
             GB_set_key_state(&_gb, (GB_key_t)gbButton, button.value > 0.25);
+            break;
+        case GBRapidA:
+            _rapidA = button.value > 0.25;
+            _rapidACount = 0;
+            break;
+        case GBRapidB:
+            _rapidB = button.value > 0.25;
+            _rapidBCount = 0;
             break;
         case GBTurbo:
             if (button.value > analogThreshold) {
@@ -1374,6 +1385,14 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     if (type != GB_VBLANK_TYPE_REPEAT) {
         [_gbView flip];
         GB_set_pixels_output(&_gb, _gbView.pixels);
+    }
+    if (_rapidA) {
+        _rapidACount++;
+        GB_set_key_state(&_gb, GB_KEY_A, !(_rapidACount & 2));
+    }
+    if (_rapidB) {
+        _rapidBCount++;
+        GB_set_key_state(&_gb, GB_KEY_B, !(_rapidBCount & 2));
     }
     _rewind = _runMode == GBRunModeRewind;
 }

@@ -148,6 +148,9 @@ static const uint8_t workboy_vk_to_key[] = {
     [self observeStandardDefaultsKey:@"GBAspectRatioUnkept" withBlock:^(id newValue) {
         [weakSelf setFrame:weakSelf.superview.frame];
     }];
+    [self observeStandardDefaultsKey:@"GBForceIntegerScale" withBlock:^(id newValue) {
+        [weakSelf setFrame:weakSelf.superview.frame];
+    }];
     [self observeStandardDefaultsKey:@"JoyKitDefaultControllers" withBlock:^(id newValue) {
         [weakSelf reassignControllers];
     }];
@@ -282,7 +285,9 @@ static const uint8_t workboy_vk_to_key[] = {
 
 - (void)setFrame:(NSRect)frame
 {
-    frame = self.superview.frame;
+    NSView *superview = self.superview;
+    if (GB_unlikely(!superview)) return;
+    frame = superview.frame;
     if (_gb && ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBAspectRatioUnkept"]) {
         double ratio = frame.size.width / frame.size.height;
         double width = GB_get_screen_width(_gb);
@@ -299,6 +304,19 @@ static const uint8_t workboy_vk_to_key[] = {
             frame.size.height = new_height;
             frame.origin.x = 0;
         }
+    }
+    
+    if (_gb && [[NSUserDefaults standardUserDefaults] boolForKey:@"GBForceIntegerScale"]) {
+        double factor = self.window.backingScaleFactor;
+        double width = GB_get_screen_width(_gb) / factor;
+        double height = GB_get_screen_height(_gb) / factor;
+        
+        double new_width = floor(frame.size.width / width)  * width;
+        double new_height = floor(frame.size.height / height)  * height;
+        frame.origin.x += floor((frame.size.width - new_width) / 2);
+        frame.origin.y += floor((frame.size.height - new_height) / 2);
+        frame.size.width = new_width;
+        frame.size.height = new_height;
     }
 
     [super setFrame:frame];

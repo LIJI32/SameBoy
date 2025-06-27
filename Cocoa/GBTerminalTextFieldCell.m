@@ -11,23 +11,23 @@
 
 @implementation GBTerminalTextFieldCell
 {
-    GBTerminalTextView *field_editor;
+    GBTerminalTextView *_fieldEditor;
 }
 
 - (NSTextView *)fieldEditorForView:(NSTextField *)controlView
 {
-    if (field_editor) {
-        field_editor.gb = self.gb;
-        return field_editor;
+    if (_fieldEditor) {
+        _fieldEditor.gb = self.gb;
+        return _fieldEditor;
     }
-    field_editor = [[GBTerminalTextView alloc] init];
-    [field_editor setFieldEditor:true];
-    field_editor.gb = self.gb;
-    field_editor->_field = (NSTextField *)controlView;
+    _fieldEditor = [[GBTerminalTextView alloc] init];
+    [_fieldEditor setFieldEditor:true];
+    _fieldEditor.gb = self.gb;
+    _fieldEditor->_field = (NSTextField *)controlView;
     ((NSTextFieldCell *)controlView.cell).textInset =
-        field_editor.textContainerInset =
-        NSMakeSize(0, 2);
-    return field_editor;
+        _fieldEditor.textContainerInset =
+        NSMakeSize(7, 2);
+    return _fieldEditor;
 }
 
 @end

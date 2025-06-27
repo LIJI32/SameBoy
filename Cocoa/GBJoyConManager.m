@@ -16,7 +16,7 @@
     static GBJoyConManager *manager = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        manager = [[self alloc] _init];
+        manager = [[super allocWithZone:nil] _init];
     });
     return manager;
 }
@@ -30,6 +30,16 @@
         }
     }
     return ret;
+}
+
++ (instancetype)allocWithZone:(struct _NSZone *)zone
+{
+    return [self sharedInstance];
+}
+
++ (instancetype)alloc
+{
+    return [self sharedInstance];
 }
 
 - (instancetype)init

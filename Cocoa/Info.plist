@@ -113,7 +113,9 @@
 	<key>CFBundleExecutable</key>
 	<string>SameBoy</string>
 	<key>CFBundleIconFile</key>
-	<string>AppIcon.icns</string>
+	<string>AppIcon</string>
+    <key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.github.liji32.sameboy</string>
 	<key>LSApplicationCategoryType</key>

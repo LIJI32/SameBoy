@@ -46,17 +46,29 @@
 -(void)drawKnob:(NSRect)knobRect
 {
     [super drawKnob:knobRect];
-    NSRect peekRect = knobRect;
-    peekRect.size.width /= 2;
-    peekRect.size.height = peekRect.size.width;
-    peekRect.origin.x += peekRect.size.width / 2;
-    peekRect.origin.y += peekRect.size.height / 2;
+    NSBezierPath *path = nil;
+    if (@available(macos 26.0, *)) {
+        NSRect peekRect = knobRect;
+        peekRect.size.height /= 2;
+        peekRect.size.width -= peekRect.size.height;
+        peekRect.origin.x += peekRect.size.height / 2;
+        peekRect.origin.y += peekRect.size.height / 2;
+        path = [NSBezierPath bezierPathWithRoundedRect:peekRect xRadius:peekRect.size.height / 2 yRadius:peekRect.size.height / 2];
+    }
+    else {
+        NSRect peekRect = knobRect;
+        peekRect.size.width /= 2;
+        peekRect.size.height = peekRect.size.width;
+        peekRect.origin.x += peekRect.size.width / 2;
+        peekRect.origin.y += peekRect.size.height / 2;
+        path = [NSBezierPath bezierPathWithOvalInRect:peekRect];
+
+    }
     NSColor *color = self.colorValue;
     if (!self.enabled) {
         color = [color colorWithAlphaComponent:0.5];
     }
     [color setFill];
-    NSBezierPath *path = [NSBezierPath bezierPathWithOvalInRect:peekRect];
     [path fill];
     [[NSColor colorWithWhite:0 alpha:0.25] setStroke];
     [path setLineWidth:0.5];

@@ -176,13 +176,34 @@ void GB_display_vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
     gb->cycles_since_vblank_callback = 0;
     gb->lcd_disabled_outside_of_vblank = false;
     
+#ifndef GB_DISABLE_DEBUGGER
+    gb->last_frame_idle_cycles = gb->current_frame_idle_cycles;
+    gb->last_frame_busy_cycles = gb->current_frame_busy_cycles;
+    gb->current_frame_idle_cycles = 0;
+    gb->current_frame_busy_cycles = 0;
+    
+    if (gb->usage_frame_count++ == 60) {
+        gb->last_second_idle_cycles = gb->current_second_idle_cycles;
+        gb->last_second_busy_cycles = gb->current_second_busy_cycles;
+        gb->current_second_idle_cycles = 0;
+        gb->current_second_busy_cycles = 0;
+        gb->usage_frame_count = 0;
+    }
+#endif
+    
     /* TODO: Slow in turbo mode! */
     if (GB_is_hle_sgb(gb)) {
         GB_sgb_render(gb);
     }
     
     if (gb->turbo) {
+#ifndef GB_DISABLE_DEBUGGER
+        if (unlikely(gb->backstep_instructions)) return;
+#endif
         if (GB_timing_sync_turbo(gb)) {
+            if (gb->vblank_callback && gb->enable_skipped_frame_vblank_callbacks) {
+                gb->vblank_callback(gb, GB_VBLANK_TYPE_SKIPPED_FRAME);
+            }
             return;
         }
     }
@@ -2469,4 +2490,9 @@ unsigned GB_get_screen_height(GB_gameboy_t *gb)
 double GB_get_usual_frame_rate(GB_gameboy_t *gb)
 {
     return GB_get_clock_rate(gb) / (double)LCDC_PERIOD;
+}
+
+void GB_set_enable_skipped_frame_vblank_callbacks(GB_gameboy_t *gb, bool enable)
+{
+    gb->enable_skipped_frame_vblank_callbacks = enable;
 }

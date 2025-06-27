@@ -288,6 +288,7 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     GB_set_user_data(&_gb, (__bridge void *)(self));
     GB_set_boot_rom_load_callback(&_gb, (GB_boot_rom_load_callback_t)boot_rom_load);
     GB_set_vblank_callback(&_gb, (GB_vblank_callback_t) vblank);
+    GB_set_enable_skipped_frame_vblank_callbacks(&_gb, true);
     GB_set_log_callback(&_gb, (GB_log_callback_t) consoleLog);
     GB_set_input_callback(&_gb, (GB_input_callback_t) consoleInput);
     GB_set_async_input_callback(&_gb, (GB_input_callback_t) asyncConsoleInput);
@@ -359,11 +360,29 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
 
 - (void)vblankWithType:(GB_vblank_type_t)type
 {
+    if (type == GB_VBLANK_TYPE_SKIPPED_FRAME) {
+        double frameUsage = GB_debugger_get_frame_cpu_usage(&_gb);
+        [_cpuView addSample:frameUsage];
+        return;
+    }
+    
     if (_gbsVisualizer) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [_gbsVisualizer setNeedsDisplay:true];
         });
     }
+    
+    double frameUsage = GB_debugger_get_frame_cpu_usage(&_gb);
+    [_cpuView addSample:frameUsage];
+    
+    if (self.consoleWindow.visible) {
+        double secondUsage = GB_debugger_get_second_cpu_usage(&_gb);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [_cpuView setNeedsDisplay:true];
+            _cpuCounter.stringValue = [NSString stringWithFormat:@"%.2f%%", secondUsage * 100];
+        });
+    }
+    
     if (type != GB_VBLANK_TYPE_REPEAT) {
         [self.view flip];
         if (_borderModeChanged) {
@@ -730,11 +749,12 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     if (old_width != GB_get_screen_width(&_gb)) {
         [self.view screenSizeChanged];
     }
-    
     [self updateMinSize];
     
-
     [self start];
+    if (_gbsTracks) {
+        [self changeGBSTrack:sender];
+    }
 
     if (_hexController) {
         /* Verify bank sanity, especially when switching models. */
@@ -859,7 +879,7 @@ again:;
 {
     [super windowControllerDidLoadNib:aController];
     // Interface Builder bug?
-    [self.consoleWindow setContentSize:self.consoleWindow.minSize];
+    [self.consoleWindow setContentSize:self.consoleWindow.frame.size];
     /* Close Open Panels, if any */
     for (NSWindow *window in [[NSApplication sharedApplication] windows]) {
         if ([window isKindOfClass:[NSOpenPanel class]]) {
@@ -897,9 +917,16 @@ again:;
     [self.vramWindow setFrame:vram_window_rect display:true animate:false];
     
     
-    self.consoleWindow.title = [NSString stringWithFormat:@"Debug Console – %@", [self.fileURL.path lastPathComponent]];
-    self.memoryWindow.title = [NSString stringWithFormat:@"Memory – %@", [self.fileURL.path lastPathComponent]];
-    self.vramWindow.title = [NSString stringWithFormat:@"VRAM Viewer – %@", [self.fileURL.path lastPathComponent]];
+    if (@available(macOS 11.0, *)) {
+        self.consoleWindow.subtitle = [self.fileURL.path lastPathComponent];
+        self.memoryWindow.subtitle = [self.fileURL.path lastPathComponent];
+        self.vramWindow.subtitle = [self.fileURL.path lastPathComponent];
+    }
+    else {
+        self.consoleWindow.title = [NSString stringWithFormat:@"Debug Console – %@", [self.fileURL.path lastPathComponent]];
+        self.memoryWindow.title = [NSString stringWithFormat:@"Memory – %@", [self.fileURL.path lastPathComponent]];
+        self.vramWindow.title = [NSString stringWithFormat:@"VRAM Viewer – %@", [self.fileURL.path lastPathComponent]];
+    }
     
     self.consoleWindow.level = NSNormalWindowLevel;
     
@@ -1152,6 +1179,17 @@ again:;
     if (@available(macOS 10.10, *)) {
         _mainWindow.titlebarAppearsTransparent = true;
     }
+    
+    if (@available(macOS 26.0, *)) {
+        // There's a new minimum width for segmented controls in Solarium
+        NSRect frame = _gbsNextPrevButton.frame;
+        frame.origin.x -= 16;
+        _gbsNextPrevButton.frame = frame;
+        
+        frame = _gbsTracks.frame;
+        frame.size.width -= 16;
+        _gbsTracks.frame = frame;
+    }
 }
 
 - (bool)isCartContainer
@@ -1316,6 +1354,7 @@ static bool is_path_writeable(const char *path)
     [self.vramWindow close];
     [self.printerFeedWindow close];
     [self.cheatsWindow close];
+    [_cheatSearchController.window close];
     [super close];
 }
 
@@ -1325,6 +1364,8 @@ static bool is_path_writeable(const char *path)
     GB_debugger_break(&_gb);
     [self start];
     [self.consoleWindow makeKeyAndOrderFront:nil];
+    double secondUsage = GB_debugger_get_second_cpu_usage(&_gb);
+    _cpuCounter.stringValue = [NSString stringWithFormat:@"%.2f%%", secondUsage * 100];
     [self.consoleInput becomeFirstResponder];
 }
 
@@ -1405,6 +1446,9 @@ static bool is_path_writeable(const char *path)
     }
     else if ([anItem action] == @selector(decreaseWindowSize:)) {
         return [self newRect:NULL forWindow:_mainWindow action:GBWindowResizeActionDecrease];
+    }
+    else if ([anItem action] == @selector(reloadROM:)) {
+        return !_gbsTracks;
     }
     
     return [super validateUserInterfaceItem:anItem];
@@ -1547,7 +1591,9 @@ enum GBWindowResizeAction
         [self reloadVRAMData: nil];
         
         [textView.textStorage appendAttributedString:_pendingConsoleOutput];
-        [textView scrollToEndOfDocument:nil];
+        if (!_logToSideView) {
+            [textView scrollToEndOfDocument:nil];
+        }
         if ([[NSUserDefaults standardUserDefaults] boolForKey:@"DeveloperMode"]) {
             [self.consoleWindow orderFront:nil];
         }
@@ -1605,7 +1651,9 @@ enum GBWindowResizeAction
 
 - (IBAction)showConsoleWindow:(id)sender
 {
-    [self.consoleWindow orderBack:nil];
+    [self.consoleWindow orderFront:nil];
+    double secondUsage = GB_debugger_get_second_cpu_usage(&_gb);
+    _cpuCounter.stringValue = [NSString stringWithFormat:@"%.2f%%", secondUsage * 100];
 }
 
 - (void)queueDebuggerCommand:(NSString *)command
@@ -1955,124 +2003,130 @@ enum GBWindowResizeAction
 
 - (IBAction)hexGoTo:(id)sender
 {
+    NSString *expression = [sender stringValue];
+    __block uint16_t addr = 0;
+    __block uint16_t bank = 0;
+    __block bool fail = false;
     NSString *error = [self captureOutputForBlock:^{
-        uint16_t addr;
-        uint16_t bank;
-        if (GB_debugger_evaluate(&_gb, [[sender stringValue] UTF8String], &addr, &bank)) {
-            return;
+        if (GB_debugger_evaluate(&_gb, [expression UTF8String], &addr, &bank)) {
+            fail = true;
         }
-        
-        if (bank != (typeof(bank))-1) {
-            GB_memory_mode_t mode = [(GBMemoryByteArray *)(_hexController.byteArray) mode];
-            if (addr < 0x4000) {
-                if (bank == 0) {
-                    if (mode != GBMemoryROM && mode != GBMemoryEntireSpace) {
-                        mode = GBMemoryEntireSpace;
-                    }
-                }
-                else {
-                    addr |= 0x4000;
-                    mode = GBMemoryROM;
-                }
-            }
-            else if (addr < 0x8000) {
-                mode = GBMemoryROM;
-            }
-            else if (addr < 0xA000) {
-                mode = GBMemoryVRAM;
-            }
-            else if (addr < 0xC000) {
-                mode = GBMemoryExternalRAM;
-            }
-            else if (addr < 0xD000) {
-                if (mode != GBMemoryRAM && mode != GBMemoryEntireSpace) {
-                    mode = GBMemoryEntireSpace;
-                }
-            }
-            else if (addr < 0xE000) {
-                mode = GBMemoryRAM;
-            }
-            else {
-                mode = GBMemoryEntireSpace;
-            }
-            [_memorySpaceButton selectItemAtIndex:mode];
-            [self hexUpdateSpace:_memorySpaceButton.cell];
-            [_memoryBankInput setStringValue:[NSString stringWithFormat:@"$%02x", bank]];
-            [self hexUpdateBank:_memoryBankInput];
-        }
-        addr -= _lineRep.valueOffset;
-        if (addr >= _hexController.byteArray.length) {
-            GB_log(&_gb, "Value $%04x is out of range.\n", addr);
-            return;
-        }
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [_hexController setSelectedContentsRanges:@[[HFRangeWrapper withRange:HFRangeMake(addr, 0)]]];
-            [_hexController _ensureVisibilityOfLocation:addr];
-            for (HFRepresenter *representer in _hexController.representers) {
-                if ([representer isKindOfClass:[HFHexTextRepresenter class]]) {
-                    [self.memoryWindow makeFirstResponder:representer.view];
-                    break;
-                }
-            }
-        });
     }];
+    
     if (error) {
         NSBeep();
         [GBWarningPopover popoverWithContents:error onView:sender];
+    }
+    if (fail) return;
+    
+        
+    if (bank != (typeof(bank))-1) {
+        GB_memory_mode_t mode = [(GBMemoryByteArray *)(_hexController.byteArray) mode];
+        if (addr < 0x4000) {
+            if (bank == 0) {
+                if (mode != GBMemoryROM && mode != GBMemoryEntireSpace) {
+                    mode = GBMemoryEntireSpace;
+                }
+            }
+            else {
+                addr |= 0x4000;
+                mode = GBMemoryROM;
+            }
+        }
+        else if (addr < 0x8000) {
+            mode = GBMemoryROM;
+        }
+        else if (addr < 0xA000) {
+            mode = GBMemoryVRAM;
+        }
+        else if (addr < 0xC000) {
+            mode = GBMemoryExternalRAM;
+        }
+        else if (addr < 0xD000) {
+            if (mode != GBMemoryRAM && mode != GBMemoryEntireSpace) {
+                mode = GBMemoryEntireSpace;
+            }
+        }
+        else if (addr < 0xE000) {
+            mode = GBMemoryRAM;
+        }
+        else {
+            mode = GBMemoryEntireSpace;
+        }
+        [_memorySpaceButton selectItemAtIndex:mode];
+        [self hexUpdateSpace:_memorySpaceButton.cell];
+        [_memoryBankInput setStringValue:[NSString stringWithFormat:@"$%02x", bank]];
+        [self hexUpdateBank:_memoryBankInput];
+    }
+    addr -= _lineRep.valueOffset;
+    if (addr >= _hexController.byteArray.length) {
+        GB_log(&_gb, "Value $%04x is out of range.\n", addr);
+        return;
+    }
+    
+    [_hexController setSelectedContentsRanges:@[[HFRangeWrapper withRange:HFRangeMake(addr, 0)]]];
+    [_hexController _ensureVisibilityOfLocation:addr];
+    for (HFRepresenter *representer in _hexController.representers) {
+        if ([representer isKindOfClass:[HFHexTextRepresenter class]]) {
+            [self.memoryWindow makeFirstResponder:representer.view];
+            break;
+        }
     }
 }
 
 - (void)hexUpdateBank:(NSControl *)sender ignoreErrors: (bool)ignore_errors
 {
+    NSString *expression = [sender stringValue];
+    __block uint16_t addr, bank;
+    __block bool fail = false;
     NSString *error = [self captureOutputForBlock:^{
-        uint16_t addr, bank;
-        if (GB_debugger_evaluate(&_gb, [[sender stringValue] UTF8String], &addr, &bank)) {
+        if (GB_debugger_evaluate(&_gb, [expression UTF8String], &addr, &bank)) {
+            fail = true;
             return;
         }
-
-        if (bank == (uint16_t) -1) {
-            bank = addr;
-        }
-
-        uint16_t n_banks = 1;
-        switch ([(GBMemoryByteArray *)(_hexController.byteArray) mode]) {
-            case GBMemoryROM: {
-                size_t rom_size;
-                GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_ROM, &rom_size, NULL);
-                n_banks = rom_size / 0x4000;
-                break;
-            }
-            case GBMemoryVRAM:
-                n_banks = GB_is_cgb(&_gb) ? 2 : 1;
-                break;
-            case GBMemoryExternalRAM: {
-                size_t ram_size;
-                GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_CART_RAM, &ram_size, NULL);
-                n_banks = (ram_size + 0x1FFF) / 0x2000;
-                break;
-            }
-            case GBMemoryRAM:
-                n_banks = GB_is_cgb(&_gb) ? 8 : 1;
-                break;
-            case GBMemoryEntireSpace:
-                break;
-        }
-
-        bank %= n_banks;
-
-        [sender setStringValue:[NSString stringWithFormat:@"$%x", bank]];
-        [(GBMemoryByteArray *)(_hexController.byteArray) setSelectedBank:bank];
-        _statusRep.bankForDescription = bank;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [_hexController reloadData];
-        });
     }];
     
     if (error && !ignore_errors) {
         NSBeep();
         [GBWarningPopover popoverWithContents:error onView:sender];
     }
+    
+    if (fail) return;
+
+    if (bank == (uint16_t) -1) {
+        bank = addr;
+    }
+
+    uint16_t n_banks = 1;
+    switch ([(GBMemoryByteArray *)(_hexController.byteArray) mode]) {
+        case GBMemoryROM: {
+            size_t rom_size;
+            GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_ROM, &rom_size, NULL);
+            n_banks = rom_size / 0x4000;
+            break;
+        }
+        case GBMemoryVRAM:
+            n_banks = GB_is_cgb(&_gb) ? 2 : 1;
+            break;
+        case GBMemoryExternalRAM: {
+            size_t ram_size;
+            GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_CART_RAM, &ram_size, NULL);
+            n_banks = (ram_size + 0x1FFF) / 0x2000;
+            break;
+        }
+        case GBMemoryRAM:
+            n_banks = GB_is_cgb(&_gb) ? 8 : 1;
+            break;
+        case GBMemoryEntireSpace:
+            break;
+    }
+
+    bank %= n_banks;
+
+    [(GBMemoryByteArray *)(_hexController.byteArray) setSelectedBank:bank];
+    _statusRep.bankForDescription = bank;
+    [sender setStringValue:[NSString stringWithFormat:@"$%x", bank]];
+    [_hexController reloadData];
 }
 
 - (IBAction)hexUpdateBank:(NSControl *)sender
@@ -2110,9 +2164,8 @@ enum GBWindowResizeAction
     }
     byteArray.selectedBank = bank;
     _statusRep.bankForDescription = bank;
-    if (bank != (uint16_t)-1) {
-        [self.memoryBankInput setStringValue:[NSString stringWithFormat:@"$%x", byteArray.selectedBank]];
-    }
+    [self.memoryBankInput setStringValue:(bank == (uint16_t)-1)? @"" :
+                                                                 [NSString stringWithFormat:@"$%x", byteArray.selectedBank]];
     
     [_hexController reloadData];
     for (NSView *view in self.memoryView.subviews) {
@@ -2452,9 +2505,16 @@ enum GBWindowResizeAction
 - (void)setFileURL:(NSURL *)fileURL
 {
     [super setFileURL:fileURL];
-    self.consoleWindow.title = [NSString stringWithFormat:@"Debug Console – %@", [[fileURL path] lastPathComponent]];
-    self.memoryWindow.title = [NSString stringWithFormat:@"Memory – %@", [[fileURL path] lastPathComponent]];
-    self.vramWindow.title = [NSString stringWithFormat:@"VRAM Viewer – %@", [[fileURL path] lastPathComponent]];
+    if (@available(macOS 11.0, *)) {
+        self.consoleWindow.subtitle = [self.fileURL.path lastPathComponent];
+        self.memoryWindow.subtitle = [self.fileURL.path lastPathComponent];
+        self.vramWindow.subtitle = [self.fileURL.path lastPathComponent];
+    }
+    else {
+        self.consoleWindow.title = [NSString stringWithFormat:@"Debug Console – %@", [self.fileURL.path lastPathComponent]];
+        self.memoryWindow.title = [NSString stringWithFormat:@"Memory – %@", [self.fileURL.path lastPathComponent]];
+        self.vramWindow.title = [NSString stringWithFormat:@"VRAM Viewer – %@", [self.fileURL.path lastPathComponent]];
+    }
 }
 
 - (BOOL)splitView:(GBSplitView *)splitView canCollapseSubview:(NSView *)subview;

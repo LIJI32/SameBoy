@@ -128,7 +128,7 @@ static inline void switch_banking_state(GB_gameboy_t *gb, uint16_t bank)
     }
 }
 
-static const char *value_to_string(GB_gameboy_t *gb, uint16_t value, bool prefer_name, bool prefer_local)
+static const char *value_to_string(GB_gameboy_t *gb, uint16_t value, bool prefer_name, bool prefer_local, bool prefer_no_padding)
 {
     static __thread char output[256];
     const GB_bank_symbol_t *symbol = GB_debugger_find_symbol(gb, value, prefer_local);
@@ -138,9 +138,13 @@ static const char *value_to_string(GB_gameboy_t *gb, uint16_t value, bool prefer
     }
 
     if (!symbol) {
-        snprintf(output, sizeof(output), "$%04x", value);
+        if (prefer_no_padding) {
+            snprintf(output, sizeof(output), "$%x", value);
+        }
+        else {
+            snprintf(output, sizeof(output), "$%04x", value);
+        }
     }
-
     else if (symbol->addr == value) {
         if (prefer_name) {
             snprintf(output, sizeof(output), "%s ($%04x)", symbol->name, value);
@@ -171,7 +175,7 @@ static GB_symbol_map_t *get_symbol_map(GB_gameboy_t *gb, uint16_t bank)
 
 static const char *debugger_value_to_string(GB_gameboy_t *gb, value_t value, bool prefer_name, bool prefer_local)
 {
-    if (!value.has_bank) return value_to_string(gb, value.value, prefer_name, prefer_local);
+    if (!value.has_bank) return value_to_string(gb, value.value, prefer_name, prefer_local, false);
 
     static __thread char output[256];
     const GB_bank_symbol_t *symbol = GB_map_find_symbol(get_symbol_map(gb, value.bank), value.value, prefer_local);
@@ -901,11 +905,11 @@ static bool registers(GB_gameboy_t *gb, char *arguments, char *modifiers, const 
            (gb->f & GB_HALF_CARRY_FLAG)? 'H' : '-',
            (gb->f & GB_SUBTRACT_FLAG)?   'N' : '-',
            (gb->f & GB_ZERO_FLAG)?       'Z' : '-');
-    GB_log(gb, "BC  = %s\n", value_to_string(gb, gb->bc, false, false));
-    GB_log(gb, "DE  = %s\n", value_to_string(gb, gb->de, false, false));
-    GB_log(gb, "HL  = %s\n", value_to_string(gb, gb->hl, false, false));
-    GB_log(gb, "SP  = %s\n", value_to_string(gb, gb->sp, false, false));
-    GB_log(gb, "PC  = %s\n", value_to_string(gb, gb->pc, false, false));
+    GB_log(gb, "BC  = %s\n", value_to_string(gb, gb->bc, false, false, false));
+    GB_log(gb, "DE  = %s\n", value_to_string(gb, gb->de, false, false, false));
+    GB_log(gb, "HL  = %s\n", value_to_string(gb, gb->hl, false, false, false));
+    GB_log(gb, "SP  = %s\n", value_to_string(gb, gb->sp, false, false, false));
+    GB_log(gb, "PC  = %s\n", value_to_string(gb, gb->pc, false, false, false));
     GB_log(gb, "IME = %s\n", gb->ime? "Enabled" : "Disabled");
     return true;
 }
@@ -1462,10 +1466,10 @@ static bool print(GB_gameboy_t *gb, char *arguments, char *modifiers, const debu
         return true;
     }
 
-    if (!modifiers || !modifiers[0]) {
-        modifiers = "a";
+    if (!modifiers) {
+        modifiers = "";
     }
-    else if (modifiers[1]) {
+    else if (modifiers[0] && modifiers[1]) {
         print_usage(gb, command);
         return true;
     }
@@ -1474,6 +1478,12 @@ static bool print(GB_gameboy_t *gb, char *arguments, char *modifiers, const debu
     value_t result = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL);
     if (!error) {
         switch (modifiers[0]) {
+            case '\0':
+                if (!result.has_bank) {
+                    GB_log(gb, "=%s\n", value_to_string(gb, result.value, false, false, true));
+                    break;
+                }
+                // fallthrough
             case 'a':
                 GB_log(gb, "=%s\n", debugger_value_to_string(gb, result, false, false));
                 break;
@@ -1503,6 +1513,7 @@ static bool print(GB_gameboy_t *gb, char *arguments, char *modifiers, const debu
                 break;
             }
             default:
+                print_usage(gb, command);
                 break;
         }
     }
@@ -1728,6 +1739,49 @@ static bool ticks(GB_gameboy_t *gb, char *arguments, char *modifiers, const debu
     return true;
 }
 
+double GB_debugger_get_frame_cpu_usage(GB_gameboy_t *gb)
+{
+    if (gb->last_frame_busy_cycles || gb->last_frame_idle_cycles) {
+        return (double)gb->last_frame_busy_cycles / (gb->last_frame_busy_cycles + gb->last_frame_idle_cycles);
+    }
+    return 0;
+}
+
+double GB_debugger_get_second_cpu_usage(GB_gameboy_t *gb)
+{
+    if (gb->last_second_busy_cycles || gb->last_second_idle_cycles) {
+        return (double)gb->last_second_busy_cycles / (gb->last_second_busy_cycles + gb->last_second_idle_cycles);
+    }
+    return 0;
+}
+
+double GB_debugger_get_second_cpu_usage(GB_gameboy_t *gb);
+
+static bool usage(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    
+    if (strlen(lstrip(arguments))) {
+        print_usage(gb, command);
+        return true;
+    }
+    
+    if (gb->last_frame_busy_cycles || gb->last_frame_idle_cycles) {
+        GB_log(gb, "CPU usage (last frame): %.2f%%\n", (double)gb->last_frame_busy_cycles / (gb->last_frame_busy_cycles + gb->last_frame_idle_cycles) * 100);
+    }
+    else {
+        GB_log(gb, "CPU usage (last frame): N/A\n");
+    }
+    
+    if (gb->last_second_busy_cycles || gb->last_second_idle_cycles) {
+        GB_log(gb, "CPU usage (last 60 frames): %.2f%%\n", (double)gb->last_second_busy_cycles / (gb->last_second_busy_cycles + gb->last_second_idle_cycles) * 100);
+    }
+    else {
+        GB_log(gb, "CPU usage (last 60 frames): N/A\n");
+    }
+    
+    return true;
+}
 
 static bool palettes(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
 {
@@ -2158,7 +2212,7 @@ static const debugger_command_t commands[] = {
     {"backtrace", 2, backtrace, "Display the current call stack"},
     {"bt", 2, }, /* Alias */
     {"print", 1, print, "Evaluate and print an expression. "
-                        "Use modifier to format as an address (a, default) or as a number in "
+                        "Use modifier to format as an address (a) or as a number in "
                         "decimal (d), hexadecimal (x), octal (o) or binary (b).",
                         "<expression>", "format", .argument_completer = symbol_completer, .modifiers_completer = format_completer},
     {"eval", 2, }, /* Alias */
@@ -2184,6 +2238,7 @@ static const debugger_command_t commands[] = {
     {"ticks", 2, ticks, "Display the number of CPU ticks since the last time 'ticks' was "
                         "used. Use 'keep' as an argument to display ticks without reseeting "
                         "the count.", "(keep)", .argument_completer = keep_completer},
+    {"usage", 2, usage, "Display CPU usage"},
     {"cartridge", 2, mbc, "Display information about the MBC and cartridge"},
     {"mbc", 3, }, /* Alias */
     {"apu", 3, apu, "Display information about the current state of the audio processing unit",
@@ -2330,10 +2385,10 @@ static void test_watchpoint(GB_gameboy_t *gb, uint16_t addr, uint8_t flags, uint
         condition_ok:
             GB_debugger_break(gb);
             if (flags == WATCHPOINT_READ) {
-                GB_log(gb, "Watchpoint %u: [%s]\n", watchpoint->id, value_to_string(gb, addr, true, false));
+                GB_log(gb, "Watchpoint %u: [%s]\n", watchpoint->id, value_to_string(gb, addr, true, false, false));
             }
             else {
-                GB_log(gb, "Watchpoint %u: [%s] = $%02x\n", watchpoint->id, value_to_string(gb, addr, true, false), value);
+                GB_log(gb, "Watchpoint %u: [%s] = $%02x\n", watchpoint->id, value_to_string(gb, addr, true, false, false), value);
             }
             return;
         }
@@ -2533,7 +2588,7 @@ next_command:
     unsigned breakpoint_id = 0;
     if (gb->breakpoints && !gb->debug_stopped && (breakpoint_id = should_break(gb, gb->pc, false))) {
         GB_debugger_break(gb);
-        GB_log(gb, "Breakpoint %u: PC = %s\n", breakpoint_id, value_to_string(gb, gb->pc, true, false));
+        GB_log(gb, "Breakpoint %u: PC = %s\n", breakpoint_id, value_to_string(gb, gb->pc, true, false, false));
         GB_cpu_disassemble(gb, gb->pc, 5);
     }
 
@@ -2544,7 +2599,7 @@ next_command:
         bool should_delete_state = true;
         if (jump_to_result == JUMP_TO_BREAK) {
             GB_debugger_break(gb);
-            GB_log(gb, "Jumping to breakpoint %u: %s\n", breakpoint_id, value_to_string(gb, address, true, false));
+            GB_log(gb, "Jumping to breakpoint %u: %s\n", breakpoint_id, value_to_string(gb, address, true, false, false));
             GB_cpu_disassemble(gb, gb->pc, 5);
             gb->non_trivial_jump_breakpoint_occured = false;
         }
@@ -2554,7 +2609,7 @@ next_command:
             }
             else {
                 gb->non_trivial_jump_breakpoint_occured = true;
-                GB_log(gb, "Jumping to breakpoint %u: %s\n", breakpoint_id, value_to_string(gb, gb->pc, true, false));
+                GB_log(gb, "Jumping to breakpoint %u: %s\n", breakpoint_id, value_to_string(gb, gb->pc, true, false, false));
                 GB_load_state_from_buffer(gb, gb->nontrivial_jump_state, -1);
                 GB_rewind_push(gb);
                 GB_cpu_disassemble(gb, gb->pc, 5);
@@ -2719,6 +2774,9 @@ const char *GB_debugger_describe_address(GB_gameboy_t *gb,
 {
     if (bank == (uint16_t)-1) {
         bank = bank_for_addr(gb, addr);
+    }
+    if ((addr >> 12) == 0xC) {
+        bank = 0;
     }
     if (exact_match) {
         const GB_bank_symbol_t *symbol = GB_map_find_symbol(get_symbol_map(gb, bank), addr, prefer_local);

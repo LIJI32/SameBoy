@@ -73,7 +73,7 @@ bool GB_cheat_search_filter(GB_gameboy_t *gb, const char *expression, GB_cheat_s
         }
     skip:;
         old_data++;
-        if (new_data == gb->ram + gb->ram_size - 1) {
+        if (new_data == gb->ram + gb->ram_size - 1 && gb->mbc_ram_size) {
             new_data = gb->mbc_ram;
         }
         else if (new_data == gb->mbc_ram + gb->mbc_ram_size - 1) {

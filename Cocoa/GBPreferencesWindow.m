@@ -20,7 +20,7 @@
 
 - (NSWindowToolbarStyle)toolbarStyle
 {
-    return NSWindowToolbarStyleExpanded;
+    return NSWindowToolbarStylePreference;
 }
 
 - (void)close

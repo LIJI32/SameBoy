@@ -22,9 +22,9 @@ BESS works by appending a detectable footer at the end of an existing save state
 BESS uses a block format where each block contains the following header:
 
 | Offset | Content                               |
-|--------|---------------------------------------|
-| 0      | A four-letter ASCII identifier        |
-| 4      | Length of the block, excluding header |
+|--------|-----------------------------------------------------------|
+| 0      | A four-letter ASCII identifier                            |
+| 4      | Length of the block as a 32-bit integer, excluding header |
 
 Every block is followed by another block, until the END block is reached. If an implementation encounters an unsupported block, it should be completely ignored (Should not have any effect and should not trigger a failure). 
 

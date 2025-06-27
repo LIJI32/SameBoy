@@ -136,7 +136,7 @@
     if (!_gb) {
         return [NSString stringWithFormat:@"$%llX", offset];
     }
-    return @(GB_debugger_describe_address(_gb, offset + _baseAddress, _bankForDescription, false, isRangeEnd));
+    return @(GB_debugger_describe_address(_gb, offset + _baseAddress, offset < 0x4000? -1 :_bankForDescription, false, isRangeEnd));
 }
 
 

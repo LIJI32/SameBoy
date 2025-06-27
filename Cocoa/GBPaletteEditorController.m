@@ -399,10 +399,16 @@ static double blend(double from, double to, double position)
     [sender.window.sheetParent endSheet:sender.window];
 }
 
-- (instancetype)init
++ (instancetype)alloc
 {
     static id singleton = nil;
     if (singleton) return singleton;
-    return (singleton = [super init]);
+    return (singleton = [super allocWithZone:nil]);
 }
+
++ (instancetype)allocWithZone:(struct _NSZone *)zone
+{
+    return [self alloc];
+}
+
 @end

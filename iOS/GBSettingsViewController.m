@@ -28,6 +28,24 @@ static NSString const *typeLightTemp = @"typeLightTemp";
     NSArray<NSArray<GBTheme *> *> *_themes; // For prewarming
 }
 
++ (UIImage *)settingsImageNamed:(NSString *)name
+{
+    UIImage *base = [UIImage imageNamed:name];
+    UIGraphicsBeginImageContextWithOptions(base.size, false, base.scale);
+    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:(CGRect){{0, 0}, base.size} cornerRadius:8];
+    CGContextSaveGState(UIGraphicsGetCurrentContext());
+    [path addClip];
+    [base drawInRect:path.bounds];
+    if (@available(iOS 19.0, *)) {
+        CGContextRestoreGState(UIGraphicsGetCurrentContext());
+        UIImage *overlay = [UIImage imageNamed:@"settingsOverlay"];
+        [overlay drawInRect:path.bounds];
+    }
+    UIImage *ret = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return ret;
+}
+
 + (NSArray<NSDictionary *> *)rootStructure
 {
 #define QUICK_SUBMENU(title, ...) @{@"type": typeOptionSubmenu, @"title": title, @"submenu": @[@{@"items": __VA_ARGS__}]}
@@ -448,36 +466,36 @@ static NSString const *typeLightTemp = @"typeLightTemp";
 #endif
     
     NSArray *rootItems = @[
-        @{
-            @"title": @"Emulation",
-            @"type": typeSubmenu,
-            @"submenu": emulationMenu,
-            @"image": [UIImage imageNamed:@"emulationSettings"],
-        },
-        @{
-            @"title": @"Video",
-            @"type": typeSubmenu,
-            @"submenu": videoMenu,
-            @"image": [UIImage imageNamed:@"videoSettings"],
-        },
-        @{
-            @"title": @"Audio",
-            @"type": typeSubmenu,
-            @"submenu": audioMenu,
-            @"image": [UIImage imageNamed:@"audioSettings"],
-        },
-        @{
-            @"title": @"Controls",
-            @"type": typeSubmenu,
-            @"submenu": controlsMenu,
-            @"image": [UIImage imageNamed:@"controlsSettings"],
-        },
-        @{
-            @"title": @"Themes",
-            @"type": typeSubmenu,
-            @"class": [GBThemesViewController class],
-            @"image": [UIImage imageNamed:@"themeSettings"],
-        },
+                    @{
+                        @"title": @"Emulation",
+                        @"type": typeSubmenu,
+                        @"submenu": emulationMenu,
+                        @"image": [self settingsImageNamed:@"emulationSettings"],
+                    },
+                    @{
+                        @"title": @"Video",
+                        @"type": typeSubmenu,
+                        @"submenu": videoMenu,
+                        @"image": [self settingsImageNamed:@"videoSettings"],
+                    },
+                    @{
+                        @"title": @"Audio",
+                        @"type": typeSubmenu,
+                        @"submenu": audioMenu,
+                        @"image": [self settingsImageNamed:@"audioSettings"],
+                    },
+                    @{
+                        @"title": @"Controls",
+                        @"type": typeSubmenu,
+                        @"submenu": controlsMenu,
+                        @"image": [self settingsImageNamed:@"controlsSettings"],
+                    },
+                    @{
+                        @"title": @"Themes",
+                        @"type": typeSubmenu,
+                        @"class": [GBThemesViewController class],
+                        @"image": [self settingsImageNamed:@"themeSettings"],
+                    },
 #ifdef APPSTORE
         @{
             @"title": @"Support SameBoy",
@@ -683,6 +701,8 @@ static NSString *LocalizedNameForElement(GCControllerElement *element, GBControl
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"B",           @"value": @(GBB)},
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Select",      @"value": @(GBSelect)},
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Start",       @"value": @(GBStart)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rapid A",     @"value": @(GBRapidA)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rapid B",     @"value": @(GBRapidB)},
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Turbo",       @"value": @(GBTurbo)},
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rewind",      @"value": @(GBRewind)},
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Slow-motion", @"value": @(GBUnderclock)},

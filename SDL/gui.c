@@ -1598,6 +1598,40 @@ static const char *current_osd_mode(unsigned index)
     return configuration.osd? "Enabled" : "Disabled";
 }
 
+static const char *current_vsync_mode(unsigned index)
+{
+    switch (configuration.vsync_mode) {
+        default:
+        case 0: return "Disabled";
+        case 1: return "Enabled";
+        case -1: return "Adaptive";
+    }
+}
+
+static void cycle_vsync(unsigned index)
+{
+retry:
+    configuration.vsync_mode++;
+    if (configuration.vsync_mode == 2) {
+        configuration.vsync_mode = -1;
+    }
+    if (SDL_GL_SetSwapInterval(configuration.vsync_mode) && configuration.vsync_mode != 0) {
+        goto retry;
+    }
+}
+
+static void cycle_vsync_backwards(unsigned index)
+{
+retry:
+    configuration.vsync_mode--;
+    if (configuration.vsync_mode == -2) {
+        configuration.vsync_mode = 1;
+    }
+    if (SDL_GL_SetSwapInterval(configuration.vsync_mode) && configuration.vsync_mode != 0) {
+        goto retry;
+    }
+}
+
 #ifdef _WIN32
 
 // Don't use the standard header definitions because we might not have the newest headers
@@ -1652,6 +1686,7 @@ static const struct menu_item graphics_menu[] = {
     {"Mono Palette:", cycle_palette, current_palette, cycle_palette_backwards},
     {"Display Border:", cycle_border_mode, current_border_mode, cycle_border_mode_backwards},
     {"On-Screen Display:", toggle_osd, current_osd_mode, toggle_osd},
+    {"Vsync Mode:", cycle_vsync, current_vsync_mode, cycle_vsync_backwards},
 #ifdef _WIN32
     {"Window Corners:", toggle_corners, current_corner_mode, toggle_corners},
 #endif
@@ -2316,6 +2351,10 @@ void run_gui(bool is_running)
                         case SDL_SCANCODE_LEFT:
                         case SDL_SCANCODE_UP:
                         case SDL_SCANCODE_DOWN:
+                        case SDL_SCANCODE_H:
+                        case SDL_SCANCODE_J:
+                        case SDL_SCANCODE_K:
+                        case SDL_SCANCODE_L:
                             break;
                             
                         default:
@@ -2703,12 +2742,16 @@ void run_gui(bool is_running)
                     }
                 }
                 else if (gui_state == SHOWING_MENU) {
-                    if (event.key.keysym.scancode == SDL_SCANCODE_DOWN && current_menu[current_selection + 1].string) {
+                    if ((event.key.keysym.scancode == SDL_SCANCODE_DOWN ||
+                         event.key.keysym.scancode == SDL_SCANCODE_J) &&
+                        current_menu[current_selection + 1].string) {
                         current_selection++;
                         mouse_scroling = false;
                         should_render = true;
                     }
-                    else if (event.key.keysym.scancode == SDL_SCANCODE_UP && current_selection) {
+                    else if ((event.key.keysym.scancode == SDL_SCANCODE_UP ||
+                              event.key.keysym.scancode == SDL_SCANCODE_K) &&
+                             current_selection) {
                         current_selection--;
                         mouse_scroling = false;
                         should_render = true;
@@ -2732,11 +2775,15 @@ void run_gui(bool is_running)
                             return;
                         }
                     }
-                    else if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT && current_menu[current_selection].backwards_handler) {
+                    else if ((event.key.keysym.scancode == SDL_SCANCODE_RIGHT ||
+                              event.key.keysym.scancode == SDL_SCANCODE_L) &&
+                             current_menu[current_selection].backwards_handler) {
                         current_menu[current_selection].handler(current_selection);
                         should_render = true;
                     }
-                    else if (event.key.keysym.scancode == SDL_SCANCODE_LEFT && current_menu[current_selection].backwards_handler) {
+                    else if ((event.key.keysym.scancode == SDL_SCANCODE_LEFT ||
+                              event.key.keysym.scancode == SDL_SCANCODE_H) &&
+                             current_menu[current_selection].backwards_handler) {
                         current_menu[current_selection].backwards_handler(current_selection);
                         should_render = true;
                     }

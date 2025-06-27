@@ -15,11 +15,10 @@ typedef enum {
     GBTurbo,
     GBRewind,
     GBUnderclock,
+    GBRapidA,
+    GBRapidB,
     // GBHotkey1, // Todo
     // GBHotkey2, // Todo
-    GBTotalButtonCount,
-    GBKeyboardButtonCount =  GBUnderclock + 1,
-    GBPerPlayerButtonCount = GBStart + 1,
     GBUnusedButton = 0xFF,
 } GBButton;
 

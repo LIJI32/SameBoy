@@ -3,6 +3,7 @@
 #import "GBImageView.h"
 #import "GBSplitView.h"
 #import "GBVisualizerView.h"
+#import "GBCPUView.h"
 #import "GBOSDView.h"
 #import "GBDebuggerButton.h"
 
@@ -84,6 +85,8 @@ enum model {
 @property IBOutlet NSScrollView *debuggerScrollView;
 @property IBOutlet NSView *debugBar;
 
+@property IBOutlet GBCPUView *cpuView;
+@property IBOutlet NSTextField *cpuCounter;
 
 + (NSImage *) imageFromData:(NSData *)data width:(NSUInteger) width height:(NSUInteger) height scale:(double) scale;
 - (void) performAtomicBlock: (void (^)())block;

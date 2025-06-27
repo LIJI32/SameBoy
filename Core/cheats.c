@@ -159,11 +159,8 @@ const GB_cheat_t *GB_import_cheat(GB_gameboy_t *gb, const char *cheat, const cha
         uint8_t value;
         uint16_t address;
         if (sscanf(cheat, "%02hhx%02hhx%04hx%c", &bank, &value, &address, &dummy) == 3) {
-            if (bank >= 0x80) {
-                bank &= 0xF;
-            }
             address = __builtin_bswap16(address);
-            return GB_add_cheat(gb, description, address, bank, value, 0, false, enabled);
+            return GB_add_cheat(gb, description, address, bank == 1? GB_CHEAT_ANY_BANK : (bank & 0xF), value, 0, false, enabled);
         }
     }
     

@@ -20,6 +20,7 @@ typedef enum {
     GB_VBLANK_TYPE_LCD_OFF, // An artificial frame pushed while the LCD was off
     GB_VBLANK_TYPE_ARTIFICIAL, // An artificial frame pushed for some other reason
     GB_VBLANK_TYPE_REPEAT, // A frame that would not render on actual hardware, but the screen should retain the previous frame
+    GB_VBLANK_TYPE_SKIPPED_FRAME, // If enabled via GB_set_enable_skipped_frame_vblank_callbacks, called on skipped frames during turbo mode
 } GB_vblank_type_t;
 
 typedef void (*GB_vblank_callback_t)(GB_gameboy_t *gb, GB_vblank_type_t type);
@@ -95,6 +96,7 @@ static const GB_color_correction_mode_t __attribute__((deprecated("Use GB_COLOR_
 static const GB_color_correction_mode_t __attribute__((deprecated("Use GB_COLOR_CORRECTION_MODERN_BOOST_CONTRAST instead"))) GB_COLOR_CORRECTION_PRESERVE_BRIGHTNESS = GB_COLOR_CORRECTION_MODERN_BOOST_CONTRAST;
 
 void GB_set_vblank_callback(GB_gameboy_t *gb, GB_vblank_callback_t callback);
+void GB_set_enable_skipped_frame_vblank_callbacks(GB_gameboy_t *gb, bool enable);
 void GB_set_rgb_encode_callback(GB_gameboy_t *gb, GB_rgb_encode_callback_t callback);
 void GB_set_palette(GB_gameboy_t *gb, const GB_palette_t *palette);
 const GB_palette_t *GB_get_palette(GB_gameboy_t *gb);

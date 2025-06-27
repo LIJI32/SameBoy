@@ -11,6 +11,10 @@
 
 #define UPDATE_SERVER "https://sameboy.github.io"
 
+@interface NSToolbarItem(private)
+- (NSButton *)_view;
+@end
+
 static uint32_t color_to_int(NSColor *color)
 {
     color = [color colorUsingColorSpace:[NSColorSpace deviceRGBColorSpace]];
@@ -40,7 +44,9 @@ static uint32_t color_to_int(NSColor *color)
 - (void) applicationDidFinishLaunching:(NSNotification *)notification
 {
     // Refresh icon if launched via a software update
-    [NSApplication sharedApplication].applicationIconImage = [NSImage imageNamed:@"AppIcon"];
+    NSImage *icon = [[NSWorkspace sharedWorkspace] iconForFile:[[NSBundle mainBundle] bundlePath]];
+    icon.size = [NSApplication sharedApplication].applicationIconImage.size;
+    [NSApplication sharedApplication].applicationIconImage = icon;
     
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     for (unsigned i = 0; i < GBKeyboardButtonCount; i++) {
@@ -326,9 +332,8 @@ static uint32_t color_to_int(NSColor *color)
 #ifndef UPDATE_SUPPORT
         [_preferencesWindow.toolbar removeItemAtIndex:4];
 #endif
-        if (@available(macOS 11.0, *)) {
-            [_preferencesWindow.toolbar insertItemWithItemIdentifier:NSToolbarFlexibleSpaceItemIdentifier atIndex:0];
-            [_preferencesWindow.toolbar insertItemWithItemIdentifier:NSToolbarFlexibleSpaceItemIdentifier atIndex:_preferencesWindow.toolbar.items.count];
+        for (unsigned i = _preferencesWindow.toolbar.items.count; i--;) {
+            [_preferencesWindow.toolbar.items[i] _view].imageScaling = NSImageScaleNone;
         }
     }
     [_preferencesWindow makeKeyAndOrderFront:self];
@@ -388,7 +393,12 @@ static uint32_t color_to_int(NSColor *color)
                 else {
                     self.updateChanges.preferences.standardFontFamily = @"Lucida Grande";
                 }
-                self.updateChanges.preferences.fixedFontFamily = @"Menlo";
+                if (@available(macOS 10.15, *)) {
+                    self.updateChanges.preferences.fixedFontFamily = [NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular].displayName;
+                }
+                else {
+                    self.updateChanges.preferences.fixedFontFamily = @"Menlo";
+                }
                 self.updateChanges.drawsBackground = false;
                 [self.updateChanges.mainFrame loadHTMLString:html baseURL:nil];
             });

@@ -25,6 +25,9 @@ void GB_debugger_set_disabled(GB_gameboy_t *gb, bool disabled);
 void GB_debugger_clear_symbols(GB_gameboy_t *gb);
 void GB_debugger_set_reload_callback(GB_gameboy_t *gb, GB_debugger_reload_callback_t callback);
 
+double GB_debugger_get_frame_cpu_usage(GB_gameboy_t *gb);
+double GB_debugger_get_second_cpu_usage(GB_gameboy_t *gb);
+
 #ifdef GB_INTERNAL
 internal void GB_debugger_run(GB_gameboy_t *gb);
 internal void GB_debugger_handle_async_commands(GB_gameboy_t *gb);
