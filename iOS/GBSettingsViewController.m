@@ -466,42 +466,42 @@ static NSString const *typeLightTemp = @"typeLightTemp";
 #endif
     
     NSArray *rootItems = @[
-                    @{
-                        @"title": @"Emulation",
-                        @"type": typeSubmenu,
-                        @"submenu": emulationMenu,
-                        @"image": [self settingsImageNamed:@"emulationSettings"],
-                    },
-                    @{
-                        @"title": @"Video",
-                        @"type": typeSubmenu,
-                        @"submenu": videoMenu,
-                        @"image": [self settingsImageNamed:@"videoSettings"],
-                    },
-                    @{
-                        @"title": @"Audio",
-                        @"type": typeSubmenu,
-                        @"submenu": audioMenu,
-                        @"image": [self settingsImageNamed:@"audioSettings"],
-                    },
-                    @{
-                        @"title": @"Controls",
-                        @"type": typeSubmenu,
-                        @"submenu": controlsMenu,
-                        @"image": [self settingsImageNamed:@"controlsSettings"],
-                    },
-                    @{
-                        @"title": @"Themes",
-                        @"type": typeSubmenu,
-                        @"class": [GBThemesViewController class],
-                        @"image": [self settingsImageNamed:@"themeSettings"],
-                    },
+        @{
+            @"title": @"Emulation",
+            @"type": typeSubmenu,
+            @"submenu": emulationMenu,
+            @"image": [self settingsImageNamed:@"emulationSettings"],
+        },
+        @{
+            @"title": @"Video",
+            @"type": typeSubmenu,
+            @"submenu": videoMenu,
+            @"image": [self settingsImageNamed:@"videoSettings"],
+        },
+        @{
+            @"title": @"Audio",
+            @"type": typeSubmenu,
+            @"submenu": audioMenu,
+            @"image": [self settingsImageNamed:@"audioSettings"],
+        },
+        @{
+            @"title": @"Controls",
+            @"type": typeSubmenu,
+            @"submenu": controlsMenu,
+            @"image": [self settingsImageNamed:@"controlsSettings"],
+        },
+        @{
+            @"title": @"Themes",
+            @"type": typeSubmenu,
+            @"class": [GBThemesViewController class],
+            @"image": [self settingsImageNamed:@"themeSettings"],
+        },
 #ifdef APPSTORE
         @{
             @"title": @"Support SameBoy",
             @"type": typeSubmenu,
             @"class": [GBSubscriptionViewController class],
-            @"image": [UIImage imageNamed:@"subscriptionSettings"],
+            @"image": [self settingsImageNamed:@"subscriptionSettings"],
         },
 #endif
     ];
@@ -513,7 +513,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
             @"title": @"Apple Watch",
             @"type": typeSubmenu,
             @"submenu": watchMenu,
-            @"image": [UIImage imageNamed:@"watchSettings"],
+            @"image": [self settingsImageNamed:@"watchSettings"],
         } atIndex:4];
     }
 #endif
