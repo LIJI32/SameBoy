@@ -30,7 +30,6 @@ static NSString *const tips[] = {
     UILabel *_tipLabel;
     UIVisualEffectView *_effectView;
     NSMutableArray<UIButton *> *_buttons;
-    unsigned _superviewTopInset;
 }
 
 + (instancetype)menu
@@ -153,10 +152,8 @@ static NSString *const tips[] = {
                         limitedToNumberOfLines:3].size;
     size.width = ceil(size.width);
     _tipLabel.frame = (CGRect){{8, 8}, size};
-    // Weird iOS bug where the inset reports as 0 after some rotations, use the helper function from GBLayout
-    extern double StatusBarHeight(void);
     _effectView.frame = (CGRect) {
-        {round((outerSize.width - size.width - 16) / 2), StatusBarHeight() + 12},
+        {round((outerSize.width - size.width - 16) / 2), view.window.safeAreaInsets.top + 12},
         {size.width + 16, size.height + 16}
     };
 }
