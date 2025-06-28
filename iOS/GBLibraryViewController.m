@@ -30,14 +30,12 @@
 {
     [super viewDidLoad];
     self.delegate = (id)self;
-    self.viewControllers = @[
-        [self.class wrapViewController:[[GBROMViewController alloc] init]],
-        [self.class wrapViewController:[[GBCloudROMViewController alloc] init]],
-    ];
+    NSMutableArray<UIViewController *> *viewControllers = [NSMutableArray arrayWithObjects:
+                                                           [self.class wrapViewController:[[GBROMViewController alloc] init]],
+                                                           [self.class wrapViewController:[[GBCloudROMViewController alloc] init]],
+                                                           nil];
     if ([GBWatchManager sharedManager].isPaired) {
-        NSMutableArray<UIViewController *> *viewControllers = self.viewControllers.mutableCopy;
         [viewControllers insertObject:[self.class wrapViewController:[[GBROMViewController alloc] initForWatch]] atIndex:2],
-        self.viewControllers = viewControllers;
         viewControllers[2].tabBarItem.image = [UIImage systemImageNamed:@"applewatch"] ?: [UIImage systemImageNamed:@"clock"];
     }
     UIEdgeInsets insets = [UIApplication sharedApplication].keyWindow.safeAreaInsets;
@@ -57,8 +55,9 @@
             }
         }
     }
-    self.viewControllers[0].tabBarItem.image = [UIImage systemImageNamed:symbol] ?: [UIImage systemImageNamed:@"folder.fill"];
-    self.viewControllers[1].tabBarItem.image = [UIImage systemImageNamed:@"icloud"];
+    viewControllers[0].tabBarItem.image = [UIImage systemImageNamed:symbol] ?: [UIImage systemImageNamed:@"folder.fill"];
+    viewControllers[1].tabBarItem.image = [UIImage systemImageNamed:@"icloud"];
+    self.viewControllers = viewControllers;
     if ([[GBROMManager sharedManager].currentROM hasPrefix:@"icloud/"]) {
         self.selectedIndex = 1;
     }
