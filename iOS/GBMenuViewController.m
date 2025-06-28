@@ -53,6 +53,7 @@ static NSString *const tips[] = {
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:true];
+    if (_effectView) return;
     static const struct {
         NSString *label;
         NSString *image;
@@ -110,17 +111,19 @@ static NSString *const tips[] = {
     [self updateSelectedButton];
     
     UIVisualEffect *effect = nil;
+    /*
+    // Unfortunately, UIGlassEffect is still very buggy.
     if (@available(iOS 19.0, *)) {
         effect = [[objc_getClass("UIGlassEffect") alloc] init];
     }
-    else {
+    else */ {
         effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleProminent];
     }
     
     _effectView = [[UIVisualEffectView alloc] initWithEffect:effect];
     _effectView.layer.cornerRadius = 8;
     _effectView.layer.masksToBounds = true;
-    [self.view.superview addSubview:_effectView];
+    [self.view.window addSubview:_effectView];
     _tipLabel = [[UILabel alloc] init];
     unsigned tipIndex = [[NSUserDefaults standardUserDefaults] integerForKey:@"GBTipIndex"];
     _tipLabel.text = tips[tipIndex % (sizeof(tips) / sizeof(tips[0]))];
@@ -134,16 +137,19 @@ static NSString *const tips[] = {
     _tipLabel.numberOfLines = 3;
     [_effectView.contentView addSubview:_tipLabel];
     [self layoutTip];
-    _effectView.alpha = 0;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    _effectView.alpha = 1;
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [UIView animateWithDuration:0.25 animations:^{
             _effectView.alpha = 1.0;
         }];
     });
+    
 }
 
 - (void)layoutTip
 {
+    [_effectView.superview addSubview:_effectView];
     UIView *view = self.view.superview;
     CGSize outerSize = view.frame.size;
     CGSize size = [_tipLabel textRectForBounds:(CGRect){{0, 0},
@@ -163,6 +169,8 @@ static NSString *const tips[] = {
 {
     [UIView animateWithDuration:0.25 animations:^{
         _effectView.alpha = 0;
+    } completion:^(BOOL finished) {
+        [_effectView removeFromSuperview];
     }];
     [super viewWillDisappear:animated];
 }

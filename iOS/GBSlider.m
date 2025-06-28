@@ -3,7 +3,7 @@
 
 #if !__has_include(<UIKit/UISliderTrackConfiguration.h>)
 /* Building with older SDKs */
-API_AVAILABLE(ios(26.0))
+API_AVAILABLE(ios(19.0))
 @interface UISliderTrackConfiguration : NSObject
 @property (nonatomic, readwrite) bool allowsTickValuesOnly;
 @property (nonatomic, readwrite) float neutralValue;
@@ -11,7 +11,7 @@ API_AVAILABLE(ios(26.0))
 @end
 
 @interface UISlider (configuration)
-@property(nonatomic, copy, nullable) UISliderTrackConfiguration *trackConfiguration API_AVAILABLE(ios(26.0));
+@property(nonatomic, copy, nullable) UISliderTrackConfiguration *trackConfiguration API_AVAILABLE(ios(19.0));
 @end
 #endif
 
