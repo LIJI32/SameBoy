@@ -300,32 +300,40 @@ endif
 endif
 endif
 
+ifneq ($(SIM),)
+SDK_SUFFIX := simulator
+else
+SDK_SUFFIX := os
+endif
+
 ifeq ($(MAKECMDGOALS),_ios)
 	OBJ := build/obj-ios
-	SYSROOT := $(shell xcodebuild -sdk iphoneos -version Path 2> $(NULL))
+	SYSROOT := $(shell xcodebuild -sdk iphone$(SDK_SUFFIX) -version Path 2> $(NULL))
 	ifeq ($(SYSROOT),)
 	$(error Could not find an iOS SDK)
 	endif
-	CFLAGS += -arch arm64 -miphoneos-version-min=$(IOS_MIN) -isysroot $(SYSROOT) -IAppleCommon -DGB_DISABLE_DEBUGGER
+	CFLAGS += -arch arm64 -miphone$(SDK_SUFFIX)-version-min=$(IOS_MIN) -isysroot $(SYSROOT) -IAppleCommon -DGB_DISABLE_DEBUGGER
 	CORE_FILTER += Core/debugger.c Core/sm83_disassembler.c Core/symbol_hash.c Core/cheat_search.c
 	LDFLAGS += -arch arm64
 	OCFLAGS += -x objective-c -fobjc-arc -isysroot $(SYSROOT)
-	LDFLAGS += -miphoneos-version-min=$(IOS_MIN)  -isysroot $(SYSROOT)
+	LDFLAGS += -miphone$(SDK_SUFFIX)-version-min=$(IOS_MIN)  -isysroot $(SYSROOT)
 	IOS_INSTALLER_LDFLAGS := $(LDFLAGS) -lobjc -framework CoreServices -framework Foundation
 	LDFLAGS += -lobjc -framework UIKit -framework Foundation -framework CoreGraphics -framework Metal -framework MetalKit -framework AudioToolbox -framework AVFoundation -framework QuartzCore -framework CoreMotion -framework CoreVideo -framework CoreMedia -framework CoreImage -framework UserNotifications -framework GameController -weak_framework CoreHaptics -framework MobileCoreServices -lcompression
 	CODESIGN := codesign -fs -
 else ifeq ($(MAKECMDGOALS),_watchos)
 	OBJ := build/obj-watchos
-	SYSROOT := $(shell xcodebuild -sdk watchos -version Path 2> $(NULL))
+	SYSROOT := $(shell xcodebuild -sdk watch$(SDK_SUFFIX) -version Path 2> $(NULL))
 	ifeq ($(SYSROOT),)
 	$(error Could not find a watchOS SDK)
 	endif
-	FAT_FLAGS := -arch armv7k -arch arm64_32
-	CFLAGS += -arch arm64 -mwatchos-version-min=7.0 -isysroot $(SYSROOT) -IAppleCommon -DGB_DISABLE_DEBUGGER -DGB_DISABLE_CHEATS
+    ifeq ($(SIM),)
+    	FAT_FLAGS := -arch armv7k -arch arm64_32
+    endif
+	CFLAGS += -arch arm64 -mwatch$(SDK_SUFFIX)-version-min=7.0 -isysroot $(SYSROOT) -IAppleCommon -DGB_DISABLE_DEBUGGER -DGB_DISABLE_CHEATS
 	CORE_FILTER += Core/debugger.c Core/sm83_disassembler.c Core/symbol_hash.c Core/cheat_search.c Core/cheats.c
 	LDFLAGS += -arch arm64
 	OCFLAGS += -x objective-c -fobjc-arc -Wno-deprecated-declarations -isysroot $(SYSROOT)
-	LDFLAGS += -mwatchos-version-min=7.0  -isysroot $(SYSROOT)
+	LDFLAGS += -mwatch$(SDK_SUFFIX)-version-min=7.0  -isysroot $(SYSROOT)
 	LDFLAGS += -e _WKExtensionMain -lobjc -framework Foundation -framework WatchKit -framework SpriteKit -framework UIKit -framework AVFAudio -framework CoreGraphics
 	CODESIGN := codesign -fs -
 else ifeq ($(PLATFORM),Darwin)
@@ -608,8 +616,8 @@ $(BIN)/SameBoy-iOS.app/Watch/SameBoy-watchOS.app: watchos
 	-@$(MKDIR) -p $(dir $@)
 	cp -rf $(BIN)/SameBoy-watchOS.app $@
 	
-$(BIN)/SameBoy-watchOS.app/Assets.car: $(shell find watchOS/Assets.xcassets)
-	actool --notices --warnings --app-icon AppIcon --target-device watch --minimum-deployment-target 6.0 --output-format human-readable-text --platform watchos --compile $(BIN)/SameBoy-watchOS.app watchOS/Assets.xcassets --output-partial-info-plist /dev/null
+$(BIN)/SameBoy-watchOS.app/Assets.car: $(shell find watchOS/Assets.xcassets watchOS/AppIcon.icon)
+	actool --notices --warnings --app-icon AppIcon --target-device watch --minimum-deployment-target 6.0 --output-format human-readable-text --platform watchos --compile $(BIN)/SameBoy-watchOS.app watchOS/AppIcon.icon watchOS/Assets.xcassets --output-partial-info-plist /dev/null
 
 # Cocoa Port
 

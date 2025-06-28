@@ -1,0 +1,130 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:0.74510,0.76471,0.78431,1.00000",
+      "srgb:0.73725,0.75294,0.77255,1.00000"
+    ]
+  },
+  "groups" : [
+    {
+      "blur-material" : 0.5,
+      "hidden" : false,
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "PowerLED.png",
+          "name" : "PowerLED"
+        },
+        {
+          "fill" : {
+            "linear-gradient" : [
+              "display-p3:0.20784,0.20784,0.20784,1.00000",
+              "srgb:0.17647,0.17647,0.17647,1.00000"
+            ]
+          },
+          "image-name" : "Panel.png",
+          "name" : "Panel"
+        }
+      ],
+      "lighting" : "individual",
+      "position-specializations" : [
+        {
+          "value" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "idiom" : "watchOS",
+          "value" : {
+            "scale" : 0.9375,
+            "translation-in-points" : [
+              0,
+              5
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 1
+      },
+      "specular" : true,
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0
+      }
+    },
+    {
+      "hidden" : false,
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "srgb:1.00000,1.00000,1.00000,0.75000"
+              }
+            }
+          ],
+          "glass" : false,
+          "image-name" : "Text.png",
+          "name" : "Logo",
+          "opacity" : 1
+        },
+        {
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "srgb:1.00000,1.00000,1.00000,0.74910"
+              }
+            }
+          ],
+          "glass" : false,
+          "image-name" : "LCD.png",
+          "name" : "LCD"
+        }
+      ],
+      "position-specializations" : [
+        {
+          "value" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "idiom" : "watchOS",
+          "value" : {
+            "scale" : 0.9375,
+            "translation-in-points" : [
+              0,
+              5
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "none",
+        "opacity" : 0.5
+      },
+      "specular" : false,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

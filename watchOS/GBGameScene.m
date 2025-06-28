@@ -519,8 +519,13 @@ static void vblank(GB_gameboy_t *gb)
     _label.numberOfLines = 0;
     _label.position = CGPointMake(0, -4);
     [self addChild:_label];
-        
-    _iPhoneIcon = [SKSpriteNode spriteNodeWithImageNamed:@"iPhoneIcon"];
+    
+    if (@available(watchOS 12.0, *)) {
+        _iPhoneIcon = [SKSpriteNode spriteNodeWithImageNamed:@"iPhoneIcon26"];
+    }
+    else {
+        _iPhoneIcon = [SKSpriteNode spriteNodeWithImageNamed:@"iPhoneIcon"];
+    }
     _iPhoneIcon.xScale = _iPhoneIcon.yScale = 1.0 / [WKInterfaceDevice currentDevice].screenScale;
     _iPhoneIcon.position = CGPointMake(0, _iPhoneIcon.size.height / 2 + 4);
     [self addChild: _iPhoneIcon];
@@ -731,4 +736,12 @@ static void vblank(GB_gameboy_t *gb)
     return _running;
 }
 
+@end
+
+// Fix watchOS 26 bug, sometimes it sends isEnabled to some empty NSArray
+@implementation NSArray(bugfix)
+- (bool)isEnabled
+{
+    return false;
+}
 @end

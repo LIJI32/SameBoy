@@ -666,6 +666,7 @@ __attribute__((objc_direct_members))
 - (instancetype)init
 {
     self = [super init];
+#if !TARGET_IPHONE_SIMULATOR
     [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
     if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBDidRestoreTransactions"] && self.usesPaidTheme) {
         [self enterGraceMode];
@@ -673,6 +674,10 @@ __attribute__((objc_direct_members))
         [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
     }
     [self updateReceipt];
+#else
+    _themeState = GBSubscriptionPermanent;
+    _watchState = GBSubscriptionPermanent;
+#endif
     return self;
 }
 
