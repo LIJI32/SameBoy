@@ -71,8 +71,8 @@
 
 - (void)showPopup
 {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:[NSString stringWithFormat:@"Apply “%@” as the current theme?", _verticalLayout.theme.name]
-                                                                   message:nil
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Apply Theme"
+                                                                   message:[NSString stringWithFormat:@"Apply “%@” as the current theme?", _verticalLayout.theme.name]
                                                             preferredStyle:[UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad?
                                               UIAlertControllerStyleAlert : UIAlertControllerStyleActionSheet];
 #ifdef APPSTORE

@@ -80,8 +80,8 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.view.bounds = CGRectMake(0, 0, 0x300, 0x300);
-    UIView *root = self.view;
+    UIView *root = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 0x300, 0x300)];
+    [self.view addSubview:root];
     for (unsigned i = 0; i < 9; i++) {
         unsigned x = i % 3;
         unsigned y = i / 3;
@@ -172,6 +172,12 @@
     slot.showingMenu = true;
     controller.popoverPresentationController.sourceView = slot;
     [self presentViewController:controller animated:true completion:nil];
+}
+
+- (void)viewWillLayoutSubviews
+{
+    [super viewWillLayoutSubviews];
+    self.view.subviews.firstObject.frame = [self.view.safeAreaLayoutGuide layoutFrame];
 }
 
 - (NSString *)title

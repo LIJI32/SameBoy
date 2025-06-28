@@ -26,6 +26,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
     NSArray<NSDictionary *> *_structure;
     UINavigationController *_detailsNavigation;
     NSArray<NSArray<GBTheme *> *> *_themes; // For prewarming
+    bool _iPadRoot;
 }
 
 + (UIImage *)settingsImageNamed:(NSString *)name
@@ -199,7 +200,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
                                 @{@"type": typeRadio, @"pref": @"GBFilter", @"title": @"HQ2x", @"value": @"HQ2x"},
                                 @{@"type": typeRadio, @"pref": @"GBFilter", @"title": @"OmniScale", @"value": @"OmniScale"},
                                 @{@"type": typeRadio, @"pref": @"GBFilter", @"title": @"OmniScale Legacy", @"value": @"OmniScaleLegacy"},
-                                @{@"type": typeRadio, @"pref": @"GBFilter", @"title": @"AA OmniScale Legacy", @"value": @"AAOmniScaleLegacy"},
+                                @{@"type": typeRadio, @"pref": @"GBFilter", @"title": @"Anti-aliased OmniScale Legacy", @"value": @"AAOmniScaleLegacy"},
                             ]
                         },
                     ]
@@ -548,12 +549,20 @@ static NSString const *typeLightTemp = @"typeLightTemp";
         return controller;
     }
     
-    UISplitViewController *split = [[UISplitViewController alloc] init];
+    UISplitViewController *split = nil;
+    if (@available(iOS 14.5, *)) {
+        split = [[UISplitViewController alloc] initWithStyle:UISplitViewControllerStyleDoubleColumn];
+        split.displayModeButtonVisibility = UISplitViewControllerDisplayModeButtonVisibilityNever;
+    }
+    else {
+        split = [[UISplitViewController alloc] init];
+    }
     UIViewController *blank = [[UIViewController alloc] init];
     blank.view.backgroundColor = root.view.backgroundColor;
     root->_detailsNavigation = [[UINavigationController alloc] initWithRootViewController:blank];
     split.viewControllers = @[controller, root->_detailsNavigation];
     split.preferredDisplayMode = UISplitViewControllerDisplayModeAllVisible;
+    root->_iPadRoot = true;
     return split;
 }
 
@@ -843,7 +852,6 @@ static id ValueForItem(NSDictionary *item)
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     NSDictionary *item = [self itemForIndexPath:indexPath];
-
     
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
     cell.textLabel.text = item[@"title"];
@@ -953,6 +961,13 @@ static id ValueForItem(NSDictionary *item)
         cell.separatorInset = UIEdgeInsetsZero;
     }
     cell.imageView.image = item[@"image"];
+    if (@available(iOS 19.0, *)) {
+        if (_iPadRoot) {
+            cell.textLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+                return cell.isSelected? [UIColor whiteColor] : [UIColor labelColor];
+            }];
+        }
+    }
     return cell;
 }
 

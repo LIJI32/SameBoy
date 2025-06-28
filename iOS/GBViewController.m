@@ -440,6 +440,16 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     return true;
 }
 
+- (void)orderFrontPreferencesPanel:(id)sender
+{
+    [self openSettings];
+}
+
+- (void)open:(id)sender
+{
+    [self openLibrary];
+}
+
 - (void)updateMirrorWindow
 {
     if ([UIScreen screens].count == 1) {
@@ -798,7 +808,21 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)openLibrary
 {
-    [self presentViewController:[[GBLibraryViewController alloc] init]
+    static __weak UIViewController *presentedController;
+    if (presentedController) return;
+    if (self.presentedViewController) {
+        if (![self.presentedViewController isKindOfClass:[UIAlertController class]]) {
+            [self dismissViewController];
+        }
+        else {
+            return;;
+        }
+    }
+    
+    UIViewController *controller = [[GBLibraryViewController alloc] init];
+    presentedController = controller;
+    
+    [self presentViewController:controller
                        animated:true
                      completion:nil];
 }
@@ -879,11 +903,24 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)openSettings
 {
+    static __weak UIViewController *presentedController;
+    if (presentedController) return;
+    if (self.presentedViewController) {
+        if (![self.presentedViewController isKindOfClass:[UIAlertController class]]) {
+            [self dismissViewController];
+        }
+        else {
+            return;;
+        }
+    }
+    
     UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithTitle:@"Close"
                                                               style:UIBarButtonItemStylePlain
                                                              target:self
                                                              action:@selector(dismissViewController)];
-    [self presentViewController:[GBSettingsViewController settingsViewControllerWithLeftButton:close]
+    UIViewController *controller = [GBSettingsViewController settingsViewControllerWithLeftButton:close];
+    presentedController = controller;
+    [self presentViewController:controller
                        animated:true
                      completion:nil];
 }
@@ -1562,7 +1599,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
             [url startAccessingSecurityScopedResource];
             [GBROMManager sharedManager].currentROM =
             [[GBROMManager sharedManager] importROM:url.path
-                                       keepOriginal:![url.path hasPrefix:tempDir] && !inPlace];
+                                       keepOriginal:![url.path hasPrefix:tempDir] && inPlace];
             [url stopAccessingSecurityScopedResource];
         }
         return true;
@@ -1581,7 +1618,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 #endif
         [url startAccessingSecurityScopedResource];
         [[GBROMManager sharedManager] importROM:url.path
-                                   keepOriginal:![url.path hasPrefix:tempDir] && !inPlace];
+                                   keepOriginal:![url.path hasPrefix:tempDir] && inPlace];
         [url stopAccessingSecurityScopedResource];
     }
     [self openLibrary];
@@ -1914,8 +1951,8 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 {
     UIAlertControllerStyle style = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad?
     UIAlertControllerStyleAlert : UIAlertControllerStyleActionSheet;
-    GBCheckableAlertController *menu = [GBCheckableAlertController alertControllerWithTitle:@"Connect which accessory?"
-                                                                                    message:nil
+    GBCheckableAlertController *menu = [GBCheckableAlertController alertControllerWithTitle:@"Connect Accessory"
+                                                                                    message:@"Choose an accessory to connect."
                                                                              preferredStyle:style];
     [menu addAction:[UIAlertAction actionWithTitle:@"None"
                                              style:UIAlertActionStyleDefault

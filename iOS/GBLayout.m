@@ -1,7 +1,7 @@
 #define GBLayoutInternal
 #import "GBLayout.h"
 
-static double StatusBarHeight(void)
+double StatusBarHeight(void)
 {
     static double ret = 0;
     static dispatch_once_t onceToken;

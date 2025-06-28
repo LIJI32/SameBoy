@@ -30,6 +30,7 @@ static NSString *const tips[] = {
     UILabel *_tipLabel;
     UIVisualEffectView *_effectView;
     NSMutableArray<UIButton *> *_buttons;
+    unsigned _superviewTopInset;
 }
 
 + (instancetype)menu
@@ -109,7 +110,15 @@ static NSString *const tips[] = {
     self.menuButtons = [_buttons copy];
     [self updateSelectedButton];
     
-    _effectView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleProminent]];
+    UIVisualEffect *effect = nil;
+    if (@available(iOS 19.0, *)) {
+        effect = [[objc_getClass("UIGlassEffect") alloc] init];
+    }
+    else {
+        effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleProminent];
+    }
+    
+    _effectView = [[UIVisualEffectView alloc] initWithEffect:effect];
     _effectView.layer.cornerRadius = 8;
     _effectView.layer.masksToBounds = true;
     [self.view.superview addSubview:_effectView];
@@ -127,9 +136,11 @@ static NSString *const tips[] = {
     [_effectView.contentView addSubview:_tipLabel];
     [self layoutTip];
     _effectView.alpha = 0;
-    [UIView animateWithDuration:0.25 animations:^{
-        _effectView.alpha = 1.0;
-    }];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [UIView animateWithDuration:0.25 animations:^{
+            _effectView.alpha = 1.0;
+        }];
+    });
 }
 
 - (void)layoutTip
@@ -142,8 +153,10 @@ static NSString *const tips[] = {
                         limitedToNumberOfLines:3].size;
     size.width = ceil(size.width);
     _tipLabel.frame = (CGRect){{8, 8}, size};
+    // Weird iOS bug where the inset reports as 0 after some rotations, use the helper function from GBLayout
+    extern double StatusBarHeight(void);
     _effectView.frame = (CGRect) {
-        {round((outerSize.width - size.width - 16) / 2), view.window.safeAreaInsets.top + 12},
+        {round((outerSize.width - size.width - 16) / 2), StatusBarHeight() + 12},
         {size.width + 16, size.height + 16}
     };
 }
@@ -283,7 +296,12 @@ static NSString *const tips[] = {
             button.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.3];
             button.layer.borderWidth = 2.0;
             button.layer.borderColor = [UIColor systemBlueColor].CGColor;
-            button.layer.cornerRadius = 8.0;
+            if (@available(iOS 19.0, *)) {
+                button.layer.cornerRadius = 32.0;
+            }
+            else {
+                button.layer.cornerRadius = 8.0;
+            }
         }
         else {
             button.backgroundColor = [UIColor clearColor];

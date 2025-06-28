@@ -158,6 +158,9 @@ int main(int argc, char * argv[])
                             @"Manual": @NO,
                     },
             },
+            
+            // Forces iOS to use Solarium even when linking against older SDKs
+            @"com.apple.SwiftUI.IgnoreSolariumLinkedOnCheck": @YES,
         }];
         
         if (![[defaults stringForKey:@"GBThemesVersion"] isEqualToString:@(GB_VERSION)]) {

@@ -349,8 +349,8 @@
     
     if ([newName containsString:@"/"]) {
         [self.tableView reloadData];
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"You can't use a name that contains “/”. Please choose another name."
-                                                                       message:nil
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Invalid Name"
+                                                                       message:@"You can't use a name that contains “/”. Please choose another name."
                                                                 preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"OK"
                                                   style:UIAlertActionStyleCancel

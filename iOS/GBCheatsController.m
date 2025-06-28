@@ -119,9 +119,17 @@
         [button sizeToFit];
         CGRect frame = button.frame;
         frame.size.width = ceil(frame.size.width + (label? 4 : 0));
+        if (@available(iOS 19.0, *)) {
+            if (label) {
+                frame.size.width += 12;
+            }
+        }
         frame.size.height = 28;
         button.frame = frame;
-        return [[UIBarButtonItem alloc] initWithCustomView:button];
+        UIView *wrapper = [[UIView alloc] initWithFrame:button.bounds];
+        [wrapper addSubview:button];
+        UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithCustomView:wrapper];
+        return item;
     }
     return [[UIBarButtonItem alloc] initWithTitle:label style:UIBarButtonItemStylePlain target:target action:action];
 }
@@ -178,28 +186,38 @@
         hasSFSymbols = true;
     }
 
-    self.toolbarItems = @[
-        hasSFSymbols?
-            [self.class buttonWithLabel:nil
-                          imageWithName:@"square.and.arrow.up"
-                                 target:self
-                                 action:@selector(exportCheats)] :
-            [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction
-                                                          target:self
-                                                          action:@selector(exportCheats)],
-        [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
-                                                      target:nil
-                                                      action:NULL],
-        [self.class buttonWithLabel:@"Import"
-                      imageWithName:@"square.and.arrow.down"
+    UIBarButtonItem *export = hasSFSymbols?
+        [self.class buttonWithLabel:nil
+                      imageWithName:@"square.and.arrow.up"
                              target:self
-                             action:@selector(importCheats)],
-        [self.class buttonWithLabel:@"Add"
-                      imageWithName:@"plus"
-                             target:self
-                             action:@selector(addCheat)],
-        
-    ];
+                             action:@selector(exportCheats)] :
+        [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction
+                                                      target:self
+                                                      action:@selector(exportCheats)];
+    
+    UIBarButtonItem *flexItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
+                                                                              target:nil
+                                                                              action:NULL];
+    UIBarButtonItem *import = [self.class buttonWithLabel:@"Import"
+                                            imageWithName:@"square.and.arrow.down"
+                                                   target:self
+                                                   action:@selector(importCheats)];
+    
+    UIBarButtonItem *add = [self.class buttonWithLabel:@"Add"
+                                         imageWithName:@"plus"
+                                                target:self
+                                                action:@selector(addCheat)];
+    
+    if (@available(iOS 19.0, *)) {
+        self.toolbarItems = @[export,
+                              flexItem,
+                              import, [UIBarButtonItem fixedSpaceItemOfWidth:0], add];
+    }
+    else {
+        self.toolbarItems = @[export,
+                              flexItem,
+                              import, add];
+    }
     
     _gb = gb;
     return self;
