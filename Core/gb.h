@@ -235,7 +235,7 @@ enum {
     GB_IO_PCM34      = 0x77, // Channels 3 and 4 amplitudes
 };
 
-static const typeof(GB_IO_PGB) __attribute__((deprecated("Use GB_IO_PGB instead"))) GB_IO_UNKNOWN5 = GB_IO_PGB;
+static const __typeof__(GB_IO_PGB) __attribute__((deprecated("Use GB_IO_PGB instead"))) GB_IO_UNKNOWN5 = GB_IO_PGB;
 
 typedef enum {
     GB_LOG_BOLD = 1,
