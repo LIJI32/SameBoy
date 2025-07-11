@@ -109,7 +109,7 @@
     self.edgesForExtendedLayout = 0;
 #ifdef APPSTORE
     [self performAtomically:^{
-        for (GBSlotButton *slotView in self.view.subviews) {
+        for (GBSlotButton *slotView in root.subviews) {
             [self updateSlotView:slotView];
         }
     }];

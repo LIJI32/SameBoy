@@ -35,7 +35,7 @@
                                                            [self.class wrapViewController:[[GBCloudROMViewController alloc] init]],
                                                            nil];
     if ([GBWatchManager sharedManager].isPaired) {
-        [viewControllers insertObject:[self.class wrapViewController:[[GBROMViewController alloc] initForWatch]] atIndex:2],
+        [viewControllers insertObject:[self.class wrapViewController:[[GBROMViewController alloc] initForWatch]] atIndex:2];
         viewControllers[2].tabBarItem.image = [UIImage systemImageNamed:@"applewatch"] ?: [UIImage systemImageNamed:@"clock"];
     }
     UIEdgeInsets insets = [UIApplication sharedApplication].keyWindow.safeAreaInsets;
