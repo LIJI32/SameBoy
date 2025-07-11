@@ -24,7 +24,8 @@
     if (section == 0) return 1;
     size_t count;
     GB_get_cheats(_gb, &count);
-    self.toolbarItems.firstObject.enabled = count;
+    self.toolbarItems[0].enabled = count;
+    ((UIButton *)(self.toolbarItems[0].customView.subviews[0])).enabled = count;
     return count;
 }
 
@@ -161,9 +162,7 @@
     UIActivityViewController *controller = [[UIActivityViewController alloc] initWithActivityItems:@[url]
                                                                              applicationActivities:nil];
     
-    if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-        controller.popoverPresentationController.barButtonItem = self.toolbarItems.firstObject;
-    }
+    controller.popoverPresentationController.barButtonItem = self.toolbarItems.firstObject;
 
     [self presentViewController:controller
                        animated:true

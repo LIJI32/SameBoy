@@ -4,13 +4,18 @@
 #define GB_unlikely(x) __builtin_expect((bool)(x), 0)
 #define GB_inline_const(type, ...) (*({static const typeof(type) _= __VA_ARGS__; &_;}))
 
+#if !defined(typeof)
+#if defined(__cplusplus) || __STDC_VERSION__ < 202311
+#define typeof __typeof__
+#endif
+#endif
+
 #ifdef GB_INTERNAL
 
 // "Keyword" definitions
 #define likely(x)   GB_likely(x)
 #define unlikely(x) GB_unlikely(x)
 #define inline_const GB_inline_const
-#define typeof __typeof__
 
 #if !defined(MIN)
 #define MIN(A, B)    ({ __typeof__(A) __a = (A); __typeof__(B) __b = (B); __a < __b ? __a : __b; })

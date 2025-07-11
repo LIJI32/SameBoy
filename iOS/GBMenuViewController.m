@@ -120,7 +120,7 @@ static NSString *const tips[] = {
         effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleProminent];
     }
     
-    _effectView = [[UIVisualEffectView alloc] initWithEffect:effect];
+    _effectView = [[UIVisualEffectView alloc] initWithEffect:nil];
     _effectView.layer.cornerRadius = 8;
     _effectView.layer.masksToBounds = true;
     [self.view.window addSubview:_effectView];
@@ -131,19 +131,17 @@ static NSString *const tips[] = {
         _tipLabel.textColor = [UIColor labelColor];
     }
     _tipLabel.font = [UIFont systemFontOfSize:14];
-    _tipLabel.alpha = 0.8;
+    _tipLabel.alpha = 0;
     [[NSUserDefaults standardUserDefaults] setInteger:tipIndex + 1 forKey:@"GBTipIndex"];
     _tipLabel.lineBreakMode = NSLineBreakByWordWrapping;
     _tipLabel.numberOfLines = 3;
     [_effectView.contentView addSubview:_tipLabel];
     [self layoutTip];
-    _effectView.alpha = 1;
     
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [UIView animateWithDuration:0.25 animations:^{
-            _effectView.alpha = 1.0;
-        }];
-    });
+    [UIView animateWithDuration:0.25 animations:^{
+        _effectView.effect = effect;
+        _tipLabel.alpha = 0.8;
+    }];
     
 }
 
@@ -158,8 +156,12 @@ static NSString *const tips[] = {
                         limitedToNumberOfLines:3].size;
     size.width = ceil(size.width);
     _tipLabel.frame = (CGRect){{8, 8}, size};
+    unsigned topInset = view.window.safeAreaInsets.top;
+    if (!topInset && [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        topInset = 32; // iPadOS is buggy af
+    }
     _effectView.frame = (CGRect) {
-        {round((outerSize.width - size.width - 16) / 2), view.window.safeAreaInsets.top + 12},
+        {round((outerSize.width - size.width - 16) / 2), topInset + 12},
         {size.width + 16, size.height + 16}
     };
 }
@@ -168,7 +170,8 @@ static NSString *const tips[] = {
 - (void)viewWillDisappear:(BOOL)animated
 {
     [UIView animateWithDuration:0.25 animations:^{
-        _effectView.alpha = 0;
+        _effectView.effect = nil;
+        _tipLabel.alpha = 0;
     } completion:^(BOOL finished) {
         [_effectView removeFromSuperview];
     }];

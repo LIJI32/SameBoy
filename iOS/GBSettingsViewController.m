@@ -19,7 +19,8 @@ static NSString const *typeCheck = @"check";
 static NSString const *typeDisabled = @"disabled";
 static NSString const *typeSeparator = @"separator";
 static NSString const *typeSlider = @"slider";
-static NSString const *typeLightTemp = @"typeLightTemp";
+static NSString const *typeLightTemp = @"lightTemp";
+static NSString const *typeTurboSlider = @"turboSlider";
 
 @implementation GBSettingsViewController
 {
@@ -27,6 +28,7 @@ static NSString const *typeLightTemp = @"typeLightTemp";
     UINavigationController *_detailsNavigation;
     NSArray<NSArray<GBTheme *> *> *_themes; // For prewarming
     bool _iPadRoot;
+    __weak UISlider *_turboSlider;
 }
 
 + (UIImage *)settingsImageNamed:(NSString *)name
@@ -79,17 +81,32 @@ static NSString const *typeLightTemp = @"typeLightTemp";
             ]
         },
         @{
-            @"header": @"Turbo Speed",
+            @"header": @"Turbo Speed Cap",
             @"items": @[
-                    @{@"type": typeRadio, @"pref": @"GBTurboSpeed", @"title": @"200%",     @"value": @2,},
-                    @{@"type": typeRadio, @"pref": @"GBTurboSpeed", @"title": @"400%",     @"value": @4,},
-                    @{@"type": typeRadio, @"pref": @"GBTurboSpeed", @"title": @"Uncapped", @"value": @1,},
+                @{@"type": typeCheck, @"pref": @"GBTurboCap", @"title": @"Cap Turbo Speed", @"block": ^void(GBSettingsViewController *controller) {
+                    if ([[NSUserDefaults standardUserDefaults] floatForKey:@"GBTurboCap"] == 1.0) {
+                        if (controller->_turboSlider) {
+                            [[NSUserDefaults standardUserDefaults] setFloat:controller->_turboSlider.value forKey:@"GBTurboCap"];
+                            controller->_turboSlider.enabled = true;
+                        }
+                        else {
+                            [[NSUserDefaults standardUserDefaults] setFloat:2.0 forKey:@"GBTurboCap"];
+                        }
+                    }
+                    else {
+                        controller->_turboSlider.enabled = false;
+                    }
+                }},
+                    @{@"type": typeTurboSlider, @"pref": @"GBTurboCap", @"min": @1.5, @"max": @4, @"minImage": @"tortoise.fill", @"maxImage": @"hare.fill"},
             ],
             @"footer": ^NSString *(){
                 if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
-                    return @"This setting will have no effect because horizontal swipes are configured to dynamically control speed in the “Controls” settings";
+                    return @"This setting will have no effect because horizontal swipes are configured to dynamically control speed in the “Controls” settings.";
                 }
-                return @"";
+                if ([[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboCap"]) {
+                    return [NSString stringWithFormat:@"Turbo speed is capped to %u%%", (unsigned)round([[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboCap"] * 100)];
+                }
+                return @"Turbo speed is not capped";
             },
         },
         @{
@@ -855,10 +872,11 @@ static id ValueForItem(NSDictionary *item)
     
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
     cell.textLabel.text = item[@"title"];
-    if (item[@"type"] == typeSubmenu || item[@"type"] == typeOptionSubmenu || item[@"type"] == typeBlock) {
+    NSString *type = item[@"type"];
+    if (type == typeSubmenu || type == typeOptionSubmenu || type == typeBlock) {
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.selectionStyle = UITableViewCellSelectionStyleBlue;
-        if (item[@"type"] == typeOptionSubmenu) {
+        if (type == typeOptionSubmenu) {
             for (NSDictionary *section in item[@"submenu"]) {
                 for (NSDictionary *item in section[@"items"]) {
                     if (item[@"value"] && [ValueForItem(item) isEqual:item[@"value"]]) {
@@ -872,14 +890,14 @@ static id ValueForItem(NSDictionary *item)
             cell.detailTextLabel.text = [[NSUserDefaults standardUserDefaults] stringForKey:item[@"pref"]];
         }
     }
-    else if (item[@"type"] == typeRadio) {
+    else if (type == typeRadio) {
         id settingValue = ValueForItem(item);
         id itemValue = item[@"value"];
         if (settingValue == itemValue || [settingValue isEqual:itemValue]) {
             cell.accessoryType = UITableViewCellAccessoryCheckmark;
         }
     }
-    else if (item[@"type"] == typeCheck) {
+    else if (type == typeCheck) {
         UISwitch *button = [[UISwitch alloc] init];
         cell.accessoryView = button;
         if ([[NSUserDefaults standardUserDefaults] boolForKey:item[@"pref"]]) {
@@ -889,6 +907,9 @@ static id ValueForItem(NSDictionary *item)
         __weak typeof(self) weakSelf = self;
         id block = ^(){
             [[NSUserDefaults standardUserDefaults] setBool:button.on forKey:item[@"pref"]];
+            if (item[@"block"]) {
+                ((void(^)(GBSettingsViewController *))item[@"block"])(self);
+            }
 #ifdef APPSTORE
             [[GBWatchManager sharedManager] updateSettings:nil];
 #endif
@@ -906,7 +927,7 @@ static id ValueForItem(NSDictionary *item)
         [button addTarget:block action:@selector(invoke) forControlEvents:UIControlEventValueChanged];
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
     }
-    else if (item[@"type"] == typeDisabled) {
+    else if (type == typeDisabled) {
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         if (@available(iOS 13.0, *)) {
             cell.textLabel.textColor = [UIColor separatorColor];
@@ -915,24 +936,34 @@ static id ValueForItem(NSDictionary *item)
             cell.textLabel.textColor = [UIColor colorWithWhite:0 alpha:0.75];
         }
     }
-    else if (item[@"type"] == typeSeparator) {
+    else if (type == typeSeparator) {
         cell.backgroundColor = [UIColor clearColor];
         cell.separatorInset = UIEdgeInsetsZero;
     }
-    else if (item[@"type"] == typeSlider ||
-             item[@"type"] == typeLightTemp) {
+    else if (type == typeSlider ||
+             type == typeLightTemp ||
+             type == typeTurboSlider) {
         CGRect rect = cell.contentView.bounds;
         rect.size.width -= 24;
         rect.size.height -= 24;
         rect.origin.x += 12;
         rect.origin.y += 12;
-        UISlider *slider = [item[@"type"] == typeLightTemp? [GBSlider alloc] : [UISlider alloc] initWithFrame:rect];
+        UISlider *slider = [type == typeLightTemp? [GBSlider alloc] : [UISlider alloc] initWithFrame:rect];
         slider.continuous = true;
         slider.minimumValue = [item[@"min"] floatValue];
         slider.maximumValue = [item[@"max"] floatValue];
         slider.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         [cell.contentView addSubview:slider];
-        slider.value = [[NSUserDefaults standardUserDefaults] floatForKey:item[@"pref"]];
+        if (type == typeTurboSlider) {
+            slider.value = [[NSUserDefaults standardUserDefaults] floatForKey:item[@"pref"]] ?: 2.0;
+            _turboSlider = slider;
+            if (![[NSUserDefaults standardUserDefaults] floatForKey:item[@"pref"]]) {
+                slider.enabled = false;
+            }
+        }
+        else {
+            slider.value = [[NSUserDefaults standardUserDefaults] floatForKey:item[@"pref"]];
+        }
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         
         if (@available(iOS 13.0, *)) {
@@ -943,8 +974,19 @@ static id ValueForItem(NSDictionary *item)
             }
         }
         
+        __weak typeof(self) weakSelf = self;
         id block = ^(){
             [[NSUserDefaults standardUserDefaults] setDouble:slider.value forKey:item[@"pref"]];
+            if (type == typeTurboSlider) {
+                unsigned section = [indexPath indexAtPosition:0];
+                UITableViewHeaderFooterView *view = [weakSelf.tableView footerViewForSection:section];
+                view.textLabel.text = [weakSelf tableView:weakSelf.tableView titleForFooterInSection:section];
+                [UIView setAnimationsEnabled:false];
+                [weakSelf.tableView beginUpdates];
+                [view sizeToFit];
+                [weakSelf.tableView endUpdates];
+                [UIView setAnimationsEnabled:true];
+            }
 #ifdef APPSTORE
             [[GBWatchManager sharedManager] updateSettings:nil];
 #endif
@@ -974,7 +1016,8 @@ static id ValueForItem(NSDictionary *item)
 - (NSIndexPath *)tableView:(UITableView *)tableView willSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     NSDictionary *item = [self itemForIndexPath:indexPath];
-    if (item[@"type"] == typeSubmenu || item[@"type"] == typeOptionSubmenu) {
+    NSString *type = item[@"type"];
+    if (type == typeSubmenu || type == typeOptionSubmenu) {
         UITableViewStyle style = UITableViewStyleGrouped;
         if (@available(iOS 13.0, *)) {
             style = UITableViewStyleInsetGrouped;
@@ -998,7 +1041,7 @@ static id ValueForItem(NSDictionary *item)
         }
         return indexPath;
     }
-    else if (item[@"type"] == typeRadio) {
+    else if (type == typeRadio) {
         if (item[@"setter"]) {
             ((void(^)(id))item[@"setter"])(item[@"value"]);
         }
@@ -1010,7 +1053,7 @@ static id ValueForItem(NSDictionary *item)
         }
         [self.tableView reloadData];
     }
-    else if (item[@"type"] == typeBlock) {
+    else if (type == typeBlock) {
         if (((bool(^)(GBSettingsViewController *))item[@"block"])(self)) {
             return indexPath;
         }
@@ -1021,11 +1064,13 @@ static id ValueForItem(NSDictionary *item)
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     NSDictionary *item = [self itemForIndexPath:indexPath];
-    if (item[@"type"] == typeSeparator) {
+    NSString *type = item[@"type"];
+    if (type == typeSeparator) {
         return 8;
     }
-    if (item[@"type"] == typeSlider ||
-        item[@"type"] == typeLightTemp) {
+    if (type == typeSlider ||
+        type == typeLightTemp ||
+        type == typeTurboSlider) {
         return 63;
     }
     return [super tableView:tableView heightForRowAtIndexPath:indexPath];

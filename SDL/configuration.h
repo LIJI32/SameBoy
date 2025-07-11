@@ -164,6 +164,7 @@ typedef struct {
         
         /* v1.0.2 */
         int8_t vsync_mode;
+        uint8_t turbo_cap;
     };
 } configuration_t;
 

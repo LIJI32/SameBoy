@@ -442,9 +442,9 @@
                         </items>
                     </menu>
                 </menuItem>
-                <menuItem title="Connectivity" id="IcW-ZC-4wb">
+                <menuItem title="Connect" id="IcW-ZC-4wb">
                     <modifierMask key="keyEquivalentModifierMask"/>
-                    <menu key="submenu" title="Connectivity" id="BDM-Cv-BOm">
+                    <menu key="submenu" title="Connect" id="BDM-Cv-BOm">
                         <items>
                             <menuItem title="None" id="SiH-Q4-OBY">
                                 <modifierMask key="keyEquivalentModifierMask"/>

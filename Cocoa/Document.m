@@ -346,6 +346,12 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     [self observeStandardDefaultsKey:@"GBDebuggerFontSize" withBlock:^(NSString *value) {
         [weakSelf updateFonts];
     }];
+    
+    [self observeStandardDefaultsKey:@"GBTurboCap" withBlock:^(NSNumber *value) {
+        if (!_master) {
+            GB_set_turbo_cap(gb, value.doubleValue);
+        }
+    }];
 }
 
 - (void)updateMinSize
@@ -2586,6 +2592,8 @@ enum GBWindowResizeAction
         }
         GB_set_turbo_mode(&_gb, false, false);
         GB_set_turbo_mode(&partner->_gb, false, false);
+        GB_set_turbo_cap(&_gb, [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboCap"]);
+        GB_set_turbo_cap(&partner->_gb, [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboCap"]);
     }
 }
 
@@ -2601,6 +2609,7 @@ enum GBWindowResizeAction
     GB_set_turbo_mode(&partner->_gb, true, true);
     _slave = partner;
     partner->_master = self;
+    GB_set_turbo_cap(&partner->_gb, 0);
     _linkOffset = 0;
     GB_set_serial_transfer_bit_start_callback(&_gb, _linkCableBitStart);
     GB_set_serial_transfer_bit_start_callback(&partner->_gb, _linkCableBitStart);

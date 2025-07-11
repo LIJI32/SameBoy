@@ -164,7 +164,7 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
             if (index == GB_WAVE) {
                 /* For some reason, channel 3 is inverted on the AGB, and has a different "silence" value */
                 value ^= 0xF;
-                silence = 7;
+                silence = 7 * 2;
             }
             
             uint8_t bias = agb_bias_for_channel(gb, index);
@@ -173,8 +173,8 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
             bool right = gb->io_registers[GB_IO_NR51] & (1 << index);
             
             GB_sample_t output = {
-                .left = (0xF - (left? value : silence) * 2 + bias) * left_volume,
-                .right = (0xF - (right? value : silence) * 2 + bias) * right_volume
+                .left = (0xF - (left? value * 2 + bias : silence)) * left_volume,
+                .right = (0xF - (right? value * 2 + bias : silence)) * right_volume
             };
             
             if (unlikely(gb->apu_output.channel_muted[index])) {

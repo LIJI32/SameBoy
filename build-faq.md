@@ -26,9 +26,9 @@ The following examples will be referenced later:
 
 After downloading [rgbds](https://github.com/gbdev/rgbds/releases/), ensure that it is added to the `%PATH%`. This may be done by adding it to the user's or SYSTEM's Environment Variables, or may be added to the command line at compilation time via `set path=%path%;C:\path\to\rgbds`.  
 
-### GnuWin
+### Git Bash & Make
 
-Ensure that the `gnuwin32\bin\` directory is included in `%PATH%`. Like rgbds above, this may instead be manually included on the command line before installation: `set path=%path%;C:\path\to\gnuwin32\bin`. 
+Ensure that the `Git\usr\bin` directory is included in `%PATH%`. Like rgbds above, this may instead be manually included on the command line before installation: `set path=%path%;C:\path\to\Git\usr\bin`. Similarly, make sure that the directory containing `make.exe` is also included.
 
 ## Building
 
@@ -40,18 +40,5 @@ set lib=%lib%;C:\SDL2\lib\x64
 set include=%include%;C:\SDL2\include
 make
 ```
-Please note that these directories (`C:\SDL2\*`) are the examples given within the "SDL Port" section above. Ensure that your `%PATH%` properly includes `rgbds` and `gnuwin32\bin`, and that the `lib` and `include` paths include the appropriate SDL2 directories.
+On some versions of Visual Studio, you might need to use `vcvarsx86_amd64` instead of `vcvars64`. Please note that these directories (`C:\SDL2\*`) are the examples given within the "SDL Port" section above. Ensure that your `%PATH%` properly includes `rgbds` and `Git\usr\bin`, and that the `lib` and `include` paths include the appropriate SDL2 directories.
 
-## Common Errors
-
-### Error -1073741819
-
-If encountering an error that appears as follows:
-
-``` make: *** [build/bin/BootROMs/dmg_boot.bin] Error -1073741819```
-
-Simply run `make` again, and the process will continue. This appears to happen occasionally with `build/bin/BootROMs/dmg_boot.bin` and `build/bin/BootROMs/sgb2_boot.bin`. It does not affect the compiled output. This appears to be an issue with GnuWin.
-
-### The system cannot find the file specified (`usr/bin/mkdir`)
-
-If errors arise (i.e., particularly with the `CREATE_PROCESS('usr/bin/mkdir')` calls, also verify that Git for Windows has not been installed with full Linux support. If it has, remove `C:\Program Files\Git\usr\bin` from the SYSTEM %PATH% until after compilation. This happens because the Git for Windows version of `which` is used instead of the GnuWin one, and it returns a Unix-style path instead of a Windows one.

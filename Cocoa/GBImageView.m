@@ -44,7 +44,8 @@
     }
     
     if (parent.displayScrollRect) {
-        NSBezierPath *path = [NSBezierPath bezierPathWithRect:CGRectInfinite];
+        // CGRectInfinite in NSBezierPath is broken in newer macOS versions
+        NSBezierPath *path = [NSBezierPath bezierPathWithRect:CGRectMake(-0x4000, -0x4000, 0x8000, 0x8000)];
         for (unsigned x = 0; x < 2; x++) {
             for (unsigned y = 0; y < 2; y++) {
                 NSRect rect = parent.scrollRect;

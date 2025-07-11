@@ -1173,6 +1173,45 @@ static const char *current_agb_revision_string(unsigned index)
     return "CPU AGB A (AGB)";
 }
 
+static void cycle_turbo_cap(unsigned index)
+{
+    
+    if (configuration.turbo_cap >= 16) { // 400%
+        configuration.turbo_cap = 0; // uncapped
+    }
+    else if (configuration.turbo_cap == 0) { // uncapped
+        configuration.turbo_cap = 6; // 150%
+    }
+    else {
+        configuration.turbo_cap++;
+    }
+}
+
+static void cycle_turbo_cap_backwards(unsigned index)
+{
+    
+    if (configuration.turbo_cap == 0) { // uncapped
+        configuration.turbo_cap = 16; // 400%
+    }
+    else if (configuration.turbo_cap == 6) { // 150%
+        configuration.turbo_cap = 0; // uncapped
+    }
+    else {
+        configuration.turbo_cap--;
+    }
+}
+
+static const char *current_turbo_cap_string(unsigned index)
+{
+    if (configuration.turbo_cap == 0) {
+        return "Uncapped";
+    }
+    static char ret[5];
+    snprintf(ret, sizeof(ret), "%d%%", configuration.turbo_cap * 25);
+    return ret;
+}
+
+
 static const struct menu_item emulation_menu[] = {
     {"Emulated Model:", cycle_model, current_model_string, cycle_model_backwards},
     {"SGB Revision:", cycle_sgb_revision, current_sgb_revision_string, cycle_sgb_revision_backwards},
@@ -1181,6 +1220,7 @@ static const struct menu_item emulation_menu[] = {
     {"Boot ROMs Folder:", toggle_bootrom, current_bootrom_string, toggle_bootrom},
     {"Rewind Length:", cycle_rewind, current_rewind_string, cycle_rewind_backwards},
     {"Real Time Clock:", toggle_rtc_mode, current_rtc_mode_string, toggle_rtc_mode},
+    {"Turbo speed cap:", cycle_turbo_cap, current_turbo_cap_string, cycle_turbo_cap_backwards},
     {"Back", enter_options_menu},
     {NULL,}
 };

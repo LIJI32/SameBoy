@@ -342,6 +342,13 @@ static inline NSString *keyEquivalentString(NSMenuItem *item)
     
     _fontSizeStepper.intValue = [[NSUserDefaults standardUserDefaults] integerForKey:@"GBDebuggerFontSize"];
     [self updateFonts];
+    
+    double cap = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboCap"];
+    if (cap) {
+        _turboCapSlider.intValue = round(cap * 100);
+        _turboCapButton.state = NSOnState;
+    }
+    [self turboCapToggled:_turboCapButton];
 }
 
 - (IBAction)fontSizeChanged:(id)sender
@@ -553,6 +560,37 @@ static inline NSString *keyEquivalentString(NSMenuItem *item)
 {
     [self endSheet:self.joyconsSheet];
     [GBJoyConManager sharedInstance].arrangementMode = false;
+}
+
+- (IBAction)turboCapToggled:(NSButton *)sender
+{
+    if (sender.state) {
+        _turboCapSlider.enabled = true;
+        [self turboCapChanged:_turboCapSlider];
+        if (@available(macOS 10.10, *)) {
+            _turboCapLabel.textColor = [NSColor labelColor];
+        }
+        else {
+            _turboCapLabel.textColor = [NSColor blackColor];
+        }
+    }
+    else {
+        _turboCapSlider.enabled = false;
+        _turboCapLabel.enabled = false;
+        [[NSUserDefaults standardUserDefaults] setDouble:0 forKey:@"GBTurboCap"];
+        if (@available(macOS 10.10, *)) {
+            _turboCapLabel.textColor = [NSColor disabledControlTextColor];
+        }
+        else {
+            _turboCapLabel.textColor = [NSColor colorWithWhite:0 alpha:0.25];
+        }
+    }
+}
+
+- (IBAction)turboCapChanged:(NSSlider *)sender
+{
+    _turboCapLabel.stringValue = [NSString stringWithFormat:@"%d%%", sender.intValue];
+    [[NSUserDefaults standardUserDefaults] setDouble:sender.doubleValue / 100.0 forKey:@"GBTurboCap"];
 }
 
 @end

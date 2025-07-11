@@ -277,6 +277,7 @@ static void open_menu(void)
     GB_set_highpass_filter_mode(&gb, configuration.highpass_mode);
     GB_set_rewind_length(&gb, configuration.rewind_length);
     GB_set_rtc_mode(&gb, configuration.rtc_mode);
+    GB_set_turbo_cap(&gb, configuration.turbo_cap / 4.0);
     if (previous_width != GB_get_screen_width(&gb)) {
         signed current_window_width, current_window_height;
         SDL_GetWindowSize(window, &current_window_width, &current_window_height);
@@ -381,6 +382,7 @@ static void handle_events(GB_gameboy_t *gb)
                     GB_audio_clear_queue();
                     turbo_down = event.type == SDL_JOYBUTTONDOWN;
                     GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
+                    SDL_GL_SetSwapInterval(turbo_down? 0 : configuration.vsync_mode);
                 }
                 else if (button == JOYPAD_BUTTON_SLOW_MOTION) {
                     underclock_down = event.type == SDL_JOYBUTTONDOWN;
@@ -391,6 +393,7 @@ static void handle_events(GB_gameboy_t *gb)
                         rewind_paused = false;
                     }
                     GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
+                    SDL_GL_SetSwapInterval(turbo_down? 0 : configuration.vsync_mode);
                 }
                 else if (button == JOYPAD_BUTTON_MENU && event.type == SDL_JOYBUTTONDOWN) {
                     open_menu();
@@ -610,6 +613,7 @@ static void handle_events(GB_gameboy_t *gb)
                     turbo_down = event.type == SDL_KEYDOWN;
                     GB_audio_clear_queue();
                     GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
+                    SDL_GL_SetSwapInterval(turbo_down? 0 : configuration.vsync_mode);
                 }
                 else if (event.key.keysym.scancode == configuration.keys_2[GB_CONF_KEYS2_REWIND]) {
                     rewind_down = event.type == SDL_KEYDOWN;
@@ -617,6 +621,7 @@ static void handle_events(GB_gameboy_t *gb)
                         rewind_paused = false;
                     }
                     GB_set_turbo_mode(gb, turbo_down, turbo_down && rewind_down);
+                    SDL_GL_SetSwapInterval(turbo_down? 0 : configuration.vsync_mode);
                 }
                 else if (event.key.keysym.scancode == configuration.keys_2[GB_CONF_KEYS2_UNDERCLOCK]) {
                     underclock_down = event.type == SDL_KEYDOWN;
@@ -737,15 +742,23 @@ static void debugger_reset(int ignore)
 #endif
 
 static void gb_audio_callback(GB_gameboy_t *gb, GB_sample_t *sample)
-{    
+{
     if (turbo_down) {
         static unsigned skip = 0;
         skip++;
         if (skip == GB_audio_get_frequency() / 8) {
             skip = 0;
         }
-        if (skip > GB_audio_get_frequency() / 16) {
-            return;
+        if (configuration.turbo_cap) {
+            if (skip > GB_audio_get_frequency() / 8 * 4 / configuration.turbo_cap) {
+                return;
+            }
+        }
+        else {
+
+            if (skip > GB_audio_get_frequency() / 16) {
+                return;
+            }
         }
     }
     
@@ -1095,6 +1108,7 @@ restart:;
         GB_set_highpass_filter_mode(&gb, configuration.highpass_mode);
         GB_set_rewind_length(&gb, configuration.rewind_length);
         GB_set_rtc_mode(&gb, configuration.rtc_mode);
+        GB_set_turbo_cap(&gb, configuration.turbo_cap / 4.0);
         GB_set_update_input_hint_callback(&gb, handle_events);
         GB_apu_set_sample_callback(&gb, gb_audio_callback);
         

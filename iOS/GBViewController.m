@@ -24,6 +24,79 @@
 #import <sys/stat.h>
 #import <CoreMotion/CoreMotion.h>
 #import <dlfcn.h>
+#import <objc/runtime.h>
+
+#if !__has_include(<UIKit/UISliderTrackConfiguration.h>)
+/* Building with older SDKs */
+
+typedef NS_ENUM(NSInteger, UIMenuSystemElementGroupPreference) {
+    UIMenuSystemElementGroupPreferenceAutomatic = 0,
+    UIMenuSystemElementGroupPreferenceRemoved,
+    UIMenuSystemElementGroupPreferenceIncluded,
+};
+
+API_AVAILABLE(ios(19.0))
+@interface UIMainMenuSystemConfiguration : NSObject <NSCopying>
+@property (nonatomic, assign) UIMenuSystemElementGroupPreference newScenePreference;
+@property (nonatomic, assign) UIMenuSystemElementGroupPreference documentPreference;
+@property (nonatomic, assign) UIMenuSystemElementGroupPreference printingPreference;
+@property (nonatomic, assign) UIMenuSystemElementGroupPreference findingPreference;
+@property (nonatomic, assign) UIMenuSystemElementGroupPreference toolbarPreference;
+@property (nonatomic, assign) UIMenuSystemElementGroupPreference sidebarPreference;
+@property (nonatomic, assign) UIMenuSystemElementGroupPreference inspectorPreference;
+@property (nonatomic, assign) UIMenuSystemElementGroupPreference textFormattingPreference;
+@end
+
+API_AVAILABLE(ios(19.0))
+@interface UIMainMenuSystem : UIMenuSystem
+@property (class, nonatomic, readonly) UIMainMenuSystem *sharedSystem;
+- (void)setBuildConfiguration:(UIMainMenuSystemConfiguration *)configuration buildHandler:(void(^)(NSObject<UIMenuBuilder> *builder))buildHandler;
+@end
+
+API_AVAILABLE(ios(19.0))
+@interface NSObject(UIMenuBuilder)
+- (void)insertElements:(NSArray<UIMenuElement *> *)childElements atStartOfMenuForIdentifier:(UIMenuIdentifier)parentIdentifier;
+@end
+
+#endif
+
+
+static UIImage *CreateMenuImage(NSString *name)
+{
+    static const unsigned size = 20;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(size, size)];
+    CGRect destRect = {0,};
+    UIImage *source = [UIImage imageNamed:name];
+    CGSize sourceSize = source.size;
+    if (sourceSize.width > sourceSize.height) {
+        destRect.size.width = size;
+        destRect.size.height = sourceSize.height * size / sourceSize.width;
+        destRect.origin.y = (size - destRect.size.height) / 2;
+    }
+    else {
+        destRect.size.height = size;
+        destRect.size.width = sourceSize.width * size / sourceSize.height;
+        destRect.origin.x = (size - destRect.size.width) / 2;
+    }
+    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *myContext) {
+        [source drawInRect:destRect];
+    }];
+    return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+
+}
+
+API_AVAILABLE(ios(13.0))
+@implementation UIKeyCommand (KeyCommandWithImage)
+
++ (instancetype)keyCommandWithInput:(NSString *)input modifierFlags:(UIKeyModifierFlags)modifierFlags action:(SEL)action title:(NSString *)title image:(UIImage *)image
+{
+    UIKeyCommand *ret = [self keyCommandWithInput:input modifierFlags:modifierFlags action:action];
+    ret.title = title;
+    ret.image = image;
+    return ret;
+}
+
+@end
 
 @implementation GBViewController
 {
@@ -196,6 +269,9 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     [self addDefaultObserver:^(id newValue) {
         GB_set_rewind_length(gb, [newValue unsignedIntValue]);
     } forKey:@"GBRewindLength"];
+    [self addDefaultObserver:^(id newValue) {
+        GB_set_turbo_cap(gb, [newValue doubleValue]);
+    } forKey:@"GBTurboCap"];
     [self addDefaultObserver:^(id newValue) {
         [[AVAudioSession sharedInstance] setCategory:[newValue isEqual:@"on"]? AVAudioSessionCategoryPlayback :  AVAudioSessionCategorySoloAmbient
                                                 mode:AVAudioSessionModeDefault
@@ -437,7 +513,81 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     
     [self updateMirrorWindow];
     
+    if (@available(iOS 26.0, *)) {
+        UIMainMenuSystemConfiguration *conf = [[objc_getClass("UIMainMenuSystemConfiguration") alloc] init];
+        conf.newScenePreference = UIMenuSystemElementGroupPreferenceRemoved;
+        conf.documentPreference = UIMenuSystemElementGroupPreferenceRemoved;
+        conf.printingPreference = UIMenuSystemElementGroupPreferenceRemoved;
+        conf.findingPreference = UIMenuSystemElementGroupPreferenceRemoved;
+        conf.toolbarPreference = UIMenuSystemElementGroupPreferenceRemoved;
+        conf.sidebarPreference = UIMenuSystemElementGroupPreferenceRemoved;
+        conf.inspectorPreference = UIMenuSystemElementGroupPreferenceRemoved;
+        conf.textFormattingPreference =  UIMenuSystemElementGroupPreferenceRemoved;
+        
+        UIMainMenuSystem *system = (id)[objc_getClass("UIMainMenuSystem") sharedSystem];
+        [system setBuildConfiguration:conf
+                         buildHandler:^(id<UIMenuBuilder> builder) {
+            [builder removeMenuForIdentifier:UIMenuView]; // This menu's always empty
+            [builder removeMenuForIdentifier:UIMenuOpenRecent]; // This will list files to re-import, bad
+            
+            [(id)builder insertElements:@[[UICommand commandWithTitle:@"About SameBoy"
+                                                                image:nil
+                                                               action:@selector(showAbout)
+                                                         propertyList:nil]]
+             atStartOfMenuForIdentifier:UIMenuApplication];
+            
+            UIMenu *emulationMenu = [UIMenu menuWithTitle:@"Emulation" children:@[
+                [UIKeyCommand keyCommandWithInput:@"r" modifierFlags:UIKeyModifierCommand action:@selector(reset) title:@"Reset" image:[UIImage systemImageNamed:@"arrow.2.circlepath"]],
+                [UICommand commandWithTitle:@"Change Model…" image:CreateMenuImage(@"ModelTemplate") action:@selector(changeModel) propertyList:nil],
+                [UICommand commandWithTitle:@"Save States…" image:[UIImage systemImageNamed:@"square.stack"] action:@selector(openStates) propertyList:nil],
+                [UIMenu menuWithTitle:@"Cheats" image:CreateMenuImage(@"CheatsTemplate") identifier:nil options:0 children:@[
+                    [UIKeyCommand keyCommandWithInput:@"c" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(toggleCheats) title:@"Enable Cheats" image:nil],
+                    [UICommand commandWithTitle:@"Show Cheats…" image:nil action:@selector(openCheats) propertyList:nil],
+                ]],
+                [UIMenu menuWithTitle:@"Connect" image:CreateMenuImage(@"LinkCableTemplate") identifier:nil options:0 children:@[
+                    [UICommand commandWithTitle:@"None" image:nil action:@selector(disconnectCable) propertyList:nil],
+                    [UICommand commandWithTitle:@"Printer" image:[UIImage systemImageNamed:@"printer"] action:@selector(connectPrinter) propertyList:nil],
+                ]],
+            ]];
+            [builder insertSiblingMenu:emulationMenu beforeMenuForIdentifier:UIMenuWindow];
+        }];
+    }
+    
     return true;
+}
+
+- (BOOL)canPerformAction:(SEL)action withSender:(id)sender
+{
+    if (action == @selector(reset)) {
+        if (self.presentedViewController || ![GBROMManager sharedManager].currentROM) return false;
+    }
+    if (action == @selector(openStates) || action == @selector(changeModel) || action == @selector(openCheats) ||
+        action == @selector(toggleCheats) || action == @selector(disconnectCable) || action == @selector(connectPrinter)) {
+        if (![GBROMManager sharedManager].currentROM) return false;
+    }
+    return [super canPerformAction:action withSender:sender];
+}
+
+- (void)validateCommand:(UICommand *)command
+{
+    if (command.action == @selector(toggleCheats)) {
+        command.state = GB_is_inited(&_gb) && GB_cheats_enabled(&_gb);
+    }
+    
+    if (command.action == @selector(connectPrinter)) {
+        command.state = _printerConnected;
+    }
+    
+    if (command.action == @selector(disconnectCable)) {
+        command.state = !_printerConnected;
+    }
+    
+    [super validateCommand:command];
+}
+
+- (void)toggleCheats
+{
+    GB_set_cheats_enabled(&_gb, !GB_cheats_enabled(&_gb));
 }
 
 - (void)orderFrontPreferencesPanel:(id)sender
@@ -809,15 +959,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)openLibrary
 {
     static __weak UIViewController *presentedController;
-    if (presentedController) return;
-    if (self.presentedViewController) {
-        if (![self.presentedViewController isKindOfClass:[UIAlertController class]]) {
-            [self dismissViewController];
-        }
-        else {
-            return;;
-        }
-    }
+    if (presentedController && self.presentedViewController == presentedController) return;
+    if (![self dismissViewControllerIfSafe]) return;
     
     UIViewController *controller = [[GBLibraryViewController alloc] init];
     presentedController = controller;
@@ -829,8 +972,13 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)changeModel
 {
+    static __weak UIViewController *presentedController;
+    if (presentedController && self.presentedViewController == presentedController) return;
+    if (![self dismissViewControllerIfSafe]) return;
+
     GBOptionViewController *controller = [[GBOptionViewController alloc] initWithHeader:@"Select a model to emulate"];
     controller.footer = @"Changing the emulated model will reset the emulator";
+    presentedController = controller;
     
     GB_model_t currentModel = GB_get_model(&_gb);
     struct {
@@ -885,7 +1033,12 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)openStates
 {
+    static __weak UIViewController *presentedController;
+    if (presentedController && self.presentedViewController == presentedController) return;
+    if (![self dismissViewControllerIfSafe]) return;
+    
     UINavigationController *controller = [[UINavigationController alloc] initWithRootViewController:[[GBStatesViewController alloc] init]];
+    presentedController = controller;
     UIVisualEffect *effect = [UIBlurEffect effectWithStyle:(UIBlurEffectStyle)UIBlurEffectStyleProminent];
     UIVisualEffectView *effectView = [[UIVisualEffectView alloc] initWithEffect:effect];
     effectView.frame = controller.view.bounds;
@@ -904,16 +1057,9 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)openSettings
 {
     static __weak UIViewController *presentedController;
-    if (presentedController) return;
-    if (self.presentedViewController) {
-        if (![self.presentedViewController isKindOfClass:[UIAlertController class]]) {
-            [self dismissViewController];
-        }
-        else {
-            return;;
-        }
-    }
-    
+    if (presentedController && self.presentedViewController == presentedController) return;
+    if (![self dismissViewControllerIfSafe]) return;
+
     UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithTitle:@"Close"
                                                               style:UIBarButtonItemStylePlain
                                                              target:self
@@ -927,12 +1073,24 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)showAbout
 {
-    [self presentViewController:[[GBAboutController alloc] init] animated:true completion:nil];
+    static __weak UIViewController *presentedController;
+    if (presentedController && self.presentedViewController == presentedController) return;
+    if (![self dismissViewControllerIfSafe]) return;
+
+    UIViewController *controller = [[GBAboutController alloc] init];
+    presentedController = controller;
+
+    [self presentViewController:controller animated:true completion:nil];
 }
 
 - (void)openCheats
 {
+    static __weak UIViewController *presentedController;
+    if (presentedController && self.presentedViewController == presentedController) return;
+    if (![self dismissViewControllerIfSafe]) return;
+
     UINavigationController *controller = [[UINavigationController alloc] initWithRootViewController:[[GBCheatsController alloc] initWithGameBoy:&_gb]];
+    presentedController = controller;
     UIBarButtonItem *close = [[UIBarButtonItem alloc] initWithTitle:@"Close"
                                                               style:UIBarButtonItemStylePlain
                                                              target:self
@@ -967,6 +1125,22 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)dismissViewController
 {
     [self dismissViewControllerAnimated:true completion:nil];
+}
+
+- (bool)dismissViewControllerIfSafe
+{
+    if (!self.presentedViewController) return true;
+    
+    if (![self.presentedViewController isKindOfClass:[UIAlertController class]]) {
+        [self dismissViewController];
+        return true;
+    }
+    
+    if ([self.presentedViewController isKindOfClass:[GBMenuViewController class]]) {
+        [self dismissViewController];
+        return true;
+    }
+    return false;
 }
 
 - (void)applicationWillResignActive:(UIApplication *)application
@@ -1255,7 +1429,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 - (UIImage *)imageFromData:(NSData *)data width:(unsigned)width height:(unsigned)height
 {
     /* Convert the screenshot to a CGImageRef */
-    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, data.bytes, data.length, NULL);
+    CGDataProviderRef provider = CGDataProviderCreateWithCFData((CFDataRef)data);
     CGColorSpaceRef colorSpaceRef = CGColorSpaceCreateDeviceRGB();
     CGBitmapInfo bitmapInfo = kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast;
     CGColorRenderingIntent renderingIntent = kCGRenderingIntentDefault;
@@ -1732,9 +1906,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     
     if (_runMode == GBRunModeNormal  || _runMode == GBRunModeUnderclock || !([[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"] && !ignoreDynamicSpeed)) {
         if (_runMode == GBRunModeTurbo) {
-            double multiplier = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBTurboSpeed"];
-            GB_set_turbo_mode(&_gb, multiplier == 1, false);
-            GB_set_clock_multiplier(&_gb, multiplier);
+            GB_set_turbo_mode(&_gb, true, false);
         }
         else if (_runMode == GBRunModeUnderclock) {
             GB_set_clock_multiplier(&_gb, 0.5);
@@ -1947,6 +2119,25 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     });
 }
 
+- (void)disconnectCable
+{
+    if (!_printerConnected) return;
+    _printerConnected = false;
+    _currentPrinterImageData = nil;
+    [UIView animateWithDuration:0.25 animations:^{
+        _printerButton.alpha = 0;
+    }];
+    [_printerSpinner stopAnimating];
+    GB_disconnect_serial(&_gb);
+}
+
+- (void)connectPrinter
+{
+    if (_printerConnected) return;
+    _printerConnected = true;
+    GB_connect_printer(&_gb, printImage, printDone);
+}
+
 - (void)openConnectMenu
 {
     UIAlertControllerStyle style = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad?
@@ -1957,19 +2148,12 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     [menu addAction:[UIAlertAction actionWithTitle:@"None"
                                              style:UIAlertActionStyleDefault
                                            handler:^(UIAlertAction *action) {
-        _printerConnected = false;
-        _currentPrinterImageData = nil;
-        [UIView animateWithDuration:0.25 animations:^{
-            _printerButton.alpha = 0;
-        }];
-        [_printerSpinner stopAnimating];
-        GB_disconnect_serial(&_gb);
+        [self disconnectCable];
     }]];
     [menu addAction:[UIAlertAction actionWithTitle:@"Game Boy Printer"
                                              style:UIAlertActionStyleDefault
                                            handler:^(UIAlertAction *action) {
-        _printerConnected = true;
-        GB_connect_printer(&_gb, printImage, printDone);
+        [self connectPrinter];
     }]];
     menu.selectedAction = menu.actions[_printerConnected];
     [menu addAction:[UIAlertAction actionWithTitle:@"Cancel"

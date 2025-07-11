@@ -19,6 +19,9 @@
 @property IBOutlet NSPopUpButton *colorPalettePopupButton;
 @property IBOutlet NSPopUpButton *hotkey1PopupButton;
 @property IBOutlet NSPopUpButton *hotkey2PopupButton;
+@property IBOutlet NSButton *turboCapButton;
+@property IBOutlet NSSlider *turboCapSlider;
+@property IBOutlet NSTextField *turboCapLabel;
 
 @property IBOutlet GBTitledPopUpButton *fontPopupButton;
 @property IBOutlet NSStepper *fontSizeStepper;

@@ -12,6 +12,10 @@ static double StatusBarHeight(void)
             UIEdgeInsets insets = window.safeAreaInsets;
             ret = MAX(MAX(insets.left, insets.right), MAX(insets.top, insets.bottom)) ?: 20;
             [window setHidden:true];
+            if (!ret && [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+                ret = 32; // iPadOS is buggy af
+            }
+            NSLog(@"height = %f", ret);
         }
     });
     return ret;
@@ -47,7 +51,7 @@ static bool HasHomeBar(void)
     }
     
     _minY = StatusBarHeight() * _factor;
-    _cutout = _minY <= 24 * _factor? 0 : _minY;
+    _cutout = (_minY <= 24 * _factor || [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad)? 0 : _minY;
     
     if (HasHomeBar()) {
         _homeBar =  21 * _factor;

@@ -1,9 +1,6 @@
 #pragma once
 
 #ifdef __cplusplus
-#if defined(__STRICT_ANSI__) && !defined(typeof)
-#define typeof decltype
-#endif
 extern "C" {
 #endif
 
@@ -700,6 +697,7 @@ struct GB_gameboy_internal_s {
 
         /* Timing */
         uint64_t last_sync;
+        uint64_t last_render;
         uint64_t cycles_since_last_sync; // In 8MHz units
         GB_rtc_mode_t rtc_mode;
         uint32_t rtc_second_length;
@@ -833,6 +831,7 @@ struct GB_gameboy_internal_s {
         /* Misc */
         bool turbo;
         bool turbo_dont_skip;
+        double turbo_cap_multiplier;
         bool enable_skipped_frame_vblank_callbacks;
         bool disable_rendering;
         uint8_t boot_rom[0x900];
@@ -953,6 +952,7 @@ void GB_load_battery_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t
 int GB_load_battery(GB_gameboy_t *gb, const char *path);
 
 void GB_set_turbo_mode(GB_gameboy_t *gb, bool on, bool no_frame_skip);
+void GB_set_turbo_cap(GB_gameboy_t *gb, double multiplier); // Use 0 to use no cap
 void GB_set_rendering_disabled(GB_gameboy_t *gb, bool disabled);
     
 void GB_log(GB_gameboy_t *gb, const char *fmt, ...) __printflike(2, 3);

@@ -47,10 +47,10 @@ bool GB_timing_sync_turbo(GB_gameboy_t *gb)
 #endif
     if (!gb->turbo_dont_skip) {
         int64_t nanoseconds = get_nanoseconds();
-        if (nanoseconds <= gb->last_sync + (1000000000LL * LCDC_PERIOD / GB_get_clock_rate(gb))) {
+        if (nanoseconds <= gb->last_render + 1000000000 / 60) {
             return true;
         }
-        gb->last_sync = nanoseconds;
+        gb->last_render = nanoseconds;
     }
     return false;
 }
@@ -63,23 +63,32 @@ void GB_timing_sync(GB_gameboy_t *gb)
     /* Prevent syncing if not enough time has passed.*/
     if (gb->cycles_since_last_sync < LCDC_PERIOD / 3) return;
 
+    unsigned target_clock_rate;
     if (gb->turbo) {
-        gb->cycles_since_last_sync = 0;
-        if (gb->update_input_hint_callback) {
-            gb->update_input_hint_callback(gb);
+        if (gb->turbo_cap_multiplier) {
+            target_clock_rate = GB_get_clock_rate(gb) * gb->turbo_cap_multiplier;
         }
-        return;
+        else {
+            gb->cycles_since_last_sync = 0;
+            if (gb->update_input_hint_callback) {
+                gb->update_input_hint_callback(gb);
+            }
+            return;
+        }
+    }
+    else {
+        target_clock_rate = GB_get_clock_rate(gb);
     }
     
-    uint64_t target_nanoseconds = gb->cycles_since_last_sync * 1000000000LL / 2 / GB_get_clock_rate(gb); /* / 2 because we use 8MHz units */
+    uint64_t target_nanoseconds = gb->cycles_since_last_sync * 1000000000LL / 2 / target_clock_rate; /* / 2 because we use 8MHz units */
     int64_t nanoseconds = get_nanoseconds();
     int64_t time_to_sleep = target_nanoseconds + gb->last_sync - nanoseconds;
-    if (time_to_sleep > 0 && time_to_sleep < LCDC_PERIOD * 1200000000LL / GB_get_clock_rate(gb)) { // +20% to be more forgiving
+    if (time_to_sleep > 0 && time_to_sleep < LCDC_PERIOD * 1200000000LL / target_clock_rate) { // +20% to be more forgiving
         nsleep(time_to_sleep);
         gb->last_sync += target_nanoseconds;
     }
     else {
-        if (time_to_sleep < 0 && -time_to_sleep < LCDC_PERIOD * 1200000000LL / GB_get_clock_rate(gb)) {
+        if (time_to_sleep < 0 && -time_to_sleep < LCDC_PERIOD * 1200000000LL / target_clock_rate) {
             // We're running a bit too slow, but the difference is small enough,
             // just skip this sync and let it even out
             return;

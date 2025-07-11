@@ -58,6 +58,8 @@
     <true/>
     <key>NSCameraUsageDescription</key>
     <string>SameBoy needs to access your device&apos;s camera to emulate the Game Boy Camera</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>SameBoy needs access to save Game Boy Printer images to your photo library</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>

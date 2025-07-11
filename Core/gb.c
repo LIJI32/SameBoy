@@ -1222,8 +1222,10 @@ uint64_t GB_run_frame(GB_gameboy_t *gb)
     /* Configure turbo temporarily, the user wants to handle FPS capping manually. */
     bool old_turbo = gb->turbo;
     bool old_dont_skip = gb->turbo_dont_skip;
+    double old_turbo_cap = gb->turbo_cap_multiplier;
     gb->turbo = true;
     gb->turbo_dont_skip = true;
+    gb->turbo_cap_multiplier = 0;
     
     gb->cycles_since_last_sync = 0;
     while (true) {
@@ -1234,6 +1236,7 @@ uint64_t GB_run_frame(GB_gameboy_t *gb)
     }
     gb->turbo = old_turbo;
     gb->turbo_dont_skip = old_dont_skip;
+    gb->turbo_cap_multiplier = old_turbo_cap;
     return gb->cycles_since_last_sync * 1000000000LL / 2 / GB_get_clock_rate(gb); /* / 2 because we use 8MHz units */
 }
 
@@ -1416,6 +1419,11 @@ void GB_set_turbo_mode(GB_gameboy_t *gb, bool on, bool no_frame_skip)
 {
     gb->turbo = on;
     gb->turbo_dont_skip = no_frame_skip;
+}
+
+void GB_set_turbo_cap(GB_gameboy_t *gb, double multiplier)
+{
+    gb->turbo_cap_multiplier = multiplier;
 }
 
 void GB_set_rendering_disabled(GB_gameboy_t *gb, bool disabled)
