@@ -726,7 +726,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                 [_backgroundView fadeOverlayOut];
             }
             else {
-                if (self.runMode == GBRunModeRewind && _runModeFromController) {
+                if ((self.runMode == GBRunModeRewind || self.runMode == GBRunModePaused) && _runModeFromController) {
                     [self setRunMode:GBRunModeNormal];
                     _runModeFromController = false;
                 }
@@ -1390,14 +1390,22 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             GB_rewind_pop(&_gb);
             if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBDynamicSpeed"]) {
                 if (!GB_rewind_pop(&_gb)) {
-                    self.runMode = GBRunModePaused;
+                    dispatch_sync(dispatch_get_main_queue(), ^{
+                        if (_runMode == GBRunModeRewind) {
+                            self.runMode = GBRunModePaused;
+                        }
+                    });
                     _rewindOver = true;
                 }
             }
             else {
                 for (unsigned i = [[NSUserDefaults standardUserDefaults] integerForKey:@"GBRewindSpeed"]; i--;)  {
                     if (!GB_rewind_pop(&_gb)) {
-                        self.runMode = GBRunModePaused;
+                        dispatch_sync(dispatch_get_main_queue(), ^{
+                            if (_runMode == GBRunModeRewind) {
+                                self.runMode = GBRunModePaused;
+                            }
+                        });
                         _rewindOver = true;
                     }
                 }
@@ -2211,6 +2219,34 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     }];
     [_printerSpinner stopAnimating];
     [self dismissViewController];
+}
+
+@end
+
+/* +[UIColor labelColor] is broken in some contexts in iOS 26 and despite being such a critical method
+   Apple isn't going to fix this in time. */
+API_AVAILABLE(ios(19.0))
+@implementation UIColor(SolariumBugs)
++ (UIColor *)_labelColor
+{
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+        switch (traitCollection.userInterfaceStyle) {
+                
+            case UIUserInterfaceStyleUnspecified:
+            case UIUserInterfaceStyleLight:
+                return [UIColor blackColor];
+            case UIUserInterfaceStyleDark:
+                return [UIColor whiteColor];
+        }
+    }];
+}
+
++ (void)load
+{
+    if (@available(iOS 19.0, *)) {
+        method_setImplementation(class_getClassMethod(self, @selector(labelColor)),
+                                 [self methodForSelector:@selector(_labelColor)]);
+    }
 }
 
 @end

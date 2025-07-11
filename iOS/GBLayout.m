@@ -15,7 +15,6 @@ static double StatusBarHeight(void)
             if (!ret && [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
                 ret = 32; // iPadOS is buggy af
             }
-            NSLog(@"height = %f", ret);
         }
     });
     return ret;

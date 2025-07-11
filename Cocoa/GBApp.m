@@ -44,9 +44,14 @@ static uint32_t color_to_int(NSColor *color)
 - (void) applicationDidFinishLaunching:(NSNotification *)notification
 {
     // Refresh icon if launched via a software update
-    NSImage *icon = [[NSWorkspace sharedWorkspace] iconForFile:[[NSBundle mainBundle] bundlePath]];
-    icon.size = [NSApplication sharedApplication].applicationIconImage.size;
-    [NSApplication sharedApplication].applicationIconImage = icon;
+    if (@available(macOS 26.0, *)) {
+        // Severely broken on macOS 26
+    }
+    else {
+        NSImage *icon = [[NSWorkspace sharedWorkspace] iconForFile:[[NSBundle mainBundle] bundlePath]];
+        icon.size = [NSApplication sharedApplication].applicationIconImage.size;
+        [NSApplication sharedApplication].applicationIconImage = icon;
+    }
     
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     for (unsigned i = 0; i < GBKeyboardButtonCount; i++) {

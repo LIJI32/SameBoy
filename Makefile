@@ -137,6 +137,8 @@ CC := clang
 endif
 endif
 
+IBTOOL ?= ibtool
+
 # Find libraries with pkg-config if available.
 ifneq (, $(shell which pkg-config 2> $(NULL)))
 # But not on macOS, it's annoying, and not on Haiku, where OpenGL is broken
@@ -669,10 +671,10 @@ ifeq ($(CONF), release)
 endif
 
 $(BIN)/SameBoy.app/Contents/Resources/%.nib: Cocoa/%.xib
-	ibtool --target-device mac --minimum-deployment-target 10.9 --compile $@ $^ 2>&1 | cat -
+	$(IBTOOL) --target-device mac --minimum-deployment-target 10.9 --compile $@ $^ 2>&1 | cat -
 	
 $(BIN)/SameBoy-iOS.app/%.storyboardc: iOS/%.storyboard
-	ibtool --target-device iphone --target-device ipad --minimum-deployment-target $(IOS_MIN) --compile $@ $^ 2>&1 | cat -
+	$(IBTOOL) --target-device iphone --target-device ipad --minimum-deployment-target $(IOS_MIN) --compile $@ $^ 2>&1 | cat -
 
 # Quick Look generators
 

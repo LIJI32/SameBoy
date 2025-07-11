@@ -11,17 +11,17 @@ static int32_t band_limited_steps[GB_BAND_LIMITED_PHASES][GB_BAND_LIMITED_WIDTH]
 
 static void __attribute__((constructor)) band_limited_init(void)
 {
-    const unsigned master_size = GB_BAND_LIMITED_WIDTH * GB_BAND_LIMITED_PHASES;
+    const unsigned master_size = GB_BAND_LIMITED_WIDTH * GB_BAND_LIMITED_PHASES + 1;
     double *master = malloc(master_size  * sizeof(*master));
     memset(master, 0, master_size  * sizeof(*master));
     
-    const unsigned sine_size = 256 * GB_BAND_LIMITED_PHASES + 2;
+    const unsigned sine_size = (master_size - 1) * 2;
     const unsigned max_harmonic = sine_size / 2 / GB_BAND_LIMITED_PHASES;
     nounroll for (unsigned harmonic = 1; harmonic <= max_harmonic; harmonic += 2) {
         double amplitude = 1.0 / harmonic / 2;
         double to_angle = M_PI * 2 / sine_size * harmonic;
         nounroll for (unsigned i = 0; i < master_size; i++) {
-            master[i] += sin(((signed)(i + 1) - (signed)master_size / 2) * to_angle) * amplitude;
+            master[i] += sin(((signed)(i + 1) - (signed)sine_size / 4) * to_angle) * amplitude;
         }
     }
     

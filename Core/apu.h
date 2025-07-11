@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include "defs.h"
 
-#define GB_BAND_LIMITED_WIDTH 16
+#define GB_BAND_LIMITED_WIDTH 32
 #define GB_BAND_LIMITED_PHASES 512
 
 #ifdef GB_INTERNAL
