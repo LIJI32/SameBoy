@@ -5,8 +5,10 @@
 #include <stdio.h>
 #include "defs.h"
 
-#define GB_BAND_LIMITED_WIDTH 32
-#define GB_BAND_LIMITED_PHASES 512
+#define GB_BAND_LIMITED_WIDTH 64
+#define GB_BAND_LIMITED_PHASES 256
+
+#define GB_QUICK_MULTIPLY_COUNT 64
 
 #ifdef GB_INTERNAL
 #define GB_BAND_LIMITED_ONE 0x10000 // fixed point value equal to 1
@@ -180,6 +182,9 @@ typedef struct {
     unsigned max_cycles_per_sample;
 
     uint32_t cycles_since_render;
+    uint32_t sample_fraction; // Counter in 1 / sample_rate, in 4.28 fixed format
+    uint32_t quick_fraction_multiply_cache[GB_QUICK_MULTIPLY_COUNT];
+    
     GB_band_limited_t band_limited[GB_N_CHANNELS];
     double dac_discharge[GB_N_CHANNELS];
     bool channel_muted[GB_N_CHANNELS];

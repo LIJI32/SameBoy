@@ -8,6 +8,8 @@
 #import <JoyKit/JoyKit.h>
 #import <WebKit/WebKit.h>
 #import <mach-o/dyld.h>
+#include <sys/mount.h>
+#include <sys/xattr.h>
 
 #define UPDATE_SERVER "https://sameboy.github.io"
 
@@ -662,6 +664,14 @@ static uint32_t color_to_int(NSColor *color)
         }
         [[NSFileManager defaultManager] removeItemAtPath:_downloadDirectory error:nil];
         [[NSFileManager defaultManager] removeItemAtPath:contentsTempPath error:nil];
+        
+        // Remove the quarantine flag so we don't have to escape translocation
+        NSString *bundlePath = [NSBundle mainBundle].bundlePath;
+        removexattr(bundlePath.UTF8String, "com.apple.quarantine", 0);
+        for (NSString *path in [[NSFileManager defaultManager] enumeratorAtPath:bundlePath]) {
+            removexattr([bundlePath stringByAppendingPathComponent:path].UTF8String, "com.apple.quarantine", 0);
+        };
+        
         _downloadDirectory = nil;
         atexit_b(^{
             execl(executablePath.UTF8String, executablePath.UTF8String, "--update-launch", NULL);
@@ -780,5 +790,28 @@ static uint32_t color_to_int(NSColor *color)
 
 - (IBAction)nop:(id)sender
 {
+}
+
+/* This runs before C constructors. If we need to escape translocation, we should
+   do it ASAP to minimize our launch time. */
+
++ (void)load
+{
+    if (@available(macOS 10.12, *)) {
+        /* Detect and escape translocation so we can safely update ourselves */
+        if ([[[NSBundle mainBundle] bundlePath] containsString:@"/AppTranslocation/"]) {
+            const char *mountPath = [[[[NSBundle mainBundle] bundlePath] stringByDeletingLastPathComponent] stringByDeletingLastPathComponent].UTF8String;
+            struct statfs *mntbuf;
+            int mntsize = getmntinfo(&mntbuf, MNT_NOWAIT);
+            for (unsigned i = 0; i < mntsize; i++) {
+                if (strcmp(mntbuf[i].f_mntonname, mountPath) == 0) {
+                    NSBundle *origBundle = [NSBundle bundleWithPath:@(mntbuf[i].f_mntfromname)];
+                    
+                    execl(origBundle.executablePath.UTF8String, origBundle.executablePath.UTF8String, NULL);
+                    break;
+                }
+            }
+        }
+    }
 }
 @end
