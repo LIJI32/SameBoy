@@ -118,6 +118,8 @@
     if (rom == _currentROM) {
         return self.romFile;
     }
+    if ([rom isEqualToString:@"Inbox"]) return nil;
+    if ([rom isEqualToString:@"Boot ROMs"]) return nil;
     
     if ([self.forbiddenNames containsObject:rom]) {
         return nil;

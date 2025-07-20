@@ -900,7 +900,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                             GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBCGBModel"]);
                         }
                     }
-                    else if ((rom[0x146]  == 3) && !GB_is_sgb(&_gb)) {
+                    else if ((rom[0x146] == 3) && !GB_is_sgb(&_gb)) {
                         GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBSGBModel"]);
                     }
                 }
