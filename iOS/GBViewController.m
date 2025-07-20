@@ -907,17 +907,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             }
             
             NSDate *date = nil;
-            @try {
-                [[NSURL fileURLWithPath:[GBROMManager sharedManager].autosaveStateFile] getResourceValue:&date
-                                                                                                  forKey:NSURLContentModificationDateKey
-                                                                                                   error:nil];
-            }
-            @catch (NSException *exception) {
-                /* fileURLWithPath: throws an exception on some crash logs. I don't know why or how to reproduce it,
-                   but let's at least not crash. */
-                GB_rewind_reset(&_gb);
-            }
-            
+            [[NSURL fileURLWithPath:[GBROMManager sharedManager].autosaveStateFile] getResourceValue:&date
+                                                                                              forKey:NSURLContentModificationDateKey
+                                                                                               error:nil];
+
             // Reset the rewind buffer only if we switched ROMs or had the save state change externally
             if (![_lastSavedROM isEqual:[GBROMManager sharedManager].currentROM] ||
                 ![_saveDate isEqual:date]) {

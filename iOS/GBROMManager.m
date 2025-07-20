@@ -54,9 +54,17 @@
     return self;
 }
 
+- (NSArray<NSString *> *)forbiddenNames
+{
+    return @[@"Inbox", @"Boot ROMs"];
+}
+
 - (void)setCurrentROM:(NSString *)currentROM
 {
     _romFile = nil;
+    if ([self.forbiddenNames containsObject:currentROM]) {
+        currentROM = nil;
+    }
     _currentROM = currentROM;
     bool foundROM = self.romFile;
     
@@ -84,6 +92,9 @@
 
 - (NSString *)romDirectoryForROM:(NSString *)romFile
 {
+    if ([self.forbiddenNames containsObject:romFile]) {
+        return nil;
+    }
 #ifdef APPSTORE
     if ([romFile hasPrefix:@"icloud/"]) {
         NSString *name = romFile.lastPathComponent;
@@ -104,10 +115,12 @@
 
 - (NSString *)romFileForROM:(NSString *)rom
 {
-    if ([rom isEqualToString:@"Inbox"]) return nil;
-    if ([rom isEqualToString:@"Boot ROMs"]) return nil;
     if (rom == _currentROM) {
         return self.romFile;
+    }
+    
+    if ([self.forbiddenNames containsObject:rom]) {
+        return nil;
     }
     
 #ifdef APPSTORE
@@ -184,6 +197,9 @@
 
 - (NSString *)makeNameUnique:(NSString *)name
 {
+    if ([self.forbiddenNames containsObject:name]) {
+        name = @"Imported ROM";
+    }
 #ifdef APPSTORE
     if ([name hasPrefix:@"icloud/"]) {
         assert(_cloudNameToFile);
