@@ -102,6 +102,7 @@ API_AVAILABLE(ios(13.0))
 {
     GB_gameboy_t _gb;
     GBView *_gbView;
+    dispatch_queue_t _runQueue;
     
     volatile bool _running;
     volatile bool _stopping;
@@ -317,6 +318,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     _window = [[UIWindow alloc] init];
     _window.rootViewController = self;
     [_window makeKeyAndVisible];
+    
+    _runQueue = dispatch_queue_create("SameBoy Emulation Queue", NULL);
     
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-retain-cycles"
@@ -849,15 +852,31 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)saveStateToFile:(NSString *)file
 {
     NSString *tempPath = [file stringByAppendingPathExtension:@"tmp"];
-    if (!GB_save_state(&_gb, tempPath.UTF8String)) {
+    int error = GB_save_state(&_gb, tempPath.UTF8String);
+    if (!error) {
         rename(tempPath.UTF8String, file.UTF8String);
+        NSData *data = [NSData dataWithBytes:_gbView.previousBuffer
+                                      length:GB_get_screen_width(&_gb) *
+                        GB_get_screen_height(&_gb) *
+                        sizeof(*_gbView.previousBuffer)];
+        UIImage *screenshot = [self imageFromData:data width:GB_get_screen_width(&_gb) height:GB_get_screen_height(&_gb)];
+        [UIImagePNGRepresentation(screenshot) writeToFile:[file stringByAppendingPathExtension:@"png"] atomically:false];
     }
-    NSData *data = [NSData dataWithBytes:_gbView.previousBuffer
-                                  length:GB_get_screen_width(&_gb) *
-                    GB_get_screen_height(&_gb) *
-                    sizeof(*_gbView.previousBuffer)];
-    UIImage *screenshot = [self imageFromData:data width:GB_get_screen_width(&_gb) height:GB_get_screen_height(&_gb)];
-    [UIImagePNGRepresentation(screenshot) writeToFile:[file stringByAppendingPathExtension:@"png"] atomically:false];
+    else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Could not Save State"
+                                                                           message:[NSString stringWithFormat:@"An error occured while attempting to save: %s", strerror(error)]
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"Close"
+                                                      style:UIAlertActionStyleCancel
+                                                    handler:nil]];
+            UIViewController *top = self;
+            while (top.presentedViewController) {
+                top = top.presentedViewController;
+            }
+            [top presentViewController:alert animated:true completion:nil];
+        });
+    }
 }
 
 - (bool)loadStateFromFile:(NSString *)file
@@ -880,41 +899,62 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     if (romManager.romFile) {
         if (!_skipAutoLoad) {
             // Todo: display errors and warnings
-            if ([romManager.romFile.pathExtension.lowercaseString isEqualToString:@"isx"]) {
-                _romLoaded = GB_load_isx(&_gb, romManager.romFile.fileSystemRepresentation) == 0;
+            bool needsStateLoad = false;
+            if (![_lastSavedROM isEqual:[GBROMManager sharedManager].currentROM]) {
+                if ([romManager.romFile.pathExtension.lowercaseString isEqualToString:@"isx"]) {
+                    _romLoaded = GB_load_isx(&_gb, romManager.romFile.fileSystemRepresentation) == 0;
+                }
+                else {
+                    _romLoaded = GB_load_rom(&_gb, romManager.romFile.fileSystemRepresentation) == 0;
+                }
+                needsStateLoad = true;
             }
-            else {
-                _romLoaded = GB_load_rom(&_gb, romManager.romFile.fileSystemRepresentation) == 0;
+            else if (access(romManager.romFile.fileSystemRepresentation, R_OK)) {
+                _romLoaded = false;
             }
-            if (_romLoaded) {
+            if (!_romLoaded) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    romManager.currentROM = nil;
+                });
+            }
+            
+            if (!needsStateLoad) {
+                NSDate *date = nil;
+                [[NSURL fileURLWithPath:[GBROMManager sharedManager].autosaveStateFile] getResourceValue:&date
+                                                                                                  forKey:NSURLContentModificationDateKey
+                                                                                                   error:nil];
+                if (![_saveDate isEqual:date]) {
+                    needsStateLoad = true;
+                }
+            }
+            
+            if (_romLoaded && needsStateLoad) {
                 GB_reset(&_gb);
                 GB_load_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
                 GB_remove_all_cheats(&_gb);
                 GB_load_cheats(&_gb, [GBROMManager sharedManager].cheatsFile.UTF8String, false);
                 if (![self loadStateFromFile:[GBROMManager sharedManager].autosaveStateFile]) {
-                    // Newly played ROM, pick the best model
-                    uint8_t *rom = GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_ROM, NULL, NULL);
-                    
-                    if ((rom[0x143] & 0x80)) {
-                        if (!GB_is_cgb(&_gb)) {
-                            GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBCGBModel"]);
+                    if ([_lastSavedROM isEqual:[GBROMManager sharedManager].currentROM]) {
+                        /* Something weird just happened: we didn't change a ROM, but we failed to load the
+                           latest save state. Save over the existing file, it's probably corrupt in some
+                           way. */
+                        [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
+                    }
+                    else {
+                        // Newly played ROM, pick the best model
+                        uint8_t *rom = GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_ROM, NULL, NULL);
+                        
+                        if ((rom[0x143] & 0x80)) {
+                            if (!GB_is_cgb(&_gb)) {
+                                GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBCGBModel"]);
+                            }
+                        }
+                        else if ((rom[0x146]  == 3) && !GB_is_sgb(&_gb)) {
+                            GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBSGBModel"]);
                         }
                     }
-                    else if ((rom[0x146] == 3) && !GB_is_sgb(&_gb)) {
-                        GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBSGBModel"]);
-                    }
+                    GB_rewind_reset(&_gb);
                 }
-            }
-            
-            NSDate *date = nil;
-            [[NSURL fileURLWithPath:[GBROMManager sharedManager].autosaveStateFile] getResourceValue:&date
-                                                                                              forKey:NSURLContentModificationDateKey
-                                                                                               error:nil];
-
-            // Reset the rewind buffer only if we switched ROMs or had the save state change externally
-            if (![_lastSavedROM isEqual:[GBROMManager sharedManager].currentROM] ||
-                ![_saveDate isEqual:date]) {
-                GB_rewind_reset(&_gb);
             }
         }
     }
@@ -943,10 +983,23 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)reset
 {
-    [self stop];
-    _skipAutoLoad = true;
-    GB_reset(&_gb);
-    [self start];
+    UIAlertControllerStyle style = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad?
+    UIAlertControllerStyleAlert : UIAlertControllerStyleActionSheet;
+    UIAlertController *menu = [UIAlertController alertControllerWithTitle:@"Reset Emulation?"
+                                                                  message:@"Unsaved progress will be lost."
+                                                           preferredStyle:style];
+    [menu addAction:[UIAlertAction actionWithTitle:@"Reset"
+                                             style:UIAlertActionStyleDestructive
+                                           handler:^(UIAlertAction *action) {
+        [self stop];
+        _skipAutoLoad = true;
+        GB_reset(&_gb);
+        [self start];
+    }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"Cancel"
+                                             style:UIAlertActionStyleCancel
+                                           handler:nil]];
+    [self presentViewController:menu animated:true completion:nil];
 }
 
 - (void)openLibrary
@@ -1524,7 +1577,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [_backgroundView setCloudScreenLabel];
     }
 #endif
-    [[[NSThread alloc] initWithTarget:self selector:@selector(run) object:nil] start];
+    dispatch_async(_runQueue, ^{
+        [self run];
+    });
 }
 
 - (void)stop
@@ -1540,6 +1595,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [_audioLock signal];
         [_audioLock unlock];
     }
+    dispatch_sync(_runQueue, ^{});
     dispatch_async(dispatch_get_main_queue(), ^{
         self.runMode = GBRunModeNormal;
         [_backgroundView fadeOverlayOut];

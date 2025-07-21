@@ -551,6 +551,7 @@ static const uint8_t *get_header_bank(GB_gameboy_t *gb)
 
 static int save_state_internal(GB_gameboy_t *gb, virtual_file_t *file, bool append_bess)
 {
+    errno = 0;
     if (file->write(file, GB_GET_SECTION(gb, header), GB_SECTION_SIZE(header)) != GB_SECTION_SIZE(header)) goto error;
     if (!DUMP_SECTION(gb, file, core_state)) goto error;
     if (!DUMP_SECTION(gb, file, dma       )) goto error;
@@ -838,8 +839,10 @@ static int save_state_internal(GB_gameboy_t *gb, virtual_file_t *file, bool appe
         goto error;
     }
     
+    return 0;;
 error:
-    return 0;
+    if (errno == 0) return EIO;
+    return errno;
 }
 
 int GB_save_state(GB_gameboy_t *gb, const char *path)
