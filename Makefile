@@ -100,14 +100,7 @@ else
 CPPP_FLAGS += -UGB_DISABLE_CHEAT_SEARCH
 endif
 
-ifneq ($(CORE_FILTER)$(DISABLE_TIMEKEEPING),)
-ifneq ($(MAKECMDGOALS),lib)
-$(error SameBoy features can only be disabled when compiling the 'lib' target)
-endif
-endif
-
 CPPP_FLAGS += -UGB_INTERNAL
-
 
 include version.mk
 COPYRIGHT_YEAR := $(shell grep -oE "20[2-9][0-9]" LICENSE)
@@ -121,6 +114,12 @@ INC := build/include/sameboy
 LIBDIR := build/lib
 PKGCONF_DIR := $(LIBDIR)/pkgconfig
 PKGCONF_FILE := $(PKGCONF_DIR)/sameboy.pc
+
+ifneq ($(CORE_FILTER)$(DISABLE_TIMEKEEPING),)
+ifneq ($(filter-out lib headers $(LIBDIR)/% $(INC)/%,$(MAKECMDGOALS)),)
+$(error SameBoy features can only be disabled when compiling the 'lib' target)
+endif
+endif
 
 BOOTROMS_DIR ?= $(BIN)/BootROMs
 
@@ -469,7 +468,8 @@ SDL_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(SDL_SOURCES))
 TESTER_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(TESTER_SOURCES))
 XDG_THUMBNAILER_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(XDG_THUMBNAILER_SOURCES)) $(OBJ)/XdgThumbnailer/resources.c.o
 
-lib: $(PUBLIC_HEADERS)
+lib: headers
+headers: $(PUBLIC_HEADERS)
 
 # Automatic dependency generation
 
@@ -632,6 +632,7 @@ $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
                     $(shell ls Cocoa/*.icns Cocoa/*.png Cocoa/*.car) \
                     Cocoa/License.html \
                     Cocoa/Info.plist \
+                    Cocoa/SameBoy.entitlements \
                     Misc/registers.sym \
                     $(BIN)/SameBoy.app/Contents/Resources/dmg_boot.bin \
                     $(BIN)/SameBoy.app/Contents/Resources/mgb_boot.bin \
@@ -652,9 +653,7 @@ $(BIN)/SameBoy.app: $(BIN)/SameBoy.app/Contents/MacOS/SameBoy \
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Resources/Shaders
 	cp Shaders/*.fsh Shaders/*.metal $(BIN)/SameBoy.app/Contents/Resources/Shaders
 	$(MKDIR) -p $(BIN)/SameBoy.app/Contents/Library/QuickLook/
-ifeq ($(CONF), release)
-	$(CODESIGN) $@
-endif
+	$(CODESIGN) $@ --entitlements Cocoa/SameBoy.entitlements
 
 # We place the dylib inside the Quick Look plugin, because Quick Look plugins run in a very strict sandbox
 

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="24093.7" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="24093.9" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24093.7"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24093.9"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="NSApplication">
@@ -82,7 +82,7 @@
                                     <action selector="openDocument:" target="-1" id="bVn-NM-KNZ"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Hot Swap Cartridge…" keyEquivalent="o" id="Rik-p8-QCf">
+                            <menuItem title="Hot Swap Cartridge…" secondaryImage="arrow.down.left.arrow.up.right" catalog="system" keyEquivalent="o" id="Rik-p8-QCf">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                                 <connections>
                                     <action selector="cartSwap:" target="-1" id="iXS-Ol-IS0"/>
@@ -622,6 +622,7 @@
     </objects>
     <resources>
         <image name="apple.terminal" catalog="system" width="18" height="14"/>
+        <image name="arrow.down.left.arrow.up.right" catalog="system" width="18" height="17"/>
         <image name="arrow.trianglehead.2.counterclockwise.rotate.90" catalog="system" width="16" height="15"/>
         <image name="cable.connector.horizontal" catalog="system" width="19" height="7"/>
         <image name="cube" catalog="system" width="16" height="17"/>
