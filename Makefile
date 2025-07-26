@@ -592,8 +592,7 @@ $(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/Sam
 							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/sgb_boot.bin \
 							$(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/sgb2_boot.bin \
 							$(BIN)/SameBoy-watchOS.app/Interface.plist \
-                            $(BIN)/SameBoy-watchOS.app/Assets.car \
-							$(shell ls watchOS/*.png) \
+							$(shell ls watchOS/*.{png,car}) \
 							watchOS/GBGameScene.sks \
 							watchOS/ExtensionInfo.plist \
 							watchOS/Info.plist
@@ -605,7 +604,7 @@ $(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/Sam
 	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app/_WatchKitStub
 	cp watchOS/WatchKitStub $(BIN)/SameBoy-watchOS.app/_WatchKitStub/WK
 	cp watchOS/GBGameScene.sks $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/
-	cp watchOS/*.png $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/
+	cp watchOS/*.{png,car} $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/
 	$(CODESIGN) $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex
 	$(CODESIGN) $@
 
@@ -622,9 +621,6 @@ $(BIN)/SameBoy-watchOS.app/Interface.plist: watchOS/Interface.storyboard
 $(BIN)/SameBoy-iOS.app/Watch/SameBoy-watchOS.app: watchos
 	-@$(MKDIR) -p $(dir $@)
 	cp -rf $(BIN)/SameBoy-watchOS.app $@
-	
-$(BIN)/SameBoy-watchOS.app/Assets.car: $(shell find watchOS/Assets.xcassets watchOS/AppIcon.icon)
-	actool --notices --warnings --app-icon AppIcon --target-device watch --minimum-deployment-target 6.0 --output-format human-readable-text --platform watchos --compile $(BIN)/SameBoy-watchOS.app watchOS/AppIcon.icon watchOS/Assets.xcassets --output-partial-info-plist /dev/null
 
 # Cocoa Port
 
