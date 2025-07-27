@@ -1261,6 +1261,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                                        32,
                                        32);
 
+    [super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations
