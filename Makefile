@@ -604,7 +604,8 @@ $(BIN)/SameBoy-watchOS.app: $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/Sam
 	$(MKDIR) -p $(BIN)/SameBoy-watchOS.app/_WatchKitStub
 	cp watchOS/WatchKitStub $(BIN)/SameBoy-watchOS.app/_WatchKitStub/WK
 	cp watchOS/GBGameScene.sks $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/
-	cp watchOS/*.{png,car} $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/
+	cp watchOS/*.png $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex/
+	cp watchOS/*.car $(BIN)/SameBoy-watchOS.app/
 	$(CODESIGN) $(BIN)/SameBoy-watchOS.app/PlugIns/SameBoy.appex
 	$(CODESIGN) $@
 
