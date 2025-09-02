@@ -4,7 +4,7 @@ case `echo $1 | cut -d '-' -f 1` in
                 sudo apt-get install -yq bison libpng-dev pkg-config libsdl2-dev libgdk-pixbuf2.0-dev
                 (
                 cd `mktemp -d`
-                curl -L https://github.com/rednex/rgbds/archive/v0.6.0.zip > rgbds.zip
+                curl -L https://github.com/gbdev/rgbds/archive/v0.9.4.zip > rgbds.zip
                 unzip rgbds.zip
                 cd rgbds-*
                 make -sj
