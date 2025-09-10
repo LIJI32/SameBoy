@@ -894,6 +894,12 @@ static const uint8_t workboy_vk_to_key[] = {
 - (void)setMouseHidingEnabled:(bool)mouseHidingEnabled
 {
     if (mouseHidingEnabled == _mouseHidingEnabled) return;
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self setMouseHidingEnabled:mouseHidingEnabled];
+        });
+        return;
+    }
 
     _mouseHidingEnabled = mouseHidingEnabled;
     
