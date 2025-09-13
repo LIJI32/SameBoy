@@ -981,10 +981,10 @@ GetPaletteIndex:
 .newLicensee
     ld l, LOW(NewLicenseeCode)
     ld a, [hli]
-    cp "0"
+    cp $30 ; ASCII '0'
     jr nz, .notNintendo
     ld a, [hl]
-    cp "1"
+    cp $31 ; ASCII '1'
     jr nz, .notNintendo
 
 .doChecksum
