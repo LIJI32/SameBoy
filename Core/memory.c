@@ -1494,7 +1494,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                         gb->lcd_status_callback(gb, true);
                     }
                     if (!gb->lcd_disabled_outside_of_vblank &&
-                        (gb->cycles_since_vblank_callback > 10 * 456 || GB_is_sgb(gb))) {
+                        (gb->cycles_since_vblank_callback > 10 * 456)) {
                         // Trigger a vblank here so we don't exceed LCDC_PERIOD
                         GB_display_vblank(gb, GB_VBLANK_TYPE_ARTIFICIAL);
                     }

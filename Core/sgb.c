@@ -593,7 +593,7 @@ static void render_boot_animation (GB_gameboy_t *gb)
 }
 
 static void render_jingle(GB_gameboy_t *gb, size_t count);
-void GB_sgb_render(GB_gameboy_t *gb)
+void GB_sgb_render(GB_gameboy_t *gb, bool incomplete)
 {
     if (gb->apu_output.sample_rate) {
         render_jingle(gb, gb->apu_output.sample_rate / GB_get_usual_frame_rate(gb));
@@ -670,7 +670,7 @@ void GB_sgb_render(GB_gameboy_t *gb)
         colors[i] = convert_rgb15(gb, LE16(gb->sgb->effective_palettes[i]));
     }
     
-    if (gb->sgb->mask_mode != MASK_FREEZE) {
+    if (gb->sgb->mask_mode != MASK_FREEZE && !incomplete) {
         memcpy(gb->sgb->effective_screen_buffer,
                gb->sgb->screen_buffer,
                sizeof(gb->sgb->effective_screen_buffer));
