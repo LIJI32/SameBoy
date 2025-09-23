@@ -953,8 +953,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                             GB_switch_model_and_reset(&_gb, [[NSUserDefaults standardUserDefaults] integerForKey:@"GBSGBModel"]);
                         }
                     }
-                    GB_rewind_reset(&_gb);
                 }
+                GB_rewind_reset(&_gb);
             }
         }
     }
