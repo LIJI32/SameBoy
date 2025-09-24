@@ -450,6 +450,13 @@ static GB_key_mask_t angleToKeyMask(double angle)
             [[GBHapticManager sharedManager] doTapHaptic];
         }
         _lastMask = mask;
+        
+        GBViewController *viewController = self.viewController;
+        GBRunMode runMode = viewController.runMode;
+        if (runMode == GBRunModeRewind || runMode == GBRunModePaused) {
+            viewController.runMode = GBRunModeNormal;
+            [self fadeOverlayOut];
+        }
     }
 }
 

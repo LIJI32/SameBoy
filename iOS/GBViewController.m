@@ -697,6 +697,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         case GBSelect:
         case GBStart:
             GB_set_key_state(&_gb, (GB_key_t)gbButton, button.value > 0.25);
+            if (_runMode == GBRunModeRewind || _runMode == GBRunModePaused) {
+                self.runMode = GBRunModeNormal;
+                [_backgroundView fadeOverlayOut];
+            }
             break;
         case GBRapidA:
             _rapidA = button.value > 0.25;
@@ -795,6 +799,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     GB_set_key_state(&_gb, GB_KEY_RIGHT, right);
     GB_set_key_state(&_gb, GB_KEY_UP, up);
     GB_set_key_state(&_gb, GB_KEY_DOWN, down);
+    if (_runMode == GBRunModeRewind || _runMode == GBRunModePaused) {
+        self.runMode = GBRunModeNormal;
+        [_backgroundView fadeOverlayOut];
+    }
 }
 
 - (void)controller:(GCController *)controller motionChanged:(GCMotion *)motion
@@ -1648,6 +1656,12 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     if (_rapidB) {
         _rapidBCount++;
         GB_set_key_state(&_gb, GB_KEY_B, !(_rapidBCount & 2));
+    }
+    if (_rapidA || _rapidB) {
+        if (_runMode == GBRunModeRewind || _runMode == GBRunModePaused) {
+            self.runMode = GBRunModeNormal;
+            [_backgroundView fadeOverlayOut];
+        }
     }
     _rewind = _runMode == GBRunModeRewind;
 }
