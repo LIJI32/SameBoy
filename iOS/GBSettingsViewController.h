@@ -1,6 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <Core/gb.h>
-#import "GCExtendedGamepad+AllElements.h"
+#import "GCControllerGetElements.h"
 #import "GBTheme.h"
 
 typedef enum {

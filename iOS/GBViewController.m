@@ -16,7 +16,7 @@
 #import "GBCheckableAlertController.h"
 #import "GBPrinterFeedController.h"
 #import "GBCheatsController.h"
-#import "GCExtendedGamepad+AllElements.h"
+#import "GCControllerGetElements.h"
 #import "GBZipReader.h"
 #import <sys/stat.h>
 #import <CoreMotion/CoreMotion.h>
@@ -640,25 +640,31 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
     for (GCController *controller in [GCController controllers]) {
         __weak GCController *weakController = controller;
-        if (controller.extendedGamepad) {
-            [[controller.extendedGamepad elementsDictionary] enumerateKeysAndObjectsUsingBlock:^(NSNumber *usage, GCControllerElement *element, BOOL *stop) {
-                if ([element isKindOfClass:[GCControllerButtonInput class]]) {
-                    [(GCControllerButtonInput *)element setValueChangedHandler:^(GCControllerButtonInput *button, float value, BOOL pressed) {
-                        [self controller:weakController buttonChanged:button usage:usage.unsignedIntValue];
-                    }];
-                }
-                else if ([element isKindOfClass:[GCControllerDirectionPad class]]) {
-                    [(GCControllerDirectionPad *)element setValueChangedHandler:^(GCControllerDirectionPad *dpad, float xValue, float yValue) {
-                        [self controller:weakController axisChanged:dpad usage:usage.unsignedIntValue];
-                    }];
-                }
-            }];
-            
-            if (controller.motion) {
-                [controller.motion setValueChangedHandler:^(GCMotion *motion) {
-                    [self controller:weakController motionChanged:motion];
+        NSDictionary <NSNumber *, GCControllerElement *> *elements = GCControllerGetElements(controller);
+        if (!elements) continue; // Controller not supported
+        [elements enumerateKeysAndObjectsUsingBlock:^(NSNumber *usage, GCControllerElement *element, BOOL *stop) {
+            if ([element isKindOfClass:[GCControllerButtonInput class]]) {
+                [(GCControllerButtonInput *)element setValueChangedHandler:^(GCControllerButtonInput *button, float value, BOOL pressed) {
+                    [self controller:weakController buttonChanged:button usage:usage.unsignedIntValue];
                 }];
             }
+            else if ([element isKindOfClass:[GCControllerDirectionPad class]]) {
+                NSMutableSet *childrenUsages = [NSMutableSet set];
+                [elements enumerateKeysAndObjectsUsingBlock:^(NSNumber *childUsage, GCControllerElement *child, BOOL *stop) {
+                    if (child.collection == element) {
+                        [childrenUsages addObject:childUsage];
+                    }
+                }];
+                [(GCControllerDirectionPad *)element setValueChangedHandler:^(GCControllerDirectionPad *dpad, float xValue, float yValue) {
+                    [self controller:weakController axisChanged:dpad usage:usage.unsignedIntValue childrenUsages:childrenUsages];
+                }];
+            }
+        }];
+        
+        if (controller.motion) {
+            [controller.motion setValueChangedHandler:^(GCMotion *motion) {
+                [self controller:weakController motionChanged:motion];
+            }];
         }
     }
 }
@@ -752,13 +758,28 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     }
 }
 
-- (void)controller:(GCController *)controller axisChanged:(GCControllerDirectionPad *)axis usage:(GBControllerUsage)usage
+- (void)controller:(GCController *)controller axisChanged:(GCControllerDirectionPad *)axis usage:(GBControllerUsage)usage childrenUsages:(NSSet *)childrenUsages
 {
     [self updateLastController:controller];
     bool left = axis.left.value > 0.5;
     bool right = axis.right.value > 0.5;
     bool up = axis.up.value > 0.5;
     bool down = axis.down.value > 0.5;
+    
+    bool hasUnmappedChild = false;
+    for (NSNumber *childUsage in childrenUsages) {
+        if ([GBSettingsViewController controller:controller convertUsageToButton:childUsage.unsignedIntValue] != GBUnusedButton) {
+            GCControllerButtonInput *child = (id)(GCControllerGetElements(controller)[childUsage]);
+            if ([child isKindOfClass:[GCControllerButtonInput class]] && child.pressed) {
+                left = right = up = down = false;
+            }
+        }
+        else {
+            hasUnmappedChild = true;
+        }
+    }
+    
+    if (!hasUnmappedChild) return;
     
     if (_running && (left || right || up || down ) &&
         [[NSUserDefaults standardUserDefaults] boolForKey:@"GBControllersHideInterface"]) {

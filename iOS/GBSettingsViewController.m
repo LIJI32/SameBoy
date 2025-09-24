@@ -4,7 +4,7 @@
 #import "GBThemesViewController.h"
 #import "GBPalettePicker.h"
 #import "GBHapticManager.h"
-#import "GCExtendedGamepad+AllElements.h"
+#import "GCControllerGetElements.h"
 #import <objc/runtime.h>
 
 static NSString const *typeSubmenu = @"submenu";
@@ -573,6 +573,14 @@ static NSString *LocalizedNameForElement(GCControllerElement *element, GBControl
         case GBUsageLeftThumbstickButton: return @"Left Thumbstick Button";
         case GBUsageRightThumbstickButton: return @"Right Thumbstick Button";
         case GBUsageTouchpadButton: return @"Touchpad Button";
+        default: {
+            if (@available(iOS 14.0, *)) {
+                NSArray *aliases = [element.aliases.allObjects sortedArrayUsingSelector:@selector(compare:)];
+                if (aliases.count) {
+                    return aliases[0];
+                }
+            }
+        }
     }
     
     return @"Button";
@@ -581,7 +589,7 @@ static NSString *LocalizedNameForElement(GCControllerElement *element, GBControl
 - (void)configureGameController:(GCController *)controller
 {
     NSMutableArray *items = [NSMutableArray array];
-    NSDictionary <NSNumber *, GCControllerElement *> *elementsDict = controller.extendedGamepad.elementsDictionary;
+    NSDictionary <NSNumber *, GCControllerElement *> *elementsDict = GCControllerGetElements(controller);
     for (NSNumber *usage in [[elementsDict allKeys] sortedArrayUsingSelector:@selector(compare:)]) {
         GCControllerElement *element = elementsDict[usage];
         if (![element isKindOfClass:[GCControllerButtonInput class]]) continue;
@@ -599,25 +607,26 @@ static NSString *LocalizedNameForElement(GCControllerElement *element, GBControl
             [[NSUserDefaults standardUserDefaults] setObject:mapping forKey:@"GBControllerMappings"];
         };
 
+        bool isDpadElement = [element.collection isKindOfClass:[GCControllerDirectionPad class]];
         
         NSDictionary *item = @{
             @"title": LocalizedNameForElement(element, usage.unsignedIntValue),
             @"type": typeOptionSubmenu,
             @"submenu": @[@{@"items": @[
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"None",        @"value": @(GBUnusedButton)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Right",       @"value": @(GBRight)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Left",        @"value": @(GBLeft)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Up",          @"value": @(GBUp)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Down",        @"value": @(GBDown)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"A",           @"value": @(GBA)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"B",           @"value": @(GBB)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Select",      @"value": @(GBSelect)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Start",       @"value": @(GBStart)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rapid A",     @"value": @(GBRapidA)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rapid B",     @"value": @(GBRapidB)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Turbo",       @"value": @(GBTurbo)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rewind",      @"value": @(GBRewind)},
-                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Slow-motion", @"value": @(GBUnderclock)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": isDpadElement? @"D-pad" : @"None", @"value": @(GBUnusedButton)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Right",                          @"value": @(GBRight)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Left",                           @"value": @(GBLeft)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Up",                             @"value": @(GBUp)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Down",                           @"value": @(GBDown)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"A",                              @"value": @(GBA)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"B",                              @"value": @(GBB)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Select",                         @"value": @(GBSelect)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Start",                          @"value": @(GBStart)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rapid A",                        @"value": @(GBRapidA)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rapid B",                        @"value": @(GBRapidB)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Turbo",                          @"value": @(GBTurbo)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rewind",                         @"value": @(GBRewind)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Slow-motion",                    @"value": @(GBUnderclock)},
             ]}],
         };
         if (@available(iOS 14.0, *)) {
@@ -646,7 +655,7 @@ static NSString *LocalizedNameForElement(GCControllerElement *element, GBControl
     
     NSMutableArray *items = [NSMutableArray array];
     for (GCController *controller in [GCController controllers]) {
-        if (!controller.extendedGamepad) continue;
+        if (!GCControllerGetElements(controller)) continue;
         NSDictionary *item = @{
             @"title": controller.vendorName,
             @"type": typeBlock,
