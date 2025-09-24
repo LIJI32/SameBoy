@@ -1281,6 +1281,7 @@ done:
         GB_palette_changed(gb, false, i * 2);
         GB_palette_changed(gb, true, i * 2);
     }
+    gb->apu_output.sample_fraction = 0;
     return 0;
 parse_error:
     errno = -1;
@@ -1366,6 +1367,7 @@ static int load_state_internal(GB_gameboy_t *gb, virtual_file_t *file)
 
     sanitize_state(gb);
     GB_rewind_invalidate_for_backstepping(gb);
+    gb->apu_output.sample_fraction = 0;
     return 0;
 }
 
