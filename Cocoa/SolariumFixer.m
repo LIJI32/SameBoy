@@ -109,6 +109,11 @@
 
 @implementation NSToolbarItem (SolariumFixer)
 
+static CGSize minSizeHook(id self, SEL _cmd)
+{
+    return CGSizeMake(8, 0);
+}
+
 - (void)awakeFromNib
 {
     if (@available(macOS 26.0, *)) {
@@ -153,4 +158,11 @@
     }
 }
 
++ (void)load
+{
+    if (@available(macOS 26.0, *)) {
+        method_setImplementation(class_getInstanceMethod(objc_getClass("NSToolbarFlexibleSpaceItem"), @selector(minSize)),
+                                 (void *)minSizeHook);
+    }
+}
 @end

@@ -18,8 +18,8 @@ typedef enum {
     GBUsageLeftThumbstickButton,
     GBUsageRightThumbstickButton,
     GBUsageTouchpadButton,
+    GBUsageMiscStartIndex, // Add to this
 } GBControllerUsage;
 
-@interface GCExtendedGamepad (AllElements)
-- (NSDictionary <NSNumber *, GCControllerElement *> *)elementsDictionary;
-@end
+
+NSDictionary <NSNumber *, GCControllerElement *> *GCControllerGetElements(GCController *self);

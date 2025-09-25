@@ -103,6 +103,30 @@ static void band_limited_read(GB_band_limited_t *band_limited, GB_sample_t *outp
     
     output->left = band_limited->output.left * multiplier / GB_BAND_LIMITED_ONE;
     output->right = band_limited->output.right * multiplier / GB_BAND_LIMITED_ONE;
+    
+    /* This hueristic will mute the channel if it's only playing an amplitude of 1 or 2 units, usually
+       caused by rounding errors when the channel is playing a single frequency above Nyquist. */
+    
+    unsigned diff = abs(output->left - band_limited->last_output.left);
+    if (diff > 4) {
+        band_limited->silence_detection = 0;
+        band_limited->last_output.packed = output->packed;
+        return;
+    }
+    
+    diff = abs(output->right - band_limited->last_output.right);
+    if (diff > 4) {
+        band_limited->silence_detection = 0;
+        band_limited->last_output.packed = output->packed;
+        return;
+    }
+    
+    if (band_limited->silence_detection == 4000) {
+        output->packed = band_limited->last_output.packed;
+    }
+    else {
+        band_limited->silence_detection++;
+    }
 }
 
 static inline uint32_t sample_fraction_multiply(GB_gameboy_t *gb, unsigned multiplier)

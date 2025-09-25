@@ -407,10 +407,12 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     
     if (self.vramWindow.isVisible) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.view.mouseHidingEnabled = (self.mainWindow.styleMask & NSWindowStyleMaskFullScreen) != 0;
             [self reloadVRAMData: nil];
         });
     }
+    
+    self.view.mouseHidingEnabled = (_mainWindow.styleMask & NSWindowStyleMaskFullScreen) && !_consoleWindow.visible && !_memoryWindow.visible && !_vramWindow.visible && !_printerFeedWindow.visible && !_cheatsWindow.visible;
+
     if (self.view.isRewinding) {
         _rewind = true;
         [self.osdView displayText:@"Rewinding…"];
@@ -1583,7 +1585,7 @@ enum GBWindowResizeAction
     }
 }
 
-- (void) appendPendingOutput
+- (void)appendPendingOutput
 {
     [_consoleOutputLock lock];
     if (_shouldClearSideView) {
@@ -1602,6 +1604,8 @@ enum GBWindowResizeAction
         }
         if ([[NSUserDefaults standardUserDefaults] boolForKey:@"DeveloperMode"]) {
             [self.consoleWindow orderFront:nil];
+            /* Make sure mouse is not hidden while debugging */
+            self.view.mouseHidingEnabled = false;
         }
         _pendingConsoleOutput = nil;
     }
@@ -1650,9 +1654,6 @@ enum GBWindowResizeAction
     }
     
     [_consoleOutputLock unlock];
-
-    /* Make sure mouse is not hidden while debugging */
-    self.view.mouseHidingEnabled = false;
 }
 
 - (IBAction)showConsoleWindow:(id)sender

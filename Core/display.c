@@ -193,7 +193,7 @@ void GB_display_vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
     
     /* TODO: Slow in turbo mode! */
     if (GB_is_hle_sgb(gb)) {
-        GB_sgb_render(gb);
+        GB_sgb_render(gb, type != GB_VBLANK_TYPE_NORMAL_FRAME);
     }
     
     if (gb->turbo) {
@@ -2186,7 +2186,7 @@ skip_slow_mode_3:
                         gb->frame_skip_state = GB_FRAMESKIP_FIRST_FRAME_RENDERED;
                     }
                     else {
-                        if (!GB_is_sgb(gb) || gb->current_lcd_line < LINES) {
+                        if (!GB_is_sgb(gb)) {
                             update_frame_parity(gb); // TODO: test actual timing
                             GB_display_vblank(gb, GB_VBLANK_TYPE_NORMAL_FRAME);
                         }
@@ -2194,7 +2194,7 @@ skip_slow_mode_3:
                     }
                 }
                 else {
-                    if (!GB_is_sgb(gb) || gb->current_lcd_line < LINES) {
+                    if (!GB_is_sgb(gb)) {
                         update_frame_parity(gb); // TODO: test actual timing
                         GB_display_vblank(gb, GB_VBLANK_TYPE_NORMAL_FRAME);
                     }

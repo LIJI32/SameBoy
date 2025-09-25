@@ -21,6 +21,14 @@
     ((void(*)(id, SEL, id))imp)(self, _cmd, textObj);
 }
 
+- (void)resetSearchButtonCell
+{
+}
+
+- (void)resetCancelButtonCell
+{
+}
+
 // We only need this hack on Solarium, avoid regressions
 + (instancetype)allocWithZone:(struct _NSZone *)zone
 {

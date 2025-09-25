@@ -381,7 +381,7 @@
                         <popUpButton key="view" verticalHuggingPriority="750" id="vfJ-vu-gqJ">
                             <rect key="frame" x="0.0" y="14" width="160" height="25"/>
                             <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
-                            <popUpButtonCell key="cell" type="roundTextured" bezelStyle="texturedRounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="bpD-j9-omo">
+                            <popUpButtonCell key="cell" type="roundTextured" bezelStyle="texturedRounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="bpD-j9-omo" customClass="GBToolbarPopUpButtonCell">
                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                 <font key="font" metaFont="message"/>
                                 <menu key="menu" id="gTX-6Z-mOH">
@@ -406,7 +406,7 @@
                         <textField key="view" focusRingType="none" verticalHuggingPriority="750" id="rdV-q6-hc6">
                             <rect key="frame" x="0.0" y="14" width="64" height="22"/>
                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" state="on" borderStyle="bezel" placeholderString="Bank" drawsBackground="NO" id="JCn-Y1-eHS" customClass="GBToolbarFieldCell">
+                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" state="on" borderStyle="bezel" placeholderString="Bank" id="JCn-Y1-eHS" customClass="GBToolbarFieldCell">
                                 <font key="font" metaFont="system"/>
                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                             </textFieldCell>
@@ -680,18 +680,16 @@
             <toolbar key="toolbar" implicitIdentifier="7FF8B5E5-F61B-408C-9634-A5D496FE5E70" autosavesConfiguration="NO" allowsUserCustomization="NO" showsBaselineSeparator="NO" displayMode="iconOnly" sizeMode="regular" id="SVR-To-n7n">
                 <allowedToolbarItems>
                     <toolbarItem implicitItemIdentifier="NSToolbarFlexibleSpaceItem" id="hnI-48-dYt"/>
-                    <toolbarItem implicitItemIdentifier="B9D3CF98-8020-4389-9372-F99361440794" label="" paletteLabel="" id="fmK-Jl-Koj">
+                    <toolbarItem implicitItemIdentifier="B9D3CF98-8020-4389-9372-F99361440794" label="" paletteLabel="" sizingBehavior="auto" id="fmK-Jl-Koj">
                         <nil key="toolTip"/>
-                        <size key="minSize" width="100" height="25"/>
-                        <size key="maxSize" width="268" height="25"/>
                         <segmentedControl key="view" verticalHuggingPriority="750" id="Aul-vO-dCK">
                             <rect key="frame" x="0.0" y="14" width="268" height="25"/>
-                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                            <autoresizingMask key="autoresizingMask"/>
                             <segmentedCell key="cell" borderStyle="border" alignment="left" style="texturedSquare" trackingMode="selectOne" id="HhR-ky-5NN">
                                 <font key="font" metaFont="system"/>
                                 <segments>
                                     <segment label="Tileset" selected="YES"/>
-                                    <segment label="Tilemap" tag="1"/>
+                                    <segment label="Tilemap"/>
                                     <segment label="Objects"/>
                                     <segment label="Palettes"/>
                                 </segments>

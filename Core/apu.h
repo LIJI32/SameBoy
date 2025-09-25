@@ -173,6 +173,8 @@ typedef struct {
     } buffer[GB_BAND_LIMITED_WIDTH * 2], output;
     uint8_t pos;
     GB_sample_t input;
+    GB_sample_t last_output;
+    unsigned silence_detection;
 } GB_band_limited_t;
 
 typedef struct {
