@@ -893,19 +893,11 @@ void GB_save_state_to_buffer_no_bess(GB_gameboy_t *gb, uint8_t *buffer)
     assert(file.position == GB_get_save_state_size_no_bess(gb));
 }
 
-static bool read_section(virtual_file_t *file, void *dest, uint32_t size, bool fix_broken_windows_saves)
+static bool read_section(virtual_file_t *file, void *dest, uint32_t size)
 {
     uint32_t saved_size = 0;
     if (file->read(file, &saved_size, sizeof(size)) != sizeof(size)) {
         return false;
-    }
-    
-    if (fix_broken_windows_saves) {
-        if (saved_size < 4) {
-            return false;
-        }
-        saved_size -= 4;
-        file->seek(file, 4, SEEK_CUR);
     }
     
     if (saved_size <= size) {
@@ -1306,20 +1298,12 @@ static int load_state_internal(GB_gameboy_t *gb, virtual_file_t *file)
     /* ...Except ram size, we use it to detect old saves with incorrect ram sizes */
     save.ram_size = 0;
     
-    bool fix_broken_windows_saves = false;
     
     if (file->read(file, GB_GET_SECTION(&save, header), GB_SECTION_SIZE(header)) != GB_SECTION_SIZE(header)) return errno;
-    if (save.magic == 0) {
-        /* Potentially legacy, broken Windows save state*/
-        
-        file->seek(file, 4, SEEK_SET);
-        if (file->read(file, GB_GET_SECTION(&save, header), GB_SECTION_SIZE(header)) != GB_SECTION_SIZE(header)) return errno;
-        fix_broken_windows_saves = true;
-    }
     if (gb->magic != save.magic) {
         return load_bess_save(gb, file, false);
     }
-#define READ_SECTION(gb, file, section) read_section(file, GB_GET_SECTION(gb, section), GB_SECTION_SIZE(section), fix_broken_windows_saves)
+#define READ_SECTION(gb, file, section) read_section(file, GB_GET_SECTION(gb, section), GB_SECTION_SIZE(section))
     if (!READ_SECTION(&save, file, core_state)) return errno ?: EIO;
     if (!READ_SECTION(&save, file, dma       )) return errno ?: EIO;
     if (!READ_SECTION(&save, file, mbc       )) return errno ?: EIO;
@@ -1340,7 +1324,7 @@ static int load_state_internal(GB_gameboy_t *gb, virtual_file_t *file)
     }
     
     if (GB_is_hle_sgb(gb)) {
-        if (!read_section(file, gb->sgb, sizeof(*gb->sgb), false)) return errno ?: EIO;
+        if (!read_section(file, gb->sgb, sizeof(*gb->sgb))) return errno ?: EIO;
     }
     
     memset(gb->mbc_ram + save.mbc_ram_size, 0xFF, gb->mbc_ram_size - save.mbc_ram_size);
@@ -1459,16 +1443,8 @@ static int get_state_model_internal(virtual_file_t *file, GB_model_t *model)
 {
     GB_gameboy_t save;
     
-    bool fix_broken_windows_saves = false;
     
     if (file->read(file, GB_GET_SECTION(&save, header), GB_SECTION_SIZE(header)) != GB_SECTION_SIZE(header)) return errno;
-    if (save.magic == 0) {
-        /* Potentially legacy, broken Windows save state*/
-        
-        file->seek(file, 4, SEEK_SET);
-        if (file->read(file, GB_GET_SECTION(&save, header), GB_SECTION_SIZE(header)) != GB_SECTION_SIZE(header)) return errno;
-        fix_broken_windows_saves = true;
-    }
     if (save.magic != GB_state_magic()) {
         return get_state_model_bess(file, model);
     }
@@ -1519,15 +1495,6 @@ bool GB_is_save_state(const char *path)
     if (magic == GB_state_magic()) {
         ret = true;
         goto exit;
-    }
-    
-    // Legacy corrupted Windows save state
-    if (magic == 0) {
-        fread(&magic, sizeof(magic), 1, f);
-        if (magic == GB_state_magic()) {
-            ret = true;
-            goto exit;
-        }
     }
     
     fseek(f, -sizeof(magic), SEEK_END);
