@@ -11,7 +11,7 @@ API_AVAILABLE(ios(19.0))
 @end
 
 @interface UISlider (configuration)
-@property(nonatomic, copy, nullable) UISliderTrackConfiguration *trackConfiguration API_AVAILABLE(ios(19.0));
+@property(nonatomic, copy) UISliderTrackConfiguration *trackConfiguration API_AVAILABLE(ios(19.0));
 @end
 #endif
 
