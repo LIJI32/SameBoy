@@ -666,7 +666,7 @@ static void vblank(GB_gameboy_t *gb)
     GB_set_key_state(&_gb, button, true);
     return [NSTimer scheduledTimerWithTimeInterval:seconds
                                     repeats:false
-                                      block:^(NSTimer * _Nonnull timer) {
+                                      block:^(NSTimer *timer) {
         GB_set_key_state(&_gb, button, false);
     }];
 }
