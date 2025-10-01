@@ -204,7 +204,7 @@
         NSMutableDictionary *attributes = [self.typingAttributes mutableCopy];
         NSColor *color = [attributes[NSForegroundColorAttributeName] colorWithAlphaComponent:0.5];
         [attributes setObject:color forKey:NSForegroundColorAttributeName];
-        [[[NSAttributedString alloc] initWithString:@"Reverse search..." attributes:attributes] drawAtPoint:NSMakePoint(2, 2)];
+        [[[NSAttributedString alloc] initWithString:@"Reverse search..." attributes:attributes] drawAtPoint:NSMakePoint(9, 2)];
     }
     else {
         [super drawRect:dirtyRect];
