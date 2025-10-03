@@ -721,6 +721,8 @@ void GB_apu_div_event(GB_gameboy_t *gb)
 void GB_apu_div_secondary_event(GB_gameboy_t *gb)
 {
     GB_apu_run(gb, true);
+    gb->apu.pcm_mask[0] = gb->apu.pcm_mask[1] = 0xFF;
+
     if (!gb->apu.global_enable) return;
     unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
         uint8_t nrx2 = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR12 : GB_IO_NR22];
