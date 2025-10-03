@@ -633,6 +633,8 @@ static void trigger_sweep_calculation(GB_gameboy_t *gb)
 void GB_apu_div_event(GB_gameboy_t *gb)
 {
     GB_apu_run(gb, true);
+    gb->apu.pcm_mask[0] = gb->apu.pcm_mask[1] = 0xFF;
+
     if (!gb->apu.global_enable) return;
     if (gb->apu.skip_div_event == GB_SKIP_DIV_EVENT_SKIP) {
         gb->apu.skip_div_event = GB_SKIP_DIV_EVENT_SKIPPED;
