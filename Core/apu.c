@@ -990,10 +990,11 @@ restart:;
                 cycles_left -= gb->apu.noise_channel.counter_countdown;
                 gb->apu.noise_channel.counter_countdown = divisor + gb->apu.noise_channel.delta;
                 gb->apu.noise_channel.delta = 0;
-                bool old_bit = (gb->apu.noise_channel.counter >> (gb->io_registers[GB_IO_NR43] >> 4)) & 1;
+                uint16_t mask = 1 << (gb->io_registers[GB_IO_NR43] >> 4);
+                bool old_bit = gb->apu.noise_channel.counter & mask;
                 gb->apu.noise_channel.counter++;
                 gb->apu.noise_channel.counter &= 0x3FFF;
-                bool new_bit = (gb->apu.noise_channel.counter >> (gb->io_registers[GB_IO_NR43] >> 4)) & 1;
+                bool new_bit = gb->apu.noise_channel.counter & mask;
 
                 /* Step LFSR */
                 if (new_bit && !old_bit) {
