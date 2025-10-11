@@ -541,7 +541,7 @@ static void tick_square_envelope(GB_gameboy_t *gb, GB_channel_t index)
             gb->apu.pcm_mask[0] &= gb->apu.square_channels[GB_SQUARE_1].current_volume | 0xF1;
         }
         else {
-            gb->apu.pcm_mask[0] &= (gb->apu.square_channels[GB_SQUARE_2].current_volume << 2) | 0x1F;
+            gb->apu.pcm_mask[0] &= (gb->apu.square_channels[GB_SQUARE_2].current_volume << 4) | 0x1F;
         }
     }
     
@@ -568,7 +568,7 @@ static void tick_noise_envelope(GB_gameboy_t *gb)
     if (!(nr42 & 7)) return;
 
     if (gb->cgb_double_speed) {
-        gb->apu.pcm_mask[0] &= (gb->apu.noise_channel.current_volume << 2) | 0x1F;
+        gb->apu.pcm_mask[0] &= (gb->apu.noise_channel.current_volume << 4) | 0x1F;
     }
     
     if (nr42 & 8) {
