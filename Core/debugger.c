@@ -1530,13 +1530,21 @@ static bool examine(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
     bool error;
     value_t addr = debugger_evaluate(gb, arguments, (unsigned)strlen(arguments), &error, NULL);
     uint16_t count = 32;
-
+    bool assembler_syntax = false;
     if (modifiers) {
-        char *end;
-        count = (uint16_t) (strtol(modifiers, &end, 10));
-        if (*end) {
-            print_usage(gb, command);
-            return true;
+        size_t modifiers_length = strlen(modifiers);
+        if (modifiers_length && modifiers[modifiers_length - 1] == 'a') {
+            assembler_syntax = true;
+            modifiers[modifiers_length - 1] = 0;
+            modifiers_length--;
+        }
+        if (modifiers_length) {
+            char *end;
+            count = (uint16_t) (strtol(modifiers, &end, 10));
+            if (*end) {
+                print_usage(gb, command);
+                return true;
+            }
         }
     }
 
@@ -1547,12 +1555,20 @@ static bool examine(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
             switch_banking_state(gb, addr.bank);
 
             while (count) {
-                GB_log(gb, "%02x:%04x: ", addr.bank, addr.value);
-                for (unsigned i = 0; i < 16 && count; i++) {
-                    GB_log(gb, "%02x ", GB_safe_read_memory(gb, addr.value + i));
+                if (assembler_syntax) {
+                    GB_log(gb, "db ");
+                }
+                else {
+                    GB_log(gb, "%02x:%04x: ", addr.bank, addr.value);
+                }
+                for (unsigned i = 0; i < (assembler_syntax? 8 : 16) && count; i++) {
+                    GB_log(gb, "%s%02x%s ", assembler_syntax? "$": "", GB_safe_read_memory(gb, addr.value + i), (assembler_syntax && count && i != 7)? ",": "");
                     count--;
                 }
-                addr.value += 16;
+                if (assembler_syntax)  {
+                    GB_log(gb, "; %02x:%04x", addr.bank, addr.value);
+                }
+                addr.value += assembler_syntax? 8 : 16;
                 GB_log(gb, "\n");
             }
 
@@ -1560,12 +1576,20 @@ static bool examine(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
         }
         else {
             while (count) {
-                GB_log(gb, "%04x: ", addr.value);
-                for (unsigned i = 0; i < 16 && count; i++) {
-                    GB_log(gb, "%02x ", GB_safe_read_memory(gb, addr.value + i));
+                if (assembler_syntax) {
+                    GB_log(gb, "db ");
+                }
+                else {
+                    GB_log(gb, "%04x: ", addr.value);
+                }
+                for (unsigned i = 0; i < (assembler_syntax? 8 : 16) && count; i++) {
+                    GB_log(gb, "%s%02x%s ", assembler_syntax? "$": "", GB_safe_read_memory(gb, addr.value + i), (assembler_syntax && count && i != 7)? ",": "");
                     count--;
                 }
-                addr.value += 16;
+                if (assembler_syntax) {
+                    GB_log(gb, "; %04x", addr.value);
+                }
+                addr.value += assembler_syntax? 8 : 16;
                 GB_log(gb, "\n");
             }
         }
@@ -2216,7 +2240,7 @@ static const debugger_command_t commands[] = {
                         "decimal (d), hexadecimal (x), octal (o) or binary (b).",
                         "<expression>", "format", .argument_completer = symbol_completer, .modifiers_completer = format_completer},
     {"eval", 2, }, /* Alias */
-    {"examine", 2, examine, "Examine values at address", "<expression>", "count", .argument_completer = symbol_completer},
+    {"examine", 2, examine, "Examine values at address. Use the 'a' modifier to output in assembeler syntax.", "<expression>", "count[a]", .argument_completer = symbol_completer},
     {"x", 1, }, /* Alias */
     {"disassemble", 1, disassemble, "Disassemble instructions at address", "<expression>", "count", .argument_completer = symbol_completer},
     {"breakpoint", 1, breakpoint, "Add a new breakpoint at the specified address/expression or range. "
