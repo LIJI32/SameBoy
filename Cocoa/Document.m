@@ -628,6 +628,10 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
 
 - (void) start
 {
+    if (!self.mainWindow) {
+        NSLog(@"Bug, reference leak to Document %@", self);
+        return;
+    }
     dispatch_async(dispatch_get_main_queue(), ^{
         [self updateDebuggerButtons];
         [_slave updateDebuggerButtons];
@@ -1375,12 +1379,18 @@ static bool is_path_writeable(const char *path)
     [_consoleOutputLock lock];
     [_consoleOutputTimer invalidate];
     [_consoleOutputLock unlock];
-    [self.consoleWindow close];
-    [self.memoryWindow close];
-    [self.vramWindow close];
-    [self.printerFeedWindow close];
-    [self.cheatsWindow close];
+    [_consoleWindow close];
+    _consoleWindow = nil;
+    [_memoryWindow close];
+    _memoryWindow = nil;
+    [_vramWindow close];
+    _vramWindow = nil;
+    [_printerFeedWindow close];
+    _printerFeedWindow = nil;
+    [_cheatsWindow close];
+    _cheatsWindow = nil;
     [_cheatSearchController.window close];
+    _cheatSearchController.window = nil;
     [super close];
 }
 
