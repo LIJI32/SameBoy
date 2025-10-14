@@ -630,7 +630,27 @@ static void trigger_sweep_calculation(GB_gameboy_t *gb)
     }
 }
 
-void GB_apu_div_event(GB_gameboy_t *gb)
+noinline void GB_apu_delayed_envelope_tick(GB_gameboy_t *gb)
+{
+    gb->apu.pending_envelope_tick = false;
+    if (!gb->apu.global_enable) return;
+    
+    GB_apu_run(gb, true);
+    gb->apu.pcm_mask[0] = gb->apu.pcm_mask[1] = 0xFF;
+
+
+    unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
+        if (gb->apu.square_channels[i].envelope_clock.clock) {
+            tick_square_envelope(gb, i);
+        }
+    }
+    
+    if (gb->apu.noise_channel.envelope_clock.clock) {
+        tick_noise_envelope(gb);
+    }
+}
+
+noinline void GB_apu_div_event(GB_gameboy_t *gb)
 {
     GB_apu_run(gb, true);
     gb->apu.pcm_mask[0] = gb->apu.pcm_mask[1] = 0xFF;
@@ -648,7 +668,7 @@ void GB_apu_div_event(GB_gameboy_t *gb)
     }
 
     if ((gb->apu.div_divider & 7) == 7) {
-        unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
+        unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
             if (!gb->apu.square_channels[i].envelope_clock.clock) {
                 gb->apu.square_channels[i].volume_countdown--;
                 gb->apu.square_channels[i].volume_countdown &= 7;
@@ -660,18 +680,23 @@ void GB_apu_div_event(GB_gameboy_t *gb)
         }
     }
 
-    unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
-        if (gb->apu.square_channels[i].envelope_clock.clock) {
-            tick_square_envelope(gb, i);
+    if (gb->cgb_double_speed && (gb->model == GB_MODEL_CGB_D || gb->model == GB_MODEL_CGB_E)) {
+        gb->apu.pending_envelope_tick = true;
+    }
+    else {
+        unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
+            if (gb->apu.square_channels[i].envelope_clock.clock) {
+                tick_square_envelope(gb, i);
+            }
+        }
+        
+        if (gb->apu.noise_channel.envelope_clock.clock) {
+            tick_noise_envelope(gb);
         }
     }
     
-    if (gb->apu.noise_channel.envelope_clock.clock) {
-        tick_noise_envelope(gb);
-    }
-    
     if ((gb->apu.div_divider & 1) == 1) {
-        unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
+        unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
             if (gb->apu.square_channels[i].length_enabled) {
                 if (gb->apu.square_channels[i].pulse_length) {
                     if (!--gb->apu.square_channels[i].pulse_length) {
@@ -718,13 +743,13 @@ void GB_apu_div_event(GB_gameboy_t *gb)
     }
 }
 
-void GB_apu_div_secondary_event(GB_gameboy_t *gb)
+noinline void GB_apu_div_secondary_event(GB_gameboy_t *gb)
 {
     GB_apu_run(gb, true);
     gb->apu.pcm_mask[0] = gb->apu.pcm_mask[1] = 0xFF;
 
     if (!gb->apu.global_enable) return;
-    unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
+    unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
         uint8_t nrx2 = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR12 : GB_IO_NR22];
         if (gb->apu.is_active[i] && gb->apu.square_channels[i].volume_countdown == 0) {
             set_envelope_clock(&gb->apu.square_channels[i].envelope_clock,

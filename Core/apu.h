@@ -152,6 +152,7 @@ typedef struct
     uint8_t pcm_mask[2]; // For CGB-0 to CGB-C PCM read glitch
     
     bool apu_cycles_in_2mhz; // For compatibility with 0.16.x save states
+    bool pending_envelope_tick;
 } GB_apu_t;
 
 typedef enum {
@@ -230,6 +231,7 @@ internal void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value);
 internal uint8_t GB_apu_read(GB_gameboy_t *gb, uint8_t reg);
 internal void GB_apu_div_event(GB_gameboy_t *gb);
 internal void GB_apu_div_secondary_event(GB_gameboy_t *gb);
+internal void GB_apu_delayed_envelope_tick(GB_gameboy_t *gb);
 internal void GB_apu_init(GB_gameboy_t *gb);
 internal void GB_apu_run(GB_gameboy_t *gb, bool force);
 #endif
