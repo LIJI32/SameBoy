@@ -656,7 +656,7 @@ mainloop(char *(*completer)(const char *substring, uintptr_t *context))
         else {
             c = raw_getc();
         }
-        if (c == EOF) {
+        if (c == (char)EOF) {
             return 0;
         }
 
