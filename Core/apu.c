@@ -1471,7 +1471,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                             force_unsurpressed = true;
                         }
                     }
-                    gb->apu.square_channels[index].delay = 6 - gb->apu.lf_div;
+                    gb->apu.square_channels[index].delay = 6 + gb->apu.lf_div * (gb->model < GB_MODEL_CGB_D && gb->cgb_double_speed? 1 : -1);
                     gb->apu.square_channels[index].sample_countdown = (gb->apu.square_channels[index].sample_length ^ 0x7FF) * 2 + gb->apu.square_channels[index].delay;
                 }
                 else {
