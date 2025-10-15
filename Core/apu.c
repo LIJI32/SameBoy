@@ -568,7 +568,7 @@ static void tick_noise_envelope(GB_gameboy_t *gb)
     if (!(nr42 & 7)) return;
 
     if (gb->cgb_double_speed) {
-        gb->apu.pcm_mask[0] &= (gb->apu.noise_channel.current_volume << 4) | (gb->model == GB_MODEL_CGB_0? 0x3F : 0x1F);
+        gb->apu.pcm_mask[1] &= (gb->apu.noise_channel.current_volume << 4) | 0x1F;
     }
     
     if (nr42 & 8) {
@@ -1023,7 +1023,7 @@ restart:;
 
                 /* Step LFSR */
                 if (new_bit && !old_bit) {
-                    if (cycles_left == 0 && gb->apu.samples[GB_NOISE] == 0) {
+                    if (cycles_left == 0 && gb->apu.samples[GB_NOISE] == 0 && !gb->cgb_double_speed) {
                         gb->apu.pcm_mask[1] &= 0x0F;
                     }
                     step_lfsr(gb, cycles - cycles_left);
