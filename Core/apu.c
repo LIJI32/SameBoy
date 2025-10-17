@@ -541,7 +541,21 @@ static void tick_square_envelope(GB_gameboy_t *gb, GB_channel_t index)
             gb->apu.pcm_mask[0] &= gb->apu.square_channels[GB_SQUARE_1].current_volume | 0xF1;
         }
         else {
-            gb->apu.pcm_mask[0] &= (gb->apu.square_channels[GB_SQUARE_2].current_volume << 4) | (gb->model == GB_MODEL_CGB_0? 0x3F : 0x1F);
+            /* Note: CGB-0 behavior is instance specific and non-deterministic. Emulated behavior follows my CGB-0,
+                     except that my CGB-0 sometimes yields "1" for 8->7 and 4->3 transitions. */
+            uint8_t mask;
+            if (unlikely(gb->model == GB_MODEL_CGB_0)) {
+                if (gb->apu.square_channels[GB_SQUARE_2].current_volume == 1 && (gb->io_registers[GB_IO_NR22] & 8)) {
+                    mask = 0x1F;
+                }
+                else {
+                    mask = 0x3F;
+                }
+            }
+            else {
+                mask = 0x3F;
+            }
+            gb->apu.pcm_mask[0] &= (gb->apu.square_channels[GB_SQUARE_2].current_volume << 4) | mask;
         }
     }
     
