@@ -1,6 +1,8 @@
 #pragma once
 #include "defs.h"
 #include <stdint.h>
+#include <stdbool.h>
+
 
 typedef uint8_t (*GB_read_memory_callback_t)(GB_gameboy_t *gb, uint16_t addr, uint8_t data);
 typedef bool (*GB_write_memory_callback_t)(GB_gameboy_t *gb, uint16_t addr, uint8_t data); // Return false to prevent the write
