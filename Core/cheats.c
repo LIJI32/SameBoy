@@ -143,7 +143,7 @@ void GB_remove_cheat(GB_gameboy_t *gb, const GB_cheat_t *cheat)
 
 void GB_remove_all_cheats(GB_gameboy_t *gb)
 {
-    while (gb->cheats) {
+    while (gb->cheat_count) {
         GB_remove_cheat(gb, gb->cheats[0]);
     }
 }
