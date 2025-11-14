@@ -667,6 +667,7 @@ int GB_load_isx(GB_gameboy_t *gb, const char *path)
 done:;
 #undef READ
     if (gb->rom_size == 0) goto error;
+    fclose(f);
     
     size_t needed_size = (gb->rom_size + 0x3FFF) & ~0x3FFF; /* Round to bank */
     
