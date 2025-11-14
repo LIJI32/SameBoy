@@ -1092,7 +1092,7 @@ int GB_load_battery(GB_gameboy_t *gb, const char *path)
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
-        return 0;
+        goto exit;
     }
     
     if (gb->cartridge_type->mbc_type == GB_HUC3) {
@@ -1111,7 +1111,7 @@ int GB_load_battery(GB_gameboy_t *gb, const char *path)
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
-        return 0;
+        goto exit;
     }
 
     rtc_save_t rtc_save;
