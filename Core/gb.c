@@ -279,7 +279,7 @@ void GB_borrow_sgb_border(GB_gameboy_t *gb)
     if (gb->border_mode != GB_BORDER_ALWAYS) return;
     if (gb->tried_loading_sgb_border) return;
     gb->tried_loading_sgb_border = true;
-    if (gb->rom && gb->rom[0x146] != 3) return; // Not an SGB game, nothing to borrow
+    if (!gb->rom || gb->rom[0x146] != 3) return; // Not an SGB game, nothing to borrow
     if (!gb->boot_rom_load_callback) return; // Can't borrow a border without this callback
     GB_gameboy_t sgb;
     GB_init(&sgb, GB_MODEL_SGB);
