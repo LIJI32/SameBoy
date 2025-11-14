@@ -1439,8 +1439,10 @@ static void cycle_palette(unsigned index)
         }
     }
     else if (configuration.dmg_palette == 4) {
+        bool found = false;
         for (unsigned i = 0; i < n_custom_palettes; i++) {
             if (strcmp(custom_palettes[i], configuration.dmg_palette_name) == 0) {
+                found = true;
                 if (i == n_custom_palettes - 1) {
                     configuration.dmg_palette = 0;
                 }
@@ -1449,6 +1451,9 @@ static void cycle_palette(unsigned index)
                 }
                 break;
             }
+        }
+        if (!found) {
+            configuration.dmg_palette = 0;
         }
     }
     else {
@@ -1471,7 +1476,9 @@ static void cycle_palette_backwards(unsigned index)
     }
     else if (configuration.dmg_palette == 4) {
         for (unsigned i = 0; i < n_custom_palettes; i++) {
+            bool found = false;
             if (strcmp(custom_palettes[i], configuration.dmg_palette_name) == 0) {
+                found = true;
                 if (i == 0) {
                     configuration.dmg_palette = 3;
                 }
@@ -1479,6 +1486,9 @@ static void cycle_palette_backwards(unsigned index)
                     strcpy(configuration.dmg_palette_name, custom_palettes[i - 1]);
                 }
                 break;
+            }
+            if (!found) {
+                configuration.dmg_palette = 3;
             }
         }
     }
