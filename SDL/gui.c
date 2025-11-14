@@ -58,10 +58,6 @@ void render_texture(void *pixels,  void *previous)
         SDL_RenderPresent(renderer);
     }
     else {
-        static void *_pixels = NULL;
-        if (pixels) {
-            _pixels = pixels;
-        }
         glClearColor(0, 0, 0, 1);
         glClear(GL_COLOR_BUFFER_BIT);
         GB_frame_blending_mode_t mode = configuration.blending_mode;
@@ -76,7 +72,7 @@ void render_texture(void *pixels,  void *previous)
                 mode = GB_is_odd_frame(&gb)? GB_FRAME_BLENDING_MODE_ACCURATE_ODD : GB_FRAME_BLENDING_MODE_ACCURATE_EVEN;
             }
         }
-        render_bitmap_with_shader(&shader, _pixels, previous,
+        render_bitmap_with_shader(&shader, pixels, previous,
                                   GB_get_screen_width(&gb), GB_get_screen_height(&gb),
                                   rect.x, rect.y, rect.w, rect.h,
                                   mode);
