@@ -1508,7 +1508,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.square_channels[index].sample_countdown = (gb->apu.square_channels[index].sample_length ^ 0x7FF) * 2 + gb->apu.square_channels[index].delay;
                 }
                 gb->apu.square_channels[index].current_volume = gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] >> 4;
-                /* The volume changes caused by NRX4 sound start take effect instantly (i.e. the effect the previously
+                /* The volume changes caused by NRx4 sound start takes effect instantly (i.e. the effect the previously
                    started sound). The playback itself is not instant which is why we don't update the sample for other
                    cases. */
                 if (gb->apu.is_active[index]) {
@@ -1797,20 +1797,11 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
    
                     gb->apu.noise_channel.current_volume = gb->io_registers[GB_IO_NR42] >> 4;
 
-                    /* The volume changes caused by NRX4 sound start take effect instantly (i.e. the effect the previously
-                     started sound). The playback itself is not instant which is why we don't update the sample for other
-                     cases. */
-                    if (gb->apu.is_active[GB_NOISE]) {
-                        update_sample(gb, GB_NOISE,
-                                      gb->apu.noise_channel.current_lfsr_sample ?
-                                      gb->apu.noise_channel.current_volume : 0,
-                                      0);
-                    }
                     gb->apu.noise_channel.lfsr = 0;
                     gb->apu.noise_channel.current_lfsr_sample = false;
                     gb->apu.noise_channel.volume_countdown = gb->io_registers[GB_IO_NR42] & 7;
 
-                    if (!gb->apu.is_active[GB_NOISE] && (gb->io_registers[GB_IO_NR42] & 0xF8) != 0) {
+                    if (gb->io_registers[GB_IO_NR42] & 0xF8) {
                         gb->apu.is_active[GB_NOISE] = true;
                         update_sample(gb, GB_NOISE, 0, 0);
                     }
