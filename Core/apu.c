@@ -1016,8 +1016,8 @@ restart:;
             }
         }
         
-        // The noise channel can step even if inactive on the DMG
-        if (gb->apu.is_active[GB_NOISE] || !GB_is_cgb(gb)) {
+        // TODO: verify these conditions one a DMG somehow
+        if (gb->apu.noise_counter_active || gb->apu.noise_background_counter_active) {
             uint16_t cycles_left = cycles;
             unsigned divisor = (gb->io_registers[GB_IO_NR43] & 0x07) << 2;
             if (!divisor) divisor = 2;
@@ -1027,25 +1027,33 @@ restart:;
             // This while doesn't get an unlikely because the noise channel steps frequently enough
             while (cycles_left >= gb->apu.noise_channel.counter_countdown) {
                 cycles_left -= gb->apu.noise_channel.counter_countdown;
-                gb->apu.noise_channel.counter_countdown = divisor + gb->apu.noise_channel.delta;
-                gb->apu.noise_channel.delta = 0;
+                gb->apu.noise_channel.counter_countdown = divisor;
                 uint16_t mask = 1 << (gb->io_registers[GB_IO_NR43] >> 4);
                 bool old_bit = gb->apu.noise_channel.counter & mask;
                 gb->apu.noise_channel.counter++;
                 gb->apu.noise_channel.counter &= 0x3FFF;
+                gb->apu.noise_channel.did_step_counter = true;
                 bool new_bit = gb->apu.noise_channel.counter & mask;
 
                 /* Step LFSR */
-                if (new_bit && !old_bit) {
+                if (new_bit && !old_bit && gb->apu.is_active[GB_NOISE]) {
                     if (cycles_left == 0 && gb->apu.samples[GB_NOISE] == 0 && !gb->cgb_double_speed) {
                         gb->apu.pcm_mask[1] &= 0x0F;
                     }
                     step_lfsr(gb, cycles - cycles_left);
                 }
+                if (divisor != 2) {
+                    gb->apu.noise_background_counter_active = false;
+                    if (unlikely(!gb->apu.noise_counter_active)) {
+                        break;
+                    }
+                }
             }
             if (cycles_left) {
-                gb->apu.noise_channel.counter_countdown -= cycles_left;
-                gb->apu.noise_channel.countdown_reloaded = false;
+                if (likely(gb->apu.noise_counter_active || gb->apu.noise_background_counter_active)) {
+                    gb->apu.noise_channel.counter_countdown -= cycles_left;
+                    gb->apu.noise_channel.countdown_reloaded = false;
+                }
             }
             else {
                 gb->apu.noise_channel.countdown_reloaded = true;
@@ -1317,6 +1325,124 @@ static noinline void nr10_write_glitch(GB_gameboy_t *gb, uint8_t value)
         }
     }
 
+}
+
+static void prepare_noise_start(GB_gameboy_t *gb)
+{
+    /*
+     TODO: When restarting a channel right after starting it, before it has the chance to tick the counter, things
+     behave differently. Only certain behaviors of this edge case are emulated.
+    */
+    
+    /*
+     TODO: Restarting a channel in double speed mode under CGB-C and older is not accurate if the divisor is 0 or 1.
+           Specifically in the 0 case, the initial LFSR value seems to be deterministic, but dependant on various
+           parameters. It is neither 0 or the equaly unexplained 0x0055.
+    */
+    gb->apu.noise_counter_active = gb->io_registers[GB_IO_NR42] & 0xF8; // Resets on APU off and DAC disable
+    unsigned divisor = (gb->io_registers[GB_IO_NR43] & 0x07);
+    bool was_background_counting = gb->apu.noise_background_counter_active;
+    gb->apu.noise_background_counter_active = divisor == 0;
+    bool instant_step = false;
+    bool div_1_glitch = false;
+    
+    if (divisor > 1 && gb->apu.noise_channel.counter_countdown == 1) {
+        gb->apu.noise_channel.counter++;
+        gb->apu.noise_channel.counter &= 0x3FFF;
+    }
+    else if (divisor > 1 && gb->apu.noise_channel.counter_countdown == 2 && gb->apu.is_active[GB_NOISE] && gb->model <= GB_MODEL_CGB_C && gb->cgb_double_speed) {
+        gb->apu.noise_channel.counter++;
+        gb->apu.noise_channel.counter &= 0x3FFF;
+    }
+    else if (gb->apu.noise_channel.counter_countdown == 2 &&
+        (gb->apu.noise_channel.alignment & 3) == 0 &&
+        gb->apu.is_active[GB_NOISE]) {
+        if (divisor == 0) {
+            divisor = 8;
+        }
+        else if (divisor == 1) {
+            /* TODO: I'm not 100% sure this only affects NR43 = 1X */
+            if ((gb->io_registers[GB_IO_NR43] & 0xf0) == 0x10 && (gb->apu.noise_channel.counter & 1)) {
+                instant_step = true;
+            }
+            if (gb->apu.noise_channel.did_step_counter) {
+                gb->apu.noise_channel.counter++;
+                gb->apu.noise_channel.counter &= 0x3FFF;
+            }
+            /* TODO: needs further research, the conditions are very odd. What if NR43 changes before stepping? */
+            if ((gb->io_registers[GB_IO_NR43] & 0xf0) == 0x10 && !gb->apu.noise_channel.did_step_counter) {
+                div_1_glitch = true;
+            }
+        }
+    }
+    gb->apu.noise_channel.counter_countdown = divisor == 0? 6 : divisor * 4 + 6;
+    if  (gb->apu.noise_channel.alignment & 1) {
+        if (!divisor) {
+            if (gb->model <= GB_MODEL_CGB_C) {
+                gb->apu.noise_channel.counter_countdown++;
+            }
+            else if (was_background_counting) {
+                gb->apu.noise_channel.counter_countdown--;
+            }
+            else {
+                gb->apu.noise_channel.counter_countdown++;
+            }
+        }
+        else {
+            if (gb->apu.noise_channel.alignment & 2) {
+                if (divisor == 1 && !gb->apu.is_active[GB_NOISE]) {
+                    gb->apu.noise_channel.counter_countdown++;
+                }
+                else {
+                    gb->apu.noise_channel.counter_countdown -= 3;
+                }
+            }
+            else {
+                gb->apu.noise_channel.counter_countdown--;
+                if (divisor == 1 && gb->apu.is_active[GB_NOISE]) {
+                    gb->apu.noise_channel.counter_countdown -= 4;
+                }
+            }
+        }
+    }
+    else {
+        if (divisor) {
+            if (gb->apu.noise_channel.alignment & 2) {
+                if (gb->cgb_double_speed && gb->model <= GB_MODEL_CGB_C && divisor == 1) {
+                    gb->apu.noise_channel.counter_countdown += 2;
+                }
+                else {
+                    gb->apu.noise_channel.counter_countdown -= 2;
+                }
+            }
+            else if (divisor > 1 && (!gb->cgb_double_speed || gb->model > GB_MODEL_CGB_C)) {
+                gb->apu.noise_channel.counter_countdown -= 4;
+            }
+        }
+        else if (gb->cgb_double_speed && gb->model <= GB_MODEL_CGB_C) {
+            gb->apu.noise_channel.counter_countdown += 2;
+        }
+    }
+    
+    /* TODO: This is weird, is the clock going out of sync? */
+    if (!divisor && gb->model <= GB_MODEL_CGB_C && was_background_counting && !gb->apu.is_active[GB_NOISE]) {
+        gb->apu.noise_channel.counter_countdown--;
+    }
+    if (div_1_glitch) {
+        gb->apu.noise_channel.counter_countdown -= 4;
+    }
+    
+    if (!divisor && gb->apu.is_active[GB_NOISE] && (gb->apu.noise_channel.alignment & 3) == 3) {
+        /* TODO: I have no clue where this number comes from, but this number is confirmed for this edge case even for
+                 side LFSR, despite being seemingly arbitrary. */
+        gb->apu.noise_channel.lfsr = 0x0055;
+    }
+    else {
+        gb->apu.noise_channel.lfsr = 0;
+    }
+    if (instant_step) {
+        step_lfsr(gb, 0);
+    }
 }
 
 void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
@@ -1692,6 +1818,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 gb->io_registers[reg] = value;
                 gb->apu.is_active[GB_NOISE] = false;
                 update_sample(gb, GB_NOISE, 0, 0);
+                gb->apu.noise_counter_active = false;
             }
             else if (gb->apu.is_active[GB_NOISE]) {
                 nrx2_glitch(gb, &gb->apu.noise_channel.current_volume,
@@ -1722,7 +1849,6 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.noise_channel.counter_countdown =
                     divisor + (divisor == 2? 0 : inline_const(uint8_t[], {2, 1, 4, 3})[(gb->apu.noise_channel.alignment) & 3]);
                 }
-                gb->apu.noise_channel.delta = 0;
             }
             /* Step LFSR */
             if (new_bit && (!old_bit || gb->model <= GB_MODEL_CGB_C)) {
@@ -1747,59 +1873,12 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.noise_channel.dmg_delayed_start = 6;
                 }
                 else {
-                    unsigned divisor = (gb->io_registers[GB_IO_NR43] & 0x07) << 2;
-                    if (!divisor) divisor = 2;
-                    gb->apu.noise_channel.delta = 0;
-                    gb->apu.noise_channel.counter_countdown = divisor + 4;
-                    if (divisor == 2) {
-                        if (gb->model <= GB_MODEL_CGB_C) {
-                            gb->apu.noise_channel.counter_countdown += gb->apu.lf_div;
-                            if (!gb->cgb_double_speed) {
-                                gb->apu.noise_channel.counter_countdown -= 1;
-                            }
-                        }
-                        else {
-                            gb->apu.noise_channel.counter_countdown += 1 - gb->apu.lf_div;
-                        }
-                    }
-                    else {
-                        if (gb->model <= GB_MODEL_CGB_C) {
-                            gb->apu.noise_channel.counter_countdown += inline_const(uint8_t[], {2, 1, 4, 3})[gb->apu.noise_channel.alignment & 3];
-                        }
-                        else {
-                            gb->apu.noise_channel.counter_countdown += inline_const(uint8_t[], {2, 1, 0, 3})[gb->apu.noise_channel.alignment & 3];
-                        }
-                        if (((gb->apu.noise_channel.alignment + 1) & 3) < 2) {
-                            if ((gb->io_registers[GB_IO_NR43] & 0x07) == 1) {
-                                gb->apu.noise_channel.counter_countdown -= 2;
-                                gb->apu.noise_channel.delta = 2;
-                            }
-                            else {
-                                gb->apu.noise_channel.counter_countdown -= 4;
-                            }
-                        }
-                    }
+                    prepare_noise_start(gb);
                     
-                    /* TODO: These are quite weird. Verify further */
-                    if (gb->model <= GB_MODEL_CGB_C) {
-                        if (gb->cgb_double_speed) {
-                            if (!(gb->io_registers[GB_IO_NR43] & 0xF0) && (gb->io_registers[GB_IO_NR43] & 0x07)) {
-                                 gb->apu.noise_channel.counter_countdown -= 1;
-                            }
-                            else if ((gb->io_registers[GB_IO_NR43] & 0xF0) && !(gb->io_registers[GB_IO_NR43] & 0x07)) {
-                                gb->apu.noise_channel.counter_countdown += 1;
-                            }
-                        }
-                        else {
-                            gb->apu.noise_channel.counter_countdown -= 2;
-                        }
-                    }
-   
                     gb->apu.noise_channel.current_volume = gb->io_registers[GB_IO_NR42] >> 4;
-
-                    gb->apu.noise_channel.lfsr = 0;
                     gb->apu.noise_channel.current_lfsr_sample = false;
                     gb->apu.noise_channel.volume_countdown = gb->io_registers[GB_IO_NR42] & 7;
+                    gb->apu.noise_channel.did_step_counter = false;
 
                     if (gb->io_registers[GB_IO_NR42] & 0xF8) {
                         gb->apu.is_active[GB_NOISE] = true;

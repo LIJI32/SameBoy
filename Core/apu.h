@@ -138,7 +138,7 @@ typedef struct
         uint8_t alignment; // If (NR43 & 7) != 0, samples are aligned to 512KHz clock instead of
                            // 1MHz. This variable keeps track of the alignment.
         bool current_lfsr_sample;
-        int8_t delta;
+        bool did_step_counter;
         bool countdown_reloaded;
         uint8_t dmg_delayed_start;
         GB_envelope_clock_t envelope_clock;
@@ -153,6 +153,9 @@ typedef struct
     
     bool apu_cycles_in_2mhz; // For compatibility with 0.16.x save states
     bool pending_envelope_tick;
+    // Move to noise struct when breaking compat
+    bool noise_counter_active;
+    bool noise_background_counter_active;
 } GB_apu_t;
 
 typedef enum {
