@@ -2214,6 +2214,12 @@ retry:;
 #endif
 
 static bool help(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool write(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool trace_read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool trace_write(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool trace_clear(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool trace_dump(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
 
 
 /* Commands without implementations are aliases of the previous non-alias commands */
@@ -2275,6 +2281,12 @@ static const debugger_command_t commands[] = {
     {"dma", 3, dma, "Display the current OAM DMA status"},
 
     {"help", 1, help, "List available commands or show help for the specified command", "[<command>]"},
+    {"read", 2, read, "Read memory from the specified address", "<address>"},
+    {"write", 3, write, "Write memory to the specified address", "<address> <value>"},
+    {"trace_read", 1, trace_read, "Trace memory reads from the specified address range"},
+    {"trace_write", 1, trace_write, "Trace memory writes to the specified address range"},
+    {"trace_clear", 1, trace_clear, "Clear all memory read/write traces"},
+    {"trace_dump", 1, trace_dump, "Dump all memory read/write traces to the specified file", "<filename>"},
     {NULL,}, /* Null terminator */
 };
 
@@ -2350,6 +2362,120 @@ static bool help(GB_gameboy_t *gb, char *arguments, char *modifiers, const debug
             print_command_description(gb, command);
         }
     }
+    return true;
+}
+
+static bool read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    const char *stripped = lstrip(arguments);
+    if (!strlen(stripped)) {
+        print_usage(gb, command);
+        return true;
+    }
+
+    bool error;
+    value_t addr = debugger_evaluate(gb, stripped, (unsigned)strlen(stripped), &error, NULL);
+    if (error) {
+        GB_log(gb, "Could not evaluate address expression\n");
+        return true;
+    }
+    
+    uint8_t value = GB_read_memory(gb, addr.value);
+    GB_log(gb, "[$%04X] = $%02X (%s)\n", addr.value, value, value_to_string(gb, addr.value, true, false, false));
+    return true;
+}
+
+static bool write(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    const char *stripped = lstrip(arguments);
+    char *space = strchr(stripped, ' ');
+    if (!space) {
+        print_usage(gb, command);
+        return true;
+    }
+    *space = 0;
+    const char *value_str = lstrip(space + 1);
+    if (!strlen(value_str)) {
+        print_usage(gb, command);
+        return true;
+    }
+
+    bool error;
+    value_t addr = debugger_evaluate(gb, stripped, (unsigned)strlen(stripped), &error, NULL);
+    if (error) {
+        GB_log(gb, "Could not evaluate address expression\n");
+        return true;
+    }
+    value_t val = debugger_evaluate(gb, value_str, (unsigned)strlen(value_str), &error, NULL);
+    if (error) {
+        GB_log(gb, "Could not evaluate value expression\n");
+        return true;
+    }
+
+    GB_write_memory(gb, addr.value, (uint8_t)val.value);
+    GB_log(gb, "Wrote $%02X to [$%04X] (%s)\n", (uint8_t)val.value, addr.value, value_to_string(gb, addr.value, true, false, false));
+    return true;
+}
+
+static bool trace_read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    (void)arguments;
+    (void)command;
+    gb->memory_trace_read_enabled = !gb->memory_trace_read_enabled;
+    if (gb->memory_trace_read_enabled) {
+        GB_log(gb, "Memory read tracing enabled\n");
+    }
+    else {
+        GB_log(gb, "Memory read tracing disabled\n");
+    }
+    return true;
+}
+
+static bool trace_write(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    (void)arguments;
+    (void)command;
+    gb->memory_trace_write_enabled = !gb->memory_trace_write_enabled;
+    if (gb->memory_trace_write_enabled) {
+        GB_log(gb, "Memory write tracing enabled\n");
+    }
+    else {
+        GB_log(gb, "Memory write tracing disabled\n");
+    }
+    return true;
+}
+
+static bool trace_clear(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    (void)arguments;
+    (void)command;
+    memset(gb->memory_trace, 0, sizeof(gb->memory_trace));
+    memset(gb->memory_trace_ignore, 0, sizeof(gb->memory_trace_ignore));
+    GB_log(gb, "Memory read/write traces cleared\n");
+    return true;
+}
+
+static bool trace_dump(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    const char *filename = lstrip(arguments);
+    if (!strlen(filename)) {
+        print_usage(gb, command);
+        return true;
+    }
+    FILE *f = fopen(filename, "wb");
+    if (!f) {
+        GB_log(gb, "Could not open file \"%s\" for writing\n", filename);
+        return true;
+    }
+    fwrite(gb->memory_trace, sizeof(gb->memory_trace), 1, f);
+    fclose(f);
+    GB_log(gb, "Memory read/write traces dumped to \"%s\"\n", filename);
     return true;
 }
 
