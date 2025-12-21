@@ -516,6 +516,8 @@ struct GB_gameboy_internal_s {
             bool memory_trace_write_enabled;
             uint8_t memory_trace[0x10000];
             uint8_t memory_trace_ignore[0x10000];
+            uint8_t memory_search[0x10000];
+            uint8_t memory_search_last[0x10000];
         #endif
     )
 
