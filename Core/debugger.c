@@ -2482,7 +2482,6 @@ static bool memory_scan(GB_gameboy_t *gb, char *arguments, char *modifiers, cons
     }
 
     size_t n_found = 0;
-    uint8_t last_value = 0;
 
     if (strncmp(scan_type, "all", type_length) == 0) {
         for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
