@@ -2215,7 +2215,6 @@ retry:;
 
 static bool help(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
 static bool read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
-static bool write(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
 static bool trace_read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
 static bool trace_write(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
 static bool trace_clear(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
@@ -2282,7 +2281,6 @@ static const debugger_command_t commands[] = {
 
     {"help", 1, help, "List available commands or show help for the specified command", "[<command>]"},
     {"read", 2, read, "Read memory from the specified address", "<address>"},
-    {"write", 3, write, "Write memory to the specified address", "<address> <value>"},
     {"trace_read", 1, trace_read, "Trace memory reads from the specified address range"},
     {"trace_write", 1, trace_write, "Trace memory writes to the specified address range"},
     {"trace_clear", 1, trace_clear, "Clear all memory read/write traces"},
@@ -2383,39 +2381,6 @@ static bool read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debug
     
     uint8_t value = GB_read_memory(gb, addr.value);
     GB_log(gb, "[$%04X] = $%02X (%s)\n", addr.value, value, value_to_string(gb, addr.value, true, false, false));
-    return true;
-}
-
-static bool write(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
-{
-    NO_MODIFIERS
-    const char *stripped = lstrip(arguments);
-    char *space = strchr(stripped, ' ');
-    if (!space) {
-        print_usage(gb, command);
-        return true;
-    }
-    *space = 0;
-    const char *value_str = lstrip(space + 1);
-    if (!strlen(value_str)) {
-        print_usage(gb, command);
-        return true;
-    }
-
-    bool error;
-    value_t addr = debugger_evaluate(gb, stripped, (unsigned)strlen(stripped), &error, NULL);
-    if (error) {
-        GB_log(gb, "Could not evaluate address expression\n");
-        return true;
-    }
-    value_t val = debugger_evaluate(gb, value_str, (unsigned)strlen(value_str), &error, NULL);
-    if (error) {
-        GB_log(gb, "Could not evaluate value expression\n");
-        return true;
-    }
-
-    GB_write_memory(gb, addr.value, (uint8_t)val.value);
-    GB_log(gb, "Wrote $%02X to [$%04X] (%s)\n", (uint8_t)val.value, addr.value, value_to_string(gb, addr.value, true, false, false));
     return true;
 }
 
