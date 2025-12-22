@@ -2500,10 +2500,12 @@ static bool memory_scan(GB_gameboy_t *gb, char *arguments, char *modifiers, cons
                 gb->memory_search[addr] = 0xFF;
             }
 
-            if (gb->memory_search[addr] != 0xFF)
+            if (gb->memory_search[addr] != 0xFF) {
                 n_found++;
+            }
         }
-    } else if (strncmp(scan_type, "changed", type_length) == 0) {
+    }
+    else if (strncmp(scan_type, "changed", type_length) == 0) {
         for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
             uint8_t current_value = GB_read_memory(gb, addr);
             if (gb->memory_search[addr] != 0xFF && current_value == gb->memory_search_last[addr]) {
@@ -2511,10 +2513,12 @@ static bool memory_scan(GB_gameboy_t *gb, char *arguments, char *modifiers, cons
             }
             gb->memory_search_last[addr] = current_value;
 
-            if (gb->memory_search[addr] != 0xFF)
+            if (gb->memory_search[addr] != 0xFF) {
                 n_found++;
+            }
         }
-    } else if (strncmp(scan_type, "unchanged", type_length) == 0) {
+    }
+    else if (strncmp(scan_type, "unchanged", type_length) == 0) {
         for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
             uint8_t current_value = GB_read_memory(gb, addr);
             if (gb->memory_search[addr] != 0xFF && current_value != gb->memory_search_last[addr]) {
@@ -2522,10 +2526,12 @@ static bool memory_scan(GB_gameboy_t *gb, char *arguments, char *modifiers, cons
             }
             gb->memory_search_last[addr] = current_value;
 
-            if (gb->memory_search[addr] != 0xFF)
+            if (gb->memory_search[addr] != 0xFF) {
                 n_found++;
+            }
         }
-    } else {
+    }
+    else {
         GB_log(gb, "Unknown scan type \"%.*s\"\n", (int)type_length, scan_type);
         return true;
     }
@@ -2534,7 +2540,7 @@ static bool memory_scan(GB_gameboy_t *gb, char *arguments, char *modifiers, cons
         GB_log(gb, "Found addresses:\n");
         for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
             if (gb->memory_search[addr] != 0xFF) {
-                GB_log(gb, "  0x%04X: $%02X\n", addr, GB_read_memory(gb, addr));
+                GB_log(gb, "  $%04X: $%02X\n", addr, GB_read_memory(gb, addr));
             }
         }
     }
@@ -2546,7 +2552,6 @@ static bool memory_scan(GB_gameboy_t *gb, char *arguments, char *modifiers, cons
 static bool memory_scan_dump(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
 {
     NO_MODIFIERS
-    (void)modifiers;
     const char *filename = lstrip(arguments);
     if (!strlen(filename)) {
         print_usage(gb, command);

@@ -511,14 +511,14 @@ struct GB_gameboy_internal_s {
         uint8_t camera_alignment;
         int32_t camera_countdown;
 
-        #ifndef GB_DISABLE_DEBUGGER
-            bool memory_trace_read_enabled;
-            bool memory_trace_write_enabled;
-            uint8_t memory_trace[0x10000];
-            uint8_t memory_trace_ignore[0x10000];
-            uint8_t memory_search[0x10000];
-            uint8_t memory_search_last[0x10000];
-        #endif
+#ifndef GB_DISABLE_DEBUGGER
+        bool memory_trace_read_enabled;
+        bool memory_trace_write_enabled;
+        uint8_t memory_trace[0x10000];
+        uint8_t memory_trace_ignore[0x10000];
+        uint8_t memory_search[0x10000];
+        uint8_t memory_search_last[0x10000];
+#endif
     )
 
     /* HRAM and HW Registers */
