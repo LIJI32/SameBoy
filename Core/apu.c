@@ -1365,10 +1365,6 @@ static void prepare_noise_start(GB_gameboy_t *gb)
             if ((gb->io_registers[GB_IO_NR43] & 0xf0) == 0x10 && (gb->apu.noise_channel.counter & 1)) {
                 instant_step = true;
             }
-            if (gb->apu.noise_channel.did_step_counter) {
-                gb->apu.noise_channel.counter++;
-                gb->apu.noise_channel.counter &= 0x3FFF;
-            }
             /* TODO: needs further research, the conditions are very odd. What if NR43 changes before stepping? */
             if ((gb->io_registers[GB_IO_NR43] & 0xf0) == 0x10 && !gb->apu.noise_channel.did_step_counter) {
                 div_1_glitch = true;
@@ -1416,6 +1412,10 @@ static void prepare_noise_start(GB_gameboy_t *gb)
                 }
             }
             else if (divisor > 1 && (!gb->cgb_double_speed || gb->model > GB_MODEL_CGB_C)) {
+                gb->apu.noise_channel.counter_countdown -= 4;
+            }
+            /* TODO: This quirk seems way too specific */
+            else if (divisor == 1 && gb->apu.is_active[GB_NOISE] && !(gb->io_registers[GB_IO_NR43] & 0xf0)) {
                 gb->apu.noise_channel.counter_countdown -= 4;
             }
         }
