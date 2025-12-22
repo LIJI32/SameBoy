@@ -2534,7 +2534,7 @@ static bool memory_scan(GB_gameboy_t *gb, char *arguments, char *modifiers, cons
         GB_log(gb, "Found addresses:\n");
         for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
             if (gb->memory_search[addr] != 0xFF) {
-                GB_log(gb, "  $%04X: $%02X\n", addr, GB_read_memory(gb, addr));
+                GB_log(gb, "  0x%04X: $%02X\n", addr, GB_read_memory(gb, addr));
             }
         }
     }
@@ -2557,13 +2557,9 @@ static bool memory_scan_dump(GB_gameboy_t *gb, char *arguments, char *modifiers,
         GB_log(gb, "Could not open file \"%s\" for writing\n", filename);
         return true;
     }
-    for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
-        if (gb->memory_search[addr] != 0xFF) {
-            uint8_t value = GB_read_memory(gb, addr);
-            fwrite(&addr, sizeof(addr), 1, f);
-            fwrite(&value, sizeof(value), 1, f);
-        }
-    }
+
+    fwrite(gb->memory_search, sizeof(gb->memory_search), 1, f);
+
     fclose(f);
     GB_log(gb, "Memory scan results dumped to \"%s\"\n", filename);
     return true;
