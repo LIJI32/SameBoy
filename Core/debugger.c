@@ -2283,14 +2283,14 @@ static const debugger_command_t commands[] = {
     {"dma", 3, dma, "Display the current OAM DMA status"},
 
     {"help", 1, help, "List available commands or show help for the specified command", "[<command>]"},
-    {"read", 2, read, "Read memory from the specified address", "<address>"},
-    {"trace_read", 2, trace_read, "Trace memory reads from the specified address range"},
-    {"trace_write", 2, trace_write, "Trace memory writes to the specified address range"},
-    {"trace_clear", 6, trace_clear, "Clear all memory read/write traces"},
-    {"trace_dump", 6, trace_dump, "Dump all memory read/write traces to the specified file", "<filename>"},
+    {"read", 4, read, "Read memory from the specified address", "<address>"},
+    {"trace_read", 7, trace_read, "Toggle logging of all memory reads"},
+    {"trace_write", 7, trace_write, "Toggle logging of all memory writes"},
+    {"trace_clear", 7, trace_clear, "Clear all memory read/write traces from the trace buffer"},
+    {"trace_dump", 7, trace_dump, "Dump all memory read/write traces (from trace buffer) to the specified file", "<filename>"},
     {"scan", 2, memory_scan, "Scan memory for values (all/exact/changed/unchanged)", "<type> [value]"},
     {"scan_dump", 6, memory_scan_dump, "Dump memory scan results to file", "<filename>"},
-    {"scan_clear", 6, memory_scan_clear, "Clear memory scan results"},
+    {"scan_clear", 6, memory_scan_clear, "Clear all memory scan results from the scan buffer"},
     {NULL,}, /* Null terminator */
 };
 
