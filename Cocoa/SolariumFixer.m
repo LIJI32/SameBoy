@@ -66,7 +66,7 @@
             NSLog(@"Button: %@ in window %@", @(sel_getName(self.action)), self.window.title);
             NSButton *button = (id)self;
             if (!button.isBordered) return;
-            if (button.bezelStyle == NSBezelStylePush) {
+            if (button.bezelStyle == NSRoundedBezelStyle) {
                 NSLog(@"Button needs adjustment: %@ in window %@", @(sel_getName(self.action)), self.window.title);
                 CGRect frame = self.frame;
                 frame.size.width -= 7 + 7; // Remove 7 from the right and 7 from the left
