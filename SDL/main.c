@@ -715,6 +715,10 @@ static void vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
 
 static void rumble(GB_gameboy_t *gb, double amp)
 {
+    if (configuration.rumble_strength != 8) {
+        double strength = configuration.rumble_strength / 8.0;
+        amp = pow(amp, strength) * strength;
+    }
     SDL_HapticRumblePlay(haptic, amp, 250);
 }
 
@@ -1441,12 +1445,16 @@ int main(int argc, char **argv)
         configuration.cgb_revision %= GB_MODEL_CGB_E - GB_MODEL_CGB_0 + 1;
         configuration.audio_driver[15] = 0;
         configuration.dmg_palette_name[24] = 0;
-        // Fix broken defaults, should keys 12-31 should be unmapped by default
+        // Fix broken defaults, keys 12-31 should be unmapped by default
         if (configuration.joypad_configuration[31] == 0) {
             memset(configuration.joypad_configuration + 12 , -1, 32 - 12);
         }
         if ((configuration.agb_revision & ~GB_MODEL_GBP_BIT) != GB_MODEL_AGB_A) {
             configuration.agb_revision = GB_MODEL_AGB_A;
+        }
+        
+        if (configuration.rumble_strength > 8 || configuration.rumble_strength == 0) {
+            configuration.rumble_strength = 8;
         }
     }
     

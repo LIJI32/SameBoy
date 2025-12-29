@@ -225,6 +225,10 @@ static uint8_t cameraGetPixel(GB_gameboy_t *gb, uint8_t x, uint8_t y)
 static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
     GBViewController *self = (__bridge GBViewController *)GB_get_user_data(gb);
+    double strength = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBRumbleStrength"];
+    if (strength != 1) {
+        amp = pow(amp, strength) * strength;
+    }
     [self rumbleChanged:amp];
 }
 

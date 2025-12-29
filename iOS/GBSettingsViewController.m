@@ -370,6 +370,12 @@ static NSString const *typeTurboSlider = @"turboSlider";
             ],
         },
         @{
+            @"header": @"Rumble Strength",
+            @"items": @[
+                @{@"type": typeSlider, @"pref": @"GBRumbleStrength", @"min": @0.125, @"max": @1, @"minImage": @"waveform.weak", @"maxImage": @"waveform"}
+            ],
+        },
+        @{
             @"items": @[
                 @{@"type": typeCheck, @"pref": @"GBControllersHideInterface", @"title": @"Hide UI While Using a Controller"},
             ],

@@ -33,6 +33,7 @@ int main(int argc, char * argv[])
             @"GBRewindSpeed": @1,
             @"GBDynamicSpeed": @NO,
             @"GBFauxAnalogInputs": @NO,
+            @"GBRumbleStrength": @1,
             
             @"GBInterfaceTheme": @"SameBoy",
             @"GBControllersHideInterface": @YES,

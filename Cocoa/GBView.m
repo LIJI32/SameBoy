@@ -558,6 +558,10 @@ static const uint8_t workboy_vk_to_key[] = {
 
 - (void)setRumble:(double)amp
 {
+    double strength = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBRumbleStrength"];
+    if (strength != 1) {
+        amp = pow(amp, strength) * strength;
+    }
     [lastController setRumbleAmplitude:amp];
 }
 

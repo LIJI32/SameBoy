@@ -51,4 +51,5 @@ configuration_t configuration =
     .cgb_revision = GB_MODEL_CGB_E - GB_MODEL_CGB_0,
     .dmg_palette = 1, // Replacing the old default (0) as of 0.15.2
     .agb_revision = GB_MODEL_AGB_A,
+    .rumble_strength = 8,
 };
