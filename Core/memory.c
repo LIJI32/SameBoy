@@ -776,7 +776,15 @@ void GB_set_read_memory_callback(GB_gameboy_t *gb, GB_read_memory_callback_t cal
 uint8_t GB_read_memory(GB_gameboy_t *gb, uint16_t addr)
 {
     GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
-    
+#ifndef GB_DISABLE_DEBUGGER
+    if (gb->memory_trace_read_enabled) {
+        if (gb->memory_trace_ignore[addr] == 0)
+            GB_log(gb, "[READ] 0x%04x\n", addr);
+
+        gb->memory_trace[addr] = read_map[addr >> 12](gb, addr);
+        gb->memory_trace_ignore[addr] = 1;
+    }
+#endif
 #ifndef GB_DISABLE_DEBUGGER
     if (unlikely(gb->n_watchpoints)) {
         GB_debugger_test_read_watchpoint(gb, addr);
@@ -1795,6 +1803,15 @@ void GB_set_write_memory_callback(GB_gameboy_t *gb, GB_write_memory_callback_t c
 
 void GB_write_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 {
+#ifndef GB_DISABLE_DEBUGGER
+    if (gb->memory_trace_write_enabled) {
+        if (gb->memory_trace_ignore[addr] == 0)
+            GB_log(gb, "[WRITE] %04x <= %02x\n", addr, value);
+
+        gb->memory_trace[addr] = value;
+        gb->memory_trace_ignore[addr] = 1;
+    }
+#endif
     GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
 #ifndef GB_DISABLE_DEBUGGER
     if (unlikely(gb->n_watchpoints)) {
