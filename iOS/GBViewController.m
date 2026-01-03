@@ -762,6 +762,28 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                 }
             }
             break;
+        case GBSaveState1:
+            if (_romLoaded) {
+                [_backgroundView saveSwipeFromController:true];
+            }
+            break;
+        case GBLoadState1:
+            if (_romLoaded) {
+                [_backgroundView loadSwipeFromController:true];
+            }
+            break;
+        case GBReset:
+            if (_romLoaded) {
+                [self stop];
+                _skipAutoLoad = true;
+                GB_reset(&_gb);
+                [self start];
+            }
+            break;
+        case GBOpenMenu:
+            self.window.backgroundColor = nil;
+            [self presentViewController:[GBMenuViewController menu] animated:true completion:nil];
+            break;
         default: break;
     }
 }

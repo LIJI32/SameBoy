@@ -17,8 +17,10 @@ typedef enum {
     GBUnderclock,
     GBRapidA,
     GBRapidB,
-    // GBHotkey1, // Todo
-    // GBHotkey2, // Todo
+    GBSaveState1,
+    GBLoadState1,
+    GBOpenMenu,
+    GBReset,
     GBUnusedButton = 0xFF,
 } GBButton;
 

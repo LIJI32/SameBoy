@@ -373,10 +373,10 @@ static GB_key_mask_t angleToKeyMask(double angle)
                 [self rewindSwipe];
             }
             else if (point.y - _screenSwipeOrigin.y > 32) {
-                [self saveSwipe];
+                [self saveSwipeFromController:false];
             }
             else if (point.y - _screenSwipeOrigin.y < -32) {
-                [self loadSwipe];
+                [self loadSwipeFromController:false];
             }
             continue;
         }
@@ -576,13 +576,15 @@ static GB_key_mask_t angleToKeyMask(double angle)
     return [[GBROMManager sharedManager] stateFile:1];
 }
 
-- (void)saveSwipe
+- (void)saveSwipeFromController:(bool)fromController
 {
-    _screenSwiped = true;
-    self.viewController.runMode = GBRunModeNormal;
-    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBSwipeState"]) {
-        [self fadeOverlayOut];
-        return;
+    if (!fromController) {
+        _screenSwiped = true;
+        self.viewController.runMode = GBRunModeNormal;
+        if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBSwipeState"]) {
+            [self fadeOverlayOut];
+            return;
+        }
     }
     [self displayOverlayWithImage:@"square.and.arrow.down" orTitle:@"Saved state to Slot 1"];
     _fadeTimer = [NSTimer scheduledTimerWithTimeInterval:1 repeats:false block:^(NSTimer *timer) {
@@ -593,13 +595,15 @@ static GB_key_mask_t angleToKeyMask(double angle)
     [self.viewController start];
 }
 
-- (void)loadSwipe
+- (void)loadSwipeFromController:(bool)fromController
 {
-    _screenSwiped = true;
-    self.viewController.runMode = GBRunModeNormal;
-    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBSwipeState"]) {
-        [self fadeOverlayOut];
-        return;
+    if (!fromController) {
+        _screenSwiped = true;
+        self.viewController.runMode = GBRunModeNormal;
+        if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBSwipeState"]) {
+            [self fadeOverlayOut];
+            return;
+        }
     }
     [self displayOverlayWithImage:@"square.and.arrow.up" orTitle:@"Loaded state from Slot 1"];
     _fadeTimer = [NSTimer scheduledTimerWithTimeInterval:1 repeats:false block:^(NSTimer *timer) {

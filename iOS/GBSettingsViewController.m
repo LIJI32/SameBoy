@@ -377,6 +377,16 @@ static NSString const *typeTurboSlider = @"turboSlider";
         },
         @{
             @"items": @[
+                @{@"type": typeCheck, @"pref": @"GBButtonHaptics", @"title": @"Enable Button Haptics"},
+                @{@"type": typeSlider, @"pref": @"GBHapticsStrength", @"min": @0.25, @"max": @1, @"minImage": @"waveform.weak", @"maxImage": @"waveform",
+                  @"previewBlock": ^void(void){
+                      [[GBHapticManager sharedManager] doTapHaptic];
+                  }
+                }
+            ],
+        },
+        @{
+            @"items": @[
                 @{@"type": typeCheck, @"pref": @"GBControllersHideInterface", @"title": @"Hide UI While Using a Controller"},
             ],
             @"footer": @"When enabled, the on-screen user interface will be hidden while a game controller is being used."
@@ -386,16 +396,6 @@ static NSString const *typeTurboSlider = @"turboSlider";
             @"items": @[
                 @{@"type": typeRadio, @"pref": @"GBFauxAnalogInputs", @"title": @"Digital",     @"value": @NO},
                 @{@"type": typeRadio, @"pref": @"GBFauxAnalogInputs", @"title": @"Faux Analog", @"value": @YES},
-            ],
-        },
-        @{
-            @"items": @[
-                @{@"type": typeCheck, @"pref": @"GBButtonHaptics", @"title": @"Enable Button Haptics"},
-                @{@"type": typeSlider, @"pref": @"GBHapticsStrength", @"min": @0.25, @"max": @1, @"minImage": @"waveform.weak", @"maxImage": @"waveform",
-                  @"previewBlock": ^void(void){
-                      [[GBHapticManager sharedManager] doTapHaptic];
-                  }
-                }
             ],
         },
 
@@ -633,6 +633,10 @@ static NSString *LocalizedNameForElement(GCControllerElement *element, GBControl
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Turbo",                          @"value": @(GBTurbo)},
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Rewind",                         @"value": @(GBRewind)},
                 @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Slow-motion",                    @"value": @(GBUnderclock)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Save State 1",                   @"value": @(GBSaveState1)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Load State 1",                   @"value": @(GBLoadState1)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Open Menu",                      @"value": @(GBOpenMenu)},
+                @{@"type": typeRadio, @"getter": getter, @"setter": setter, @"title": @"Reset",                          @"value": @(GBReset)},
             ]}],
         };
         if (@available(iOS 14.0, *)) {
