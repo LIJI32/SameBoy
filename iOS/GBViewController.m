@@ -159,6 +159,8 @@ API_AVAILABLE(ios(13.0))
     
     NSString *_lastSavedROM;
     NSDate *_saveDate;
+    
+    unsigned _autosaveCountdown;
 }
 
 static void loadBootROM(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -1459,6 +1461,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         return;
     }
     [self preRun];
+    const unsigned autosaveFrequency = 60 * 60;
+    _autosaveCountdown = autosaveFrequency;
     while (_running) {
         if (_rewind) {
             _rewind = false;
@@ -1488,6 +1492,11 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         }
         if (_runMode != GBRunModePaused) {
             GB_run(&_gb);
+            if (!_autosaveCountdown) {
+                _autosaveCountdown = autosaveFrequency;
+                [self preformAutosave];
+            }
+
         }
     }
     [self postRun];
@@ -1533,6 +1542,12 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     return ret;
 }
 
+- (void)preformAutosave
+{
+    GB_save_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
+    [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
+}
+
 - (void)postRun
 {
     [_audioLock lock];
@@ -1543,8 +1558,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     _audioClient = nil;
 
     if (!_swappingROM) {
-        GB_save_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
-        [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
+        [self preformAutosave];
 
         NSDate *date;
         [[NSURL fileURLWithPath:[GBROMManager sharedManager].autosaveStateFile] getResourceValue:&date
@@ -1683,6 +1697,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         _rapidBCount++;
         GB_set_key_state(&_gb, GB_KEY_B, !(_rapidBCount & 2));
     }
+    _autosaveCountdown--;
     if (_rapidA || _rapidB) {
         if (_runMode == GBRunModeRewind || _runMode == GBRunModePaused) {
             self.runMode = GBRunModeNormal;
