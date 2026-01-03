@@ -13,6 +13,8 @@
 - (void)enterPreviewMode:(bool)showLabel;
 - (void)reloadThemeImages;
 - (void)fadeOverlayOut;
+- (void)saveSwipeFromController:(bool)fromController;
+- (void)loadSwipeFromController:(bool)fromController;
 #ifdef APPSTORE
 - (void)setDefaultScreenLabel;
 - (void)setCloudScreenLabel;

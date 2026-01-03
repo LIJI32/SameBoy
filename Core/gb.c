@@ -58,6 +58,13 @@ static char *default_input_callback(GB_gameboy_t *gb)
 
     if (getline(&expression, &size, stdin) == -1) {
         /* The user doesn't have STDIN or used ^D. We make sure the program keeps running. */
+        
+        /* Some implementations may allocate expressions even on getline failure,
+           and other implementations may crash on free(NULL). Free expression if
+           it was allocated. */
+        if (expression) {
+            free(expression);
+        }
         GB_set_async_input_callback(gb, NULL); /* Disable async input */
         return strdup("c");
     }
@@ -272,7 +279,7 @@ void GB_borrow_sgb_border(GB_gameboy_t *gb)
     if (gb->border_mode != GB_BORDER_ALWAYS) return;
     if (gb->tried_loading_sgb_border) return;
     gb->tried_loading_sgb_border = true;
-    if (gb->rom && gb->rom[0x146] != 3) return; // Not an SGB game, nothing to borrow
+    if (!gb->rom || gb->rom[0x146] != 3) return; // Not an SGB game, nothing to borrow
     if (!gb->boot_rom_load_callback) return; // Can't borrow a border without this callback
     GB_gameboy_t sgb;
     GB_init(&sgb, GB_MODEL_SGB);
@@ -660,6 +667,7 @@ int GB_load_isx(GB_gameboy_t *gb, const char *path)
 done:;
 #undef READ
     if (gb->rom_size == 0) goto error;
+    fclose(f);
     
     size_t needed_size = (gb->rom_size + 0x3FFF) & ~0x3FFF; /* Round to bank */
     
@@ -1092,7 +1100,7 @@ int GB_load_battery(GB_gameboy_t *gb, const char *path)
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
-        return 0;
+        goto exit;
     }
     
     if (gb->cartridge_type->mbc_type == GB_HUC3) {
@@ -1111,7 +1119,7 @@ int GB_load_battery(GB_gameboy_t *gb, const char *path)
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
-        return 0;
+        goto exit;
     }
 
     rtc_save_t rtc_save;

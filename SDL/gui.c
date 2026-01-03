@@ -58,10 +58,6 @@ void render_texture(void *pixels,  void *previous)
         SDL_RenderPresent(renderer);
     }
     else {
-        static void *_pixels = NULL;
-        if (pixels) {
-            _pixels = pixels;
-        }
         glClearColor(0, 0, 0, 1);
         glClear(GL_COLOR_BUFFER_BIT);
         GB_frame_blending_mode_t mode = configuration.blending_mode;
@@ -76,7 +72,7 @@ void render_texture(void *pixels,  void *previous)
                 mode = GB_is_odd_frame(&gb)? GB_FRAME_BLENDING_MODE_ACCURATE_ODD : GB_FRAME_BLENDING_MODE_ACCURATE_EVEN;
             }
         }
-        render_bitmap_with_shader(&shader, _pixels, previous,
+        render_bitmap_with_shader(&shader, pixels, previous,
                                   GB_get_screen_width(&gb), GB_get_screen_height(&gb),
                                   rect.x, rect.y, rect.w, rect.h,
                                   mode);
@@ -1443,8 +1439,10 @@ static void cycle_palette(unsigned index)
         }
     }
     else if (configuration.dmg_palette == 4) {
+        bool found = false;
         for (unsigned i = 0; i < n_custom_palettes; i++) {
             if (strcmp(custom_palettes[i], configuration.dmg_palette_name) == 0) {
+                found = true;
                 if (i == n_custom_palettes - 1) {
                     configuration.dmg_palette = 0;
                 }
@@ -1453,6 +1451,9 @@ static void cycle_palette(unsigned index)
                 }
                 break;
             }
+        }
+        if (!found) {
+            configuration.dmg_palette = 0;
         }
     }
     else {
@@ -1475,7 +1476,9 @@ static void cycle_palette_backwards(unsigned index)
     }
     else if (configuration.dmg_palette == 4) {
         for (unsigned i = 0; i < n_custom_palettes; i++) {
+            bool found = false;
             if (strcmp(custom_palettes[i], configuration.dmg_palette_name) == 0) {
+                found = true;
                 if (i == 0) {
                     configuration.dmg_palette = 3;
                 }
@@ -1483,6 +1486,9 @@ static void cycle_palette_backwards(unsigned index)
                     strcpy(configuration.dmg_palette_name, custom_palettes[i - 1]);
                 }
                 break;
+            }
+            if (!found) {
+                configuration.dmg_palette = 3;
             }
         }
     }
@@ -2138,12 +2144,36 @@ static const char *current_hotkey(unsigned index)
     }) [configuration.hotkey_actions[index - 2]];
 }
 
+static void increase_rumble_strength(unsigned index)
+{
+    if (configuration.rumble_strength < 8) {
+        configuration.rumble_strength++;
+    }
+}
+
+static void decrease_rumble_strength(unsigned index)
+{
+    if (configuration.rumble_strength > 1) {
+        configuration.rumble_strength--;
+    }
+}
+
+const char *current_rumble_strength(unsigned index)
+{
+    static char ret[22];
+    strcpy(ret, TICKLESS_SLIDER_STRING);
+    unsigned pos = ((configuration.rumble_strength - 1) * (strlen(TICKLESS_SLIDER_STRING) - 1) + 3) / 7;
+    ret[pos] = SELECTED_SLIDER_STRING[pos];
+    return ret;
+}
+
 static const struct menu_item joypad_menu[] = {
     {"Joypad:", cycle_joypads, current_joypad_name, cycle_joypads_backwards},
     {"Configure layout", detect_joypad_layout},
     {"Hotkey 1 Action:", cycle_hotkey, current_hotkey, cycle_hotkey_backwards},
     {"Hotkey 2 Action:", cycle_hotkey, current_hotkey, cycle_hotkey_backwards},
     {"Rumble Mode:", cycle_rumble_mode, current_rumble_mode, cycle_rumble_mode_backwards},
+    {"Rumble Strength:", increase_rumble_strength, current_rumble_strength, decrease_rumble_strength},
     {"Analog Stick Behavior:", toggle_use_faux_analog_inputs, current_faux_analog_inputs, toggle_use_faux_analog_inputs},
     {"Enable Control:", toggle_allow_background_controllers, current_background_control_mode, toggle_allow_background_controllers},
     {"Back", enter_controls_menu},

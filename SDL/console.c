@@ -346,7 +346,6 @@ static bool redraw_prompt(bool force)
     else {
         printf("%.*s", (int)(left - 1), string);
         string += left;
-        left = 1;
         printf(SGR("2") "%c" SGR("0"), *string);
     }
     printf(CSI("%uG"), (unsigned)(line.position - line.scroll + prompt_length + 1));
@@ -595,6 +594,9 @@ static void no_csi_mainloop(void)
         
         errno = 0;
         if (getline(&expression, &size, stdin) <= 0) {
+            if (expression) {
+                free(expression);
+            }
             if (!errno) {
                 continue;
             }
@@ -656,7 +658,7 @@ mainloop(char *(*completer)(const char *substring, uintptr_t *context))
         else {
             c = raw_getc();
         }
-        if (c == EOF) {
+        if (c == (char)EOF) {
             return 0;
         }
 

@@ -231,6 +231,10 @@ static uint8_t cameraGetPixel(GB_gameboy_t *gb, uint8_t x, uint8_t y)
 static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
     GBViewController *self = (__bridge GBViewController *)GB_get_user_data(gb);
+    double strength = [[NSUserDefaults standardUserDefaults] doubleForKey:@"GBRumbleStrength"];
+    if (strength != 1) {
+        amp = pow(amp, strength) * strength;
+    }
     [self rumbleChanged:amp];
 }
 
@@ -763,6 +767,28 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                     _runModeFromController = false;
                 }
             }
+            break;
+        case GBSaveState1:
+            if (_romLoaded) {
+                [_backgroundView saveSwipeFromController:true];
+            }
+            break;
+        case GBLoadState1:
+            if (_romLoaded) {
+                [_backgroundView loadSwipeFromController:true];
+            }
+            break;
+        case GBReset:
+            if (_romLoaded) {
+                [self stop];
+                _skipAutoLoad = true;
+                GB_reset(&_gb);
+                [self start];
+            }
+            break;
+        case GBOpenMenu:
+            self.window.backgroundColor = nil;
+            [self presentViewController:[GBMenuViewController menu] animated:true completion:nil];
             break;
         default: break;
     }

@@ -108,6 +108,7 @@ static uint32_t color_to_int(NSColor *color)
                                                               
                                                               @"GBColorPalette": @1,
                                                               @"GBTurboCap": @0,
+                                                              @"GBRumbleStrength" : @1,
                                                               
                                                               // Default themes
                                                               @"GBThemes": @{

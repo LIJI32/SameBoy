@@ -83,17 +83,17 @@ char *do_save_recording_dialog(unsigned frequency)
 {
     OPENFILENAMEW dialog;
     wchar_t filename[MAX_PATH + 5] = L"recording.wav";
-    static wchar_t filter[] = L"RIFF WAVE\0*.wav\0Apple AIFF\0*.aiff;*.aif;*.aifc\0Raw PCM (Stereo _______Hz, 16-bit LE)\0*.raw;*.pcm;\0All files\0*.*\0\0";
+    static wchar_t filter[] = L"RIFF WAVE\0*.wav\0Apple AIFF\0*.aiff;*.aif;*.aifc\0Raw PCM (Stereo \u200b\u200b\u200b\u200b\u200b\u200b\u200bHz, 16-bit LE)\0*.raw;*.pcm;\0All files\0*.*\0\0";
 
     memset(&dialog, 0, sizeof(dialog));
     dialog.lStructSize = sizeof(dialog);
     dialog.lpstrFile = filename;
     dialog.nMaxFile = MAX_PATH;
     dialog.lpstrFilter = filter;
-    swprintf(filter + sizeof("RIFF WAVE\0*.wav\0Apple AIFF\0*.aiff;*.aif;*.aifc\0Raw PCM (Stereo ") - 1,
-             sizeof("_______Hz, 16-bit LE)"),
-             L"%dHz, 16-bit LE)       ",
-             frequency);
+        
+    wchar_t temp[11];
+    _itow(frequency, temp, 10);
+    memcpy(filter + sizeof("RIFF WAVE\0*.wav\0Apple AIFF\0*.aiff;*.aif;*.aifc\0Raw PCM (Stereo ") - 1, temp, min(wcslen(temp), 7) * sizeof(wchar_t));
 
     dialog.nFilterIndex = 1;
     dialog.lpstrInitialDir = NULL;

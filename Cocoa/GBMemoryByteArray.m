@@ -179,7 +179,17 @@
         case 0x5:
         case 0x6:
         case 0x7: {
-            return; // ROM not writeable
+            uint16_t bank;
+            size_t size;
+            uint8_t *data = GB_get_direct_access(gb, range.location < 0x4000? GB_DIRECT_ACCESS_ROM0 : GB_DIRECT_ACCESS_ROM, &size, &bank);
+            if (_mode != GBMemoryEntireSpace && range.location >= 0x4000) {
+                bank = self.selectedBank & (size / 0x4000 - 1);
+            }
+            uint8_t sliceData[range.length];
+            [slice copyBytes:sliceData range:HFRangeMake(0, range.length)];
+            memcpy(data + bank * 0x4000 + (range.location & 0x3FFF), sliceData, range.length);
+            [_document setROMModified];
+            break;
         }
         case 0x8:
         case 0x9: {

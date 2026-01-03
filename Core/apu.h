@@ -138,7 +138,7 @@ typedef struct
         uint8_t alignment; // If (NR43 & 7) != 0, samples are aligned to 512KHz clock instead of
                            // 1MHz. This variable keeps track of the alignment.
         bool current_lfsr_sample;
-        int8_t delta;
+        bool did_step_counter;
         bool countdown_reloaded;
         uint8_t dmg_delayed_start;
         GB_envelope_clock_t envelope_clock;
@@ -152,6 +152,10 @@ typedef struct
     uint8_t pcm_mask[2]; // For CGB-0 to CGB-C PCM read glitch
     
     bool apu_cycles_in_2mhz; // For compatibility with 0.16.x save states
+    bool pending_envelope_tick;
+    // Move to noise struct when breaking compat
+    bool noise_counter_active;
+    bool noise_background_counter_active;
 } GB_apu_t;
 
 typedef enum {
@@ -230,6 +234,7 @@ internal void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value);
 internal uint8_t GB_apu_read(GB_gameboy_t *gb, uint8_t reg);
 internal void GB_apu_div_event(GB_gameboy_t *gb);
 internal void GB_apu_div_secondary_event(GB_gameboy_t *gb);
+internal void GB_apu_delayed_envelope_tick(GB_gameboy_t *gb);
 internal void GB_apu_init(GB_gameboy_t *gb);
 internal void GB_apu_run(GB_gameboy_t *gb, bool force);
 #endif

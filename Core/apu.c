@@ -541,7 +541,21 @@ static void tick_square_envelope(GB_gameboy_t *gb, GB_channel_t index)
             gb->apu.pcm_mask[0] &= gb->apu.square_channels[GB_SQUARE_1].current_volume | 0xF1;
         }
         else {
-            gb->apu.pcm_mask[0] &= (gb->apu.square_channels[GB_SQUARE_2].current_volume << 2) | 0x1F;
+            /* Note: CGB-0 behavior is instance specific and non-deterministic. Emulated behavior follows my CGB-0,
+                     except that my CGB-0 sometimes yields "1" for 8->7 and 4->3 transitions. */
+            uint8_t mask;
+            if (unlikely(gb->model == GB_MODEL_CGB_0)) {
+                if (gb->apu.square_channels[GB_SQUARE_2].current_volume == 1 && (gb->io_registers[GB_IO_NR22] & 8)) {
+                    mask = 0x1F;
+                }
+                else {
+                    mask = 0x3F;
+                }
+            }
+            else {
+                mask = 0x3F;
+            }
+            gb->apu.pcm_mask[0] &= (gb->apu.square_channels[GB_SQUARE_2].current_volume << 4) | mask;
         }
     }
     
@@ -568,7 +582,7 @@ static void tick_noise_envelope(GB_gameboy_t *gb)
     if (!(nr42 & 7)) return;
 
     if (gb->cgb_double_speed) {
-        gb->apu.pcm_mask[0] &= (gb->apu.noise_channel.current_volume << 2) | 0x1F;
+        gb->apu.pcm_mask[1] &= (gb->apu.noise_channel.current_volume << 4) | 0x1F;
     }
     
     if (nr42 & 8) {
@@ -630,7 +644,27 @@ static void trigger_sweep_calculation(GB_gameboy_t *gb)
     }
 }
 
-void GB_apu_div_event(GB_gameboy_t *gb)
+noinline void GB_apu_delayed_envelope_tick(GB_gameboy_t *gb)
+{
+    gb->apu.pending_envelope_tick = false;
+    if (!gb->apu.global_enable) return;
+    
+    GB_apu_run(gb, true);
+    gb->apu.pcm_mask[0] = gb->apu.pcm_mask[1] = 0xFF;
+
+
+    unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
+        if (gb->apu.square_channels[i].envelope_clock.clock) {
+            tick_square_envelope(gb, i);
+        }
+    }
+    
+    if (gb->apu.noise_channel.envelope_clock.clock) {
+        tick_noise_envelope(gb);
+    }
+}
+
+noinline void GB_apu_div_event(GB_gameboy_t *gb)
 {
     GB_apu_run(gb, true);
     gb->apu.pcm_mask[0] = gb->apu.pcm_mask[1] = 0xFF;
@@ -648,7 +682,7 @@ void GB_apu_div_event(GB_gameboy_t *gb)
     }
 
     if ((gb->apu.div_divider & 7) == 7) {
-        unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
+        unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
             if (!gb->apu.square_channels[i].envelope_clock.clock) {
                 gb->apu.square_channels[i].volume_countdown--;
                 gb->apu.square_channels[i].volume_countdown &= 7;
@@ -660,18 +694,23 @@ void GB_apu_div_event(GB_gameboy_t *gb)
         }
     }
 
-    unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
-        if (gb->apu.square_channels[i].envelope_clock.clock) {
-            tick_square_envelope(gb, i);
+    if (gb->cgb_double_speed && (gb->model == GB_MODEL_CGB_D || gb->model == GB_MODEL_CGB_E)) {
+        gb->apu.pending_envelope_tick = true;
+    }
+    else {
+        unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
+            if (gb->apu.square_channels[i].envelope_clock.clock) {
+                tick_square_envelope(gb, i);
+            }
+        }
+        
+        if (gb->apu.noise_channel.envelope_clock.clock) {
+            tick_noise_envelope(gb);
         }
     }
     
-    if (gb->apu.noise_channel.envelope_clock.clock) {
-        tick_noise_envelope(gb);
-    }
-    
     if ((gb->apu.div_divider & 1) == 1) {
-        unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
+        unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
             if (gb->apu.square_channels[i].length_enabled) {
                 if (gb->apu.square_channels[i].pulse_length) {
                     if (!--gb->apu.square_channels[i].pulse_length) {
@@ -718,11 +757,13 @@ void GB_apu_div_event(GB_gameboy_t *gb)
     }
 }
 
-void GB_apu_div_secondary_event(GB_gameboy_t *gb)
+noinline void GB_apu_div_secondary_event(GB_gameboy_t *gb)
 {
     GB_apu_run(gb, true);
+    gb->apu.pcm_mask[0] = gb->apu.pcm_mask[1] = 0xFF;
+
     if (!gb->apu.global_enable) return;
-    unrolled for (unsigned i = GB_SQUARE_2 + 1; i--;) {
+    unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
         uint8_t nrx2 = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR12 : GB_IO_NR22];
         if (gb->apu.is_active[i] && gb->apu.square_channels[i].volume_countdown == 0) {
             set_envelope_clock(&gb->apu.square_channels[i].envelope_clock,
@@ -975,8 +1016,8 @@ restart:;
             }
         }
         
-        // The noise channel can step even if inactive on the DMG
-        if (gb->apu.is_active[GB_NOISE] || !GB_is_cgb(gb)) {
+        // TODO: verify these conditions one a DMG somehow
+        if (gb->apu.noise_counter_active || gb->apu.noise_background_counter_active) {
             uint16_t cycles_left = cycles;
             unsigned divisor = (gb->io_registers[GB_IO_NR43] & 0x07) << 2;
             if (!divisor) divisor = 2;
@@ -986,24 +1027,33 @@ restart:;
             // This while doesn't get an unlikely because the noise channel steps frequently enough
             while (cycles_left >= gb->apu.noise_channel.counter_countdown) {
                 cycles_left -= gb->apu.noise_channel.counter_countdown;
-                gb->apu.noise_channel.counter_countdown = divisor + gb->apu.noise_channel.delta;
-                gb->apu.noise_channel.delta = 0;
-                bool old_bit = (gb->apu.noise_channel.counter >> (gb->io_registers[GB_IO_NR43] >> 4)) & 1;
+                gb->apu.noise_channel.counter_countdown = divisor;
+                uint16_t mask = 1 << (gb->io_registers[GB_IO_NR43] >> 4);
+                bool old_bit = gb->apu.noise_channel.counter & mask;
                 gb->apu.noise_channel.counter++;
                 gb->apu.noise_channel.counter &= 0x3FFF;
-                bool new_bit = (gb->apu.noise_channel.counter >> (gb->io_registers[GB_IO_NR43] >> 4)) & 1;
+                gb->apu.noise_channel.did_step_counter = true;
+                bool new_bit = gb->apu.noise_channel.counter & mask;
 
                 /* Step LFSR */
-                if (new_bit && !old_bit) {
-                    if (cycles_left == 0 && gb->apu.samples[GB_NOISE] == 0) {
+                if (new_bit && !old_bit && gb->apu.is_active[GB_NOISE]) {
+                    if (cycles_left == 0 && gb->apu.samples[GB_NOISE] == 0 && !gb->cgb_double_speed) {
                         gb->apu.pcm_mask[1] &= 0x0F;
                     }
                     step_lfsr(gb, cycles - cycles_left);
                 }
+                if (divisor != 2) {
+                    gb->apu.noise_background_counter_active = false;
+                    if (unlikely(!gb->apu.noise_counter_active)) {
+                        break;
+                    }
+                }
             }
             if (cycles_left) {
-                gb->apu.noise_channel.counter_countdown -= cycles_left;
-                gb->apu.noise_channel.countdown_reloaded = false;
+                if (likely(gb->apu.noise_counter_active || gb->apu.noise_background_counter_active)) {
+                    gb->apu.noise_channel.counter_countdown -= cycles_left;
+                    gb->apu.noise_channel.countdown_reloaded = false;
+                }
             }
             else {
                 gb->apu.noise_channel.countdown_reloaded = true;
@@ -1277,6 +1327,124 @@ static noinline void nr10_write_glitch(GB_gameboy_t *gb, uint8_t value)
 
 }
 
+static void prepare_noise_start(GB_gameboy_t *gb)
+{
+    /*
+     TODO: When restarting a channel right after starting it, before it has the chance to tick the counter, things
+     behave differently. Only certain behaviors of this edge case are emulated.
+    */
+    
+    /*
+     TODO: Restarting a channel in double speed mode under CGB-C and older is not accurate if the divisor is 0 or 1.
+           Specifically in the 0 case, the initial LFSR value seems to be deterministic, but dependant on various
+           parameters. It is neither 0 or the equaly unexplained 0x0055.
+    */
+    gb->apu.noise_counter_active = gb->io_registers[GB_IO_NR42] & 0xF8; // Resets on APU off and DAC disable
+    unsigned divisor = (gb->io_registers[GB_IO_NR43] & 0x07);
+    bool was_background_counting = gb->apu.noise_background_counter_active;
+    gb->apu.noise_background_counter_active = divisor == 0;
+    bool instant_step = false;
+    bool div_1_glitch = false;
+    
+    if (divisor > 1 && gb->apu.noise_channel.counter_countdown == 1) {
+        gb->apu.noise_channel.counter++;
+        gb->apu.noise_channel.counter &= 0x3FFF;
+    }
+    else if (divisor > 1 && gb->apu.noise_channel.counter_countdown == 2 && gb->apu.is_active[GB_NOISE] && gb->model <= GB_MODEL_CGB_C && gb->cgb_double_speed) {
+        gb->apu.noise_channel.counter++;
+        gb->apu.noise_channel.counter &= 0x3FFF;
+    }
+    else if (gb->apu.noise_channel.counter_countdown == 2 &&
+        (gb->apu.noise_channel.alignment & 3) == 0 &&
+        gb->apu.is_active[GB_NOISE]) {
+        if (divisor == 0) {
+            divisor = 8;
+        }
+        else if (divisor == 1) {
+            /* TODO: I'm not 100% sure this only affects NR43 = 1X */
+            if ((gb->io_registers[GB_IO_NR43] & 0xf0) == 0x10 && (gb->apu.noise_channel.counter & 1)) {
+                instant_step = true;
+            }
+            /* TODO: needs further research, the conditions are very odd. What if NR43 changes before stepping? */
+            if ((gb->io_registers[GB_IO_NR43] & 0xf0) == 0x10 && !gb->apu.noise_channel.did_step_counter) {
+                div_1_glitch = true;
+            }
+        }
+    }
+    gb->apu.noise_channel.counter_countdown = divisor == 0? 6 : divisor * 4 + 6;
+    if  (gb->apu.noise_channel.alignment & 1) {
+        if (!divisor) {
+            if (gb->model <= GB_MODEL_CGB_C) {
+                gb->apu.noise_channel.counter_countdown++;
+            }
+            else if (was_background_counting) {
+                gb->apu.noise_channel.counter_countdown--;
+            }
+            else {
+                gb->apu.noise_channel.counter_countdown++;
+            }
+        }
+        else {
+            if (gb->apu.noise_channel.alignment & 2) {
+                if (divisor == 1 && !gb->apu.is_active[GB_NOISE]) {
+                    gb->apu.noise_channel.counter_countdown++;
+                }
+                else {
+                    gb->apu.noise_channel.counter_countdown -= 3;
+                }
+            }
+            else {
+                gb->apu.noise_channel.counter_countdown--;
+                if (divisor == 1 && gb->apu.is_active[GB_NOISE]) {
+                    gb->apu.noise_channel.counter_countdown -= 4;
+                }
+            }
+        }
+    }
+    else {
+        if (divisor) {
+            if (gb->apu.noise_channel.alignment & 2) {
+                if (gb->cgb_double_speed && gb->model <= GB_MODEL_CGB_C && divisor == 1) {
+                    gb->apu.noise_channel.counter_countdown += 2;
+                }
+                else {
+                    gb->apu.noise_channel.counter_countdown -= 2;
+                }
+            }
+            else if (divisor > 1 && (!gb->cgb_double_speed || gb->model > GB_MODEL_CGB_C)) {
+                gb->apu.noise_channel.counter_countdown -= 4;
+            }
+            /* TODO: This quirk seems way too specific */
+            else if (divisor == 1 && gb->apu.is_active[GB_NOISE] && !(gb->io_registers[GB_IO_NR43] & 0xf0)) {
+                gb->apu.noise_channel.counter_countdown -= 4;
+            }
+        }
+        else if (gb->cgb_double_speed && gb->model <= GB_MODEL_CGB_C) {
+            gb->apu.noise_channel.counter_countdown += 2;
+        }
+    }
+    
+    /* TODO: This is weird, is the clock going out of sync? */
+    if (!divisor && gb->model <= GB_MODEL_CGB_C && was_background_counting && !gb->apu.is_active[GB_NOISE]) {
+        gb->apu.noise_channel.counter_countdown--;
+    }
+    if (div_1_glitch) {
+        gb->apu.noise_channel.counter_countdown -= 4;
+    }
+    
+    if (!divisor && gb->apu.is_active[GB_NOISE] && (gb->apu.noise_channel.alignment & 3) == 3) {
+        /* TODO: I have no clue where this number comes from, but this number is confirmed for this edge case even for
+                 side LFSR, despite being seemingly arbitrary. */
+        gb->apu.noise_channel.lfsr = 0x0055;
+    }
+    else {
+        gb->apu.noise_channel.lfsr = 0;
+    }
+    if (instant_step) {
+        step_lfsr(gb, 0);
+    }
+}
+
 void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
 {
     GB_apu_run(gb, true);
@@ -1443,7 +1611,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                             force_unsurpressed = true;
                         }
                     }
-                    gb->apu.square_channels[index].delay = 6 - gb->apu.lf_div;
+                    gb->apu.square_channels[index].delay = 6 + gb->apu.lf_div * (gb->model < GB_MODEL_CGB_D && gb->cgb_double_speed? 1 : -1);
                     gb->apu.square_channels[index].sample_countdown = (gb->apu.square_channels[index].sample_length ^ 0x7FF) * 2 + gb->apu.square_channels[index].delay;
                 }
                 else {
@@ -1466,7 +1634,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.square_channels[index].sample_countdown = (gb->apu.square_channels[index].sample_length ^ 0x7FF) * 2 + gb->apu.square_channels[index].delay;
                 }
                 gb->apu.square_channels[index].current_volume = gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] >> 4;
-                /* The volume changes caused by NRX4 sound start take effect instantly (i.e. the effect the previously
+                /* The volume changes caused by NRx4 sound start takes effect instantly (i.e. the effect the previously
                    started sound). The playback itself is not instant which is why we don't update the sample for other
                    cases. */
                 if (gb->apu.is_active[index]) {
@@ -1650,6 +1818,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 gb->io_registers[reg] = value;
                 gb->apu.is_active[GB_NOISE] = false;
                 update_sample(gb, GB_NOISE, 0, 0);
+                gb->apu.noise_counter_active = false;
             }
             else if (gb->apu.is_active[GB_NOISE]) {
                 nrx2_glitch(gb, &gb->apu.noise_channel.current_volume,
@@ -1680,7 +1849,6 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.noise_channel.counter_countdown =
                     divisor + (divisor == 2? 0 : inline_const(uint8_t[], {2, 1, 4, 3})[(gb->apu.noise_channel.alignment) & 3]);
                 }
-                gb->apu.noise_channel.delta = 0;
             }
             /* Step LFSR */
             if (new_bit && (!old_bit || gb->model <= GB_MODEL_CGB_C)) {
@@ -1705,70 +1873,14 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.noise_channel.dmg_delayed_start = 6;
                 }
                 else {
-                    unsigned divisor = (gb->io_registers[GB_IO_NR43] & 0x07) << 2;
-                    if (!divisor) divisor = 2;
-                    gb->apu.noise_channel.delta = 0;
-                    gb->apu.noise_channel.counter_countdown = divisor + 4;
-                    if (divisor == 2) {
-                        if (gb->model <= GB_MODEL_CGB_C) {
-                            gb->apu.noise_channel.counter_countdown += gb->apu.lf_div;
-                            if (!gb->cgb_double_speed) {
-                                gb->apu.noise_channel.counter_countdown -= 1;
-                            }
-                        }
-                        else {
-                            gb->apu.noise_channel.counter_countdown += 1 - gb->apu.lf_div;
-                        }
-                    }
-                    else {
-                        if (gb->model <= GB_MODEL_CGB_C) {
-                            gb->apu.noise_channel.counter_countdown += inline_const(uint8_t[], {2, 1, 4, 3})[gb->apu.noise_channel.alignment & 3];
-                        }
-                        else {
-                            gb->apu.noise_channel.counter_countdown += inline_const(uint8_t[], {2, 1, 0, 3})[gb->apu.noise_channel.alignment & 3];
-                        }
-                        if (((gb->apu.noise_channel.alignment + 1) & 3) < 2) {
-                            if ((gb->io_registers[GB_IO_NR43] & 0x07) == 1) {
-                                gb->apu.noise_channel.counter_countdown -= 2;
-                                gb->apu.noise_channel.delta = 2;
-                            }
-                            else {
-                                gb->apu.noise_channel.counter_countdown -= 4;
-                            }
-                        }
-                    }
+                    prepare_noise_start(gb);
                     
-                    /* TODO: These are quite weird. Verify further */
-                    if (gb->model <= GB_MODEL_CGB_C) {
-                        if (gb->cgb_double_speed) {
-                            if (!(gb->io_registers[GB_IO_NR43] & 0xF0) && (gb->io_registers[GB_IO_NR43] & 0x07)) {
-                                 gb->apu.noise_channel.counter_countdown -= 1;
-                            }
-                            else if ((gb->io_registers[GB_IO_NR43] & 0xF0) && !(gb->io_registers[GB_IO_NR43] & 0x07)) {
-                                gb->apu.noise_channel.counter_countdown += 1;
-                            }
-                        }
-                        else {
-                            gb->apu.noise_channel.counter_countdown -= 2;
-                        }
-                    }
-   
                     gb->apu.noise_channel.current_volume = gb->io_registers[GB_IO_NR42] >> 4;
-
-                    /* The volume changes caused by NRX4 sound start take effect instantly (i.e. the effect the previously
-                     started sound). The playback itself is not instant which is why we don't update the sample for other
-                     cases. */
-                    if (gb->apu.is_active[GB_NOISE]) {
-                        update_sample(gb, GB_NOISE,
-                                      gb->apu.noise_channel.current_lfsr_sample ?
-                                      gb->apu.noise_channel.current_volume : 0,
-                                      0);
-                    }
-                    gb->apu.noise_channel.lfsr = 0;
                     gb->apu.noise_channel.current_lfsr_sample = false;
                     gb->apu.noise_channel.volume_countdown = gb->io_registers[GB_IO_NR42] & 7;
+                    gb->apu.noise_channel.did_step_counter = false;
 
-                    if (!gb->apu.is_active[GB_NOISE] && (gb->io_registers[GB_IO_NR42] & 0xF8) != 0) {
+                    if (gb->io_registers[GB_IO_NR42] & 0xF8) {
                         gb->apu.is_active[GB_NOISE] = true;
                         update_sample(gb, GB_NOISE, 0, 0);
                     }
