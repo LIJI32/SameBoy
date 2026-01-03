@@ -120,6 +120,8 @@
     __weak NSThread *_emulationThread;
     
     GBCheatSearchController *_cheatSearchController;
+    
+    bool _romModified;
 }
 
 static void boot_rom_load(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -1095,11 +1097,6 @@ again:;
     self.memoryBankItem.enabled = false;
 }
 
-+ (BOOL)autosavesInPlace 
-{
-    return true;
-}
-
 - (NSString *)windowNibName 
 {
     // Override returning the nib file name of the document
@@ -1295,20 +1292,22 @@ static bool is_path_writeable(const char *path)
     }
     
     NSString *rom_warnings = [self captureOutputForBlock:^{
-        GB_debugger_clear_symbols(&_gb);
-        if ([[[fileName pathExtension] lowercaseString] isEqualToString:@"isx"]) {
-            ret = GB_load_isx(&_gb, fileName.UTF8String);
-            if (!self.isCartContainer) {
-                GB_load_battery(&_gb, [[self.fileURL URLByDeletingPathExtension] URLByAppendingPathExtension:@"ram"].path.UTF8String);
+        if (!_romModified) {
+            GB_debugger_clear_symbols(&_gb);
+            if ([[[fileName pathExtension] lowercaseString] isEqualToString:@"isx"]) {
+                ret = GB_load_isx(&_gb, fileName.UTF8String);
+                if (!self.isCartContainer) {
+                    GB_load_battery(&_gb, [[self.fileURL URLByDeletingPathExtension] URLByAppendingPathExtension:@"ram"].path.UTF8String);
+                }
             }
-        }
-        else if ([[[fileName pathExtension] lowercaseString] isEqualToString:@"gbs"]) {
-            __block GB_gbs_info_t info;
-            ret = GB_load_gbs(&_gb, fileName.UTF8String, &info);
-            [self prepareGBSInterface:&info];
-        }
-        else {
-            ret = GB_load_rom(&_gb, [fileName UTF8String]);
+            else if ([[[fileName pathExtension] lowercaseString] isEqualToString:@"gbs"]) {
+                __block GB_gbs_info_t info;
+                ret = GB_load_gbs(&_gb, fileName.UTF8String, &info);
+                [self prepareGBSInterface:&info];
+            }
+            else {
+                ret = GB_load_rom(&_gb, [fileName UTF8String]);
+            }
         }
         if (GB_save_battery_size(&_gb)) {
             if (!is_path_writeable(self.savPath.UTF8String)) {
@@ -1467,6 +1466,12 @@ static bool is_path_writeable(const char *path)
     }
     else if ([anItem action] == @selector(reloadROM:)) {
         return !_gbsTracks;
+    }
+    else if ([anItem action] == @selector(saveDocument:)) {
+        return _romModified;
+    }
+    else if ([anItem action] == @selector(saveDocumentAs:)) {
+        return _romModified && !self.isCartContainer;
     }
     
     return [super validateUserInterfaceItem:anItem];
@@ -2915,6 +2920,8 @@ enum GBWindowResizeAction
         [self stop];
     }
     
+    _romModified = false;
+    [self updateChangeCount:NSChangeCleared];
     [self loadROM];
 
     if (wasRunning) {
@@ -2967,6 +2974,24 @@ enum GBWindowResizeAction
 - (IBAction)debuggerButtonPressed:(NSButton *)sender
 {
     [self queueDebuggerCommand:sender.alternateTitle];
+}
+
+- (void)setROMModified
+{
+    _romModified = true;
+    [self updateChangeCount:NSChangeDone];
+}
+
+- (BOOL)writeToFile:(NSString *)path ofType:(NSString *)type
+{
+    if ([type isEqualToString:@"Game Boy Cartridge"]) {
+        if (![[NSFileManager defaultManager] copyItemAtPath:self.fileName toPath:path error:nil]) return false;
+        path = self.romPath;
+        if (!path) return false;
+    }
+    size_t size;
+    uint8_t *data = GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_ROM, &size, NULL);
+    return [[NSData dataWithBytesNoCopy:data length:size freeWhenDone:false] writeToFile:path atomically:true];
 }
 
 + (NSArray<NSString *> *)readableTypes

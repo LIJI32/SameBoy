@@ -113,6 +113,21 @@
                                     <action selector="performClose:" target="-1" id="HmO-Ls-i7Q"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Save ROM Modifications" secondaryImage="square.and.arrow.down" catalog="system" keyEquivalent="s" id="Qru-qh-5Z6">
+                                <connections>
+                                    <action selector="saveDocument:" target="-1" id="pnc-7c-MfV"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Save ROM Modifications As…" secondaryImage="square.and.arrow.down.on.square" catalog="system" keyEquivalent="S" id="VfB-dj-N2W">
+                                <connections>
+                                    <action selector="saveDocumentAs:" target="-1" id="WoY-vv-bxg"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Reload ROM" secondaryImage="arrow.trianglehead.2.counterclockwise.rotate.90" catalog="system" keyEquivalent="R" id="taf-tK-jqI">
+                                <connections>
+                                    <action selector="reloadROM:" target="-1" id="Uyv-4C-cYd"/>
+                                </connections>
+                            </menuItem>
                         </items>
                     </menu>
                 </menuItem>
@@ -636,6 +651,7 @@
         <image name="speaker.slash" catalog="system" width="14" height="16"/>
         <image name="speaker.wave.3" catalog="system" width="22" height="15"/>
         <image name="square.and.arrow.down" catalog="system" width="15" height="17"/>
+        <image name="square.and.arrow.down.on.square" catalog="system" width="18" height="20"/>
         <image name="square.and.arrow.up" catalog="system" width="15" height="18"/>
         <image name="text.page.badge.magnifyingglass" catalog="system" width="15" height="18"/>
         <image name="wrench.and.screwdriver" catalog="system" width="19" height="18"/>
