@@ -2214,6 +2214,14 @@ retry:;
 #endif
 
 static bool help(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool trace_read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool trace_write(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool trace_clear(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool trace_dump(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool memory_scan(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool memory_scan_dump(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
+static bool memory_scan_clear(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command);
 
 
 /* Commands without implementations are aliases of the previous non-alias commands */
@@ -2275,6 +2283,16 @@ static const debugger_command_t commands[] = {
     {"dma", 3, dma, "Display the current OAM DMA status"},
 
     {"help", 1, help, "List available commands or show help for the specified command", "[<command>]"},
+    {"read", 4, read, "Read memory from the specified address", "<address>"},
+    {"trace_read", 7, trace_read, "Toggle logging of all memory reads"},
+    {"trace_write", 7, trace_write, "Toggle logging of all memory writes"},
+    {"trace_clear", 7, trace_clear, "Clear all memory read/write traces from the trace buffer"},
+    {"trace_dump", 7, trace_dump, "Dump all memory read/write traces (from trace buffer) to the "
+                                  "specified file", "<filename>"},
+    {"scan", 2, memory_scan, "Scan memory: 'all' initializes, 'exact <val>' filters by value, "
+                             "'changed'/'unchanged' filters by delta", "<type>", "(all|exact|changed|unchanged)"},
+    {"scan_dump", 6, memory_scan_dump, "Dump current scan results (matching addresses) to file", "<filename>"},
+    {"scan_clear", 6, memory_scan_clear, "Clear all memory scan results from the scan buffer"},
     {NULL,}, /* Null terminator */
 };
 
@@ -2350,6 +2368,219 @@ static bool help(GB_gameboy_t *gb, char *arguments, char *modifiers, const debug
             print_command_description(gb, command);
         }
     }
+    return true;
+}
+
+static bool read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    const char *stripped = lstrip(arguments);
+    if (!strlen(stripped)) {
+        print_usage(gb, command);
+        return true;
+    }
+
+    bool error;
+    value_t addr = debugger_evaluate(gb, stripped, (unsigned)strlen(stripped), &error, NULL);
+    if (error) {
+        GB_log(gb, "Could not evaluate address expression\n");
+        return true;
+    }
+    
+    uint8_t value = GB_read_memory(gb, addr.value);
+    GB_log(gb, "[$%04X] = $%02X (%s)\n", addr.value, value, value_to_string(gb, addr.value, true, false, false));
+    return true;
+}
+
+static bool trace_read(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    (void)arguments;
+    (void)command;
+    gb->memory_trace_read_enabled = !gb->memory_trace_read_enabled;
+    if (gb->memory_trace_read_enabled) {
+        GB_log(gb, "Memory read tracing enabled\n");
+    }
+    else {
+        GB_log(gb, "Memory read tracing disabled\n");
+    }
+    return true;
+}
+
+static bool trace_write(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    (void)arguments;
+    (void)command;
+    gb->memory_trace_write_enabled = !gb->memory_trace_write_enabled;
+    if (gb->memory_trace_write_enabled) {
+        GB_log(gb, "Memory write tracing enabled\n");
+    }
+    else {
+        GB_log(gb, "Memory write tracing disabled\n");
+    }
+    return true;
+}
+
+static bool trace_clear(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    (void)arguments;
+    (void)command;
+    memset(gb->memory_trace, 0, sizeof(gb->memory_trace));
+    memset(gb->memory_trace_ignore, 0, sizeof(gb->memory_trace_ignore));
+    GB_log(gb, "Memory read/write traces cleared\n");
+    return true;
+}
+
+static bool trace_dump(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    const char *filename = lstrip(arguments);
+    if (!strlen(filename)) {
+        print_usage(gb, command);
+        return true;
+    }
+    FILE *f = fopen(filename, "wb");
+    if (!f) {
+        GB_log(gb, "Could not open file \"%s\" for writing\n", filename);
+        return true;
+    }
+    fwrite(gb->memory_trace, sizeof(gb->memory_trace), 1, f);
+    fclose(f);
+    GB_log(gb, "Memory read/write traces dumped to \"%s\"\n", filename);
+    return true;
+}
+
+static bool memory_scan(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    const char *stripped = lstrip(arguments);
+    if (!strlen(stripped)) {
+        print_usage(gb, command);
+        return true;
+    }
+
+    const char *space = strchr(stripped, ' ');
+    const char *scan_type = stripped;
+    const char *value_str = NULL;
+    size_t type_length = space ? (size_t)(space - stripped) : strlen(stripped);
+    
+    if (space) {
+        value_str = lstrip(space + 1);
+        if (!strlen(value_str)) {
+            value_str = NULL;
+        }
+    }
+
+    value_t search_value = {0};
+    if (value_str) {
+        bool error;
+        search_value = debugger_evaluate(gb, value_str, (unsigned)strlen(value_str), &error, NULL);
+        if (error) {
+            GB_log(gb, "Could not evaluate value expression\n");
+            return true;
+        }
+    }
+
+    size_t n_found = 0;
+
+    if (strncmp(scan_type, "all", type_length) == 0) {
+        for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
+            gb->memory_search[addr] = 0x00;
+            gb->memory_search_last[addr] = GB_read_memory(gb, addr);
+            n_found++;
+        }
+    }
+    else if (strncmp(scan_type, "exact", type_length) == 0) {
+        if (!value_str) {
+            GB_log(gb, "Exact scan requires a value\n");
+            return true;
+        }
+        for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
+            if (GB_read_memory(gb, addr) != (uint8_t)(search_value.value & 0xFF)) {
+                gb->memory_search[addr] = 0xFF;
+            }
+
+            if (gb->memory_search[addr] != 0xFF) {
+                n_found++;
+            }
+        }
+    }
+    else if (strncmp(scan_type, "changed", type_length) == 0) {
+        for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
+            uint8_t current_value = GB_read_memory(gb, addr);
+            if (gb->memory_search[addr] != 0xFF && current_value == gb->memory_search_last[addr]) {
+                gb->memory_search[addr] = 0xFF;
+            }
+            gb->memory_search_last[addr] = current_value;
+
+            if (gb->memory_search[addr] != 0xFF) {
+                n_found++;
+            }
+        }
+    }
+    else if (strncmp(scan_type, "unchanged", type_length) == 0) {
+        for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
+            uint8_t current_value = GB_read_memory(gb, addr);
+            if (gb->memory_search[addr] != 0xFF && current_value != gb->memory_search_last[addr]) {
+                gb->memory_search[addr] = 0xFF;
+            }
+            gb->memory_search_last[addr] = current_value;
+
+            if (gb->memory_search[addr] != 0xFF) {
+                n_found++;
+            }
+        }
+    }
+    else {
+        GB_log(gb, "Unknown scan type \"%.*s\"\n", (int)type_length, scan_type);
+        return true;
+    }
+
+    if (n_found < 20) {
+        GB_log(gb, "Found addresses:\n");
+        for (uint32_t addr = 0; addr <= 0xFFFF; addr++) {
+            if (gb->memory_search[addr] != 0xFF) {
+                GB_log(gb, "  $%04X: $%02X\n", addr, GB_read_memory(gb, addr));
+            }
+        }
+    }
+
+    GB_log(gb, "Total of %zu occurrences found\n", n_found);
+    return true;
+}
+
+static bool memory_scan_dump(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    const char *filename = lstrip(arguments);
+    if (!strlen(filename)) {
+        print_usage(gb, command);
+        return true;
+    }
+    FILE *f = fopen(filename, "wb");
+    if (!f) {
+        GB_log(gb, "Could not open file \"%s\" for writing\n", filename);
+        return true;
+    }
+
+    fwrite(gb->memory_search, sizeof(gb->memory_search), 1, f);
+
+    fclose(f);
+    GB_log(gb, "Memory scan results dumped to \"%s\"\n", filename);
+    return true;
+}
+
+static bool memory_scan_clear(GB_gameboy_t *gb, char *arguments, char *modifiers, const debugger_command_t *command)
+{
+    NO_MODIFIERS
+    (void)arguments;
+    (void)modifiers;
+    (void)command;
+    memset(gb->memory_search, 0, sizeof(gb->memory_search));
+    memset(gb->memory_search_last, 0, sizeof(gb->memory_search_last));
+    GB_log(gb, "Memory scan cleared\n");
     return true;
 }
 
