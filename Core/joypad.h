@@ -1,6 +1,7 @@
 #pragma once
 #include "defs.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef enum {
     GB_KEY_RIGHT,
