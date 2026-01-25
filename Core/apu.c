@@ -1377,7 +1377,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
            rough approximation of the behavior.
          
            Due to having so up to 3 intermediate value, glitch behavior is complicated to look
-           into, so currently CGB-D behavior is arbitrarily used if a glitch occurs. */
+           into, so currently CGB-E behavior is arbitrarily used if a glitch occurs. */
         
         uint8_t glitch_value2 = 0;
         if (new >= 0x80 && old >= 0x80) {
@@ -1408,7 +1408,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
            which are deterministic. */
         if (new_bit) {
             /* Category 1 */
-            if (gb->model == GB_MODEL_CGB_E) {
+            if (gb->model >= GB_MODEL_CGB_E) {
                 if (!(new & 0x80)) {
                     step_lfsr(gb, 0);
                 }
@@ -1454,7 +1454,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
                     }
                 }
             }
-            else if (gb->model == GB_MODEL_CGB_D || gb->model > GB_MODEL_CGB_E) {
+            else if (gb->model == GB_MODEL_CGB_D) {
                 static const uint8_t glitch_map_l2h[8 * 8] = {
                     [000] = 0x00, 0x01, 0x01, 0x21, 0x02, 0x21,
                     [010] = 0x03, 0x00, 0x21, 0x01, 0x04, 0x04,
@@ -1544,7 +1544,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
         }
         else {
             /* Category 2 */
-            if (gb->model == GB_MODEL_CGB_E) {
+            if (gb->model >= GB_MODEL_CGB_E) {
                 static const uint8_t glitch_map[8 * 8] = {
                 /*    8          9          A          B          C          D         */
                                           [002] = 4, [003] = 2, [004] = 2, [005] = 2, // 0
@@ -1565,8 +1565,8 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
                         step_lfsr(gb, 0);
                         if (glitch == 6) {
                             /* TODO: Verify wide mode */
-                            if (gb->apu.noise_channel.narrow &&
-                                ((gb->apu.noise_channel.lfsr & 0x71) == 0x20) ||
+                            if ((gb->apu.noise_channel.narrow &&
+                                ((gb->apu.noise_channel.lfsr & 0x71) == 0x20)) ||
                                 (gb->apu.noise_channel.lfsr & 0x71) == 0x61) {
                                 gb->apu.noise_channel.lfsr &= ~0x20;
                             }
@@ -1590,7 +1590,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
                               The LFSR is unset if bit 0 & 1 are 0b10.
                               Bit 3 is complex and non-deterministic (TODO: wide mode) */
                         if ((gb->apu.noise_channel.lfsr & 0x3) == 2) {
-                            gb->apu.noise_channel.lfsr &= ~gb->apu.noise_channel.narrow? ~0x4040 : ~0x4000;
+                            gb->apu.noise_channel.lfsr &= gb->apu.noise_channel.narrow? ~0x4040 : ~0x4000;
                         }
                         
                         if ((gb->apu.noise_channel.lfsr & 0x19) == 8) {
