@@ -2101,7 +2101,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     gb->apu.noise_channel.current_volume = gb->io_registers[GB_IO_NR42] >> 4;
                     gb->apu.noise_channel.current_lfsr_sample = false;
                     gb->apu.noise_channel.volume_countdown = gb->io_registers[GB_IO_NR42] & 7;
-                    gb->apu.noise_channel.did_step_counter = false;
+                    gb->apu.noise_channel.did_step_counter = (gb->apu.noise_channel.alignment & 3) == 2;
 
                     if (gb->io_registers[GB_IO_NR42] & 0xF8) {
                         gb->apu.is_active[GB_NOISE] = true;
