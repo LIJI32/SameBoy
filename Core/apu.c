@@ -1049,12 +1049,6 @@ restart:;
                     }
                     step_lfsr(gb, cycles - cycles_left);
                 }
-                if (divisor != 2) {
-                    gb->apu.noise_background_counter_active = false;
-                    if (unlikely(!gb->apu.noise_counter_active)) {
-                        break;
-                    }
-                }
             }
             if (cycles_left) {
                 if (likely(gb->apu.noise_counter_active || gb->apu.noise_background_counter_active)) {
@@ -1227,9 +1221,11 @@ static void prepare_noise_start(GB_gameboy_t *gb)
            parameters. It is neither 0 or the equaly unexplained 0x0055.
     */
     gb->apu.noise_counter_active = gb->io_registers[GB_IO_NR42] & 0xF8; // Resets on APU off and DAC disable
+    bool was_started_with_dac_disabled = gb->apu.noise_started_with_dac_disabled;
+    gb->apu.noise_started_with_dac_disabled = !gb->apu.noise_counter_active;
     unsigned divisor = (gb->io_registers[GB_IO_NR43] & 0x07);
     bool was_background_counting = gb->apu.noise_background_counter_active;
-    gb->apu.noise_background_counter_active = divisor == 0;
+    gb->apu.noise_background_counter_active = true;
     bool instant_step = false;
     bool div_1_glitch = false;
     
@@ -1313,6 +1309,26 @@ static void prepare_noise_start(GB_gameboy_t *gb)
         }
         else if (gb->cgb_double_speed && gb->model <= GB_MODEL_CGB_C) {
             gb->apu.noise_channel.counter_countdown += 2;
+        }
+    }
+    
+    /* Background counting glitches */
+    /* TODO: Double speed mode not tested */
+    if (divisor > 1) {
+        if (!gb->apu.noise_counter_active && !(gb->apu.noise_channel.alignment & 3)) {
+            gb->apu.noise_channel.counter_countdown += 4;
+        }
+    }
+    else {
+        if (was_background_counting && !gb->apu.is_active[GB_NOISE] && !(gb->apu.noise_channel.alignment & 3)) {
+            if (divisor == 0) {
+                if (was_started_with_dac_disabled) { // TODO: Why is it different?
+                    gb->apu.noise_channel.counter_countdown += 28;
+                }
+            }
+            else {
+                gb->apu.noise_channel.counter_countdown -= 4;
+            }
         }
     }
     
@@ -2033,6 +2049,13 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         case GB_IO_NR42: {
             if ((value & 0xF8) == 0) {
                 /* This disables the DAC */
+                if (gb->apu.is_active[GB_NOISE] && gb->io_registers[GB_IO_NR43] & 7) {
+                    if (gb->apu.noise_channel.counter_countdown <= 2) {
+                        gb->apu.noise_channel.counter++;
+                    }
+                    gb->apu.noise_background_counter_active = false;
+                }
+
                 gb->io_registers[reg] = value;
                 gb->apu.is_active[GB_NOISE] = false;
                 update_sample(gb, GB_NOISE, 0, 0);

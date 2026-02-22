@@ -153,11 +153,13 @@ typedef struct
     
     bool apu_cycles_in_2mhz; // For compatibility with 0.16.x save states
     bool pending_envelope_tick;
+    
     // Move to noise struct when breaking compat
     bool noise_counter_active;
     bool noise_background_counter_active;
     bool lfsr_stepped_in_narrow;
     bool lfsr_bit_7_before_step; // Used by some corruptions?
+    bool noise_started_with_dac_disabled; // TODO: Background counting behaves slightly different this way?
 } GB_apu_t;
 
 typedef enum {
