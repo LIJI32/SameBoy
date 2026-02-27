@@ -55,7 +55,8 @@ On Windows, SameBoy also requires:
 To compile, simply run `make`. The targets are:
  * `cocoa` (Default for macOS)
  * `sdl` (Default for everything else)
- * `lib` (Creates libsameboy.o and libsameboy.a for statically linking SameBoy, as well as a headers directory with corresponding headers; currently not supported on Windows due to linker limitations)
+ * `lib` (Creates libsameboy.o and libsameboy.a for statically linking SameBoy, libsameboy.dylib/so/dll for dynamically linking SameBoy, as well as a headers directory with corresponding headers)
+   * Static libraries are currently not supported on Windows due to linker limitations.
  * `ios` (Plain iOS .app bundle), `ios-ipa` (iOS IPA archive for side-loading), `ios-deb` (iOS deb package for jailbroken devices)
  * `libretro`
  * `bootroms`
