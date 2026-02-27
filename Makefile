@@ -284,8 +284,8 @@ else
 GL_CFLAGS := $(shell $(PKG_CONFIG) --cflags gl)
 GL_LDFLAGS := $(shell $(PKG_CONFIG) --libs gl || echo -lGL)
 ifeq ($(NEED_LIBPNG),1)
-SDL_LDFLAGS += $(shell $(PKG_CONFIG) --cflags libpng)
-SDL_CFLAGS += $(shell $(PKG_CONFIG) --libs libpng || echo -lpng)
+SDL_LDFLAGS += $(shell $(PKG_CONFIG) --libs libpng || echo -lpng)
+SDL_CFLAGS += $(shell $(PKG_CONFIG) --cflags libpng)
 endif
 endif
 
