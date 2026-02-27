@@ -1,4 +1,3 @@
-#include <OpenDialog/open_dialog.h>
 #include <SDL.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -7,6 +6,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <ctype.h>
+#include "open_dialog/open_dialog.h"
 #include "utils.h"
 #include "gui.h"
 #include "font.h"

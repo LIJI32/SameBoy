@@ -179,14 +179,14 @@ RGBGFX_FLAGS := $(if $(filter $(shell echo 'println __RGBDS_MAJOR__ || (!__RGBDS
 
 # Set compilation and linkage flags based on target, platform and configuration
 
-OPEN_DIALOG = OpenDialog/gtk.c
+OPEN_DIALOG = SDL/open_dialog/gtk.c
 
 ifeq ($(PLATFORM),windows32)
-OPEN_DIALOG = OpenDialog/windows.c
+OPEN_DIALOG = SDL/open_dialog/windows.c
 endif
 
 ifeq ($(PLATFORM),Darwin)
-OPEN_DIALOG = OpenDialog/cocoa.m
+OPEN_DIALOG = SDL/open_dialog/cocoa.m
 endif
 
 # These must come before the -Wno- flags
@@ -462,7 +462,7 @@ $(OBJ)/SDL/%.dep: SDL/%
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
 	
-$(OBJ)/OpenDialog/%.dep: OpenDialog/%
+$(OBJ)/SDL/open_dialog/%.dep: SDL/open_dialog/%
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
 
@@ -496,7 +496,7 @@ $(OBJ)/XdgThumbnailer/resources.c $(OBJ)/XdgThumbnailer/resources.h: %: XdgThumb
 	CC=$(CC) glib-compile-resources --dependency-file $@.mk --generate-phony-targets --generate --target $@ $<
 -include $(OBJ)/XdgThumbnailer/resources.c.mk $(OBJ)/XdgThumbnailer/resources.h.mk
 
-$(OBJ)/OpenDialog/%.c.o: OpenDialog/%.c
+$(OBJ)/SDL/open_dialog/%.c.o: SDL/open_dialog/%.c
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -c $< -o $@
 

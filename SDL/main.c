@@ -5,15 +5,15 @@
 #include <unistd.h>
 #include <errno.h>
 #include <limits.h>
-#include <OpenDialog/open_dialog.h>
+#include <fcntl.h>
 #include <SDL.h>
 #include <Core/gb.h>
+#include "open_dialog/open_dialog.h"
 #include "utils.h"
 #include "gui.h"
 #include "shader.h"
 #include "audio/audio.h"
 #include "console.h"
-#include <fcntl.h>
 
 #ifdef _WIN32
 #include <Windows.h>
