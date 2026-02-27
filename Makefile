@@ -180,13 +180,19 @@ RGBGFX_FLAGS := $(if $(filter $(shell echo 'println __RGBDS_MAJOR__ || (!__RGBDS
 # Set compilation and linkage flags based on target, platform and configuration
 
 OPEN_DIALOG = SDL/open_dialog/gtk.c
+SAVE_PNG = SDL/save_png/libpng.c
+NEED_LIBPNG = 1
 
 ifeq ($(PLATFORM),windows32)
 OPEN_DIALOG = SDL/open_dialog/windows.c
+SAVE_PNG = SDL/save_png/windows.c
+NEED_LIBPNG = 0
 endif
 
 ifeq ($(PLATFORM),Darwin)
 OPEN_DIALOG = SDL/open_dialog/cocoa.m
+SAVE_PNG = SDL/save_png/appkit.m
+NEED_LIBPNG = 0
 endif
 
 # These must come before the -Wno- flags
@@ -271,15 +277,22 @@ endif
 
 ifeq (,$(PKG_CONFIG))
 GL_LDFLAGS := -lGL
+ifeq ($(NEED_LIBPNG),1)
+SDL_LDFLAGS += -lpng
+endif
 else
 GL_CFLAGS := $(shell $(PKG_CONFIG) --cflags gl)
 GL_LDFLAGS := $(shell $(PKG_CONFIG) --libs gl || echo -lGL)
+ifeq ($(NEED_LIBPNG),1)
+SDL_LDFLAGS += $(shell $(PKG_CONFIG) --cflags libpng)
+SDL_CFLAGS += $(shell $(PKG_CONFIG) --libs libpng || echo -lpng)
+endif
 endif
 
 ifeq ($(PLATFORM),windows32)
 CFLAGS += -IWindows -Drandom=rand --target=x86_64-pc-windows
 LDFLAGS += -lmsvcrt -lkernel32 -Wl,/MANIFESTFILE:NUL --target=x86_64-pc-windows
-SDL_LDFLAGS := -lSDL2 -lcomdlg32 -luser32 -lshell32 -lole32 -ladvapi32 -ldwmapi -lSDL2main
+SDL_LDFLAGS := -lSDL2 -lcomdlg32 -luser32 -lshell32 -lole32 -ladvapi32 -ldwmapi -lwindowscodecs -lSDL2main
 GL_LDFLAGS := -lopengl32 
 ifneq ($(REDIST_XAUDIO),)
 CFLAGS += -DREDIST_XAUDIO
@@ -417,7 +430,7 @@ endif
 
 CORE_SOURCES := $(filter-out $(CORE_FILTER),$(shell ls Core/*.c))
 CORE_HEADERS := $(shell ls Core/*.h)
-SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG) $(patsubst %,SDL/audio/%.c,$(SDL_AUDIO_DRIVERS))
+SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG) $(SAVE_PNG) $(patsubst %,SDL/audio/%.c,$(SDL_AUDIO_DRIVERS))
 TESTER_SOURCES := $(shell ls Tester/*.c)
 IOS_SOURCES := $(filter-out iOS/installer.m, $(shell ls iOS/*.m)) $(shell ls AppleCommon/*.m)
 COCOA_SOURCES := $(shell ls Cocoa/*.m) $(shell ls HexFiend/*.m) $(shell ls JoyKit/*.m) $(shell ls AppleCommon/*.m)
@@ -510,6 +523,11 @@ $(OBJ)/HexFiend/%.m.o: HexFiend/%.m
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) $(OCFLAGS) -c $< -o $@ -fno-objc-arc -include HexFiend/HexFiend_2_Framework_Prefix.pch
 	
+# Apple-specific code in SDL
+$(OBJ)/SDL/%.m.o: SDL/%.m
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) $(OCFLAGS) $(SDL_CFLAGS) -c $< -o $@
+    
 $(OBJ)/%.m.o: %.m
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) $(FRONTEND_CFLAGS) $(FAT_FLAGS) $(OCFLAGS) -c $< -o $@

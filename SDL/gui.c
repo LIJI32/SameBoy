@@ -81,21 +81,26 @@ void render_texture(void *pixels,  void *previous)
 }
 
 static const char *help[] = {
+// Shortcuts
 "Keyboard Shortcuts:\n"
-" Open Menu:        Escape\n"
+" Open menu:        Escape\n"
 " Open ROM:          " MODIFIER_NAME "+O\n"
 " Reset:             " MODIFIER_NAME "+R\n"
 " Pause:             " MODIFIER_NAME "+P\n"
 " Save state:    " MODIFIER_NAME "+(0-9)\n"
 " Load state:  " MODIFIER_NAME "+" SHIFT_STRING "+(0-9)\n"
-" Toggle Fullscreen  " MODIFIER_NAME "+F\n"
+" Toggle fullscreen  " MODIFIER_NAME "+F\n"
 #ifdef __APPLE__
 " Mute/Unmute:     " MODIFIER_NAME "+" SHIFT_STRING "+M\n"
+" Save screenshot:   " MODIFIER_NAME "+S\n"
 #else
 " Mute/Unmute:       " MODIFIER_NAME "+M\n"
+" Save screenshot:   F12\n"
 #endif
 " Toggle channel: " ALT_STRING "+(1-4)\n"
-" Break Debugger:    " CTRL_STRING "+C",
+" Break debugger:    " CTRL_STRING "+C",
+
+// About
 "\n"
 "SameBoy\n"
 "Version " GB_VERSION "\n\n"
