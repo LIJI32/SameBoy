@@ -24,6 +24,12 @@ typedef enum {
     GBUnusedButton = 0xFF,
 } GBButton;
 
+typedef enum {
+    GBControllerFocusOff,
+    GBControllerFocusOn,
+    GBControllerFocusDoNotCenter,
+} GBControllerFocus;
+
 @interface GBSettingsViewController : UITableViewController
 + (UIViewController *)settingsViewControllerWithLeftButton:(UIBarButtonItem *)button;
 + (GBButton)controller:(GCController *)controller convertUsageToButton:(GBControllerUsage)usage;

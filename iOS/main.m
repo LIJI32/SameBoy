@@ -2,6 +2,7 @@
 #import <Core/gb.h>
 #import "GBViewController.h"
 #import "GBView.h"
+#import "GBSettingsViewController.h"
 
 static double MigrateTurboSpeed(void)
 {
@@ -36,7 +37,7 @@ int main(int argc, char * argv[])
             @"GBRumbleStrength": @1,
             
             @"GBInterfaceTheme": @"SameBoy",
-            @"GBControllersHideInterface": @YES,
+            @"GBControllersHideInterface": @(GBControllerFocusOn),
                         
             @"GBCurrentTheme": @"Lime (Game Boy)",
             // Default themes

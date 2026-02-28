@@ -386,10 +386,12 @@ static NSString const *typeTurboSlider = @"turboSlider";
             ],
         },
         @{
+            @"header": @"While Using a Controller…",
             @"items": @[
-                @{@"type": typeCheck, @"pref": @"GBControllersHideInterface", @"title": @"Hide UI While Using a Controller"},
+                @{@"type": typeRadio, @"pref": @"GBControllersHideInterface", @"title": @"Keep the UI Visible", @"value": @(GBControllerFocusOff)},
+                @{@"type": typeRadio, @"pref": @"GBControllersHideInterface", @"title": @"Hide the UI", @"value": @(GBControllerFocusDoNotCenter)},
+                @{@"type": typeRadio, @"pref": @"GBControllersHideInterface", @"title": @"Hide the UI and Center the Screen", @"value": @(GBControllerFocusOn)},
             ],
-            @"footer": @"When enabled, the on-screen user interface will be hidden while a game controller is being used."
         },
         @{
             @"header": @"Controller Joystick Behavior",

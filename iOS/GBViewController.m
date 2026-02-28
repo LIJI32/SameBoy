@@ -638,7 +638,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)controllerDisconnected:(NSNotification *)notification
 {
     if (notification.object == _lastController) {
-        _backgroundView.fullScreenMode = false;
+        _backgroundView.fullScreenMode = GBControllerFocusOff;
     }
 }
 
@@ -685,9 +685,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (void)controller:(GCController *)controller buttonChanged:(GCControllerButtonInput *)button usage:(GBControllerUsage)usage
 {
     [self updateLastController:controller];
-    if (_running && button.value > 0.25 &&
-        [[NSUserDefaults standardUserDefaults] boolForKey:@"GBControllersHideInterface"]) {
-        _backgroundView.fullScreenMode = true;
+    if (_running && button.value > 0.25) {
+        _backgroundView.fullScreenMode = [[NSUserDefaults standardUserDefaults] integerForKey:@"GBControllersHideInterface"];
     }
     
     GBButton gbButton = [GBSettingsViewController controller:controller convertUsageToButton:usage];
@@ -813,9 +812,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     
     if (!hasUnmappedChild) return;
     
-    if (_running && (left || right || up || down ) &&
-        [[NSUserDefaults standardUserDefaults] boolForKey:@"GBControllersHideInterface"]) {
-        _backgroundView.fullScreenMode = true;
+    if (_running && (left || right || up || down)) {
+        _backgroundView.fullScreenMode = [[NSUserDefaults standardUserDefaults] integerForKey:@"GBControllersHideInterface"];
     }
     
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBFauxAnalogInputs"]) {
