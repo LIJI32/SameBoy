@@ -37,6 +37,8 @@ static typeof(free) *free_function = NULL;
 static char *battery_save_path_ptr = NULL;
 static SDL_GLContext gl_context = NULL;
 static bool console_supported = false;
+static bool battery_dirty = false;
+static unsigned battery_timer = 0;
 
 bool uses_gl(void)
 {
@@ -433,6 +435,9 @@ static void handle_events(GB_gameboy_t *gb)
                             break;
                         case HOTKEY_PAUSE:
                             paused = !paused;
+                            if (paused) {
+                                GB_save_battery(gb, battery_save_path_ptr);
+                            }
                             break;
                         case HOTKEY_MUTE:
                             GB_audio_set_paused(GB_audio_is_playing());
@@ -582,6 +587,9 @@ static void handle_events(GB_gameboy_t *gb)
                     case SDL_SCANCODE_P:
                         if (event.key.keysym.mod & MODIFIER) {
                             paused = !paused;
+                            if (paused) {
+                                GB_save_battery(gb, battery_save_path_ptr);
+                            }
                         }
                         break;
                     case SDL_SCANCODE_M:
@@ -758,6 +766,20 @@ static void vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
         }
     }
     do_rewind = rewind_down;
+    
+    battery_timer++;
+    if (battery_timer == 15) {
+        battery_timer = 0;
+        
+        if (battery_dirty && !GB_get_battery_dirty(gb)) {
+            GB_save_battery(gb, battery_save_path_ptr);
+            GB_log(gb, "Saved\n");
+        }
+        
+        battery_dirty = GB_get_battery_dirty(gb);
+        GB_clear_battery_dirty(gb);
+    }
+    
     handle_events(gb);
 }
 

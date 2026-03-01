@@ -2032,6 +2032,17 @@ void GB_get_rom_title(GB_gameboy_t *gb, char *title)
     }
 }
 
+bool GB_get_battery_dirty(GB_gameboy_t *gb)
+{
+    if (GB_save_battery_size(gb) == 0) return false;
+    return gb->battery_dirty;
+}
+
+void GB_clear_battery_dirty(GB_gameboy_t *gb)
+{
+    gb->battery_dirty = false;
+}
+
 uint32_t GB_get_rom_crc32(GB_gameboy_t *gb)
 {
     static const uint32_t table[] = {

@@ -67,6 +67,9 @@
     NSTimer *_consoleOutputTimer;
     NSTimer *_hexTimer;
     
+    NSTimer *_batterySaveTimer;
+    bool _dirtyBattery;
+    
     bool _fullScreen;
     bool _inSyncInput;
     NSString *_debuggerCommandWhilePaused;
@@ -503,6 +506,9 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     _hexTimer = [NSTimer timerWithTimeInterval:0.25 target:self selector:@selector(reloadMemoryView) userInfo:nil repeats:true];
     [[NSRunLoop mainRunLoop] addTimer:_hexTimer forMode:NSDefaultRunLoopMode];
     
+    _batterySaveTimer = [NSTimer timerWithTimeInterval:0.25 target:self selector:@selector(batteryTimerExpired) userInfo:nil repeats:true];
+    [[NSRunLoop mainRunLoop] addTimer:_batterySaveTimer forMode:NSDefaultRunLoopMode];
+    
     /* Clear pending alarms, don't play alarms while playing */
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBNotificationsUsed"]) {
         NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
@@ -580,6 +586,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
 - (void)postRun
 {
     [_hexTimer invalidate];
+    [_batterySaveTimer invalidate];
     [_audioLock lock];
     _audioBufferPosition = _audioBufferNeeded = 0;
     [_audioLock signal];
@@ -808,6 +815,16 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     }
 }
 
+- (void)batteryTimerExpired
+{
+    if (_dirtyBattery && !GB_get_battery_dirty(&_gb)) {
+        GB_save_battery(&_gb, self.savPath.UTF8String);
+    }
+    
+    _dirtyBattery = GB_get_battery_dirty(&_gb);
+    GB_clear_battery_dirty(&_gb);
+}
+
 - (NSFont *)debuggerFontOfSize:(unsigned)size
 {
     if (!size) {
@@ -834,7 +851,6 @@ again:;
     retry = true;
     goto again;
 }
-
 
 - (void)updateFonts
 {
