@@ -116,20 +116,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "Super Game Boy"
     },
     {
-        "sameboy_rtc",
-        "System - Real Time Clock Emulation",
-        "Real Time Clock Emulation",
-        "Specifies how the emulation of the real-time clock feature used in certain Game Boy and Game Boy Color games should function.",
-        NULL,
-        "system",
-        {
-            { "sync to system clock", "Sync to System Clock" },
-            { "accurate",             "Accurate"             },
-            { NULL, NULL },
-        },
-        "sync to system clock"
-    },
-    {
         "sameboy_mono_palette",
         "Video - GB Mono Palette",
         "GB Mono Palette",
@@ -293,35 +279,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "enabled"
     },
     {
-        "sameboy_screen_layout",
-        "System - Screen Layout",
-        "Screen Layout",
-        "When emulating two systems at once, this option defines the respective position of the two screens.",
-        NULL,
-        "system",
-        {
-            { "top-down",   "Top-Down"   },
-            { "left-right", "Left-Right" },
-            { NULL, NULL },
-        },
-        "top-down"
-    },
-    {
-        "sameboy_audio_output",
-        "System - Audio Output",
-        "Audio Output",
-        "Selects which of the two emulated Game Boy systems should output audio. If Mix Both is chosen, both Game Boys must have the same clock speed.",
-        NULL,
-        "system",
-        {
-            { "Game Boy #1", NULL },
-            { "Game Boy #2", NULL },
-            { "Mix Both", NULL },
-            { NULL, NULL },
-        },
-        "Game Boy #1"
-    },
-    {
         "sameboy_model_1",
         "System - Emulated Model for Game Boy #1 (Requires Restart)",
         "Emulated Model for Game Boy #1 (Requires Restart)",
@@ -404,6 +361,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { NULL, NULL },
         },
         "Super Game Boy"
+    },
+    {
+        "sameboy_screen_layout",
+        "Video - Screen Layout",
+        "Screen Layout",
+        "When emulating two systems at once, this option defines the respective position of the two screens.",
+        NULL,
+        "video",
+        {
+            { "top-down",   "Top-Down"   },
+            { "left-right", "Left-Right" },
+            { NULL, NULL },
+        },
+        "top-down"
     },
     {
         "sameboy_mono_palette_1",
@@ -542,6 +513,21 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "0"
     },
     {
+        "sameboy_audio_output",
+        "Audio - Audio Output",
+        "Audio Output",
+        "Selects which of the two emulated Game Boy systems should output audio. If Mix Both is chosen, both Game Boys must have the same clock speed.",
+        NULL,
+        "audio",
+        {
+            { "Game Boy #1", NULL },
+            { "Game Boy #2", NULL },
+            { "Mix Both", NULL },
+            { NULL, NULL },
+        },
+        "Game Boy #1"
+    },
+    {
         "sameboy_high_pass_filter_mode_1",
         "Audio - Highpass Filter for Game Boy #1",
         "Highpass Filter for Game Boy #1",
@@ -666,6 +652,22 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { NULL, NULL },
         },
         "rumble-enabled games"
+    },
+    
+    /* Options available in both mode */
+    {
+        "sameboy_rtc",
+        "System - Real Time Clock Emulation",
+        "Real Time Clock Emulation",
+        "Specifies how the emulation of the real-time clock feature used in certain Game Boy and Game Boy Color games should function.",
+        NULL,
+        "system",
+        {
+            { "sync to system clock", "Sync to System Clock" },
+            { "accurate",             "Accurate"             },
+            { NULL, NULL },
+        },
+        "sync to system clock"
     },
 
     { NULL, NULL, NULL, NULL, NULL, NULL, {{0}}, NULL },

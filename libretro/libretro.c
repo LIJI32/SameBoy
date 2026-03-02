@@ -33,7 +33,7 @@ static const char slash = '/';
 #define RETRO_MEMORY_GAMEBOY_1_SRAM ((1 << 8) | RETRO_MEMORY_SAVE_RAM)
 #define RETRO_MEMORY_GAMEBOY_1_RTC ((2 << 8) | RETRO_MEMORY_RTC)
 #define RETRO_MEMORY_GAMEBOY_2_SRAM ((3 << 8) | RETRO_MEMORY_SAVE_RAM)
-#define RETRO_MEMORY_GAMEBOY_2_RTC ((3 << 8) | RETRO_MEMORY_RTC)
+#define RETRO_MEMORY_GAMEBOY_2_RTC ((4 << 8) | RETRO_MEMORY_RTC)
 
 #define RETRO_GAME_TYPE_GAMEBOY_LINK_2P 0x101
 
@@ -369,7 +369,6 @@ static void set_variable_visibility(void)
         const char *key  = option_defs_us[i].key;
         if ((strcmp(key, "sameboy_model")                   == 0) ||
             (strcmp(key, "sameboy_auto_sgb_model")          == 0) ||
-            (strcmp(key, "sameboy_rtc")                     == 0) ||
             (strcmp(key, "sameboy_scaling_filter")          == 0) ||
             (strcmp(key, "sameboy_mono_palette")            == 0) ||
             (strcmp(key, "sameboy_color_correction_mode")   == 0) ||
@@ -1031,6 +1030,19 @@ static void check_variables()
             }
 
             auto_sgb_model[1] = new_model;
+        }
+        
+        var.key = "sameboy_rtc";
+        var.value = NULL;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value) {
+            if (strcmp(var.value, "sync to system clock") == 0) {
+                GB_set_rtc_mode(&gameboy[0], GB_RTC_MODE_SYNC_TO_HOST);
+                GB_set_rtc_mode(&gameboy[1], GB_RTC_MODE_SYNC_TO_HOST);
+            }
+            else if (strcmp(var.value, "accurate") == 0) {
+                GB_set_rtc_mode(&gameboy[0], GB_RTC_MODE_ACCURATE);
+                GB_set_rtc_mode(&gameboy[1], GB_RTC_MODE_ACCURATE);
+            }
         }
 
         var.key = "sameboy_mono_palette_1";
