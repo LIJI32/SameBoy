@@ -865,6 +865,7 @@ static void write_mbc(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                     break;
                 case 0x6000: case 0x7000:
                     memcpy(&gb->rtc_latched, &gb->rtc_real, sizeof(gb->rtc_real));
+                    gb->battery_dirty = true;
                     break;
             }
             break;
@@ -976,9 +977,11 @@ static void write_mbc(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                             break;
                         case 0x10:
                             memcpy(&gb->rtc_latched, &gb->rtc_real, sizeof(gb->rtc_real));
+                            gb->battery_dirty = true;
                             break;
                         case 0x11: {
                             memcpy(&gb->rtc_real, &gb->rtc_latched, sizeof(gb->rtc_real));
+                            gb->battery_dirty = true;
                             break;
                         }
                         case 0x14:
@@ -1045,13 +1048,16 @@ static bool huc3_write(GB_gameboy_t *gb, uint8_t value)
                     else if (gb->huc3.access_index >= 0x58 && gb->huc3.access_index <= 0x5A) {
                         gb->huc3.alarm_minutes &= ~(0xF << ((gb->huc3.access_index - 0x58) * 4));
                         gb->huc3.alarm_minutes |= ((value & 0xF) << ((gb->huc3.access_index - 0x58) * 4));
+                        gb->battery_dirty = true;
                     }
                     else if (gb->huc3.access_index >= 0x5B && gb->huc3.access_index <= 0x5E) {
                         gb->huc3.alarm_days &= ~(0xF << ((gb->huc3.access_index - 0x5B) * 4));
                         gb->huc3.alarm_days |= ((value & 0xF) << ((gb->huc3.access_index - 0x5B) * 4));
+                        gb->battery_dirty = true;
                     }
                     else if (gb->huc3.access_index == 0x5F) {
                         gb->huc3.alarm_enabled = value & 1;
+                        gb->battery_dirty = true;
                     }
                     else {
                         // GB_log(gb, "Attempting to write %x to unsupported HuC-3 register: %03x\n", value & 0xF, gb->huc3.access_index);
@@ -1157,6 +1163,7 @@ static void write_mbc7_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                                     // WRITE
                                     if (gb->mbc7.eeprom_write_enabled) {
                                         ((uint16_t *)gb->mbc_ram)[gb->mbc7.eeprom_command & 0x7F] = 0;
+                                        gb->battery_dirty = true;
                                     }
                                     gb->mbc7.argument_bits_left = 16;
                                     // We still need to process this command, don't erase eeprom_command
@@ -1168,6 +1175,7 @@ static void write_mbc7_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                                     // ERASE
                                     if (gb->mbc7.eeprom_write_enabled) {
                                         ((uint16_t *)gb->mbc_ram)[gb->mbc7.eeprom_command & 0x7F] = 0xFFFF;
+                                        gb->battery_dirty = true;
                                         gb->mbc7.read_bits = 0x3FFF; // Emulate some time to settle
                                     }
                                     gb->mbc7.eeprom_command = 0;
@@ -1177,6 +1185,7 @@ static void write_mbc7_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                                     if (gb->mbc7.eeprom_write_enabled) {
                                         memset(gb->mbc_ram, 0xFF, gb->mbc_ram_size);
                                         ((uint16_t *)gb->mbc_ram)[gb->mbc7.eeprom_command & 0x7F] = 0xFFFF;
+                                        gb->battery_dirty = true;
                                         gb->mbc7.read_bits = 0xFF; // Emulate some time to settle
                                     }
                                     gb->mbc7.eeprom_command = 0;
@@ -1185,6 +1194,7 @@ static void write_mbc7_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                                     // WRAL (WRite ALl)
                                     if (gb->mbc7.eeprom_write_enabled) {
                                         memset(gb->mbc_ram, 0, gb->mbc_ram_size);
+                                        gb->battery_dirty = true;
                                     }
                                     gb->mbc7.argument_bits_left = 16;
                                     // We still need to process this command, don't erase eeprom_command
@@ -1201,11 +1211,13 @@ static void write_mbc7_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                             if (gb->mbc7.eeprom_command & 0x100) {
                                 // WRITE
                                 ((uint16_t *)gb->mbc_ram)[gb->mbc7.eeprom_command & 0x7F] |= bit;
+                                gb->battery_dirty = true;
                             }
                             else {
                                 // WRAL
                                 for (unsigned i = 0; i < 0x7F; i++) {
                                     ((uint16_t *)gb->mbc_ram)[i] |= bit;
+                                    gb->battery_dirty = true;
                                 }
                             }
                         }
@@ -1291,6 +1303,7 @@ static void write_mbc_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
     }
 
     gb->mbc_ram[((addr & 0x1FFF) + effective_bank * 0x2000) & (gb->mbc_ram_size - 1)] = value;
+    gb->battery_dirty = true;
 }
 
 static void write_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)

@@ -4,6 +4,9 @@
 #import "GBViewController.h"
 #import "GBView.h"
 #endif
+#if !TARGET_OS_WATCH
+#import "GBSettingsViewController.h"
+#endif
 
 static double MigrateTurboSpeed(void)
 {
@@ -48,7 +51,9 @@ int main(int argc, char * argv[])
             @"GBRumbleStrength": @1,
             
             @"GBInterfaceTheme": @"SameBoy",
-            @"GBControllersHideInterface": @YES,
+#if !TARGET_OS_WATCH
+            @"GBControllersHideInterface": @(GBControllerFocusOn),
+#endif
                         
             @"GBCurrentTheme": @"Lime (Game Boy)",
             // Default themes

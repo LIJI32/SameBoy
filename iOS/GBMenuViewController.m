@@ -17,7 +17,7 @@ static NSString *const tips[] = {
     @"Tip: Dynamically control turbo and rewind speed by enabling Dynamic Control in Control Settings.",
     @"Tip: Rumble can be enabled even for games without rumble support in Control Settings.",
     @"Tip: Try different color palettes for monochrome models in Display Settings.",
-    @"Tip: Use an external game conrtoller and Screen Mirroring for a big screen experience!",
+    @"Tip: Use an external game controller and Screen Mirroring for a big screen experience!",
     @"Did you know? The Game Boy uses a Sharp SM83 CPU.",
     @"Did you know? The Game Boy Color has 6 different hardware revisions.",
     @"Did you know? The Game Boy's frame rate is approximately 59.73 frames per second.",

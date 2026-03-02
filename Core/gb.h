@@ -841,6 +841,7 @@ struct GB_gameboy_internal_s {
         GB_rumble_mode_t rumble_mode;
         uint32_t rumble_on_cycles;
         uint32_t rumble_off_cycles;
+        bool battery_dirty;
                
         /* Temporary state */
         bool wx_just_changed;
@@ -1009,6 +1010,10 @@ uint32_t GB_get_clock_rate(GB_gameboy_t *gb);
 uint32_t GB_get_unmultiplied_clock_rate(GB_gameboy_t *gb);
 void GB_set_clock_multiplier(GB_gameboy_t *gb, double multiplier);
 
+/* Checks if the ROM has modified battery-backed data since the last call to GB_clear_battery_dirty */
+bool GB_get_battery_dirty(GB_gameboy_t *gb);
+void GB_clear_battery_dirty(GB_gameboy_t *gb);
+    
 /* Handy ROM info APIs */
 // `title` must be at least 17 bytes in size
 void GB_get_rom_title(GB_gameboy_t *gb, char *title);

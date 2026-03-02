@@ -42,6 +42,7 @@ SameBoy requires the following tools and libraries to build:
  * make
  * macOS Cocoa frontend: macOS SDK and Xcode (For command line tools and ibtool)
  * SDL frontend: libsdl2
+   * When building for operating systems other than Windows and macOS, libpng is also required
  * [rgbds](https://github.com/gbdev/rgbds/releases/), for boot ROM compilation
  * [cppp](https://github.com/LIJI32/cppp), for cleaning up headers when compiling SameBoy as a library
 
@@ -54,7 +55,8 @@ On Windows, SameBoy also requires:
 To compile, simply run `make`. The targets are:
  * `cocoa` (Default for macOS)
  * `sdl` (Default for everything else)
- * `lib` (Creates libsameboy.o and libsameboy.a for statically linking SameBoy, as well as a headers directory with corresponding headers; currently not supported on Windows due to linker limitations)
+ * `lib` (Creates libsameboy.o and libsameboy.a for statically linking SameBoy, libsameboy.dylib/so/dll for dynamically linking SameBoy, as well as a headers directory with corresponding headers)
+   * Static libraries are currently not supported on Windows due to linker limitations.
  * `ios` (Plain iOS .app bundle), `ios-ipa` (iOS IPA archive for side-loading), `ios-deb` (iOS deb package for jailbroken devices)
  * `libretro`
  * `bootroms`

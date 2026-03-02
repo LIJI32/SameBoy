@@ -1,4 +1,3 @@
-#ifdef APPSTORE
 #import "UILabel+LockFonts.h"
 #import <objc/runtime.h>
 
@@ -28,4 +27,3 @@
 }
 
 @end
-#endif

@@ -18,6 +18,7 @@
 int access(const char *filename, int mode);
 #define R_OK 4
 #define W_OK 2
+#define F_OK 0
 
 #ifndef __MINGW32__
 #ifndef __LIBRETRO__

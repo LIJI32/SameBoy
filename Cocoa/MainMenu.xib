@@ -114,6 +114,7 @@
                                 </connections>
                             </menuItem>
                             <menuItem title="Save ROM Modifications" secondaryImage="square.and.arrow.down" catalog="system" keyEquivalent="s" id="Qru-qh-5Z6">
+                                <modifierMask key="keyEquivalentModifierMask" control="YES" command="YES"/>
                                 <connections>
                                     <action selector="saveDocument:" target="-1" id="pnc-7c-MfV"/>
                                 </connections>

@@ -1533,14 +1533,19 @@ static bool examine(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
     bool assembler_syntax = false;
     if (modifiers) {
         size_t modifiers_length = strlen(modifiers);
-        if (modifiers_length && modifiers[modifiers_length - 1] == 'a') {
+        if (modifiers_length && modifiers[modifiers_length - 1] == 's') {
             assembler_syntax = true;
             modifiers[modifiers_length - 1] = 0;
             modifiers_length--;
         }
         if (modifiers_length) {
             char *end;
-            count = (uint16_t) (strtol(modifiers, &end, 10));
+            if (modifiers[0] == '$' && modifiers_length > 1) {
+                count = (uint16_t) (strtol(modifiers + 1, &end, 16));
+            }
+            else {
+                count = (uint16_t) (strtol(modifiers, &end, 10));
+            }
             if (*end) {
                 print_usage(gb, command);
                 return true;
@@ -2240,7 +2245,7 @@ static const debugger_command_t commands[] = {
                         "decimal (d), hexadecimal (x), octal (o) or binary (b).",
                         "<expression>", "format", .argument_completer = symbol_completer, .modifiers_completer = format_completer},
     {"eval", 2, }, /* Alias */
-    {"examine", 2, examine, "Examine values at address. Use the 'a' modifier to output in assembeler syntax.", "<expression>", "count[a]", .argument_completer = symbol_completer},
+    {"examine", 2, examine, "Examine values at address. Use the 's' modifier to output in assembeler syntax.", "<expression>", "[$]count[s]", .argument_completer = symbol_completer},
     {"x", 1, }, /* Alias */
     {"disassemble", 1, disassemble, "Disassemble instructions at address", "<expression>", "count", .argument_completer = symbol_completer},
     {"breakpoint", 1, breakpoint, "Add a new breakpoint at the specified address/expression or range. "
