@@ -1754,7 +1754,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             GB_run(&_gb);
             if (!_autosaveCountdown) {
                 _autosaveCountdown = autosaveFrequency;
-                [self preformAutosave];
+                [self performAutosave];
             }
 
         }
@@ -1805,7 +1805,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     return ret;
 }
 
-- (void)preformAutosave
+- (void)performAutosave
 {
     GB_save_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
     [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
@@ -1830,7 +1830,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     _audioClient = nil;
 
     if (!_swappingROM) {
-        [self preformAutosave];
+        [self performAutosave];
 
         // Assoicate the battery save with the save state via a hash xattr
         NSData *batteryHash = [self batteryHash];
