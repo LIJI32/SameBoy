@@ -82,7 +82,6 @@ static UIImage *CreateMenuImage(NSString *name)
         [source drawInRect:destRect];
     }];
     return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-
 }
 
 API_AVAILABLE(ios(13.0))
@@ -339,7 +338,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         _printerSpinner.color = theme.buttonColor;
 
         [self willRotateToInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation
-                                          duration:0];
+                                      duration:0];
         [_backgroundView reloadThemeImages];
         
         [self setNeedsStatusBarAppearanceUpdate];
@@ -437,8 +436,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         // Configure the change camera button stacked on top of the camera position button
         _changeCameraButton = [[UIButton alloc] init];
         [_changeCameraButton  setImage:[UIImage systemImageNamed:@"camera.aperture"
-                                                withConfiguration:[UIImageSymbolConfiguration configurationWithScale:UIImageSymbolScaleLarge]]
-                                forState:UIControlStateNormal];
+                                               withConfiguration:[UIImageSymbolConfiguration configurationWithScale:UIImageSymbolScaleLarge]]
+                              forState:UIControlStateNormal];
         _changeCameraButton.backgroundColor = [UIColor systemBackgroundColor];
         _changeCameraButton.layer.cornerRadius = 6;
         _changeCameraButton.alpha = 0;
@@ -505,7 +504,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     else {
         UIImage *rotateImage = [[UIImage imageNamed:@"PrinterTemplate"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
         [_printerButton setImage:rotateImage
-                               forState:UIControlStateNormal];
+                        forState:UIControlStateNormal];
         _printerButton.backgroundColor = [UIColor whiteColor];
     }
     
@@ -518,7 +517,6 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     
     [_backgroundView addSubview:_printerButton];
     [_backgroundView addSubview:_printerSpinner];
-
     
     [self updateMirrorWindow];
     
@@ -1287,7 +1285,6 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     if (_orientation == UIInterfaceOrientationPortrait || _orientation == UIInterfaceOrientationPortraitUpsideDown) {
         landscape = false;
     }
-        
     
     _cameraPositionButton.frame = CGRectMake(insets.left + 8,
                                              _backgroundView.bounds.size.height - 8 - insets.bottom - 32,
@@ -1712,9 +1709,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             GB_run(&_gb);
             if (!_autosaveCountdown) {
                 _autosaveCountdown = autosaveFrequency;
-                [self preformAutosave];
+                [self performAutosave];
             }
-
         }
     }
     [self postRun];
@@ -1760,10 +1756,19 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     return ret;
 }
 
-- (void)preformAutosave
+- (void)performAutosave
 {
     GB_save_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
     [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
+    // Assoicate the battery save with the save state via a hash xattr
+    NSData *batteryHash = [self batteryHash];
+    if (batteryHash) {
+        setxattr([GBROMManager sharedManager].autosaveStateFile.UTF8String, "battery-hash",
+                 batteryHash.bytes, batteryHash.length, 0, 0);
+    }
+    else {
+        removexattr([GBROMManager sharedManager].autosaveStateFile.UTF8String, "battery-hash", 0);
+    }
 }
 
 - (void)postRun
@@ -1776,9 +1781,8 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     _audioClient = nil;
 
     if (!_swappingROM) {
-        GB_save_battery(&_gb, [GBROMManager sharedManager].batterySaveFile.fileSystemRepresentation);
-        [self saveStateToFile:[GBROMManager sharedManager].autosaveStateFile];
-
+        [self performAutosave];
+        
         // Assoicate the battery save with the save state via a hash xattr
         NSData *batteryHash = [self batteryHash];
         if (batteryHash) {
@@ -1795,7 +1799,6 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
                                                                                            error:nil];
         _saveDate = date;
         _lastSavedROM = [GBROMManager sharedManager].currentROM;
-
     }
     [[GBHapticManager sharedManager] setRumbleStrength:0];
     if (@available(iOS 14.0, *)) {
@@ -2123,7 +2126,6 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
             }
         }];
     });
-
 }
 
 - (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
@@ -2267,8 +2269,8 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         }
 
         _disableCameraTimer = [NSTimer scheduledTimerWithTimeInterval:1
-                                                             repeats:false
-                                                               block:^(NSTimer *timer) {
+                                                              repeats:false
+                                                                block:^(NSTimer *timer) {
             if (_cameraPositionButton.alpha) {
                 [UIView animateWithDuration:0.25 animations:^{
                     _cameraPositionButton.alpha = 0;
@@ -2435,8 +2437,8 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     }]];
     menu.selectedAction = menu.actions[_printerConnected];
     [menu addAction:[UIAlertAction actionWithTitle:@"Cancel"
-                                            style:UIAlertActionStyleCancel
-                                          handler:nil]];
+                                             style:UIAlertActionStyleCancel
+                                           handler:nil]];
     [self presentViewController:menu animated:true completion:nil];
 }
 
