@@ -2,7 +2,6 @@
 #include <IOKit/hid/IOHIDDevice.h>
 #include <IOKit/IOKitLib.h>
 #include <CoreFoundation/CoreFoundation.h>
-#include <pthread.h>
 #include <string.h>
 
 #define ACCEL_SCALE 65536.0
@@ -13,13 +12,9 @@
 #define MAIN_PORT 0
 
 static IOHIDDeviceRef s_device;
-static CFRunLoopRef s_run_loop;
-static pthread_t s_thread;
-static volatile bool s_running;
-
-static pthread_mutex_t s_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool s_running;
+static volatile double s_x, s_y, s_z;
 static volatile bool s_has_data;
-static double s_x, s_y, s_z;
 
 static uint8_t s_report_buffer[4096];
 
@@ -34,12 +29,10 @@ static void report_callback(void *context, IOReturn result, void *sender,
     memcpy(&raw_y, report + IMU_DATA_OFF + 4, 4);
     memcpy(&raw_z, report + IMU_DATA_OFF + 8, 4);
 
-    pthread_mutex_lock(&s_mutex);
     s_x = raw_x / ACCEL_SCALE;
     s_y = raw_y / ACCEL_SCALE;
     s_z = raw_z / ACCEL_SCALE;
     s_has_data = true;
-    pthread_mutex_unlock(&s_mutex);
 }
 
 static void wake_spu_drivers(void)
@@ -104,21 +97,6 @@ static IOHIDDeviceRef find_accelerometer_device(void)
     return found;
 }
 
-static void *run_loop_thread(void *arg)
-{
-    s_run_loop = CFRunLoopGetCurrent();
-
-    IOHIDDeviceRegisterInputReportCallback(s_device, s_report_buffer, sizeof(s_report_buffer),
-                                           report_callback, NULL);
-    IOHIDDeviceScheduleWithRunLoop(s_device, s_run_loop, kCFRunLoopDefaultMode);
-
-    while (s_running) {
-        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, false);
-    }
-
-    return NULL;
-}
-
 bool GB_macbook_motion_start(void)
 {
     if (s_running) return true;
@@ -135,10 +113,12 @@ bool GB_macbook_motion_start(void)
         return false;
     }
 
+    IOHIDDeviceRegisterInputReportCallback(s_device, s_report_buffer, sizeof(s_report_buffer),
+                                           report_callback, NULL);
+    IOHIDDeviceScheduleWithRunLoop(s_device, CFRunLoopGetMain(), kCFRunLoopDefaultMode);
+
     s_running = true;
     s_has_data = false;
-
-    pthread_create(&s_thread, NULL, run_loop_thread, NULL);
 
     return true;
 }
@@ -148,31 +128,18 @@ void GB_macbook_motion_stop(void)
     if (!s_running) return;
     s_running = false;
 
-    if (s_run_loop) {
-        CFRunLoopStop(s_run_loop);
-    }
-
-    pthread_join(s_thread, NULL);
-    s_run_loop = NULL;
-
-    if (s_device) {
-        IOHIDDeviceClose(s_device, kIOHIDOptionsTypeNone);
-        CFRelease(s_device);
-        s_device = NULL;
-    }
-
+    IOHIDDeviceUnscheduleFromRunLoop(s_device, CFRunLoopGetMain(), kCFRunLoopDefaultMode);
+    IOHIDDeviceClose(s_device, kIOHIDOptionsTypeNone);
+    CFRelease(s_device);
+    s_device = NULL;
     s_has_data = false;
 }
 
 bool GB_macbook_motion_poll(double *x, double *y, double *z)
 {
-    pthread_mutex_lock(&s_mutex);
-    bool has = s_has_data;
-    if (has) {
-        *x = s_x;
-        *y = s_y;
-        *z = s_z;
-    }
-    pthread_mutex_unlock(&s_mutex);
-    return has;
+    if (!s_has_data) return false;
+    *x = s_x;
+    *y = s_y;
+    *z = s_z;
+    return true;
 }
