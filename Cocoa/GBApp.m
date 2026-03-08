@@ -97,6 +97,7 @@ static uint32_t color_to_int(NSColor *color)
                                                               
                                                               @"GBMBC7JoystickOverride": @NO,
                                                               @"GBMBC7AllowMouse": @YES,
+                                                              @"GBMBC7AllowAccelerometer": @YES,
                                                               
                                                               @"GBJoyConAutoPair": @YES,
                                                               @"GBJoyConsDefaultsToHorizontal": @YES,
