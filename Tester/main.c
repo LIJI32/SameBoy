@@ -292,6 +292,7 @@ int main(int argc, char **argv)
 
     if (argc == 1) {
         fprintf(stderr, "Usage: %s [--dmg] [--sgb] [--cgb] [--start] [--length seconds] [--sav] [--boot path to boot ROM]"
+                        " [--passthrough path to inserted game cart]"
 #ifndef _WIN32
                         " [--jobs number of tests to run simultaneously]"
 #endif
@@ -307,7 +308,10 @@ int main(int argc, char **argv)
     bool dmg = false;
     bool sgb = false;
     bool sav = false;
+    bool cart_menu = false;
+    bool cart_start_game = false;
     const char *boot_rom_path = NULL;
+    const char *passthrough_rom_path = NULL;
     
     GB_random_set_enabled(false);
 
@@ -354,6 +358,25 @@ int main(int argc, char **argv)
         if (strcmp(argv[i], "--boot") == 0 && i != argc - 1) {
             fprintf(stderr, "Using boot ROM %s\n", argv[i + 1]);
             boot_rom_path = argv[++i];
+            continue;
+        }
+
+        if (strcmp(argv[i], "--passthrough") == 0 && i != argc - 1) {
+            fprintf(stderr, "Using passthrough ROM %s\n", argv[i + 1]);
+            passthrough_rom_path = argv[++i];
+            continue;
+        }
+
+        if (strcmp(argv[i], "--cart-menu") == 0) {
+            fprintf(stderr, "Holding cart menu button (opens GameShark menu)\n");
+            cart_menu = true;
+            continue;
+        }
+
+        if (strcmp(argv[i], "--start-game") == 0) {
+            fprintf(stderr, "Will show cart menu then trigger 'Start Game' handoff\n");
+            cart_menu = true;
+            cart_start_game = true;
             continue;
         }
         
@@ -438,7 +461,16 @@ int main(int argc, char **argv)
             perror("Failed to load ROM");
             exit(1);
         }
-        
+
+        if (passthrough_rom_path) {
+            if (GB_load_passthrough_rom(&gb, passthrough_rom_path)) {
+                perror("Failed to load passthrough ROM");
+                exit(1);
+            }
+        }
+
+        GB_set_cart_menu_button(&gb, cart_menu);
+
         /* Game specific hacks for start attempt automations */
         /* It's OK. No overflow is possible here. */
         start_is_not_first = strcmp((const char *)(gb.rom + 0x134), "NEKOJARA") == 0 ||
@@ -507,6 +539,11 @@ int main(int argc, char **argv)
                 handle_buttons(&gb);
                 cycles -= 139810;
                 frames++;
+                /* Simulate picking "Start Game" from the cart menu after a
+                   comfortable delay (so splash + menu init have both run). */
+                if (cart_start_game && frames == 1800) {
+                    GB_cart_start_game(&gb);
+                }
             }
             /* This early crash test must not run in vblank because PC might not point to the next instruction. */
             if (gb.pc == 0x38 && frames < test_length - 1 && GB_read_memory(&gb, 0x38) == 0xFF) {
