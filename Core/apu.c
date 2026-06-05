@@ -411,7 +411,7 @@ static void render(GB_gameboy_t *gb)
     }
     assert(gb->apu_output.sample_callback);
     gb->apu_output.sample_callback(gb, &filtered_output);
-    if (unlikely(gb->apu_output.output_file)) {
+    if (unlikely(gb->apu_output.output_file && gb->apu_output.output_format != GB_AUDIO_FORMAT_VGM)) {
 #ifdef GB_BIG_ENDIAN
         if (gb->apu_output.output_format == GB_AUDIO_FORMAT_WAV) {
             filtered_output.left = LE16(filtered_output.left);
@@ -2261,10 +2261,86 @@ typedef struct __attribute__((packed)) {
     uint32_t data_size; // = LE32(length of samples)
 } wav_header_t;
 
+#define VGM_HEADER_SIZE 0x100
+#define VGM_DATA_OFFSET (VGM_HEADER_SIZE - 0x34)
+#define VGM_SAMPLE_RATE 44100
+
+static void vgm_set_le32(uint8_t *header, size_t offset, uint32_t value)
+{
+    value = LE32(value);
+    memcpy(header + offset, &value, sizeof(value));
+}
+
+static void vgm_get_header(GB_gameboy_t *gb, uint8_t header[VGM_HEADER_SIZE], uint32_t eof_offset)
+{
+    memset(header, 0, VGM_HEADER_SIZE);
+    header[0] = 'V';
+    header[1] = 'g';
+    header[2] = 'm';
+    header[3] = ' ';
+    vgm_set_le32(header, 0x04, eof_offset);
+    vgm_set_le32(header, 0x08, 0x00000161);
+    vgm_set_le32(header, 0x18, gb->apu_output.vgm_total_samples);
+    vgm_set_le32(header, 0x34, VGM_DATA_OFFSET);
+    vgm_set_le32(header, 0x80, gb->apu_output.vgm_clock_rate);
+}
+
+static bool vgm_write_data(GB_gameboy_t *gb, const void *data, size_t size)
+{
+    if (!gb->apu_output.output_file) return false;
+    if (fwrite(data, size, 1, gb->apu_output.output_file) != 1) {
+        gb->apu_output.output_error = errno ?: EIO;
+        fclose(gb->apu_output.output_file);
+        gb->apu_output.output_file = NULL;
+        return false;
+    }
+    return true;
+}
+
+static bool vgm_flush_wait(GB_gameboy_t *gb)
+{
+    while (gb->apu_output.vgm_pending_samples) {
+        if (gb->apu_output.vgm_pending_samples <= 16) {
+            uint8_t command = 0x70 + gb->apu_output.vgm_pending_samples - 1;
+            gb->apu_output.vgm_pending_samples = 0;
+            if (!vgm_write_data(gb, &command, sizeof(command))) return false;
+        }
+        else {
+            uint16_t samples = MIN(gb->apu_output.vgm_pending_samples, 0xFFFF);
+            uint8_t command[] = {0x61, samples & 0xFF, samples >> 8};
+            gb->apu_output.vgm_pending_samples -= samples;
+            if (!vgm_write_data(gb, command, sizeof(command))) return false;
+        }
+    }
+    return true;
+}
+
+void GB_apu_vgm_advance(GB_gameboy_t *gb, uint8_t cycles)
+{
+    if (unlikely(gb->apu_output.output_file && gb->apu_output.output_format == GB_AUDIO_FORMAT_VGM)) {
+        uint64_t clock_rate = (uint64_t)gb->apu_output.vgm_clock_rate * 2;
+        if (!clock_rate) return;
+        uint64_t sample_fraction = gb->apu_output.vgm_sample_fraction + (uint64_t)cycles * VGM_SAMPLE_RATE;
+        uint32_t samples = sample_fraction / clock_rate;
+        gb->apu_output.vgm_sample_fraction = sample_fraction % clock_rate;
+        gb->apu_output.vgm_pending_samples += samples;
+        gb->apu_output.vgm_total_samples += samples;
+    }
+}
+
+void GB_apu_vgm_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
+{
+    if (unlikely(gb->apu_output.output_file && gb->apu_output.output_format == GB_AUDIO_FORMAT_VGM)) {
+        if (!vgm_flush_wait(gb)) return;
+        uint8_t command[] = {0xB3, reg - GB_IO_NR10, value};
+        vgm_write_data(gb, command, sizeof(command));
+    }
+}
+
 
 int GB_start_audio_recording(GB_gameboy_t *gb, const char *path, GB_audio_format_t format)
 {
-    if (gb->apu_output.sample_rate == 0) {
+    if (format != GB_AUDIO_FORMAT_VGM && gb->apu_output.sample_rate == 0) {
         return EINVAL;
     }
     
@@ -2278,6 +2354,21 @@ int GB_start_audio_recording(GB_gameboy_t *gb, const char *path, GB_audio_format
     switch (format) {
         case GB_AUDIO_FORMAT_RAW:
             return 0;
+        case GB_AUDIO_FORMAT_VGM: {
+            gb->apu_output.vgm_pending_samples = 0;
+            gb->apu_output.vgm_total_samples = 0;
+            gb->apu_output.vgm_sample_fraction = 0;
+            gb->apu_output.vgm_clock_rate = GB_get_clock_rate(gb) ?: CPU_FREQUENCY;
+            uint8_t header[VGM_HEADER_SIZE];
+            vgm_get_header(gb, header, 0);
+            if (fwrite(header, sizeof(header), 1, gb->apu_output.output_file) != 1) {
+                int ret = errno ?: EIO;
+                fclose(gb->apu_output.output_file);
+                gb->apu_output.output_file = NULL;
+                return ret;
+            }
+            return 0;
+        }
         case GB_AUDIO_FORMAT_AIFF: {
             aiff_header_t header = {0,};
             if (fwrite(&header, sizeof(header), 1, gb->apu_output.output_file) != 1) {
@@ -2315,6 +2406,23 @@ int GB_stop_audio_recording(GB_gameboy_t *gb)
     switch (gb->apu_output.output_format) {
         case GB_AUDIO_FORMAT_RAW:
             break;
+        case GB_AUDIO_FORMAT_VGM: {
+            if (!vgm_flush_wait(gb)) break;
+            uint8_t end_command = 0x66;
+            if (!vgm_write_data(gb, &end_command, sizeof(end_command))) break;
+            long file_size = ftell(gb->apu_output.output_file);
+            if (file_size < 0) {
+                gb->apu_output.output_error = errno ?: EIO;
+                break;
+            }
+            uint8_t header[VGM_HEADER_SIZE];
+            vgm_get_header(gb, header, file_size - 4);
+            if (fseek(gb->apu_output.output_file, 0, SEEK_SET) != 0 ||
+                fwrite(header, sizeof(header), 1, gb->apu_output.output_file) != 1) {
+                gb->apu_output.output_error = errno ?: EIO;
+            }
+            break;
+        }
         case GB_AUDIO_FORMAT_AIFF: {
             size_t file_size = ftell(gb->apu_output.output_file);
             size_t frames = (file_size - sizeof(aiff_header_t)) / sizeof(GB_sample_t);
@@ -2387,8 +2495,10 @@ int GB_stop_audio_recording(GB_gameboy_t *gb)
             break;
         }
     }
-    fclose(gb->apu_output.output_file);
-    gb->apu_output.output_file = NULL;
+    if (gb->apu_output.output_file) {
+        fclose(gb->apu_output.output_file);
+        gb->apu_output.output_file = NULL;
+    }
     
     int ret  = gb->apu_output.output_error;
     gb->apu_output.output_error = 0;
