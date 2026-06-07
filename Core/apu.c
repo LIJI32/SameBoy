@@ -2261,7 +2261,7 @@ typedef struct __attribute__((packed)) {
     uint32_t data_size; // = LE32(length of samples)
 } wav_header_t;
 
-#define VGM_HEADER_SIZE 0x100
+#define VGM_HEADER_SIZE 0xC0
 #define VGM_DATA_OFFSET (VGM_HEADER_SIZE - 0x34)
 #define VGM_SAMPLE_RATE 44100
 
