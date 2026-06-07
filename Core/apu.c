@@ -2282,7 +2282,7 @@ static void vgm_get_header(GB_gameboy_t *gb, uint8_t header[VGM_HEADER_SIZE], ui
     vgm_set_le32(header, 0x08, 0x00000161);
     vgm_set_le32(header, 0x18, gb->apu_output.vgm_total_samples);
     vgm_set_le32(header, 0x34, VGM_DATA_OFFSET);
-    vgm_set_le32(header, 0x80, gb->apu_output.vgm_clock_rate);
+    vgm_set_le32(header, 0x80, gb->apu_output.vgm_clock_rate | (GB_is_cgb(gb) ? 0x80000000u : 0));
 }
 
 static bool vgm_write_data(GB_gameboy_t *gb, const void *data, size_t size)
