@@ -409,7 +409,7 @@ static void sanitize_state(GB_gameboy_t *gb)
         gb->current_tile_attributes = 0;
     }
 
-    gb->object_low_line_address &= gb->vram_size & ~1;
+    gb->object_low_line_address &= (gb->vram_size - 1) & ~1;
     if (gb->lcd_x > gb->position_in_line) {
         gb->lcd_x = gb->position_in_line;
     }
