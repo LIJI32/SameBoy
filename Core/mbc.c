@@ -150,6 +150,13 @@ void GB_update_mbc_mappings(GB_gameboy_t *gb)
             gb->mbc_ram_bank = gb->tpp1.ram_bank;
             gb->mbc_ram_enable = (gb->tpp1.mode == 2) || (gb->tpp1.mode == 3);
             break;
+        case GB_DATEL_ORBIT:
+            /* $7FE0 selects 16KB bank at $4000-$7FFF. The read path in memory.c
+               additionally applies the 8KB sub-bank override from $7FE1 for the
+               lower half of the window. */
+            gb->mbc_rom_bank = gb->datel_orbit.rom_bank;
+            gb->mbc_ram_enable = true;
+            break;
         nodefault;
     }
 }
@@ -185,8 +192,18 @@ void GB_configure_cart(GB_gameboy_t *gb)
         gb->cartridge_type = &tpp1;
         gb->tpp1.rom_bank = 1;
     }
+
+    /* Datel Orbit mapper -- GameShark Pro / Action Replay V4 cartridges. The
+       header is completely bogus (no Nintendo logo, cart type and ROM size
+       both $00), so it has to be detected by the title string. */
+    if (gb->rom_size >= 0x14000 &&
+        memcmp(gb->rom + 0x134, "Action Replay V4", 16) == 0) {
+        static const GB_cartridge_t datel_orbit = {GB_DATEL_ORBIT, true, false, false, false};
+        gb->cartridge_type = &datel_orbit;
+    }
     
-    if (gb->cartridge_type->mbc_type != GB_MMM01) {
+    if (gb->cartridge_type->mbc_type != GB_MMM01 &&
+        gb->cartridge_type->mbc_type != GB_DATEL_ORBIT) {
         if (gb->rom[0x147] == 0 && gb->rom_size > 0x8000) {
             GB_log(gb, "ROM header reports no MBC, but file size is over 32Kb. Assuming cartridge uses MBC3.\n");
             gb->cartridge_type = &GB_cart_defs[0x11];
@@ -214,6 +231,13 @@ void GB_configure_cart(GB_gameboy_t *gb)
         else if (gb->cartridge_type->mbc_type == GB_MBC7) {
             gb->mbc_ram_size = 0x100;
         }
+        else if (gb->cartridge_type->mbc_type == GB_DATEL_ORBIT) {
+            /* Cartridge-internal SRAM is overlaid into the ROM-bank window at
+               $7000-$7FFF (4KB). Firmware uses the whole range: menu state
+               at $75xx-$77xx, copied HRAM routines and variables at $7Axx-
+               $7Bxx, stack + mapper registers at $7Fxx. */
+            gb->mbc_ram_size = 0x1000;
+        }
         else if (gb->cartridge_type->mbc_type == GB_TPP1) {
             if (gb->rom[0x152] >= 1 && gb->rom[0x152] <= 9) {
                 gb->mbc_ram_size = 0x2000 << (gb->rom[0x152] - 1);
@@ -231,7 +255,8 @@ void GB_configure_cart(GB_gameboy_t *gb)
         
         if (gb->mbc_ram_size && gb->mbc_ram_size < 0x2000 &&
             gb->cartridge_type->mbc_type != GB_MBC2 &&
-            gb->cartridge_type->mbc_type != GB_MBC7) {
+            gb->cartridge_type->mbc_type != GB_MBC7 &&
+            gb->cartridge_type->mbc_type != GB_DATEL_ORBIT) {
             GB_log(gb, "This ROM requests a RAM size smaller than a bank, it may misbehave if this was not done intentionally.\n");
         }
         
@@ -267,6 +292,85 @@ void GB_configure_cart(GB_gameboy_t *gb)
     GB_reset_mbc(gb);
 }
 
+void GB_datel_orbit_handoff(GB_gameboy_t *gb)
+{
+    /* Swap the active ROM with the passthrough ROM and re-configure the cart
+       as if the game cart had been loaded in the first place.
+
+       On real hardware, the firmware's HRAM handoff routine (copied from
+       $0834) continues running after the mapper's own silicon has switched
+       the $0000-$7FFF window from the flash chip to the pass-through slot.
+       The routine finishes clearing IO registers, then `JP $0101` lands in
+       the game cart's entry point. We can't run that trailer post-swap
+       because the writes (`LD [$0040], A`, `LDH [rLCDC], A`, etc.) now land
+       on the game cart's MBC and leave it in a half-initialized state. So
+       we short-circuit by forcing CPU state to match what the trailer would
+       have set up and jumping straight to $0100.
+
+       Residue: when this fires mid-frame via the cart-menu release path
+       (see GB_set_cart_menu_button), the PPU is typically part-way through
+       a scanline and its internal state is out of phase with what pokered
+       (and anything using an LY-wait loop during init) expects. GB_lcd_off
+       below resets the display state machine, but some games still spin on
+       LY-compare loops that only work when handoff aligns to a VBlank. The
+       `--start-game` path (which fires at a frame boundary) doesn't hit
+       this. A fully-accurate organic handoff would need to either run the
+       firmware's memset/VRAM-clear sequence to completion (it loops
+       forever in our emulation -- suspected PPU/IRQ timing interaction we
+       haven't isolated) or stall the handoff until VBlank. */
+    if (!gb->passthrough_rom || !gb->passthrough_rom_size) return;
+
+    /* First-call path: swap ROMs and fully reinitialize. Subsequent calls
+       re-force CPU/display state only (see below). */
+    bool first_call = gb->cartridge_type && gb->cartridge_type->mbc_type == GB_DATEL_ORBIT;
+    if (first_call) {
+        uint8_t *old_rom = gb->rom;
+        uint32_t old_rom_size = gb->rom_size;
+
+        gb->rom = gb->passthrough_rom;
+        gb->rom_size = gb->passthrough_rom_size;
+        gb->passthrough_rom = old_rom;
+        gb->passthrough_rom_size = old_rom_size;
+
+        /* Re-run cart detection on the new ROM. This resets mbc state and
+           (re)allocates mbc_ram appropriately for the game cart. */
+        GB_configure_cart(gb);
+
+        /* Zero WRAM/HRAM/OAM/VRAM -- the firmware has left a lot of state
+           behind that the game cart wouldn't normally see, and on real
+           hardware the cart's mapper fully reboots the CPU on handoff. */
+        if (gb->ram) {
+            memset(gb->ram, 0, gb->ram_size ? gb->ram_size : 0x8000);
+        }
+        memset(gb->hram, 0, sizeof(gb->hram));
+        memset(gb->oam, 0, sizeof(gb->oam));
+        if (gb->vram) {
+            memset(gb->vram, 0, gb->vram_size ? gb->vram_size : 0x4000);
+        }
+    }
+
+    /* Jump directly into the game cart -- matches real hardware's post-JP
+       state (PC at entry, SP at the top of HRAM, A carrying the CGB boot
+       flag). Mirrors what post-boot-ROM state looks like for a game cart. */
+    gb->pc = 0x0100;
+    gb->registers[GB_REGISTER_SP] = 0xFFFE;
+    gb->registers[GB_REGISTER_AF] = GB_is_cgb(gb) ? 0x1180 : 0x01B0;
+    gb->registers[GB_REGISTER_BC] = 0;
+    gb->registers[GB_REGISTER_DE] = 0;
+    gb->registers[GB_REGISTER_HL] = 0;
+    gb->ime = false;
+    gb->interrupt_enable = 0;
+    gb->io_registers[GB_IO_IF] = 0;
+    gb->halted = false;
+    gb->stopped = false;
+    gb->pending_cycles = 0;
+
+    /* Reset display state so the game cart's own LCD init isn't thrown off
+       by whatever phase the firmware left the PPU in. */
+    gb->io_registers[GB_IO_LCDC] = 0;
+    GB_lcd_off(gb);
+}
+
 void GB_reset_mbc(GB_gameboy_t *gb)
 {
     gb->mbc_rom0_bank = 0;
@@ -285,6 +389,13 @@ void GB_reset_mbc(GB_gameboy_t *gb)
         gb->mbc7.latch_ready = true;
         gb->mbc7.read_bits = -1;
         gb->mbc7.eeprom_do = true;
+    }
+    else if (gb->cartridge_type->mbc_type == GB_DATEL_ORBIT) {
+        /* Boot state observed on real hardware: $7FE0=1, $7FE1=2. See the
+           firmware entry at $0150 which writes these explicitly anyway. */
+        gb->datel_orbit.rom_bank = 1;
+        gb->datel_orbit.sub_bank = 2;
+        gb->mbc_rom_bank = 1;
     }
     else {
         gb->mbc_rom_bank = 1;

@@ -268,6 +268,25 @@ static bool is_addr_in_dma_use(GB_gameboy_t *gb, uint16_t addr)
     return bus_for_addr(gb, addr) == bus_for_addr(gb, gb->dma_current_src);
 }
 
+/* For a GameShark Pro cart in passthrough mode, the mapper selectively snoops
+   only reads from the inserted game cart's header/vector zone ($0000-$014F) --
+   interrupt vectors, entry point, Nintendo logo, title, cart-type metadata.
+   Instruction fetches elsewhere continue to come from the GameShark flash, so
+   the firmware can keep running its own probe code while sampling the cart's
+   identity. That's enough for "is a cart inserted, and which one?" checks.
+   We don't emulate the game cart's mapper, so banks > 0 of the game cart are
+   unreachable -- "Start Game" handoff isn't supported yet. */
+static bool passthrough_covers(uint16_t addr)
+{
+    return addr < 0x0150;
+}
+
+static uint8_t read_passthrough(const GB_gameboy_t *gb, uint16_t addr)
+{
+    if (!gb->passthrough_rom || !gb->passthrough_rom_size) return 0xFF;
+    return gb->passthrough_rom[addr & (gb->passthrough_rom_size - 1)];
+}
+
 static uint8_t read_rom(GB_gameboy_t *gb, uint16_t addr)
 {
     if (addr < 0x100 && !gb->boot_rom_finished) {
@@ -276,6 +295,12 @@ static uint8_t read_rom(GB_gameboy_t *gb, uint16_t addr)
 
     if (addr >= 0x200 && addr < 0x900 && GB_is_cgb(gb) && !gb->boot_rom_finished) {
         return gb->boot_rom[addr];
+    }
+
+    if (unlikely(gb->cartridge_type->mbc_type == GB_DATEL_ORBIT
+                 && gb->datel_orbit.passthrough
+                 && passthrough_covers(addr))) {
+        return read_passthrough(gb, addr);
     }
 
     if (!gb->rom_size) {
@@ -287,6 +312,38 @@ static uint8_t read_rom(GB_gameboy_t *gb, uint16_t addr)
 
 static uint8_t read_mbc_rom(GB_gameboy_t *gb, uint16_t addr)
 {
+    if (unlikely(gb->cartridge_type->mbc_type == GB_DATEL_ORBIT)) {
+        /* Cart-internal SRAM is overlaid over the ROM-bank window at
+           $7000-$7FFF (4 KB). The $7FE0-$7FE7 mapper slice is write-only and
+           reads as $FF on real hardware; $7FEE is a separate status reg. */
+        if (addr >= 0x7000) {
+            if ((addr & 0xFFF8) == 0x7FE0) {
+                return 0xFF;
+            }
+            /* $7FEE is a hardware status register that gates the menu. The
+               firmware tests bit 0 at $0213 (must be set for normal boot) and
+               bit 4 at $037C (skip the main menu when set). Bit 4 is cleared
+               when the user holds the physical cart button -- that's how the
+               GameShark menu gets opened. */
+            if (addr == 0x7FEE) {
+                return 0x01 | (gb->datel_orbit.menu_button ? 0 : 0x10);
+            }
+            if (gb->mbc_ram) {
+                return gb->mbc_ram[addr & 0xFFF];
+            }
+            return 0xFF;
+        }
+        /* $4000-$5FFF takes its 8KB bank from $7FE1; $6000-$77FF takes the
+           upper half of the 16KB bank selected by $7FE0. */
+        unsigned effective_address;
+        if (addr < 0x6000) {
+            effective_address = (addr & 0x1FFF) + gb->datel_orbit.sub_bank * 0x2000;
+        }
+        else {
+            effective_address = (addr & 0x3FFF) + gb->mbc_rom_bank * 0x4000;
+        }
+        return gb->rom[effective_address & (gb->rom_size - 1)];
+    }
     unsigned effective_address = (addr & 0x3FFF) + gb->mbc_rom_bank * 0x4000;
     return gb->rom[effective_address & (gb->rom_size - 1)];
 }
@@ -354,6 +411,13 @@ static uint8_t read_mbc7_ram(GB_gameboy_t *gb, uint16_t addr)
 
 static uint8_t read_mbc_ram(GB_gameboy_t *gb, uint16_t addr)
 {
+    if (gb->cartridge_type->mbc_type == GB_DATEL_ORBIT) {
+        /* Cart has no external RAM window; its 2KB of internal SRAM is
+           overlaid into the ROM window at $7800-$7FFF. */
+        gb->returned_open_bus = true;
+        return gb->data_bus;
+    }
+
     if (gb->cartridge_type->mbc_type == GB_MBC7) {
         return read_mbc7_ram(gb, addr);
     }
@@ -954,6 +1018,41 @@ static void write_mbc(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                 case 0x4000: case 0x5000: gb->huc3.ram_bank  = value; break;
             }
             break;
+        case GB_DATEL_ORBIT:
+            /* Mapper registers decode at $7FE0-$7FE7. Everything else in
+               $7000-$7FFF is SRAM overlay. */
+            if (addr >= 0x7000) {
+                if ((addr & 0xFFF8) == 0x7FE0) {
+                    switch (addr & 7) {
+                        case 0: gb->datel_orbit.rom_bank = value; break;
+                        case 1: gb->datel_orbit.sub_bank = value; break;
+                        case 5:
+                            /* Bit 4 ($10) engages narrow passthrough to the
+                               game cart (only $0000-$014F redirected). */
+                            gb->datel_orbit.passthrough = (value & 0x10) != 0;
+                            break;
+                        case 6:
+                            /* The firmware's game-cart handoff writes the
+                               sequence: $7FE2=3, $7FE7=2, $7FE6=7, $7FE5=0,
+                               then JP $0101 expecting reads to come from the
+                               inserted game cart. $7FE6=7 is the last write
+                               of the sequence, so use it as the trigger. */
+                            if (value == 7 && gb->passthrough_rom) {
+                                GB_datel_orbit_handoff(gb);
+                            }
+                            break;
+                        default: break;
+                    }
+                }
+                else if (gb->mbc_ram) {
+                    /* SRAM overlay (minus the mapper slice). */
+                    gb->mbc_ram[addr & 0xFFF] = value;
+                }
+            }
+            /* Flash-program writes (unlock sequences like $AA->$5555,
+               $55->$2AAA, sector erase $30, etc.) are silently dropped;
+               we don't emulate the flash. */
+            break;
         case GB_TPP1:
             switch (addr & 3) {
                 case 0:
@@ -1236,6 +1335,11 @@ static void write_mbc7_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 
 static void write_mbc_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 {
+    if (gb->cartridge_type->mbc_type == GB_DATEL_ORBIT) {
+        /* No external RAM on this cart. */
+        return;
+    }
+
     if (gb->cartridge_type->mbc_type == GB_MBC7) {
         write_mbc7_ram(gb, addr, value);
         return;
