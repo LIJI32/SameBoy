@@ -16,6 +16,7 @@
 #import "GBPaletteView.h"
 #import "GBHexStatusBarRepresenter.h"
 #import "NSObject+DefaultsObserver.h"
+#include "GBMacBookMotion.h"
 
 #define likely(x)   GB_likely(x)
 #define unlikely(x) GB_unlikely(x)
@@ -377,12 +378,19 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
         return;
     }
     
+    if (GB_has_accelerometer(&_gb)) {
+        double ax, ay, az;
+        if (GB_macbook_motion_poll(&ax, &ay, &az)) {
+            GB_set_accelerometer_values(&_gb, -ax, ay);
+        }
+    }
+
     if (_gbsVisualizer) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [_gbsVisualizer setNeedsDisplay:true];
         });
     }
-    
+
     double frameUsage = GB_debugger_get_frame_cpu_usage(&_gb);
     [_cpuView addSample:frameUsage];
     
@@ -509,6 +517,11 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     _batterySaveTimer = [NSTimer timerWithTimeInterval:0.25 target:self selector:@selector(batteryTimerExpired) userInfo:nil repeats:true];
     [[NSRunLoop mainRunLoop] addTimer:_batterySaveTimer forMode:NSDefaultRunLoopMode];
     
+    if (GB_has_accelerometer(&_gb) &&
+        [[NSUserDefaults standardUserDefaults] boolForKey:@"GBMBC7AllowAccelerometer"]) {
+        GB_macbook_motion_start();
+    }
+
     /* Clear pending alarms, don't play alarms while playing */
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"GBNotificationsUsed"]) {
         NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
@@ -585,6 +598,7 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
 
 - (void)postRun
 {
+    GB_macbook_motion_stop();
     [_hexTimer invalidate];
     [_batterySaveTimer invalidate];
     [_audioLock lock];
