@@ -2315,6 +2315,55 @@ static bool vgm_flush_wait(GB_gameboy_t *gb)
     return true;
 }
 
+static bool vgm_write_register(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
+{
+    if (!vgm_flush_wait(gb)) return false;
+    uint8_t command[] = {0xB3, reg - GB_IO_NR10, value};
+    return vgm_write_data(gb, command, sizeof(command));
+}
+
+static uint8_t vgm_get_trigger_register(GB_gameboy_t *gb, uint8_t reg, GB_channel_t channel)
+{
+    uint8_t value = gb->io_registers[reg] & 0x7F;
+    if (gb->apu.is_active[channel]) {
+        value |= 0x80;
+    }
+    return value;
+}
+
+static bool vgm_write_apu_snapshot(GB_gameboy_t *gb)
+{
+    if (!vgm_write_register(gb, GB_IO_NR52, gb->apu.global_enable ? 0x80 : 0)) return false;
+    if (!gb->apu.global_enable) return true;
+
+    static const uint8_t registers[] = {
+        GB_IO_NR50, GB_IO_NR51,
+        GB_IO_NR10, GB_IO_NR11, GB_IO_NR12, GB_IO_NR13,
+        GB_IO_NR21, GB_IO_NR22, GB_IO_NR23,
+        GB_IO_NR30, GB_IO_NR31, GB_IO_NR32, GB_IO_NR33,
+        GB_IO_NR41, GB_IO_NR42, GB_IO_NR43,
+    };
+
+    for (unsigned i = 0; i < sizeof(registers) / sizeof(registers[0]); i++) {
+        if (!vgm_write_register(gb, registers[i], gb->io_registers[registers[i]])) return false;
+    }
+
+    for (unsigned i = GB_IO_WAV_START; i <= GB_IO_WAV_END; i++) {
+        if (!vgm_write_register(gb, i, gb->io_registers[i])) return false;
+    }
+
+    if (!vgm_write_register(gb, GB_IO_NR14,
+                            vgm_get_trigger_register(gb, GB_IO_NR14, GB_SQUARE_1))) return false;
+    if (!vgm_write_register(gb, GB_IO_NR24,
+                            vgm_get_trigger_register(gb, GB_IO_NR24, GB_SQUARE_2))) return false;
+    if (!vgm_write_register(gb, GB_IO_NR34,
+                            vgm_get_trigger_register(gb, GB_IO_NR34, GB_WAVE))) return false;
+    if (!vgm_write_register(gb, GB_IO_NR44,
+                            vgm_get_trigger_register(gb, GB_IO_NR44, GB_NOISE))) return false;
+
+    return true;
+}
+
 void GB_apu_vgm_advance(GB_gameboy_t *gb, uint8_t cycles)
 {
     if (unlikely(gb->apu_output.output_file && gb->apu_output.output_format == GB_AUDIO_FORMAT_VGM)) {
@@ -2331,9 +2380,7 @@ void GB_apu_vgm_advance(GB_gameboy_t *gb, uint8_t cycles)
 void GB_apu_vgm_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
 {
     if (unlikely(gb->apu_output.output_file && gb->apu_output.output_format == GB_AUDIO_FORMAT_VGM)) {
-        if (!vgm_flush_wait(gb)) return;
-        uint8_t command[] = {0xB3, reg - GB_IO_NR10, value};
-        vgm_write_data(gb, command, sizeof(command));
+        vgm_write_register(gb, reg, value);
     }
 }
 
@@ -2365,6 +2412,15 @@ int GB_start_audio_recording(GB_gameboy_t *gb, const char *path, GB_audio_format
                 int ret = errno ?: EIO;
                 fclose(gb->apu_output.output_file);
                 gb->apu_output.output_file = NULL;
+                return ret;
+            }
+            if (!vgm_write_apu_snapshot(gb)) {
+                int ret = gb->apu_output.output_error ?: EIO;
+                if (gb->apu_output.output_file) {
+                    fclose(gb->apu_output.output_file);
+                    gb->apu_output.output_file = NULL;
+                }
+                gb->apu_output.output_error = 0;
                 return ret;
             }
             return 0;
