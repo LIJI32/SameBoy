@@ -1767,6 +1767,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 
             default:
                 if ((addr & 0xFF) >= GB_IO_NR10 && (addr & 0xFF) <= GB_IO_WAV_END) {
+                    GB_apu_vgm_write(gb, addr & 0xFF, value);
                     GB_apu_write(gb, addr & 0xFF, value);
                     return;
                 }

@@ -255,6 +255,9 @@ static void filter_changed(void *dialog,
         case 'I':
             asprintf(&new_filename, "%s.wav", basename);
             break;
+        case 'G':
+            asprintf(&new_filename, "%s.vgm", basename);
+            break;
         case 'a':
             asprintf(&new_filename, "%s.raw", basename);
             break;
@@ -322,12 +325,17 @@ char *do_save_recording_dialog(unsigned frequency)
     gtk_file_filter_add_pattern(filter, "*.aifc");
     gtk_file_filter_set_name(filter, "Apple AIFF");
     gtk_file_chooser_add_filter(dialog, filter);
-    
+
     filter = gtk_file_filter_new();
     gtk_file_filter_add_pattern(filter, "*.wav");
     gtk_file_filter_set_name(filter, "RIFF WAVE");
     gtk_file_chooser_add_filter(dialog, filter);
     
+    filter = gtk_file_filter_new();
+    gtk_file_filter_add_pattern(filter, "*.vgm");
+    gtk_file_filter_set_name(filter, "VGM log");
+    gtk_file_chooser_add_filter(dialog, filter);
+
     filter = gtk_file_filter_new();
     gtk_file_filter_add_pattern(filter, "*.raw");
     gtk_file_filter_add_pattern(filter, "*.pcm");

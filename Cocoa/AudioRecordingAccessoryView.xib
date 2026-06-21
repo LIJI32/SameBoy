@@ -36,6 +36,7 @@
                             <items>
                                 <menuItem title="Apple AIFF" state="on" tag="1" id="M3Z-UN-VKZ"/>
                                 <menuItem title="RIFF WAVE" tag="2" id="zA0-Np-4XD"/>
+                                <menuItem title="VGM log" tag="3" id="Yme-gB-L9v"/>
                                 <menuItem title="Raw PCM (Stereo 96KHz, 16-bit LE)" id="r9J-4k-XH5"/>
                             </items>
                         </menu>

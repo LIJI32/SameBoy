@@ -2888,6 +2888,9 @@ enum GBWindowResizeAction
         case GB_AUDIO_FORMAT_WAV:
             _audioSavePanel.allowedFileTypes = @[@"wav"];
             break;
+        case GB_AUDIO_FORMAT_VGM:
+            _audioSavePanel.allowedFileTypes = @[@"vgm"];
+            break;
     }
 }
 
