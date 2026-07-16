@@ -1139,7 +1139,7 @@ static int load_bess_save(GB_gameboy_t *gb, virtual_file_t *file, bool is_samebo
                 save.rtc_latched.days = bess_rtc.latched.days;
                 save.rtc_latched.high = bess_rtc.latched.high;
                 if (gb->rtc_mode == GB_RTC_MODE_SYNC_TO_HOST) {
-                    save.last_rtc_second = MIN(LE64(bess_rtc.last_rtc_second), time(NULL));
+                    save.last_rtc_second = MIN(LE64(bess_rtc.last_rtc_second), GB_host_time(gb));
                 }
                 
                 break;
@@ -1150,7 +1150,7 @@ static int load_bess_save(GB_gameboy_t *gb, virtual_file_t *file, bool is_samebo
                 if (file->read(file, &bess_huc3.header + 1, LE32(block.size)) != LE32(block.size)) goto error;
                 if (gb->cartridge_type->mbc_type != GB_HUC3) break;
                 if (gb->rtc_mode == GB_RTC_MODE_SYNC_TO_HOST) {
-                    save.last_rtc_second = MIN(LE64(bess_huc3.data.last_rtc_second), time(NULL));
+                    save.last_rtc_second = MIN(LE64(bess_huc3.data.last_rtc_second), GB_host_time(gb));
                 }
                 save.huc3.minutes = LE16(bess_huc3.data.minutes);
                 save.huc3.days = LE16(bess_huc3.data.days);
@@ -1165,7 +1165,7 @@ static int load_bess_save(GB_gameboy_t *gb, virtual_file_t *file, bool is_samebo
                 if (file->read(file, &bess_tpp1.header + 1, LE32(block.size)) != LE32(block.size)) goto error;
                 if (gb->cartridge_type->mbc_type != GB_TPP1) break;
                 if (gb->rtc_mode == GB_RTC_MODE_SYNC_TO_HOST) {
-                    save.last_rtc_second = MIN(LE64(bess_tpp1.last_rtc_second), time(NULL));
+                    save.last_rtc_second = MIN(LE64(bess_tpp1.last_rtc_second), GB_host_time(gb));
                 }
                 unrolled for (unsigned i = 4; i--;) {
                     save.rtc_real.data[i ^ 3] = bess_tpp1.real_rtc_data[i];
