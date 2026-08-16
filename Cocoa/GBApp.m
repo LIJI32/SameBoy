@@ -40,7 +40,6 @@ static uint32_t color_to_int(NSColor *color)
     } _updateState;
     NSString *_downloadDirectory;
     AuthorizationRef _auth;
-    bool _simulatingMenuEvent;
 }
 
 - (void) applicationDidFinishLaunching:(NSNotification *)notification
@@ -712,6 +711,28 @@ static uint32_t color_to_int(NSColor *color)
     }];
 }
 
+static bool PerformMenuItemWithKeyEquivalent(NSMenu *menu, NSString *keyEquivalent, NSEventModifierFlags modifiers)
+{
+    for (NSMenuItem *item in menu.itemArray) {
+        if (item.submenu) {
+            if (PerformMenuItemWithKeyEquivalent(item.submenu, keyEquivalent, modifiers)) return true;
+            continue;
+        }
+        
+        if (![item.keyEquivalent isEqualToString:keyEquivalent]) continue;
+        
+        NSEventModifierFlags itemModifiers = item.keyEquivalentModifierMask;
+        if ((itemModifiers & NSEventModifierFlagDeviceIndependentFlagsMask) != modifiers) continue;
+        
+        [NSApp sendAction:item.action
+                       to:item.target
+                     from:item];
+        return true;
+    }
+    
+    return false;
+}
+
 - (void)controller:(JOYController *)controller buttonChangedState:(JOYButton *)button
 {
     if (!button.isPressed) return;
@@ -737,39 +758,10 @@ static uint32_t color_to_int(NSColor *color)
         NSEventModifierFlags flags = NSEventModifierFlagCommand;
         if ([keyEquivalent hasPrefix:@"^"]) {
             flags |= NSEventModifierFlagShift;
-            [keyEquivalent substringFromIndex:1];
+            keyEquivalent = [keyEquivalent substringFromIndex:1];
         }
-        _simulatingMenuEvent = true;
-        [[NSApplication sharedApplication] sendEvent:[NSEvent keyEventWithType:NSEventTypeKeyDown
-                                                                                 location:(NSPoint){0,}
-                                                                            modifierFlags:flags
-                                                                                timestamp:0
-                                                                             windowNumber:0
-                                                                                  context:NULL
-                                                                               characters:keyEquivalent
-                                                              charactersIgnoringModifiers:keyEquivalent
-                                                                                isARepeat:false
-                                                                                  keyCode:0]];
-        _simulatingMenuEvent = false;
+        PerformMenuItemWithKeyEquivalent(self.mainMenu, keyEquivalent, flags);
     }
-}
-
-- (NSWindow *)keyWindow
-{
-    NSWindow *ret = [super keyWindow];
-    if (!ret && _simulatingMenuEvent) {
-        ret = [(Document *)self.orderedDocuments.firstObject mainWindow];
-    }
-    return ret;
-}
-
-- (NSWindow *)mainWindow
-{
-    NSWindow *ret = [super mainWindow];
-    if (!ret && _simulatingMenuEvent) {
-        ret = [(Document *)self.orderedDocuments.firstObject mainWindow];
-    }
-    return ret;
 }
 
 - (IBAction)openDebuggerHelp:(id)sender
