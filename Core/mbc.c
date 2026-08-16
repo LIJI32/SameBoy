@@ -165,13 +165,13 @@ void GB_configure_cart(GB_gameboy_t *gb)
         memcpy(gb->rom + gb->rom_size - 0x8000, temp, 0x8000);
         free(temp);
     }
-    else {
+    else if (gb->rom_size > 0x8000) {
         const GB_cartridge_t *maybe_mmm01_type = &GB_cart_defs[gb->rom[gb->rom_size - 0x8000 + 0x147]];
         if (memcmp(gb->rom + 0x104, gb->rom + gb->rom_size - 0x8000 + 0x104, 0x30) == 0) {
             if (maybe_mmm01_type->mbc_type == GB_MMM01) {
                 gb->cartridge_type = maybe_mmm01_type;
             }
-            else if(gb->rom[gb->rom_size - 0x8000 + 0x147] == 0x11) {
+            else if (gb->rom[gb->rom_size - 0x8000 + 0x147] == 0x11) {
                 GB_log(gb, "ROM header reports MBC3, but it appears to be an MMM01 ROM. Assuming cartridge uses MMM01.");
                 gb->cartridge_type = &GB_cart_defs[0xB];
             }
