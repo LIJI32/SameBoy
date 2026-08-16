@@ -1402,7 +1402,7 @@ void retro_run(void)
     vblank1_occurred = vblank2_occurred = false;
     signed delta = 0;
     if (emulated_devices == 2) {
-    while (!vblank1_occurred || !vblank2_occurred) {
+        while (!vblank1_occurred || !vblank2_occurred) {
             if (delta >= 0) {
                 delta -= GB_run(&gameboy[0]);
             }
@@ -1700,7 +1700,7 @@ void *retro_get_memory_data(unsigned type)
                 data = gameboy[0].vram;
                 break;
             case RETRO_MEMORY_RTC:
-                if (gameboy[0].cartridge_type->has_battery) {
+                if (gameboy[0].cartridge_type->has_rtc) {
                     data = GB_GET_SECTION(&gameboy[0], rtc);
                 }
                 else {
@@ -1730,7 +1730,7 @@ void *retro_get_memory_data(unsigned type)
                 }
                 break;
             case RETRO_MEMORY_GAMEBOY_1_RTC:
-                if (gameboy[0].cartridge_type->has_battery) {
+                if (gameboy[0].cartridge_type->has_rtc) {
                     data = GB_GET_SECTION(&gameboy[0], rtc);
                 }
                 else {
@@ -1738,7 +1738,7 @@ void *retro_get_memory_data(unsigned type)
                 }
                 break;
             case RETRO_MEMORY_GAMEBOY_2_RTC:
-                if (gameboy[1].cartridge_type->has_battery) {
+                if (gameboy[1].cartridge_type->has_rtc) {
                     data = GB_GET_SECTION(&gameboy[1], rtc);
                 }
                 else {
