@@ -33,7 +33,6 @@
     [self observeStandardDefaultsKey:@"GBFilter" withBlock:^(id newValue) {
         weakSelf.shader = nil;
         [weakSelf setNeedsDisplay:true];
-
     }];
     return self;
 }

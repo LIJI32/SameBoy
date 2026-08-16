@@ -17,5 +17,5 @@
 @end
 
 @interface NSPrefPaneUtils : NSObject
-+ (id)stringForVirtualKey:(unsigned int)key modifiers:(unsigned int)flags;
++ (id)stringForVirtualKey:(unsigned)key modifiers:(unsigned)flags;
 @end

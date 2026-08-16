@@ -371,6 +371,14 @@ static bool verify_and_update_state_compatibility(GB_gameboy_t *gb, GB_gameboy_t
     return false;
 }
 
+static void sanitize_bool(bool *b)
+{
+    _Atomic volatile bool *vb = (typeof(vb))b;
+    if (*vb) {
+        *vb = true;
+    }
+}
+
 static void sanitize_state(GB_gameboy_t *gb)
 {
     for (unsigned i = 0; i < 32; i++) {
@@ -434,6 +442,8 @@ static void sanitize_state(GB_gameboy_t *gb)
     if (gb->n_visible_objs > 10) {
         gb->n_visible_objs = 10;
     }
+    
+    sanitize_bool(&gb->cgb_vram_bank);
 }
 
 static bool dump_section(virtual_file_t *file, const void *src, uint32_t size)
