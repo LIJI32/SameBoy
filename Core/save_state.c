@@ -444,6 +444,11 @@ static void sanitize_state(GB_gameboy_t *gb)
     }
     
     sanitize_bool(&gb->cgb_vram_bank);
+    if (gb->accessory == GB_ACCESSORY_PRINTER) {
+        gb->printer.image_offset %= sizeof(gb->printer.image);
+        gb->printer.image_offset /= 160 * 8;
+        gb->printer.image_offset *= 160 * 8;
+    }
 }
 
 static bool dump_section(virtual_file_t *file, const void *src, uint32_t size)
