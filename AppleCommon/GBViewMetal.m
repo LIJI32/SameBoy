@@ -33,6 +33,7 @@ static const vector_float2 rect[] =
 #if TARGET_OS_IPHONE
     return true;
 #else
+    extern NSArray <id<MTLDevice>> *MTLCopyAllDevices(void) __attribute__((weak_import));
     if (MTLCopyAllDevices) {
         return [MTLCopyAllDevices() count];
     }
