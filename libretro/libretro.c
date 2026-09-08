@@ -19,6 +19,7 @@
 #include <Core/gb.h>
 #include "libretro.h"
 #include "libretro_core_options.inc"
+#include "iretro_extensions.h"
 
 #ifdef _WIN32
 static const char slash = '\\';
@@ -1828,4 +1829,54 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
     (void)index;
     (void)enabled;
     (void)code;
+}
+
+
+size_t iretro_persistent_serialize_size(void)
+{
+    return GB_save_battery_size(&gameboy[0]) + (emulated_devices == 2? GB_save_battery_size(&gameboy[1]) : 0);
+}
+
+bool iretro_persistent_serialize(void *data, size_t len)
+{
+    if (len < iretro_persistent_serialize_size()) return false;
+    GB_save_battery_to_buffer(&gameboy[0], data, len);
+    if (emulated_devices == 1) return true;
+
+    size_t pos = GB_save_battery_size(&gameboy[0]);
+    len -= pos;
+    data = (uint8_t *)data + pos;
+    GB_save_battery_to_buffer(&gameboy[1], data, len);
+    return true;
+}
+
+bool iretro_persistent_unserialize(const void *data, size_t len)
+{
+    if (len < iretro_persistent_serialize_size()) return false;
+    GB_load_battery_from_buffer(&gameboy[0], data, len);
+    if (emulated_devices == 1) return true;
+    
+    size_t pos = GB_save_battery_size(&gameboy[0]);
+    len -= pos;
+    data = (uint8_t *)data + pos;
+    GB_load_battery_from_buffer(&gameboy[1], data, len);
+    return true;
+}
+
+
+const char *iretro_query_metadata(const char *key)
+{
+    if (strcmp(key, IRETRO_METADATA_KEY_COPYRIGHT) == 0) {
+        return "Copyright © 2015-" GB_COPYRIGHT_YEAR "\n";
+    }
+    if (strcmp(key, IRETRO_METADATA_KEY_CONSOLES) == 0) {
+        return "Nintendo;Game Boy,Nintendo;Super Game Boy,Nintendo;Game Boy Color";
+    }
+    if (strcmp(key, IRETRO_METADATA_KEY_LICENSE_NAME) == 0) {
+        return "Expat License";
+    }
+    if (strcmp(key, IRETRO_METADATA_KEY_DESCRIPTION) == 0) {
+        return "SameBoy is an extremely accurate open source Game Boy (DMG) and Game Boy Color (CGB) emulator, written in portable C.";
+    }
+    return NULL;
 }

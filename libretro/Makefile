@@ -348,7 +348,7 @@ endif
 
 include Makefile.common
 
-CFLAGS += -DGB_VERSION=\"$(VERSION)\"
+CFLAGS += -DGB_VERSION=\"$(VERSION)\" -DGB_COPYRIGHT_YEAR=\"$(COPYRIGHT_YEAR)\"
 
 OBJECTS := $(patsubst $(CORE_DIR)/%.c,$(CORE_DIR)/build/obj/%_libretro.c.o,$(SOURCES_C))
 
