@@ -85,6 +85,10 @@ static UIImage *CreateMenuImage(NSString *name)
 }
 
 API_AVAILABLE(ios(13.0))
+@interface GBSceneDelegate : UIResponder <UIWindowSceneDelegate>
+@end
+
+API_AVAILABLE(ios(13.0))
 @implementation UIKeyCommand (KeyCommandWithImage)
 
 + (instancetype)keyCommandWithInput:(NSString *)input modifierFlags:(UIKeyModifierFlags)modifierFlags action:(SEL)action title:(NSString *)title image:(UIImage *)image
@@ -318,11 +322,13 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     return @[@(factor)];
 }
 
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+- (bool)setupWindow
 {
-    _window = [[UIWindow alloc] init];
-    _window.rootViewController = self;
-    [_window makeKeyAndVisible];
+    if (!self.window) {
+        self.window = [[UIWindow alloc] init];
+    }
+    self.window.rootViewController = self;
+    [self.window makeKeyAndVisible];
     
     _runQueue = dispatch_queue_create("SameBoy Emulation Queue", NULL);
     
@@ -561,6 +567,27 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     }
     
     return true;
+}
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+    if (@available(iOS 13.0, *)) {
+        return true;
+    }
+    return [self setupWindow];
+}
+
+- (UISceneConfiguration *)application:(UIApplication *)application
+            configurationForConnectingSceneSession:(UISceneSession *)connectingSceneSession
+                                           options:(UISceneConnectionOptions *)options API_AVAILABLE(ios(13.0))
+{
+    if (@available(iOS 13.0, *)) {
+        UISceneConfiguration *configuration = [[UISceneConfiguration alloc] initWithName:@"Default Configuration"
+                                                                               sessionRole:connectingSceneSession.role];
+        configuration.delegateClass = [GBSceneDelegate class];
+        return configuration;
+    }
+    return nil;
 }
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
@@ -2495,30 +2522,43 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 @end
 
-/* +[UIColor labelColor] is broken in some contexts in iOS 26 and despite being such a critical method
-   Apple isn't going to fix this in time. */
-API_AVAILABLE(ios(19.0))
-@implementation UIColor(SolariumBugs)
-+ (UIColor *)_labelColor
-{
-    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-        switch (traitCollection.userInterfaceStyle) {
-                
-            case UIUserInterfaceStyleUnspecified:
-            case UIUserInterfaceStyleLight:
-                return [UIColor blackColor];
-            case UIUserInterfaceStyleDark:
-                return [UIColor whiteColor];
-        }
-    }];
-}
+API_AVAILABLE(ios(13.0))
+@implementation GBSceneDelegate
 
-+ (void)load
+- (void)scene:(UIScene *)scene
+ willConnectToSession:(UISceneSession *)session
+        options:(UISceneConnectionOptions *)connectionOptions
 {
-    if (@available(iOS 19.0, *)) {
-        method_setImplementation(class_getClassMethod(self, @selector(labelColor)),
-                                 [self methodForSelector:@selector(_labelColor)]);
+    GBViewController *controller = (id)[UIApplication sharedApplication].delegate;
+    controller.window = [[UIWindow alloc] initWithWindowScene:(id)scene];
+    [controller setupWindow];
+    for (UIOpenURLContext *context in connectionOptions.URLContexts) {
+        [controller application:[UIApplication sharedApplication]
+                        openURL:context.URL
+                        options:@{UIApplicationOpenURLOptionsOpenInPlaceKey: @(context.options.openInPlace)}];
     }
 }
+
+- (void)sceneDidBecomeActive:(UIScene *)scene
+{
+    [[UIApplication sharedApplication].delegate applicationDidBecomeActive:[UIApplication sharedApplication]];
+}
+
+- (void)sceneWillResignActive:(UIScene *)scene
+{
+    [[UIApplication sharedApplication].delegate applicationWillResignActive:[UIApplication sharedApplication]];
+}
+
+- (void)scene:(UIScene *)scene openURLContexts:(nonnull NSSet<UIOpenURLContext *> *)URLContexts
+{
+    GBViewController *controller = (id)[UIApplication sharedApplication].delegate;
+    
+    for (UIOpenURLContext *context in URLContexts) {
+        [controller application:[UIApplication sharedApplication]
+                        openURL:context.URL
+                        options:@{UIApplicationOpenURLOptionsOpenInPlaceKey: @(context.options.openInPlace)}];
+    }
+}
+
 
 @end
