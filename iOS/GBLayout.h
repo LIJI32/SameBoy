@@ -15,7 +15,7 @@
 @property (readonly) CGPoint abComboLocation;
 @property (readonly) CGPoint startLocation;
 @property (readonly) CGPoint selectLocation;
-@property (readonly) unsigned cutout;
+@property (readonly) bool asymmetric;
 
 - (CGRect)viewRectForOrientation:(UIInterfaceOrientation)orientation;
 @end
@@ -35,9 +35,9 @@
 @property (readonly) CGSize resolution; // Always vertical
 @property (readonly) CGSize size; // Size in pixels, override to make horizontal
 @property (readonly) unsigned factor;
-@property (readonly) unsigned minY;
-@property (readonly) unsigned homeBar;
 @property (readonly) bool hasFractionalPixels;
+@property (readonly) UIEdgeInsets insets;
+@property (readonly) UIInterfaceOrientation orientation;
 
 - (void)drawBackground;
 - (void)drawScreenBezels;

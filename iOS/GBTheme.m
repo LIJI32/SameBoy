@@ -2,52 +2,7 @@
 #import "GBVerticalLayout.h"
 #import "GBHorizontalLayout.h"
 #import "GBBackgroundView.h"
-
-@interface GBLazyObject : NSProxy
-@end
-
-@implementation GBLazyObject
-{
-    id _target;
-    id (^_constructor)(void);
-}
-
-
-- (instancetype)initWithConstructor:(id (^)(void))constructor
-{
-    _constructor = constructor;
-    return self;
-}
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel
-{
-    if (GB_likely(!_target)) {
-        _target = _constructor();
-        _constructor = nil;
-    }
-    return [_target methodSignatureForSelector:sel];
-}
-
-- (void)forwardInvocation:(NSInvocation *)invocation
-{
-    if (GB_likely(!_target)) {
-        _target = _constructor();
-        _constructor = nil;
-    }
-    invocation.target = _target;
-    [invocation invoke];
-}
-
-- (instancetype)self
-{
-    if (GB_likely(!_target)) {
-        _target = _constructor();
-        _constructor = nil;
-    }
-    return _target;
-}
-
-@end
+#import "GBLazyObject.h"
 
 #define MakeColor(r, g, b) [UIColor colorWithRed:(r) / 255.0 green:(g) / 255.0 blue:(b) / 255.0 alpha:1.0]
 

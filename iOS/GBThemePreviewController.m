@@ -15,7 +15,7 @@
 {
     self = [super init];
     _horizontalLayoutLeft = [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:false];
-    _horizontalLayoutRight = _horizontalLayoutLeft.cutout?
+    _horizontalLayoutRight = _horizontalLayoutLeft.asymmetric?
         [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:true] :
         _horizontalLayoutLeft;
     _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];

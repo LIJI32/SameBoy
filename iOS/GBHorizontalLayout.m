@@ -2,26 +2,30 @@
 #import "GBHorizontalLayout.h"
 
 @implementation GBHorizontalLayout
+{
+    bool _cutoutOnRight;
+}
 
 - (instancetype)initWithTheme:(GBTheme *)theme cutoutOnRight:(bool)cutoutOnRight
 {
+    _cutoutOnRight = cutoutOnRight;
     self = [super initWithTheme:theme];
     if (!self) return nil;
     
     CGSize resolution = {self.resolution.height, self.resolution.width};
     
     CGRect screenRect = {0,};
-    screenRect.size.height = self.hasFractionalPixels? (resolution.height - self.homeBar) : floor((resolution.height - self.homeBar) / 144) * 144;
+    screenRect.size.height = self.hasFractionalPixels? (resolution.height - self.insets.bottom) : floor((resolution.height - self.insets.bottom) / 144) * 144;
     screenRect.size.width = screenRect.size.height / 144 * 160;
     
     screenRect.origin.x = (resolution.width - screenRect.size.width) / 2;
-    screenRect.origin.y = (resolution.height - self.homeBar - screenRect.size.height) / 2;
+    screenRect.origin.y = (resolution.height - self.insets.bottom - screenRect.size.height) / 2;
     self.fullScreenRect = screenRect;
     
     double horizontalMargin, verticalMargin;
     while (true) {
         horizontalMargin = (resolution.width - screenRect.size.width) / 2;
-        verticalMargin = (resolution.height - self.homeBar - screenRect.size.height) / 2;
+        verticalMargin = (resolution.height - self.insets.bottom - screenRect.size.height) / 2;
         if (horizontalMargin / self.factor < 164) {
             if (self.hasFractionalPixels) {
                 screenRect.size.width = resolution.width - 164 * self.factor * 2;
@@ -41,25 +45,27 @@
     bool drawSameBoyLogo = false;
     if (verticalMargin * 2 > screenBorderWidth * 7) {
         drawSameBoyLogo = true;
-        screenRect.origin.y = (resolution.height - self.homeBar - screenRect.size.height - screenBorderWidth * 5) / 2;
+        screenRect.origin.y = (resolution.height - self.insets.bottom - screenRect.size.height - screenBorderWidth * 5) / 2;
     }
     else {
-        screenRect.origin.y = (resolution.height - self.homeBar - screenRect.size.height) / 2;
+        screenRect.origin.y = (resolution.height - self.insets.bottom - screenRect.size.height) / 2;
     }
         
     self.screenRect = screenRect;
     
     self.dpadLocation = (CGPoint){
-        round((screenRect.origin.x - screenBorderWidth) / 2) + (cutoutOnRight? 0 : self.cutout / 2),
+        round((screenRect.origin.x - screenBorderWidth) / 2) + self.insets.left / 2,
         round(resolution.height * 3 / 8)
     };
         
     double longWing = (resolution.width - screenRect.size.width) / 2 - screenBorderWidth * 5;
-    double shortWing = longWing - self.cutout;
+    double shortWing = longWing - MAX(self.insets.left, self.insets.right);
+    longWing -= MIN(self.insets.left, self.insets.right);
+    
     double buttonRadius = 36 * self.factor;
     CGSize buttonsDelta = [self buttonDeltaForMaxHorizontalDistance:(cutoutOnRight? shortWing : longWing) - buttonRadius * 2];
     CGPoint buttonsCenter = {
-        (resolution.width + screenRect.size.width + screenRect.origin.x) / 2 - (cutoutOnRight? self.cutout / 2 : 0),
+        (resolution.width + screenRect.size.width + screenRect.origin.x) / 2 - self.insets.right / 2,
         self.dpadLocation.y,
     };
     
@@ -76,12 +82,12 @@
     };
 
     self.selectLocation = (CGPoint){
-        self.dpadLocation.x + (cutoutOnRight? self.cutout / 2 : 0),
+        self.dpadLocation.x + self.insets.right / 2,
         MIN(round(resolution.height * 3 / 4), self.dpadLocation.y + 180 * self.factor)
     };
     
     self.startLocation = (CGPoint){
-        buttonsCenter.x -  (cutoutOnRight? 0 : self.cutout / 2 ),
+        buttonsCenter.x - self.insets.left / 2,
         self.selectLocation.y
     };
 
@@ -118,14 +124,14 @@
     __builtin_unreachable();
 }
 
-- (CGRect)viewRectForOrientation:(UIInterfaceOrientation)orientation
-{
-    return CGRectMake(0, 0, self.background.size.width / self.factor, self.background.size.height / self.factor);
-}
-
 - (CGSize)size
 {
     return (CGSize){self.resolution.height, self.resolution.width};
+}
+
+- (UIInterfaceOrientation)orientation
+{
+    return _cutoutOnRight? UIInterfaceOrientationLandscapeLeft :  UIInterfaceOrientationLandscapeRight;
 }
 
 @end

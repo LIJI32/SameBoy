@@ -16,9 +16,10 @@
 #import "GBCheckableAlertController.h"
 #import "GBPrinterFeedController.h"
 #import "GBCheatsController.h"
+#import "GBLazyObject.h"
 #import "UILabel+LockFonts.h"
 #import <CommonCrypto/CommonCrypto.h>
-#include <sys/xattr.h>
+#import <sys/xattr.h>
 #import "GCControllerGetElements.h"
 #import "GBZipReader.h"
 #import <sys/stat.h>
@@ -61,6 +62,16 @@ API_AVAILABLE(ios(19.0))
 #endif
 
 
+static UIInterfaceOrientation CurrentOrientation(void)
+{
+    if (@available(iOS 16.0, *)) {
+        return [(UIWindowScene *)[UIApplication sharedApplication].connectedScenes.anyObject effectiveGeometry].interfaceOrientation;
+    }
+    if (@available(iOS 13.0, *)) {
+        return [(UIWindowScene *)[UIApplication sharedApplication].connectedScenes.anyObject interfaceOrientation];
+    }
+    return [UIApplication sharedApplication].statusBarOrientation;
+}
 static UIImage *CreateMenuImage(NSString *name)
 {
     static const unsigned size = 20;
@@ -337,13 +348,13 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     [self addDefaultObserver:^(id newValue) {
         GBTheme *theme = [GBSettingsViewController themeNamed:newValue];
         _horizontalLayoutLeft = [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:false];
-        _horizontalLayoutRight = _horizontalLayoutLeft.cutout?
+        _horizontalLayoutRight = _horizontalLayoutLeft.asymmetric?
             [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:true] :
             _horizontalLayoutLeft;
         _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];
         _printerSpinner.color = theme.buttonColor;
-
-        [self willRotateToInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation
+        
+        [self willRotateToInterfaceOrientation:CurrentOrientation()
                                       duration:0];
         [_backgroundView reloadThemeImages];
         
@@ -351,7 +362,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     } forKey:@"GBInterfaceTheme"];
 #pragma clang diagnostic pop
     
-    _backgroundView = [[GBBackgroundView alloc] initWithLayout:_verticalLayout];
+    _backgroundView = [[GBBackgroundView alloc] initWithLayout:[self layoutForOrientation:CurrentOrientation()]];
     [_window addSubview:_backgroundView];
     self.view = _backgroundView;
     
@@ -377,7 +388,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     } forKey:@"GBSwipeDpad"];
     
     
-    [self willRotateToInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation
+    [self willRotateToInterfaceOrientation:CurrentOrientation()
                                   duration:0];
     
     
@@ -432,7 +443,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     }
 
     _cameraPositionButton = [[UIButton alloc] init];
-    [self didRotateFromInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation];
+    [self didRotateFromInterfaceOrientation:CurrentOrientation()];
     if (@available(iOS 13.0, *)) {
         [_cameraPositionButton  setImage:[UIImage systemImageNamed:@"camera.rotate"
                                                  withConfiguration:[UIImageSymbolConfiguration configurationWithScale:UIImageSymbolScaleLarge]]
@@ -498,8 +509,8 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     _printerButton = [[UIButton alloc] init];
     _printerSpinner = [[UIActivityIndicatorView alloc] init];
     _printerSpinner.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhite;
-    _printerSpinner.color = _verticalLayout.theme.buttonColor;
-    [self didRotateFromInterfaceOrientation:[UIApplication sharedApplication].statusBarOrientation];
+    _printerSpinner.color = _backgroundView.layout.theme.buttonColor;
+    [self didRotateFromInterfaceOrientation:CurrentOrientation()];
     
     if (@available(iOS 13.0, *)) {
         [_printerButton  setImage:[UIImage systemImageNamed:@"printer"
@@ -1277,25 +1288,28 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     [self stop];
 }
 
-- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)orientation duration:(NSTimeInterval)duration
+- (GBLayout *)layoutForOrientation:(UIInterfaceOrientation)orientation
 {
-    if (_orientation != UIInterfaceOrientationUnknown && !((1 << orientation) & self.supportedInterfaceOrientations)) return;
-    GBLayout *layout = nil;
-    _orientation = orientation;
     switch (orientation) {
         default:
         case UIInterfaceOrientationUnknown:
         case UIInterfaceOrientationPortrait:
         case UIInterfaceOrientationPortraitUpsideDown:
-            layout = _verticalLayout;
-            break;
+            return _verticalLayout;
         case UIInterfaceOrientationLandscapeRight:
-            layout = _horizontalLayoutLeft;
+            return _horizontalLayoutLeft;
             break;
         case UIInterfaceOrientationLandscapeLeft:
-            layout = _horizontalLayoutRight;
-            break;
+            return _horizontalLayoutRight;
     }
+}
+
+- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)orientation duration:(NSTimeInterval)duration
+{
+    if (_orientation != UIInterfaceOrientationUnknown && !((1 << orientation) & self.supportedInterfaceOrientations)) return;
+    GBLayout *layout = nil;
+    _orientation = orientation;
+    layout = [self layoutForOrientation:orientation];
     
     _backgroundView.frame = [layout viewRectForOrientation:orientation];
     _backgroundView.layout = layout;
@@ -1377,9 +1391,9 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 - (UIStatusBarStyle)preferredStatusBarStyle
 {
     if (@available(iOS 13.0, *)) {
-        return (_verticalLayout.theme.isDark || _backgroundView.fullScreenMode)? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
+        return (_backgroundView.layout.theme.isDark || _backgroundView.fullScreenMode)? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
     }
-    return (_verticalLayout.theme.isDark || _backgroundView.fullScreenMode)? UIStatusBarStyleLightContent : UIStatusBarStyleDefault;
+    return (_backgroundView.layout.theme.isDark || _backgroundView.fullScreenMode)? UIStatusBarStyleLightContent : UIStatusBarStyleDefault;
 }
 
 - (void)preRun

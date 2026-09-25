@@ -1,8 +1,24 @@
 #define GBLayoutInternal
 #import "GBLayout.h"
 
+static UIScreen *ActiveScreen(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [(UIWindowScene *)[UIApplication sharedApplication].connectedScenes.anyObject screen];
+    }
+    return [UIScreen mainScreen];
+}
+
 static double StatusBarHeight(void)
 {
+    if (@available(iOS 15.0, *)) {
+        UIEdgeInsets insets = [(UIWindowScene *)[UIApplication sharedApplication].connectedScenes.anyObject keyWindow].safeAreaInsets;
+        double ret = MAX(MAX(insets.left, insets.right), MAX(insets.top, insets.bottom)) ?: 20;
+        if (!ret && [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+            ret = 32; // iPadOS is buggy af
+        }
+        return ret;
+    }
     static double ret = 0;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -22,12 +38,35 @@ static double StatusBarHeight(void)
 
 static bool HasHomeBar(void)
 {
+    if (@available(iOS 15.0, *)) {
+        UIEdgeInsets insets = [(UIWindowScene *)[UIApplication sharedApplication].connectedScenes.anyObject keyWindow].safeAreaInsets;
+        return insets.bottom;
+    }
     static bool ret = false;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         ret = [UIApplication sharedApplication].windows[0].safeAreaInsets.bottom;
     });
     return ret;
+}
+
+static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation)
+{
+    
+    double statusBarHeight = StatusBarHeight();
+    double homeBarHeight = HasHomeBar()? 20 : 0;
+    bool hasCutout = (statusBarHeight > 24 && [UIDevice currentDevice].userInterfaceIdiom != UIUserInterfaceIdiomPad);
+    
+    switch (orientation) {
+        case UIInterfaceOrientationUnknown:
+        case UIInterfaceOrientationPortrait:
+        case UIInterfaceOrientationPortraitUpsideDown:
+            return UIEdgeInsetsMake(statusBarHeight, 0, homeBarHeight, 0);
+        case UIInterfaceOrientationLandscapeLeft:
+            return UIEdgeInsetsMake(0, 0, homeBarHeight, hasCutout? statusBarHeight : 0);
+        case UIInterfaceOrientationLandscapeRight:
+            return UIEdgeInsetsMake(0, hasCutout? statusBarHeight : 0, homeBarHeight, 0);
+    }
 }
 
 @implementation GBLayout
@@ -41,24 +80,23 @@ static bool HasHomeBar(void)
     if (!self) return nil;
     
     _theme = theme;
-    _factor = [UIScreen mainScreen].scale;
-    _resolution = [UIScreen mainScreen].bounds.size;
+    _factor = ActiveScreen().scale;
+    _resolution = ActiveScreen().bounds.size;
     _resolution.width *= _factor;
     _resolution.height *= _factor;
     if (_resolution.width > _resolution.height) {
         _resolution = (CGSize){_resolution.height, _resolution.width};
     }
     
-    _minY = StatusBarHeight() * _factor;
-    _cutout = (_minY <= 24 * _factor || [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad)? 0 : _minY;
-    
-    if (HasHomeBar()) {
-        _homeBar =  21 * _factor;
-    }
-    
+    _insets = CurrentInsets(self.orientation);
+    _insets.left *= _factor;
+    _insets.right *= _factor;
+    _insets.bottom *= _factor;
+    _insets.top *= _factor;
+
     // The Plus series will scale things lossily anyway, so no need to bother with integer scale things
     // This also "catches" zoomed display modes
-    _hasFractionalPixels = _factor != [UIScreen mainScreen].nativeScale;
+    _hasFractionalPixels = _factor != ActiveScreen().nativeScale;
     return self;
 }
 
@@ -103,7 +141,7 @@ static bool HasHomeBar(void)
     bezelRect.size.width += borderWidth * 2;
     bezelRect.size.height += borderWidth * 2;
     
-    if (bezelRect.origin.y + bezelRect.size.height >= self.size.height - _homeBar) {
+    if (bezelRect.origin.y + bezelRect.size.height >= self.size.height - _insets.bottom) {
         bezelRect.origin.y = -32;
         bezelRect.size.height = self.size.height + 32;
     }
@@ -151,7 +189,7 @@ static bool HasHomeBar(void)
                              range.location - range.length / 3,
                              self.size.width, range.length * 2);
     if (self.size.width > self.size.height) {
-        rect.origin.x += _cutout / 2;
+        rect.origin.x += (_insets.left - _insets.right) / 2;
     }
     NSMutableParagraphStyle *style = [NSParagraphStyle defaultParagraphStyle].mutableCopy;
     style.alignment = NSTextAlignmentCenter;
@@ -218,5 +256,15 @@ static bool HasHomeBar(void)
 - (CGSize)size
 {
     return _resolution;
+}
+
+- (UIInterfaceOrientation)orientation
+{
+    return UIInterfaceOrientationUnknown;
+}
+
+- (bool)asymmetric
+{
+    return _insets.left != _insets.right;
 }
 @end

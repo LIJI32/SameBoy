@@ -19,7 +19,7 @@
     self.fullScreenRect = screenRect;
     
     double screenBorderWidth = MIN(screenRect.size.width / 40, 16 * self.factor);
-    screenRect.origin.y = self.minY + MIN(screenBorderWidth * 2, 20 * self.factor);
+    screenRect.origin.y = self.insets.top + MIN(screenBorderWidth * 2, 20 * self.factor);
     self.screenRect = screenRect;
     
     double controlAreaStart = screenRect.origin.y + screenRect.size.height + MIN(screenBorderWidth * 2, 20 * self.factor);
@@ -88,6 +88,11 @@
     self.background = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return self;
+}
+
+- (UIInterfaceOrientation)orientation
+{
+    return UIInterfaceOrientationPortrait;
 }
 
 @end
