@@ -1531,6 +1531,7 @@ struct shader_name {
 } shaders[] =
 {
     {"NearestNeighbor", "Nearest Neighbor"},
+    {"Pixelated", "Pixelated"},
     {"Bilinear", "Bilinear"},
     {"SmoothBilinear", "Smooth Bilinear"},
     {"MonoLCD", "Monochrome LCD"},
@@ -1557,7 +1558,6 @@ static void cycle_filter(unsigned index)
         }
     }
     
-
     i += 1;
     if (i >= sizeof(shaders) / sizeof(shaders[0])) {
         i -= sizeof(shaders) / sizeof(shaders[0]);
@@ -1566,7 +1566,7 @@ static void cycle_filter(unsigned index)
     strcpy(configuration.filter, shaders[i].file_name);
     free_shader(&shader);
     if (!init_shader_with_name(&shader, configuration.filter)) {
-        init_shader_with_name(&shader, "NearestNeighbor");
+        init_shader_with_name(&shader, "Pixelated");
     }
 }
 
@@ -1588,7 +1588,7 @@ static void cycle_filter_backwards(unsigned index)
     strcpy(configuration.filter, shaders[i].file_name);
     free_shader(&shader);
     if (!init_shader_with_name(&shader, configuration.filter)) {
-        init_shader_with_name(&shader, "NearestNeighbor");
+        init_shader_with_name(&shader, "Pixelated");
     }
 
 }
@@ -1603,7 +1603,7 @@ static const char *current_filter_name(unsigned index)
     }
     
     if (i == sizeof(shaders) / sizeof(shaders[0])) {
-        i = 0;
+        i = 1; // Pixelated
     }
     
     return shaders[i].display_name;

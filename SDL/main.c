@@ -1596,7 +1596,7 @@ int main(int argc, char **argv)
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
     
     if (!init_shader_with_name(&shader, configuration.filter)) {
-        init_shader_with_name(&shader, "NearestNeighbor");
+        init_shader_with_name(&shader, "Pixelated");
     }
     update_viewport();
     

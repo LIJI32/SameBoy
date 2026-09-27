@@ -80,7 +80,7 @@ static uint32_t color_to_int(NSColor *color)
                                                               @"GBRewind": @(kVK_Tab),
                                                               @"GBSlow-Motion": @(kVK_Shift),
 
-                                                              @"GBFilter": @"NearestNeighbor",
+                                                              @"GBFilter": @"Pixelated",
                                                               @"GBColorCorrection": @(GB_COLOR_CORRECTION_MODERN_BALANCED),
                                                               @"GBHighpassFilter": @(GB_HIGHPASS_ACCURATE),
                                                               @"GBRewindLength": @(120),
