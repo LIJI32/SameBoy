@@ -9,6 +9,7 @@
     if (!self) return nil;
     
     CGSize resolution = self.resolution;
+    resolution.width -= self.insets.right;
     
     CGRect screenRect = {0,};
     screenRect.size.width = self.hasFractionalPixels? resolution.width : floor(resolution.width / 160) * 160;
@@ -20,7 +21,14 @@
     
     double screenBorderWidth = MIN(screenRect.size.width / 40, 16 * self.factor);
     screenRect.origin.y = self.insets.top + MIN(screenBorderWidth * 2, 20 * self.factor);
+    
+    if (screenRect.origin.x < screenBorderWidth && self.insets.right) {
+        screenRect.origin.x = screenBorderWidth;
+    }
+    
     self.screenRect = screenRect;
+    
+    resolution.width += self.insets.right;
     
     double controlAreaStart = screenRect.origin.y + screenRect.size.height + MIN(screenBorderWidth * 2, 20 * self.factor);
     
@@ -70,7 +78,12 @@
         UIGraphicsBeginImageContextWithOptions(resolution, true, 1);
     }
     [self drawBackground];
-    [self drawScreenBezels];
+    if (self.insets.right) {
+        [self drawFoldedScreenBezels];
+    }
+    else {
+        [self drawScreenBezels];
+    }
     
     [self drawThemedLabelsWithBlock:^{
         if (controlsTop - controlAreaStart > 24 * self.factor + screenBorderWidth * 2) {
@@ -93,6 +106,11 @@
 - (UIInterfaceOrientation)orientation
 {
     return UIInterfaceOrientationPortrait;
+}
+
+- (bool)isDark
+{
+    return [super isDark] || self.insets.right;
 }
 
 @end

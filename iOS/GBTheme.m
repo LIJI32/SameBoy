@@ -149,17 +149,16 @@ __attribute__((objc_direct_members))
     if (_horizontalPreview) return _horizontalPreview;
     _renderingPreview = true;
     GBLayout *layout = [[GBHorizontalLayout alloc] initWithTheme:self cutoutOnRight:false];
-    _renderingPreview = false;
+
     GBBackgroundView *view = [[GBBackgroundView alloc] initWithLayout:layout];
     [view enterPreviewMode:false];
     view.usesSwipePad = [[NSUserDefaults standardUserDefaults] boolForKey:@"GBSwipePad"];
     view.layout = layout;
-    view.bounds = CGRectMake(0, 0,
-                             MAX(UIScreen.mainScreen.bounds.size.width, UIScreen.mainScreen.bounds.size.height),
-                             MIN(UIScreen.mainScreen.bounds.size.width, UIScreen.mainScreen.bounds.size.height));
+    view.bounds = [layout viewRectForOrientation:UIInterfaceOrientationLandscapeRight];
     UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:(CGSize){view.bounds.size.width / 8,
-        view.bounds.size.height / 8,
+                                                                                                view.bounds.size.height / 8,
     }];
+    _renderingPreview = false;
     return _horizontalPreview = [renderer imageWithActions:^(UIGraphicsImageRendererContext *rendererContext) {
         CGContextScaleCTM(UIGraphicsGetCurrentContext(), 1 / 8.0, 1 / 8.0);
         [view.layer renderInContext:rendererContext.CGContext];
@@ -171,14 +170,12 @@ __attribute__((objc_direct_members))
     if (_verticalPreview) return _verticalPreview;
     _renderingPreview = true;
     GBLayout *layout = [[GBVerticalLayout alloc] initWithTheme:self];
-    _renderingPreview = false;
     GBBackgroundView *view = [[GBBackgroundView alloc] initWithLayout:layout];
     [view enterPreviewMode:false];
     view.usesSwipePad = [[NSUserDefaults standardUserDefaults] boolForKey:@"GBSwipePad"];
     view.layout = layout;
-    view.bounds = CGRectMake(0, 0,
-                             MIN(UIScreen.mainScreen.bounds.size.width, UIScreen.mainScreen.bounds.size.height),
-                             MAX(UIScreen.mainScreen.bounds.size.width, UIScreen.mainScreen.bounds.size.height));
+    view.bounds = [layout viewRectForOrientation:UIInterfaceOrientationPortrait];
+    _renderingPreview = false;
     UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:(CGSize){view.bounds.size.width / 8,
                                                                                                view.bounds.size.height / 8,
     }];

@@ -1013,4 +1013,9 @@ static id ValueForItem(NSDictionary *item)
     return [themes.firstObject firstObject];
 }
 
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+    return UIStatusBarStyleDefault;
+}
+
 @end

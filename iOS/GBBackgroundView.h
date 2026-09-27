@@ -16,4 +16,5 @@
 - (void)fadeOverlayOut;
 - (void)saveSwipeFromController:(bool)fromController;
 - (void)loadSwipeFromController:(bool)fromController;
+- (void)repositionForcedFullscreen;
 @end

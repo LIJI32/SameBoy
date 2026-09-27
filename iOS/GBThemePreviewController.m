@@ -19,7 +19,19 @@
         [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:true] :
         _horizontalLayoutLeft;
     _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(hingeChanged) name:@"HingeStatusChanged" object:nil];
     return self;
+}
+
+- (void)hingeChanged
+{
+    GBTheme *theme = _verticalLayout.theme;
+    _horizontalLayoutLeft = [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:false];
+    _horizontalLayoutRight = _horizontalLayoutLeft.asymmetric?
+    [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:true] :
+    _horizontalLayoutLeft;
+    _verticalLayout = [[GBVerticalLayout alloc] initWithTheme:theme];
+    [self willRotateToInterfaceOrientation:self.interfaceOrientation duration:0];
 }
 
 - (void)viewDidLoad
@@ -113,9 +125,9 @@
 - (UIStatusBarStyle)preferredStatusBarStyle
 {
     if (@available(iOS 13.0, *)) {
-        return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
+        return _backgroundView.layout.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDarkContent;
     }
-    return _verticalLayout.theme.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDefault;
+    return _backgroundView.layout.isDark? UIStatusBarStyleLightContent : UIStatusBarStyleDefault;
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations

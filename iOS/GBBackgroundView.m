@@ -138,7 +138,6 @@ static GB_key_mask_t angleToKeyMask(double angle)
     _screenLabel.lineBreakMode = NSLineBreakByWordWrapping;
     _screenLabel.numberOfLines = 0;
     [self setDefaultScreenLabel];
-    [self addSubview:_screenLabel];
     
     _dpadView = [[UIImageView alloc] initWithImage:[_layout.theme imageNamed:@"dpad"]];
     _aButtonView = [[UIImageView alloc] initWithImage:[_layout.theme imageNamed:@"buttonA"]];
@@ -161,6 +160,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
     [self addSubview:_startButtonView];
     [self addSubview:_selectButtonView];
     [self addSubview:_fadeView];
+    [self addSubview:_screenLabel];
     [self addSubview:_gbView];
     
     [_dpadView addSubview:_dpadShadowView];
@@ -197,6 +197,10 @@ static GB_key_mask_t angleToKeyMask(double angle)
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
     if (_previewMode) return;
+    if (_fullScreenMode == GBControllerFocusForcedViaSplitView) {
+        [self.window.rootViewController presentViewController:[GBMenuViewController menu] animated:true completion:nil];
+        return;
+    }
     if (_fullScreenMode) {
         self.fullScreenMode = GBControllerFocusOff;
         return;
@@ -470,6 +474,36 @@ static GB_key_mask_t angleToKeyMask(double angle)
     return true;
 }
 
+- (void)repositionForcedFullscreen
+{
+    CGRect screenFrame;
+    CGSize size = self.window.frame.size;
+    size.width *= [UIScreen mainScreen].scale;
+    size.height *= [UIScreen mainScreen].scale;
+    screenFrame.size.height = self.layout.hasFractionalPixels? size.height : floor(size.height / 144) * 144;
+    screenFrame.size.width = screenFrame.size.height / 144 * 160;
+    
+    if (screenFrame.size.width > size.width) {
+        screenFrame.size.width = self.layout.hasFractionalPixels? size.width : floor(size.width / 160) * 160;
+        screenFrame.size.height = screenFrame.size.width / 160 * 144;
+    }
+    
+    screenFrame.origin.x = (size.width - screenFrame.size.width) / 2;
+    screenFrame.origin.y = (size.height - screenFrame.size.height) / 2;
+    
+    screenFrame.origin.x /= [UIScreen mainScreen].scale;
+    screenFrame.origin.y /= [UIScreen mainScreen].scale;
+    screenFrame.size.width /= [UIScreen mainScreen].scale;
+    screenFrame.size.height /= [UIScreen mainScreen].scale;
+    
+    _gbView.frame = screenFrame;
+    screenFrame.origin.x += 8;
+    screenFrame.origin.y += 8;
+    screenFrame.size.width -= 16;
+    screenFrame.size.height -= 16;
+    _screenLabel.frame = screenFrame;
+}
+
 - (void)setLayout:(GBLayout *)layout
 {
     _layout = layout;
@@ -487,13 +521,18 @@ static GB_key_mask_t angleToKeyMask(double angle)
     screenFrame.size.width /= [UIScreen mainScreen].scale;
     screenFrame.size.height /= [UIScreen mainScreen].scale;
     
-    if (_fullScreenMode == GBControllerFocusOn) {
+    if (_fullScreenMode == GBControllerFocusForcedViaSplitView) {
+        [self repositionForcedFullscreen];
+        screenFrame = _gbView.frame;
+    }
+    else if (_fullScreenMode == GBControllerFocusOn) {
         CGRect fullScreenFrame = layout.fullScreenRect;
         fullScreenFrame.origin.x /= [UIScreen mainScreen].scale;
         fullScreenFrame.origin.y /= [UIScreen mainScreen].scale;
         fullScreenFrame.size.width /= [UIScreen mainScreen].scale;
         fullScreenFrame.size.height /= [UIScreen mainScreen].scale;
         _gbView.frame = fullScreenFrame;
+        screenFrame = fullScreenFrame;
     }
     else {
         _gbView.frame = screenFrame;
@@ -505,7 +544,7 @@ static GB_key_mask_t angleToKeyMask(double angle)
     screenFrame.size.height -= 16;
     
     if (@available(iOS 13.0, *)) {
-        self.overrideUserInterfaceStyle = layout.theme.isDark? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+        self.overrideUserInterfaceStyle = layout.isDark? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
         self.tintColor = layout.theme.buttonColor;
     }
 

@@ -1,5 +1,6 @@
 #define GBLayoutInternal
 #import "GBLayout.h"
+#import "GBViewController.h" // For hinge status
 
 static UIScreen *ActiveScreen(void)
 {
@@ -13,7 +14,7 @@ static double StatusBarHeight(void)
 {
     if (@available(iOS 15.0, *)) {
         UIEdgeInsets insets = [(UIWindowScene *)[UIApplication sharedApplication].connectedScenes.anyObject keyWindow].safeAreaInsets;
-        double ret = MAX(MAX(insets.left, insets.right), MAX(insets.top, insets.bottom)) ?: 20;
+        double ret = MAX(MAX(insets.left, insets.right), insets.top) ?: 20;
         if (!ret && [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
             ret = 32; // iPadOS is buggy af
         }
@@ -36,6 +37,30 @@ static double StatusBarHeight(void)
     return ret;
 }
 
+static bool IsFolded(double *sidebarSize)
+{
+    if (@available(iOS 27.1, *)) {
+        if ([(GBViewController *)[[UIApplication sharedApplication] delegate] hingeStatus] != UIHingeStatusClosed) {
+            return false;
+        }
+        UIWindow *window = [(UIWindowScene *)[UIApplication sharedApplication].connectedScenes.anyObject keyWindow];
+        UIEdgeInsets insets = window.safeAreaInsets;
+        if (insets.left != insets.right) {
+            *sidebarSize = MAX(insets.right, insets.left);
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool IsUnfolded(void)
+{
+    if (@available(iOS 27.1, *)) {
+        return [(GBViewController *)[[UIApplication sharedApplication] delegate] hingeStatus] >= UIHingeStatusPartiallyOpen;
+    }
+    return false;
+}
+
 static bool HasHomeBar(void)
 {
     if (@available(iOS 15.0, *)) {
@@ -50,28 +75,44 @@ static bool HasHomeBar(void)
     return ret;
 }
 
-static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation)
+static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation, bool *forceAsymmetric)
 {
+    double sidebarSize;
+    bool isFolded = IsFolded(&sidebarSize);
+    if (!isFolded) {
+        double statusBarHeight = IsUnfolded()? 20 : StatusBarHeight();
+        double homeBarHeight = HasHomeBar()? 20 : 0;
+        bool hasCutout = (statusBarHeight > 24 && [UIDevice currentDevice].userInterfaceIdiom != UIUserInterfaceIdiomPad);
+        
+        switch (orientation) {
+            case UIInterfaceOrientationUnknown:
+            case UIInterfaceOrientationPortrait:
+            case UIInterfaceOrientationPortraitUpsideDown:
+                return UIEdgeInsetsMake(statusBarHeight, 0, homeBarHeight, 0);
+            case UIInterfaceOrientationLandscapeLeft:
+                return UIEdgeInsetsMake(0, 0, homeBarHeight, hasCutout? statusBarHeight : 0);
+            case UIInterfaceOrientationLandscapeRight:
+                return UIEdgeInsetsMake(0, hasCutout? statusBarHeight : 0, homeBarHeight, 0);
+        }
+    }
     
-    double statusBarHeight = StatusBarHeight();
-    double homeBarHeight = HasHomeBar()? 20 : 0;
-    bool hasCutout = (statusBarHeight > 24 && [UIDevice currentDevice].userInterfaceIdiom != UIUserInterfaceIdiomPad);
-    
+    *forceAsymmetric = true;
     switch (orientation) {
         case UIInterfaceOrientationUnknown:
         case UIInterfaceOrientationPortrait:
         case UIInterfaceOrientationPortraitUpsideDown:
-            return UIEdgeInsetsMake(statusBarHeight, 0, homeBarHeight, 0);
+            return UIEdgeInsetsMake(0, 0, 0, sidebarSize);
         case UIInterfaceOrientationLandscapeLeft:
-            return UIEdgeInsetsMake(0, 0, homeBarHeight, hasCutout? statusBarHeight : 0);
+            return UIEdgeInsetsMake(20, 0, sidebarSize, 0);
         case UIInterfaceOrientationLandscapeRight:
-            return UIEdgeInsetsMake(0, hasCutout? statusBarHeight : 0, homeBarHeight, 0);
+            return UIEdgeInsetsMake(sidebarSize, 0, 20, 0);
     }
 }
 
 @implementation GBLayout
 {
     bool _isRenderingMask;
+    bool _forceAsymmetric;
 }
 
 - (instancetype)initWithTheme:(GBTheme *)theme
@@ -88,7 +129,7 @@ static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation)
         _resolution = (CGSize){_resolution.height, _resolution.width};
     }
     
-    _insets = CurrentInsets(self.orientation);
+    _insets = CurrentInsets(self.orientation, &_forceAsymmetric);
     _insets.left *= _factor;
     _insets.right *= _factor;
     _insets.bottom *= _factor;
@@ -102,6 +143,9 @@ static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation)
 
 - (CGRect)viewRectForOrientation:(UIInterfaceOrientation)orientation
 {
+    if (_theme.renderingPreview) {
+        return CGRectMake(0, 0, self.background.size.width / self.factor * 8, self.background.size.height / self.factor * 8);
+    }
     return CGRectMake(0, 0, self.background.size.width / self.factor, self.background.size.height / self.factor);
 }
 
@@ -126,7 +170,33 @@ static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation)
     CFRelease(colorspace);
 }
 
-- (void)drawScreenBezels
+
+static inline UIBezierPath *RoundedRectWithRadii(CGRect rect, CGFloat topLeft, CGFloat topRight, CGFloat bottomRight, CGFloat bottomLeft)
+{
+    if (@available(iOS 16.0, *)) {
+        UIRectCorner corners[] = {UIRectCornerTopLeft, UIRectCornerTopRight, UIRectCornerBottomRight, UIRectCornerBottomLeft};
+        CGFloat radii[] = {topLeft, topRight, bottomRight, bottomLeft};
+        
+        CGPathRef result = CGPathCreateWithRect(rect, NULL);
+        
+        for (unsigned i = 0; i < 4; i++) {
+            UIBezierPath *cornerPath = [UIBezierPath bezierPathWithRoundedRect:rect
+                                                             byRoundingCorners:corners[i]
+                                                                   cornerRadii:CGSizeMake(radii[i], radii[i])];
+            CGPathRef intersected = CGPathCreateCopyByIntersectingPath(result, cornerPath.CGPath, false);
+            CGPathRelease(result);
+            result = intersected;
+            
+        }
+        
+        UIBezierPath *path = [UIBezierPath bezierPathWithCGPath:result];
+        CGPathRelease(result);
+        return path;
+    }
+    return nil;
+}
+
+- (void)drawScreenBezelsFolded:(bool)folded
 {
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGColorRef top = _theme.bezelsGradientTop.CGColor;
@@ -136,16 +206,38 @@ static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation)
     
     double borderWidth = MIN(self.screenRect.size.width / 40, 16 * _factor);
     CGRect bezelRect = self.screenRect;
-    bezelRect.origin.x -= borderWidth;
-    bezelRect.origin.y -= borderWidth;
-    bezelRect.size.width += borderWidth * 2;
-    bezelRect.size.height += borderWidth * 2;
+    UIBezierPath *path;
     
-    if (bezelRect.origin.y + bezelRect.size.height >= self.size.height - _insets.bottom) {
-        bezelRect.origin.y = -32;
-        bezelRect.size.height = self.size.height + 32;
+    if (folded) {
+        double radius = 0;
+        if (@available(iOS 26.0, *)) {
+            UIWindow *window = [UIApplication sharedApplication].keyWindow;
+            UICornerConfiguration *configuration = window.cornerConfiguration;
+            window.cornerConfiguration = [UICornerConfiguration configurationWithUniformRadius:[UICornerRadius containerConcentricRadius]];
+            radius = [window effectiveRadiusForCorner:UIRectCornerTopRight] * _factor;
+            window.cornerConfiguration = configuration;
+        }
+        
+        bezelRect.origin.x = -borderWidth;
+        bezelRect.origin.y -= borderWidth;
+        bezelRect.size.width = borderWidth + _resolution.width - bezelRect.origin.y;
+        bezelRect.size.height += borderWidth * 2;
+        
+        path = RoundedRectWithRadii(bezelRect, borderWidth, radius - bezelRect.origin.y, borderWidth, borderWidth);
+    } else {
+        bezelRect.origin.x -= borderWidth;
+        bezelRect.origin.y -= borderWidth;
+        bezelRect.size.width += borderWidth * 2;
+        bezelRect.size.height += borderWidth * 2;
+        
+        if (bezelRect.origin.y + bezelRect.size.height >= self.size.height - _insets.bottom) {
+            bezelRect.origin.y = -32;
+            bezelRect.size.height = self.size.height + 32;
+        }
+        
+        path = [UIBezierPath bezierPathWithRoundedRect:bezelRect cornerRadius:borderWidth];
     }
-    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:bezelRect cornerRadius:borderWidth];
+    
     CGContextSaveGState(context);
     CGContextSetShadowWithColor(context, (CGSize){0, _factor}, _factor, [UIColor colorWithWhite:1 alpha:0.25].CGColor);
     [_theme.backgroundGradientBottom setFill];
@@ -166,7 +258,6 @@ static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation)
     [path appendPath:[UIBezierPath bezierPathWithRect:(CGRect){{0, 0}, self.size}]];
     [path fill];
     
-    
     CGContextRestoreGState(context);
     
     CGContextSaveGState(context);
@@ -179,6 +270,16 @@ static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation)
     CFRelease(gradient);
     CFRelease(colorsArray);
     CFRelease(colorspace);
+}
+
+- (void)drawScreenBezels
+{
+    [self drawScreenBezelsFolded:false];
+}
+
+- (void)drawFoldedScreenBezels
+{
+    [self drawScreenBezelsFolded:true];
 }
 
 - (void)drawLogoInVerticalRange:(NSRange)range controlPadding:(double)padding
@@ -265,6 +366,11 @@ static UIEdgeInsets CurrentInsets(UIInterfaceOrientation orientation)
 
 - (bool)asymmetric
 {
-    return _insets.left != _insets.right;
+    return _forceAsymmetric || _insets.left != _insets.right;
+}
+
+- (bool)isDark
+{
+    return _theme.isDark;
 }
 @end

@@ -28,6 +28,7 @@ typedef enum {
     GBControllerFocusOff,
     GBControllerFocusOn,
     GBControllerFocusDoNotCenter,
+    GBControllerFocusForcedViaSplitView,
 } GBControllerFocus;
 
 @interface GBSettingsViewController : UITableViewController

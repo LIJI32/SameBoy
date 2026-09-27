@@ -16,6 +16,8 @@
 @property (readonly) CGPoint startLocation;
 @property (readonly) CGPoint selectLocation;
 @property (readonly) bool asymmetric;
+@property (readonly) bool isDark;
+@property (readonly) bool hasFractionalPixels;
 
 - (CGRect)viewRectForOrientation:(UIInterfaceOrientation)orientation;
 @end
@@ -35,12 +37,12 @@
 @property (readonly) CGSize resolution; // Always vertical
 @property (readonly) CGSize size; // Size in pixels, override to make horizontal
 @property (readonly) unsigned factor;
-@property (readonly) bool hasFractionalPixels;
 @property (readonly) UIEdgeInsets insets;
 @property (readonly) UIInterfaceOrientation orientation;
 
 - (void)drawBackground;
 - (void)drawScreenBezels;
+- (void)drawFoldedScreenBezels;
 - (void)drawLogoInVerticalRange:(NSRange)range controlPadding:(double)padding;
 - (void)drawLabels;
 - (void)drawThemedLabelsWithBlock:(void (^)(void))block;

@@ -127,6 +127,9 @@ static NSString *const tips[] = {
     _tipLabel = [[UILabel alloc] init];
     unsigned tipIndex = [[NSUserDefaults standardUserDefaults] integerForKey:@"GBTipIndex"];
     _tipLabel.text = tips[tipIndex % (sizeof(tips) / sizeof(tips[0]))];
+    if (!CGRectEqualToRect(self.view.window.bounds, self.view.window.screen.bounds)) {
+        _tipLabel.text = @"Exit split view or windowed mode to reveal the on-screen buttons.";
+    }
     if (@available(iOS 13.0, *)) {
         _tipLabel.textColor = [UIColor labelColor];
     }
@@ -150,6 +153,12 @@ static NSString *const tips[] = {
     [_effectView.superview addSubview:_effectView];
     UIView *view = self.view.superview;
     CGSize outerSize = view.frame.size;
+    double leftInset = view.safeAreaInsets.left;
+    double rightInset = view.safeAreaInsets.right;
+    if (self.interfaceOrientation == UIInterfaceOrientationLandscapeLeft || self.interfaceOrientation == UIInterfaceOrientationLandscapeRight) {
+        leftInset = rightInset = MAX(leftInset, rightInset);
+    }
+    outerSize.width -= leftInset + rightInset;
     CGSize size = [_tipLabel textRectForBounds:(CGRect){{0, 0},
                                                         {outerSize.width - 32,
                                                          outerSize.height - 32}}
@@ -161,7 +170,7 @@ static NSString *const tips[] = {
         topInset = 32; // iPadOS is buggy af
     }
     _effectView.frame = (CGRect) {
-        {round((outerSize.width - size.width - 16) / 2), topInset + 12},
+        {round((outerSize.width - size.width - 16) / 2) + leftInset, topInset + 12},
         {size.width + 16, size.height + 16}
     };
 }
