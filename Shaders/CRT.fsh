@@ -6,21 +6,39 @@
 
 STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 output_resolution)
 {
-    /* Curve and pixel ratio */
+    /* Curve  */
     float y_curve = cos(position.x - 0.5) * CURVENESS + (1.0 - CURVENESS);
-    float y_multiplier = 8.0 / 7.0 / y_curve;
+    float y_multiplier = 1 / y_curve;
     position.y *= y_multiplier;
     position.y -= (y_multiplier - 1.0) / 2.0;
-    if (position.y < 0.0) return vec4(0,0,0,0);
-    if (position.y > 1.0) return vec4(0,0,0,0);
-    
+
     float x_curve = cos(position.y - 0.5) * CURVENESS + (1.0 - CURVENESS);
     float x_multiplier = 1.0/x_curve;
     position.x *= x_multiplier;
     position.x -= (x_multiplier - 1.0) / 2.0;
-    if (position.x < 0.0) return vec4(0,0,0,0);
-    if (position.x > 1.0) return vec4(0,0,0,0);
-  
+    
+    float aa_x = max(fwidth(position.x), 1e-5);
+    float aa_y = max(fwidth(position.y), 1e-5);
+
+    float edge_mask = smoothstep(-aa_x, aa_x, position.x)
+                     * smoothstep(-aa_x, aa_x, 1.0 - position.x)
+                     * smoothstep(-aa_y, aa_y, position.y)
+                     * smoothstep(-aa_y, aa_y, 1.0 - position.y);
+
+    float superellipse = pow(abs(position.x * 2.0 - 1.0), 16.0) + pow(abs(position.y * 2.0 - 1.0), 16.0);
+    float edge_aa = max(fwidth(superellipse), 1e-5);
+    float corner_mask = 1.0 - smoothstep(1.0 - edge_aa, 1.0 + edge_aa, superellipse);
+
+    float total_mask = edge_mask * corner_mask;
+
+    /* Safe to branch now: this is AFTER all fwidth() calls, so it no longer
+       corrupts derivative computation for neighboring pixels. */
+    if (total_mask <= 0.0) return vec4(0,0,0,1);
+
+    /* Clamp position for the rest of the effect, now that out-of-range
+       pixels are handled purely through total_mask */
+    position = clamp(position, 0.0, 1.0);
+
     /* Setting up common vars */
     vec2 pos = fract(position * input_resolution);
     vec2 sub_pos = pos * 6.0;
@@ -157,6 +175,8 @@ STATIC vec4 scale(sampler2D image, vec2 position, vec2 input_resolution, vec2 ou
     else if (pixel_position.y > output_resolution.y - 1.0) {
         ret *= output_resolution.y - pixel_position.y;
     }
+    
+    ret = mix(vec4(0,0,0,1), ret, corner_mask);
     
     return ret;
 }

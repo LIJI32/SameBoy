@@ -2339,11 +2339,6 @@ void convert_mouse_coordinates(signed *x, signed *y)
 
     *x = (signed)(*x - rect.x / factor) * width / (signed)(rect.w / factor) - x_offset;
     *y = (signed)(*y - rect.y / factor) * height / (signed)(rect.h / factor) - y_offset;
-
-    if (strcmp("CRT", configuration.filter) == 0) {
-        *y = *y * 8 / 7;
-        *y -= 144 / 16;
-    }
 }
 
 void update_swap_interval(void)
