@@ -438,66 +438,54 @@ void GB_sgb_write(GB_gameboy_t *gb, uint8_t value)
     if ((gb->sgb->command[0] & 0xF1) == 0xF1) {
         command_size = SGB_PACKET_SIZE * 8;
     }
+    uint8_t old = (gb->io_registers[GB_IO_JOYP] >> 4) & 3;
     
-    if ((value & 0x20) != 0 && (gb->io_registers[GB_IO_JOYP] & 0x20) == 0) {
+    if ((value & 0x20) != 0 && (old & 2) == 0) {
         if ((gb->sgb->player_count & 1) == 0) {
             gb->sgb->current_player++;
             gb->sgb->current_player &= (gb->sgb->player_count - 1);
         }
     }
-    
     switch ((value >> 4) & 3) {
         case 3:
-            gb->sgb->ready_for_pulse = true;
+            if (old == 0) {
+                gb->sgb->ready_for_write = true;
+                break;
+            }
+            if (old == 1 || old == 2) {
+                if (!gb->sgb->ready_for_write) break;
+                if (gb->sgb->ready_for_stop) {
+                    if (gb->sgb->command_write_index == command_size) {
+                        command_ready(gb);
+                        gb->sgb->command_write_index = 0;
+                        memset(gb->sgb->command, 0, sizeof(gb->sgb->command));
+                    }
+                    gb->sgb->ready_for_write = false;
+                    gb->sgb->ready_for_stop = false;
+                }
+                else {
+                    if (gb->sgb->command_write_index < sizeof(gb->sgb->command) * 8) {
+                        if (old == 1) {
+                            gb->sgb->command[gb->sgb->command_write_index / 8] |= 1 << (gb->sgb->command_write_index & 7);
+                        }
+                        gb->sgb->command_write_index++;
+                        if (((gb->sgb->command_write_index) & (SGB_PACKET_SIZE * 8 - 1)) == 0) {
+                            gb->sgb->ready_for_stop = true;
+                        }
+                    }
+                }
+                break;
+
+            }
             break;
             
         case 2: // Zero
-            if (!gb->sgb->ready_for_pulse || !gb->sgb->ready_for_write) return;
-            if (gb->sgb->ready_for_stop) {
-                if (gb->sgb->command_write_index == command_size) {
-                    command_ready(gb);
-                    gb->sgb->command_write_index = 0;
-                    memset(gb->sgb->command, 0, sizeof(gb->sgb->command));
-                }
-                gb->sgb->ready_for_pulse = false;
-                gb->sgb->ready_for_write = false;
-                gb->sgb->ready_for_stop = false;
-            }
-            else {
-                if (gb->sgb->command_write_index < sizeof(gb->sgb->command) * 8) {
-                    gb->sgb->command_write_index++;
-                    gb->sgb->ready_for_pulse = false;
-                    if (((gb->sgb->command_write_index) & (SGB_PACKET_SIZE * 8 - 1)) == 0) {
-                        gb->sgb->ready_for_stop = true;
-                    }
-                }
-            }
-            break;
         case 1: // One
-            if (!gb->sgb->ready_for_pulse || !gb->sgb->ready_for_write) return;
-            if (gb->sgb->ready_for_stop) {
-                GB_log(gb, "Corrupt SGB command.\n");
-                gb->sgb->ready_for_pulse = false;
-                gb->sgb->ready_for_write = false;
-                gb->sgb->command_write_index = 0;
-                memset(gb->sgb->command, 0, sizeof(gb->sgb->command));
-            }
-            else {
-                if (gb->sgb->command_write_index < sizeof(gb->sgb->command) * 8) {
-                    gb->sgb->command[gb->sgb->command_write_index / 8] |= 1 << (gb->sgb->command_write_index & 7);
-                    gb->sgb->command_write_index++;
-                    gb->sgb->ready_for_pulse = false;
-                    if (((gb->sgb->command_write_index) & (SGB_PACKET_SIZE * 8 - 1)) == 0) {
-                        gb->sgb->ready_for_stop = true;
-                    }
-                }
-            }
+            // Only committed after a 3 write
             break;
         
         case 0:
-            if (!gb->sgb->ready_for_pulse) return;
-            gb->sgb->ready_for_write = true;
-            gb->sgb->ready_for_pulse = false;
+            gb->sgb->ready_for_write = false;
             if (((gb->sgb->command_write_index) & (SGB_PACKET_SIZE * 8 - 1)) != 0 ||
                 gb->sgb->command_write_index == 0 ||
                 gb->sgb->ready_for_stop) {

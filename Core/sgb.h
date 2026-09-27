@@ -26,7 +26,7 @@ typedef struct {
 struct GB_sgb_s {
     uint8_t command[16 * 7];
     uint16_t command_write_index;
-    bool ready_for_pulse;
+    GB_PADDING(uint8_t, ready_for_pulse);
     bool ready_for_write;
     bool ready_for_stop;
     bool disable_commands;
