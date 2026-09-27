@@ -81,6 +81,8 @@ static uint32_t retained_frame_1[256 * 224];
 static uint32_t retained_frame_2[256 * 224];
 static struct retro_log_callback logging;
 static retro_log_printf_t log_cb;
+static char *gb_log_buffer;
+static size_t gb_log_buffer_length;
 
 static retro_video_refresh_t video_cb;
 static retro_audio_sample_batch_t audio_batch_cb;
@@ -121,6 +123,29 @@ static void fallback_log(enum retro_log_level level, const char *fmt, ...)
     va_start(va, fmt);
     vfprintf(stderr, fmt, va);
     va_end(va);
+}
+
+static void gb_log_callback(GB_gameboy_t *gb, const char *string, GB_log_attributes_t attributes)
+{
+    size_t length = strlen(string);
+    gb_log_buffer = realloc(gb_log_buffer, gb_log_buffer_length + length + 1);
+    memcpy(gb_log_buffer + gb_log_buffer_length, string, length + 1);
+    gb_log_buffer_length += length;
+
+    if (length && string[length - 1] == '\n') {
+        if (emulated_devices == 1) {
+            log_cb(RETRO_LOG_INFO, "%s", gb_log_buffer);
+        }
+        else if (gb == &gameboy[0]) {
+            log_cb(RETRO_LOG_INFO, "[Game Boy 1] %s", gb_log_buffer);
+        }
+        else {
+            log_cb(RETRO_LOG_INFO, "[Game Boy 2] %s", gb_log_buffer);
+        }
+        gb_log_buffer_length = 0;
+        free(gb_log_buffer);
+        gb_log_buffer = NULL;
+    }
 }
 
 static struct retro_rumble_interface rumble;
@@ -691,6 +716,7 @@ static void init_for_current_model(unsigned id)
     else {
         GB_init(&gameboy[i], effective_model);
     }
+    GB_set_log_callback(&gameboy[i], gb_log_callback);
     geometry_updated = true;
 
     GB_set_boot_rom_load_callback(&gameboy[i], boot_rom_load);
