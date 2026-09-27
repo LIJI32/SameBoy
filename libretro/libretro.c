@@ -726,11 +726,19 @@ static void init_for_current_model(unsigned id)
     GB_set_pixels_output(&gameboy[i],
                          (uint32_t *)(frame_buf + GB_get_screen_width(&gameboy[0]) * GB_get_screen_height(&gameboy[0]) * i));
     GB_set_rgb_encode_callback(&gameboy[i], rgb_encode);
+    
+    unsigned frontend_sample_rate = 0;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_TARGET_SAMPLE_RATE, &frontend_sample_rate)
+        && frontend_sample_rate > 8000 && frontend_sample_rate < 1024 * 1024) {
+        GB_set_sample_rate(&gameboy[i], frontend_sample_rate);
+    }
+    else {
 #ifdef WIIU
-    GB_set_sample_rate(&gameboy[i], WIIU_SAMPLE_RATE);
+        GB_set_sample_rate(&gameboy[i], WIIU_SAMPLE_RATE);
 #else
-    GB_set_sample_rate(&gameboy[i], GB_get_clock_rate(&gameboy[i]) / 2);
+        GB_set_sample_rate(&gameboy[i], GB_get_clock_rate(&gameboy[i]) / 2);
 #endif
+    }
     GB_apu_set_sample_callback(&gameboy[i], audio_callback);
     GB_set_rumble_callback(&gameboy[i], rumble_callback);
 
