@@ -575,6 +575,9 @@ static void handle_events(GB_gameboy_t *gb)
                         
                     case SDL_SCANCODE_O: {
                         if (event.key.keysym.mod & MODIFIER) {
+#ifdef _WIN32
+                            SDL_SetWindowFullscreen(window, 0);
+#endif
                             char *filename = do_open_rom_dialog();
                             if (filename) {
                                 set_filename(filename, free);

@@ -337,6 +337,9 @@ static void nop(unsigned index){}
 
 static void open_rom(unsigned index)
 {
+#ifdef _WIN32
+    SDL_SetWindowFullscreen(window, 0);
+#endif
     char *filename = do_open_rom_dialog();
     if (filename) {
         set_filename(filename, free);
@@ -346,6 +349,9 @@ static void open_rom(unsigned index)
 
 static void cart_swap(unsigned index)
 {
+#ifdef _WIN32
+    SDL_SetWindowFullscreen(window, 0);
+#endif
     char *filename = do_open_rom_dialog();
     if (filename) {
         set_filename(filename, free);
@@ -1136,6 +1142,9 @@ static void toggle_bootrom(unsigned index)
         configuration.bootrom_path[0] = 0;
     }
     else {
+#ifdef _WIN32
+        SDL_SetWindowFullscreen(window, 0);
+#endif
         char *folder = do_open_folder_dialog();
         if (!folder) return;
         if (strlen(folder) < sizeof(configuration.bootrom_path) - 1) {
@@ -2287,6 +2296,9 @@ static void toggle_audio_recording(unsigned index)
         memcpy(audio_recording_menu_item, item_string, sizeof(item_string));
         return;
     }
+#ifdef _WIN32
+    SDL_SetWindowFullscreen(window, 0);
+#endif
     char *filename = do_save_recording_dialog(GB_get_sample_rate(&gb));
     
     /* Drop events as it SDL seems to catch several in-dialog events */
@@ -2758,6 +2770,9 @@ void run_gui(bool is_running)
                 }
                 else if (event_hotkey_code(&event) == SDL_SCANCODE_O) {
                     if (event.key.keysym.mod & MODIFIER) {
+#ifdef _WIN32
+                        SDL_SetWindowFullscreen(window, 0);
+#endif
                         char *filename = do_open_rom_dialog();
                         if (filename) {
                             set_filename(filename, free);
