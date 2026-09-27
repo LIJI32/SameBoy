@@ -112,6 +112,8 @@ extern const unsigned char dmg_boot[], mgb_boot[], cgb0_boot[], cgb_boot[], agb_
 extern const unsigned dmg_boot_length, mgb_boot_length, cgb0_boot_length, cgb_boot_length, agb_boot_length, sgb_boot_length, sgb2_boot_length;
 bool vblank1_occurred = false, vblank2_occurred = false;
 
+struct retro_vfs_interface *vfs_interface;
+
 static void fallback_log(enum retro_log_level level, const char *fmt, ...)
 {
     (void)level;
@@ -523,6 +525,26 @@ static void set_link_cable_state(bool state)
     }
 }
 
+static void *vfs_read_boot_rom(const char *path)
+{
+    if (!vfs_interface) return NULL;
+
+    struct retro_vfs_file_handle *file = vfs_interface->open(path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE);
+    if (!file) return NULL;
+    
+    void *buffer = malloc(0x900);
+    memset(buffer, 0xFF, 0x900);
+    ssize_t read = vfs_interface->read(file, buffer, 0x900);
+    vfs_interface->close(file);
+    
+    if (read < 0) {
+        free(buffer);
+        return NULL;
+    }
+    
+    return buffer;
+}
+
 static void boot_rom_load(GB_gameboy_t *gb, GB_boot_rom_t type)
 {
     const char *model_name = (char *[]) {
@@ -565,6 +587,13 @@ static void boot_rom_load(GB_gameboy_t *gb, GB_boot_rom_t type)
     log_cb(RETRO_LOG_INFO, "Initializing as model: %s\n", model_name);
     log_cb(RETRO_LOG_INFO, "Loading boot image: %s\n", buf);
 
+    void *boot_rom = vfs_read_boot_rom(buf);
+    if (boot_rom) {
+        GB_load_boot_rom_from_buffer(gb, boot_rom, 0x900);
+        free(boot_rom);
+        return;
+    }
+    
     if (GB_load_boot_rom(gb, buf)) {
         if (type == GB_BOOT_ROM_CGB_E) {
             boot_rom_load(gb, GB_BOOT_ROM_CGB);
@@ -1236,6 +1265,15 @@ void retro_init(void)
 
     if (environ_cb(RETRO_ENVIRONMENT_GET_INPUT_BITMASKS, NULL)) {
         libretro_supports_bitmasks = true;
+    }
+    
+    struct retro_vfs_interface_info vfs_info = {
+        .required_interface_version = 1,
+        .iface = NULL,
+    };
+    
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_info)) {
+        vfs_interface = vfs_info.iface;
     }
 
     init_output_audio_buffer(16384);
