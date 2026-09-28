@@ -2572,6 +2572,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
 {
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
     
     bool isSplitView = !CGSizeEqualToSize(size, self.window.screen.bounds.size);
     if (isSplitView) {
