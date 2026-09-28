@@ -106,7 +106,7 @@
         if (drawSameBoyLogo) {
             double bezelBottom = screenRect.origin.y + screenRect.size.height + screenBorderWidth;
             double freeSpace = resolution.height - bezelBottom;
-            if (freeSpace > 50 * self.factor) {
+            if (freeSpace - screenBorderWidth * 4 > 56 * self.factor) {
                 double targetHeight = 48 * self.factor;
                 [self drawLogoInVerticalRange:(NSRange){bezelBottom + (freeSpace - targetHeight) / 2, targetHeight}
                                controlPadding:0];
