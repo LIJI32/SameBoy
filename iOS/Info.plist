@@ -278,8 +278,6 @@
     <array>
         <string>arm64</string>
     </array>
-    <key>UIRequiresFullScreen</key>
-    <true/>
     <key>GCSupportedGameControllers</key>
     <array>
         <dict>

@@ -673,9 +673,6 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)controllerDisconnected:(NSNotification *)notification
 {
-    bool isSplitView = !CGRectEqualToRect(self.window.bounds,
-                                          self.window.screen.bounds);
-    if (isSplitView) return;
     if (notification.object == _lastController && _backgroundView.fullScreenMode != GBControllerFocusForcedViaSplitView) {
         _backgroundView.fullScreenMode = GBControllerFocusOff;
     }
