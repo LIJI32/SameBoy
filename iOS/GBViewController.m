@@ -308,7 +308,9 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)recreateLayoutsWithThemeNamed:(NSString *)name;
 {
-    _lastHingeStatus = _hinge.status;
+    if (_hinge) {
+        _lastHingeStatus = _hinge.status;
+    }
     GBTheme *theme = [GBSettingsViewController themeNamed:name];
     _horizontalLayoutLeft = [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:false];
     _horizontalLayoutRight = _horizontalLayoutLeft.asymmetric?
