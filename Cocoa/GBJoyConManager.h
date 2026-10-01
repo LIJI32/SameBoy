@@ -4,7 +4,7 @@
 
 @interface GBJoyConManager : NSObject<JOYListener, NSTableViewDataSource, NSTableViewDelegate>
 + (instancetype)sharedInstance;
-- (IBAction)autopair:(id)sender;
+- (IBAction)autopair;
 
 @property (nonatomic) bool arrangementMode;
 @property (weak) IBOutlet NSTableView *tableView;

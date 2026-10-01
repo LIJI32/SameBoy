@@ -202,14 +202,14 @@
         }
     }
     if (controller.joyconType == JOYJoyConTypeLeft || controller.joyconType == JOYJoyConTypeRight) {
-        [self autopair:nil];
+        [self autopair];
     }
     if (_arrangementMode) {
         [self.tableView reloadData];
     }
 }
 
-- (IBAction)autopair:(id)sender
+- (IBAction)autopair
 {
     if (_unpairing) return;
     if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBJoyConAutoPair"]) return;
