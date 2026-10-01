@@ -2334,6 +2334,12 @@ static uint8_t vgm_get_trigger_register(GB_gameboy_t *gb, uint8_t reg, GB_channe
 static bool vgm_write_apu_snapshot(GB_gameboy_t *gb)
 {
     if (!vgm_write_register(gb, GB_IO_NR52, gb->apu.global_enable ? 0x80 : 0)) return false;
+
+    /* Wave RAM is preserved even when the APU is disabled. */
+    for (unsigned i = GB_IO_WAV_START; i <= GB_IO_WAV_END; i++) {
+        if (!vgm_write_register(gb, i, gb->io_registers[i])) return false;
+    }
+
     if (!gb->apu.global_enable) return true;
 
     static const uint8_t registers[] = {
@@ -2346,10 +2352,6 @@ static bool vgm_write_apu_snapshot(GB_gameboy_t *gb)
 
     for (unsigned i = 0; i < sizeof(registers) / sizeof(registers[0]); i++) {
         if (!vgm_write_register(gb, registers[i], gb->io_registers[registers[i]])) return false;
-    }
-
-    for (unsigned i = GB_IO_WAV_START; i <= GB_IO_WAV_END; i++) {
-        if (!vgm_write_register(gb, i, gb->io_registers[i])) return false;
     }
 
     if (!vgm_write_register(gb, GB_IO_NR14,
