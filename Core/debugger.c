@@ -1110,6 +1110,7 @@ static bool breakpoint(GB_gameboy_t *gb, char *arguments, char *modifiers, const
     else {
         GB_log(gb, "\n");
     }
+    update_debug_active(gb);
     return true;
 }
 
@@ -1126,6 +1127,7 @@ static bool delete(GB_gameboy_t *gb, char *arguments, char *modifiers, const deb
         gb->breakpoints = NULL;
         gb->n_breakpoints = 0;
         gb->has_jump_to_breakpoints = false;
+        update_debug_active(gb);
         return true;
     }
 
