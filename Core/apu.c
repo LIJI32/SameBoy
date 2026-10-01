@@ -2554,7 +2554,9 @@ int GB_stop_audio_recording(GB_gameboy_t *gb)
         }
     }
     if (gb->apu_output.output_file) {
-        fclose(gb->apu_output.output_file);
+        if (fclose(gb->apu_output.output_file) != 0 && !gb->apu_output.output_error) {
+            gb->apu_output.output_error = errno ?: EIO;
+        }
         gb->apu_output.output_file = NULL;
     }
     
