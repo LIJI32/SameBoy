@@ -425,6 +425,7 @@ endif
 ifneq ($(FREEDESKTOP),)
 all: xdg-thumbnailer
 endif
+json-server: $(BIN)/json-server/sameboy-json
 
 # Get a list of our source files and their respective object file targets
 
@@ -436,6 +437,7 @@ IOS_SOURCES := $(filter-out iOS/installer.m, $(shell ls iOS/*.m)) $(shell ls App
 COCOA_SOURCES := $(shell ls Cocoa/*.m) $(shell ls HexFiend/*.m) $(shell ls JoyKit/*.m) $(shell ls AppleCommon/*.m)
 QUICKLOOK_SOURCES := $(shell ls QuickLook/*.m) $(shell ls QuickLook/*.c)
 XDG_THUMBNAILER_SOURCES := $(shell ls XdgThumbnailer/*.c)
+JSON_SERVER_SOURCES := SDL/json_mode.c SDL/audio.c SDL/utils.c $(patsubst %,SDL/audio/%.c,$(SDL_AUDIO_DRIVERS))
 
 ifeq ($(PLATFORM),windows32)
 CORE_SOURCES += $(shell ls Windows/*.c)
@@ -449,6 +451,7 @@ QUICKLOOK_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(QUICKLOOK_SOURCES))
 SDL_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(SDL_SOURCES))
 TESTER_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(TESTER_SOURCES))
 XDG_THUMBNAILER_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(XDG_THUMBNAILER_SOURCES)) $(OBJ)/XdgThumbnailer/resources.c.o
+JSON_SERVER_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(JSON_SERVER_SOURCES))
 
 lib: headers
 headers: $(PUBLIC_HEADERS)
@@ -462,6 +465,9 @@ ifneq ($(filter $(MAKECMDGOALS),sdl),)
 endif
 ifneq ($(filter $(MAKECMDGOALS),tester),)
 -include $(TESTER_OBJECTS:.o=.dep)
+endif
+ifneq ($(filter $(MAKECMDGOALS),json-server),)
+-include $(JSON_SERVER_OBJECTS:.o=.dep)
 endif
 ifneq ($(filter $(MAKECMDGOALS),cocoa),)
 -include $(COCOA_OBJECTS:.o=.dep)
@@ -512,6 +518,15 @@ $(OBJ)/XdgThumbnailer/resources.c $(OBJ)/XdgThumbnailer/resources.h: %: XdgThumb
 $(OBJ)/SDL/open_dialog/%.c.o: SDL/open_dialog/%.c
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -c $< -o $@
+
+# JSON Server — compiled with GB_INTERNAL, no SDL/OpenGL/PNG
+$(OBJ)/SDL/json_mode.c.o: SDL/json_mode.c
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(CFLAGS) $(FAT_FLAGS) $(SDL_CFLAGS) -DGB_INTERNAL -c $< -o $@
+
+$(OBJ)/SDL/json_mode.dep: SDL/json_mode.c
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(CFLAGS) $(SDL_CFLAGS) -DGB_INTERNAL -MT $(OBJ)/$^.o -M $^ -o $@
 
 
 $(OBJ)/%.c.o: %.c
@@ -731,6 +746,15 @@ endif
 $(BIN)/tester/sameboy_tester.exe: $(CORE_OBJECTS)
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $^ -o $@ $(LDFLAGS) -Wl,/subsystem:console
+
+# JSON Server — JSON-RPC frontend with optional SDL display
+$(BIN)/json-server/sameboy-json: $(CORE_OBJECTS) $(JSON_SERVER_OBJECTS)
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(SDL_CFLAGS) $^ -o $@ $(LDFLAGS) $(SDL_LDFLAGS) -lpng16
+ifeq ($(CONF), release)
+	$(STRIP) $@
+	$(CODESIGN) $@
+endif
 
 $(BIN)/tester/%.bin: $(BOOTROMS_DIR)/%.bin
 	-@$(MKDIR) -p $(dir $@)
