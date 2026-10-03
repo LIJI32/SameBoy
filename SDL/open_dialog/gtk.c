@@ -333,7 +333,7 @@ char *do_save_recording_dialog(unsigned frequency)
     
     filter = gtk_file_filter_new();
     gtk_file_filter_add_pattern(filter, "*.vgm");
-    gtk_file_filter_set_name(filter, "VGM log");
+    gtk_file_filter_set_name(filter, "VGM Log");
     gtk_file_chooser_add_filter(dialog, filter);
 
     filter = gtk_file_filter_new();
