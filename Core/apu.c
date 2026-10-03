@@ -2366,17 +2366,22 @@ static bool vgm_write_apu_snapshot(GB_gameboy_t *gb)
     return true;
 }
 
+static void noinline vgm_advance(GB_gameboy_t *gb, uint8_t cycles)
+{
+    uint64_t clock_rate = (uint64_t)gb->apu_output.vgm_clock_rate * 2;
+    if (!clock_rate) return;
+    uint64_t sample_fraction = gb->apu_output.vgm_sample_fraction + (uint64_t)cycles * VGM_SAMPLE_RATE;
+    uint32_t samples = sample_fraction / clock_rate;
+    gb->apu_output.vgm_sample_fraction = sample_fraction % clock_rate;
+    gb->apu_output.vgm_pending_samples += samples;
+    gb->apu_output.vgm_total_samples += samples;
+}
+
 void GB_apu_vgm_advance(GB_gameboy_t *gb, uint8_t cycles)
 {
-    if (unlikely(gb->apu_output.output_file && gb->apu_output.output_format == GB_AUDIO_FORMAT_VGM)) {
-        uint64_t clock_rate = (uint64_t)gb->apu_output.vgm_clock_rate * 2;
-        if (!clock_rate) return;
-        uint64_t sample_fraction = gb->apu_output.vgm_sample_fraction + (uint64_t)cycles * VGM_SAMPLE_RATE;
-        uint32_t samples = sample_fraction / clock_rate;
-        gb->apu_output.vgm_sample_fraction = sample_fraction % clock_rate;
-        gb->apu_output.vgm_pending_samples += samples;
-        gb->apu_output.vgm_total_samples += samples;
-    }
+    if (likely(!gb->apu_output.output_file)) return;
+    if (likely(gb->apu_output.output_format != GB_AUDIO_FORMAT_VGM)) return;
+    vgm_advance(gb, cycles);
 }
 
 void GB_apu_vgm_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
