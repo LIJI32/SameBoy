@@ -2310,6 +2310,9 @@ static void toggle_audio_recording(unsigned index)
                 else if (strcasecmp(".wav", filename + length - 4) == 0) {
                     format = GB_AUDIO_FORMAT_WAV;
                 }
+                else if (strcasecmp(".vgm", filename + length - 4) == 0) {
+                    format = GB_AUDIO_FORMAT_VGM;
+                }
             }
         }
         
@@ -2317,7 +2320,7 @@ static void toggle_audio_recording(unsigned index)
         free(filename);
         if (error) {
             char *message = NULL;
-            asprintf(&message, "Could not finalize recording: %s", strerror(error));
+            asprintf(&message, "Could not start recording: %s", strerror(error));
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message, window);
             free(message);
             return;
