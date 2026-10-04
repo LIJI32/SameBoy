@@ -609,10 +609,14 @@ ifeq ($(CONF), release)
 endif
 
 $(BIN)/SameBoy.app/Contents/Resources/%.nib: Cocoa/%.xib
+	-@rm -rf $@
 	$(IBTOOL) --target-device mac --minimum-deployment-target 10.9 --compile $@ $^ 2>&1 | cat -
+	@ls $@ 2> /dev/null
 	
 $(BIN)/SameBoy-iOS.app/%.storyboardc: iOS/%.storyboard
+	-@rm -rf $@
 	$(IBTOOL) --target-device iphone --target-device ipad --minimum-deployment-target $(IOS_MIN) --compile $@ $^ 2>&1 | cat -
+	@ls $@ 2> /dev/null
 
 # Quick Look generators
 
