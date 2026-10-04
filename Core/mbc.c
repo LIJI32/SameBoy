@@ -172,7 +172,7 @@ void GB_configure_cart(GB_gameboy_t *gb)
                 gb->cartridge_type = maybe_mmm01_type;
             }
             else if (gb->rom[gb->rom_size - 0x8000 + 0x147] == 0x11) {
-                GB_log(gb, "ROM header reports MBC3, but it appears to be an MMM01 ROM. Assuming cartridge uses MMM01.");
+                GB_attributed_log(gb, GB_LOG_WARNING, "ROM header reports MBC3, but it appears to be an MMM01 ROM. Assuming cartridge uses MMM01.");
                 gb->cartridge_type = &GB_cart_defs[0xB];
             }
         }
@@ -188,11 +188,11 @@ void GB_configure_cart(GB_gameboy_t *gb)
     
     if (gb->cartridge_type->mbc_type != GB_MMM01) {
         if (gb->rom[0x147] == 0 && gb->rom_size > 0x8000) {
-            GB_log(gb, "ROM header reports no MBC, but file size is over 32Kb. Assuming cartridge uses MBC3.\n");
+            GB_attributed_log(gb, GB_LOG_WARNING, "ROM header reports no MBC, but file size is over 32Kb. Assuming cartridge uses MBC3.\n");
             gb->cartridge_type = &GB_cart_defs[0x11];
         }
         else if (gb->rom[0x147] != 0 && memcmp(gb->cartridge_type, &GB_cart_defs[0], sizeof(GB_cart_defs[0])) == 0) {
-            GB_log(gb, "Cartridge type %02x is not yet supported.\n", gb->rom[0x147]);
+            GB_attributed_log(gb, GB_LOG_WARNING, "Cartridge type %02x is not yet supported.\n", gb->rom[0x147]);
         }
     }
     
@@ -200,7 +200,7 @@ void GB_configure_cart(GB_gameboy_t *gb)
         gb->cartridge_type->mbc_type != GB_NO_MBC &&
         gb->cartridge_type->mbc_type != GB_TPP1 &&
         gb->rom[0x149]) {
-        GB_log(gb, "ROM header reports no RAM, but also reports a non-zero RAM size. Assuming cartridge has RAM.\n");
+        GB_attributed_log(gb, GB_LOG_WARNING, "ROM header reports no RAM, but also reports a non-zero RAM size. Assuming cartridge has RAM.\n");
         gb->cartridge_type++;
     }
         
@@ -232,7 +232,7 @@ void GB_configure_cart(GB_gameboy_t *gb)
         if (gb->mbc_ram_size && gb->mbc_ram_size < 0x2000 &&
             gb->cartridge_type->mbc_type != GB_MBC2 &&
             gb->cartridge_type->mbc_type != GB_MBC7) {
-            GB_log(gb, "This ROM requests a RAM size smaller than a bank, it may misbehave if this was not done intentionally.\n");
+            GB_attributed_log(gb, GB_LOG_WARNING, "This ROM requests a RAM size smaller than a bank, it may misbehave if this was not done intentionally.\n");
         }
         
         if (gb->mbc_ram && old_mbc_ram_size != gb->mbc_ram_size) {

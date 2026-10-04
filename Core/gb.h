@@ -235,10 +235,12 @@ enum {
 static const typeof(GB_IO_PGB) __attribute__((deprecated("Use GB_IO_PGB instead"))) GB_IO_UNKNOWN5 = GB_IO_PGB;
 
 typedef enum {
-    GB_LOG_BOLD = 1,
+    GB_LOG_BOLD             = 1,
     GB_LOG_DASHED_UNDERLINE = 2,
-    GB_LOG_UNDERLINE = 4,
-    GB_LOG_UNDERLINE_MASK =  GB_LOG_DASHED_UNDERLINE | GB_LOG_UNDERLINE
+    GB_LOG_UNDERLINE        = 4,
+    GB_LOG_UNDERLINE_MASK   =  GB_LOG_DASHED_UNDERLINE | GB_LOG_UNDERLINE,
+    GB_LOG_ERROR            = 8,    // This log line represents an error message for the currently executing API
+    GB_LOG_WARNING          = 0x10, // This log line represents an warning message for the currently executing API
 } GB_log_attributes_t;
 
 typedef enum {

@@ -1717,7 +1717,7 @@ void GB_display_run(GB_gameboy_t *gb, unsigned cycles, bool force)
     display9: {
         // TODO: Timing of things in this scenario is almost completely untested
         if (gb->current_line < LINES && !GB_is_sgb(gb) && !gb->disable_rendering) {
-            GB_log(gb, "The ROM is preventing line %d from fully rendering, this could damage a real device's LCD display.\n", gb->current_line);
+            GB_attributed_log(gb, GB_LOG_WARNING,  "The ROM is preventing line %d from fully rendering, this could damage a real device's LCD display.\n", gb->current_line);
             uint32_t *dest = NULL;
             if (gb->border_mode != GB_BORDER_ALWAYS) {
                 dest = gb->screen + gb->lcd_x + gb->current_line * WIDTH;

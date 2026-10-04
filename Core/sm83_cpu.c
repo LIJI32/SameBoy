@@ -345,7 +345,7 @@ static void flush_pending_cycles(GB_gameboy_t *gb)
 
 static void ill(GB_gameboy_t *gb, uint8_t opcode)
 {
-    GB_log(gb, "Illegal Opcode. Halting.\n");
+    GB_attributed_log(gb, GB_LOG_ERROR, "Illegal Opcode. Halting.\n");
     gb->interrupt_enable = 0;
     gb->halted = true;
 }
@@ -410,7 +410,7 @@ static void stop(GB_gameboy_t *gb, uint8_t opcode)
         flush_pending_cycles(gb);
         
         if (gb->io_registers[GB_IO_LCDC] & GB_LCDC_ENABLE && gb->cgb_double_speed) {
-            GB_log(gb, "ROM triggered a PPU odd mode, which is currently not supported. Reverting to even-mode.\n");
+            GB_attributed_log(gb, GB_LOG_WARNING, "ROM triggered a PPU odd mode, which is currently not supported. Reverting to even-mode.\n");
             if (gb->double_speed_alignment & 7) {
                 gb->speed_switch_freeze = 2;
             }
@@ -419,7 +419,7 @@ static void stop(GB_gameboy_t *gb, uint8_t opcode)
             GB_log(gb, "ROM triggered an APU odd mode, which is currently not tested.\n");
         }
         if (gb->cartridge_type->mbc_type == GB_CAMERA && (gb->camera_registers[GB_CAMERA_SHOOT_AND_1D_FLAGS] & 1) && !gb->cgb_double_speed) {
-            GB_log(gb, "ROM entered double speed mode with a camera cartridge, this could damage a real cartridge's camera.\n");
+            GB_attributed_log(gb, GB_LOG_WARNING, "ROM entered double speed mode with a camera cartridge, this could damage a real cartridge's camera.\n");
         }
         
         if (gb->cgb_double_speed) {

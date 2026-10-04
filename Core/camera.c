@@ -122,7 +122,7 @@ void GB_set_camera_update_request_callback(GB_gameboy_t *gb, GB_camera_update_re
         GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     }
     if (gb->camera_countdown > 0 && callback) {
-        GB_log(gb, "Camera update request callback set while camera was proccessing, clearing camera countdown.\n");
+        GB_attributed_log(gb, GB_LOG_WARNING, "Camera update request callback set while camera was proccessing, clearing camera countdown.\n");
         gb->camera_countdown = 0;
         GB_camera_updated(gb);
     }
@@ -154,7 +154,7 @@ void GB_camera_write_register(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 
         if (!(value & 1) && (gb->camera_registers[GB_CAMERA_SHOOT_AND_1D_FLAGS] & 1)) {
             /* We don't support cancelling a camera shoot */
-            GB_log(gb, "ROM attempted to cancel camera shoot, which is currently not supported. The camera shoot will not be cancelled.\n");
+            GB_attributed_log(gb, GB_LOG_WARNING, "ROM attempted to cancel camera shoot, which is currently not supported. The camera shoot will not be cancelled.\n");
             value |= 1;
         }
 
@@ -162,7 +162,7 @@ void GB_camera_write_register(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
     }
     else {
         if (addr >= 0x36) {
-            GB_log(gb, "Wrote invalid camera register %02x: %2x\n", addr, value);
+            GB_attributed_log(gb, GB_LOG_WARNING, "Wrote invalid camera register %02x: %2x\n", addr, value);
             return;
         }
         gb->camera_registers[addr] = value;

@@ -256,7 +256,7 @@ int GB_load_boot_rom(GB_gameboy_t *gb, const char *path)
 {
     FILE *f = fopen(path, "rb");
     if (!f) {
-        GB_log(gb, "Could not open boot ROM: %s.\n", strerror(errno));
+        GB_attributed_log(gb, GB_LOG_ERROR, "Could not open boot ROM: %s.\n", strerror(errno));
         return errno;
     }
     fread(gb->boot_rom, sizeof(gb->boot_rom), 1, f);
@@ -334,7 +334,7 @@ int GB_load_rom(GB_gameboy_t *gb, const char *path)
     
     FILE *f = fopen(path, "rb");
     if (!f) {
-        GB_log(gb, "Could not open ROM: %s.\n", strerror(errno));
+        GB_attributed_log(gb, GB_LOG_ERROR, "Could not open ROM: %s.\n", strerror(errno));
         return errno;
     }
     fseek(f, 0, SEEK_END);
@@ -508,7 +508,7 @@ int GB_load_gbs(GB_gameboy_t *gb, const char *path, GB_gbs_info_t *info)
     
     FILE *f = fopen(path, "rb");
     if (!f) {
-        GB_log(gb, "Could not open GBS: %s.\n", strerror(errno));
+        GB_attributed_log(gb, GB_LOG_ERROR, "Could not open GBS: %s.\n", strerror(errno));
         return errno;
     }
     fseek(f, 0, SEEK_END);
@@ -529,7 +529,7 @@ int GB_load_isx(GB_gameboy_t *gb, const char *path)
     
     FILE *f = fopen(path, "rb");
     if (!f) {
-        GB_log(gb, "Could not open ISX file: %s.\n", strerror(errno));
+        GB_attributed_log(gb, GB_LOG_ERROR, "Could not open ISX file: %s.\n", strerror(errno));
         return errno;
     }
     char magic[4];
@@ -901,7 +901,7 @@ int GB_save_battery(GB_gameboy_t *gb, const char *path)
     if (gb->mbc_ram_size == 0 && !gb->cartridge_type->has_rtc) return 0; /* Claims to have battery, but has no RAM or RTC */
     FILE *f = fopen(path, "wb");
     if (!f) {
-        GB_log(gb, "Could not open battery save: %s.\n", strerror(errno));
+        GB_attributed_log(gb, GB_LOG_ERROR, "Could not open battery save: %s.\n", strerror(errno));
         return errno;
     }
 

@@ -370,7 +370,7 @@ static uint8_t read_mbc_ram(GB_gameboy_t *gb, uint16_t addr)
             case 0xE: // IR mode
                 return gb->effective_ir_input; // TODO: What are the other bits?
             default:
-                GB_log(gb, "Unsupported HuC-3 mode %x read: %04x\n", gb->huc3.mode, addr);
+                GB_attributed_log(gb, GB_LOG_WARNING, "Unsupported HuC-3 mode %x read: %04x\n", gb->huc3.mode, addr);
                 return 1; // TODO: What happens in this case?
             case 0: // TODO: R/O RAM? (or is it disabled?)
             case 0xA: // RAM

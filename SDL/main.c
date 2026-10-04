@@ -776,7 +776,6 @@ static void vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
         
         if (battery_dirty && !GB_get_battery_dirty(gb)) {
             GB_save_battery(gb, battery_save_path_ptr);
-            GB_log(gb, "Saved\n");
         }
         
         battery_dirty = GB_get_battery_dirty(gb);

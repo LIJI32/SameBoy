@@ -296,12 +296,12 @@ int GB_load_cheats(GB_gameboy_t *gb, const char *path, bool replace_existing)
         goto error;
     }
     if (magic != LE32(CHEAT_MAGIC) && magic != BE32(CHEAT_MAGIC)) {
-        GB_log(gb, "The file is not a SameBoy cheat database");
+        GB_attributed_log(gb, GB_LOG_ERROR, "The file is not a SameBoy cheat database");
         goto error;
     }
     
     if (struct_size != sizeof(GB_cheat_t)) {
-        GB_log(gb, "This cheat database is not compatible with this version of SameBoy");
+        GB_attributed_log(gb, GB_LOG_ERROR, "This cheat database is not compatible with this version of SameBoy");
         goto error;
     }
     
@@ -333,7 +333,7 @@ int GB_save_cheats(GB_gameboy_t *gb, const char *path)
     if (!gb->cheat_count) return 0; // Nothing to save.
     FILE *f = fopen(path, "wb");
     if (!f) {
-        GB_log(gb, "Could not dump cheat database: %s.\n", strerror(errno));
+        GB_attributed_log(gb, GB_LOG_ERROR, "Could not dump cheat database: %s.\n", strerror(errno));
         return errno;
     }
     

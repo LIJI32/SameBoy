@@ -310,33 +310,33 @@ static bool verify_and_update_state_compatibility(GB_gameboy_t *gb, GB_gameboy_t
     *attempt_bess = false;
     
     if (gb->version != save->version) {
-        GB_log(gb, "The save state is for a different version of SameBoy.\n");
+        GB_attributed_log(gb, GB_LOG_ERROR, "The save state is for a different version of SameBoy.\n");
         *attempt_bess = true;
         return false;
     }
     
     if (GB_is_cgb(gb) != GB_is_cgb(save) || GB_is_hle_sgb(gb) != GB_is_hle_sgb(save)) {
-        GB_log(gb, "The save state is for a different Game Boy model. Try changing the emulated model.\n");
+        GB_attributed_log(gb, GB_LOG_ERROR, "The save state is for a different Game Boy model. Try changing the emulated model.\n");
         return false;
     }
     
     if (gb->mbc_ram_size < save->mbc_ram_size) {
-        GB_log(gb, "The save state has non-matching MBC RAM size.\n");
+        GB_attributed_log(gb, GB_LOG_ERROR, "The save state has non-matching MBC RAM size.\n");
         return false;
     }
     
     if (gb->vram_size != save->vram_size) {
-        GB_log(gb, "The save state has non-matching VRAM size. Try changing the emulated model.\n");
+        GB_attributed_log(gb, GB_LOG_ERROR, "The save state has non-matching VRAM size. Try changing the emulated model.\n");
         return false;
     }
     
     if (GB_is_hle_sgb(gb) != GB_is_hle_sgb(save)) {
-        GB_log(gb, "The save state is %sfor a Super Game Boy. Try changing the emulated model.\n", GB_is_hle_sgb(save)? "" : "not ");
+        GB_attributed_log(gb, GB_LOG_ERROR, "The save state is %sfor a Super Game Boy. Try changing the emulated model.\n", GB_is_hle_sgb(save)? "" : "not ");
         return false;
     }
     
     if (gb->ram_size != save->ram_size) {
-        GB_log(gb, "The save state has non-matching RAM size. Try changing the emulated model.\n");
+        GB_attributed_log(gb, GB_LOG_ERROR, "The save state has non-matching RAM size. Try changing the emulated model.\n");
         return false;
     }
     
@@ -367,7 +367,7 @@ static bool verify_and_update_state_compatibility(GB_gameboy_t *gb, GB_gameboy_t
         return true;
     }
     
-    GB_log(gb, "This save state is for an unknown Game Boy model\n");
+    GB_attributed_log(gb, GB_LOG_ERROR, "This save state is for an unknown Game Boy model\n");
     return false;
 }
 
@@ -865,7 +865,7 @@ int GB_save_state(GB_gameboy_t *gb, const char *path)
     GB_ASSERT_NOT_RUNNING(gb)
     FILE *f = fopen(path, "wb");
     if (!f) {
-        GB_log(gb, "Could not open save state: %s.\n", strerror(errno));
+        GB_attributed_log(gb, GB_LOG_ERROR, "Could not open save state: %s.\n", strerror(errno));
         return errno;
     }
     virtual_file_t file = {
@@ -951,7 +951,7 @@ static int load_bess_save(GB_gameboy_t *gb, virtual_file_t *file, bool is_samebo
     if (footer.magic != BE32('BESS')) {
         // Not a BESS file
         if (!is_sameboy) {
-            GB_log(gb, "The file is not a save state, or is from an incompatible operating system.\n");
+            GB_attributed_log(gb, GB_LOG_ERROR, "The file is not a save state, or is from an incompatible operating system.\n");
         }
         return -1;
     }
@@ -981,7 +981,7 @@ static int load_bess_save(GB_gameboy_t *gb, virtual_file_t *file, bool is_samebo
                 }
                 
                 if (core.major != LE16(1)) {
-                    GB_log(gb, "This save state uses an incompatible version of the BESS specification");
+                    GB_attributed_log(gb, GB_LOG_ERROR, "This save state uses an incompatible version of the BESS specification");
                     GB_free(&save);
                     return -1;
                 }
@@ -998,7 +998,7 @@ static int load_bess_save(GB_gameboy_t *gb, virtual_file_t *file, bool is_samebo
                         break;
                     default:
                     wrong_model:
-                        GB_log(gb, "The save state is for a different model. Try changing the emulated model.\n");
+                        GB_attributed_log(gb, GB_LOG_ERROR, "The save state is for a different model. Try changing the emulated model.\n");
                         GB_free(&save);
                         return -1;
                 }
@@ -1108,10 +1108,10 @@ static int load_bess_save(GB_gameboy_t *gb, virtual_file_t *file, bool is_samebo
                         if (bess_info.title[i] < 0x20 || bess_info.title[i] > 0x7E) break;
                         ascii_title[i] = bess_info.title[i];
                     }
-                    GB_log(gb, "Save state was made on another ROM: '%s'\n", ascii_title);
+                    GB_attributed_log(gb, GB_LOG_ERROR, "Save state was made on another ROM: '%s'\n", ascii_title);
                 }
                 else if (memcmp(bess_info.checksum, bank + 0x14E, 2)) {
-                    GB_log(gb, "Save state was potentially made on another revision of the same ROM.\n");
+                    GB_attributed_log(gb, GB_LOG_WARNING, "Save state was potentially made on another revision of the same ROM.\n");
                 }
                 break;
             }
@@ -1294,10 +1294,10 @@ parse_error:
     errno = -1;
 error:
     if (emulator_name[0]) {
-        GB_log(gb, "Attempted to import a save state from %s, but the save state is invalid.\n", emulator_name);
+        GB_attributed_log(gb, GB_LOG_ERROR, "Attempted to import a save state from %s, but the save state is invalid.\n", emulator_name);
     }
     else {
-        GB_log(gb, "Attempted to import a save state from a different emulator or incompatible version, but the save state is invalid.\n");
+        GB_attributed_log(gb, GB_LOG_ERROR, "Attempted to import a save state from a different emulator or incompatible version, but the save state is invalid.\n");
     }
     GB_free(&save);
     sanitize_state(gb);
@@ -1375,7 +1375,7 @@ int GB_load_state(GB_gameboy_t *gb, const char *path)
     GB_ASSERT_NOT_RUNNING(gb)
     FILE *f = fopen(path, "rb");
     if (!f) {
-        GB_log(gb, "Could not open save state: %s.\n", strerror(errno));
+        GB_attributed_log(gb, GB_LOG_ERROR, "Could not open save state: %s.\n", strerror(errno));
         return errno;
     }
     virtual_file_t file = {

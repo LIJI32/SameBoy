@@ -132,15 +132,23 @@ static void gb_log_callback(GB_gameboy_t *gb, const char *string, GB_log_attribu
     memcpy(gb_log_buffer + gb_log_buffer_length, string, length + 1);
     gb_log_buffer_length += length;
 
+    enum retro_log_level level = RETRO_LOG_INFO;
+    if (attributes & GB_LOG_ERROR) {
+        level = RETRO_LOG_ERROR;
+    }
+    else if (attributes & GB_LOG_WARNING) {
+        level = RETRO_LOG_WARN;
+    }
+    
     if (length && string[length - 1] == '\n') {
         if (emulated_devices == 1) {
-            log_cb(RETRO_LOG_INFO, "%s", gb_log_buffer);
+            log_cb(level, "%s", gb_log_buffer);
         }
         else if (gb == &gameboy[0]) {
-            log_cb(RETRO_LOG_INFO, "[Game Boy 1] %s", gb_log_buffer);
+            log_cb(level, "[Game Boy 1] %s", gb_log_buffer);
         }
         else {
-            log_cb(RETRO_LOG_INFO, "[Game Boy 2] %s", gb_log_buffer);
+            log_cb(level, "[Game Boy 2] %s", gb_log_buffer);
         }
         gb_log_buffer_length = 0;
         free(gb_log_buffer);

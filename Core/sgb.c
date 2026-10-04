@@ -157,7 +157,7 @@ static void command_ready(GB_gameboy_t *gb)
             checksum += gb->sgb->command[i];
         }
         if (checksum != gb->sgb->command[1]) {
-            GB_log(gb, "Failed checksum for SGB header command, disabling SGB features\n");
+            GB_attributed_log(gb, GB_LOG_WARNING, "Failed checksum for SGB header command, disabling SGB features\n");
             gb->sgb->disable_commands = true;
             return;
         }
