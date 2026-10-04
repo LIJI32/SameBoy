@@ -41,6 +41,7 @@ static UIInterfaceOrientation CurrentOrientation(void)
     }
     return [UIApplication sharedApplication].statusBarOrientation;
 }
+
 static UIImage *CreateMenuImage(NSString *name)
 {
     static const unsigned size = 20;
@@ -2581,7 +2582,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     }
     else {
         _backgroundView.fullScreenMode = GBControllerFocusOff;
-        [self recreateLayoutsWithThemeNamed:[[NSUserDefaults standardUserDefaults] stringForKey:@"GBInterfaceTheme"]];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self recreateLayoutsWithThemeNamed:[[NSUserDefaults standardUserDefaults] stringForKey:@"GBInterfaceTheme"]];
+        });
     }
 }
 
