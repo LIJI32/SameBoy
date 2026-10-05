@@ -107,3 +107,12 @@ const char *GB_audio_driver_name_at_index(unsigned index)
     }
     return drivers[index]->name;
 }
+
+void GB_audio_deinit(void)
+{
+    if (unlikely(!driver)) return;
+    if (driver->audio_deinit) {
+        driver->audio_deinit();
+    }
+    driver = NULL;
+}
