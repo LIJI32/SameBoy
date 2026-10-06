@@ -311,6 +311,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 {
     if (_hinge) {
         _lastHingeStatus = _hinge.status;
+        [super setNeedsUpdateOfSupportedInterfaceOrientations];
     }
     GBTheme *theme = [GBSettingsViewController themeNamed:name];
     _horizontalLayoutLeft = [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:false];
@@ -1370,6 +1371,11 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     }
     if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
         return UIInterfaceOrientationMaskAll;
+    }
+    if (@available(iOS 27.1, *)) {
+        if (_lastHingeStatus >= UIHingeStatusPartiallyOpen) {
+            return UIInterfaceOrientationMaskAll;
+        }
     }
     if (MAX([UIScreen mainScreen].bounds.size.height, [UIScreen mainScreen].bounds.size.width) <= 568) {
         return UIInterfaceOrientationMaskLandscape;
