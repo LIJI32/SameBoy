@@ -309,9 +309,11 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
 
 - (void)recreateLayoutsWithThemeNamed:(NSString *)name;
 {
-    if (_hinge) {
-        _lastHingeStatus = _hinge.status;
-        [super setNeedsUpdateOfSupportedInterfaceOrientations];
+    if (@available(iOS 16.0, *)) {
+        if (_hinge) {
+            _lastHingeStatus = _hinge.status;
+            [super setNeedsUpdateOfSupportedInterfaceOrientations];
+        }
     }
     GBTheme *theme = [GBSettingsViewController themeNamed:name];
     _horizontalLayoutLeft = [[GBHorizontalLayout alloc] initWithTheme:theme cutoutOnRight:false];
