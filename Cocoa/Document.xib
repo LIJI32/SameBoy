@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="24093.7" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="24506" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24093.7"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24506"/>
         <capability name="System colors introduced in macOS 10.14" minToolsVersion="10.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -374,19 +374,18 @@
                 <allowedToolbarItems>
                     <toolbarItem implicitItemIdentifier="NSToolbarSpaceItem" id="WUk-8p-S6B"/>
                     <toolbarItem implicitItemIdentifier="NSToolbarFlexibleSpaceItem" id="E3z-um-6KG"/>
-                    <toolbarItem implicitItemIdentifier="4F6AAE25-1E9D-4111-9E5B-91F0792E56CD" label="Address Space" paletteLabel="Address Space" id="VTy-lj-K0H">
-                        <nil key="toolTip"/>
-                        <size key="minSize" width="160" height="25"/>
-                        <size key="maxSize" width="160" height="25"/>
+                    <toolbarItem implicitItemIdentifier="4F6AAE25-1E9D-4111-9E5B-91F0792E56CD" label="Address Space" paletteLabel="Address Space" title="Entire Space" id="VTy-lj-K0H">
+                        <size key="minSize" width="121" height="25"/>
+                        <size key="maxSize" width="125" height="25"/>
                         <popUpButton key="view" verticalHuggingPriority="750" id="vfJ-vu-gqJ">
-                            <rect key="frame" x="0.0" y="14" width="160" height="25"/>
-                            <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
-                            <popUpButtonCell key="cell" type="roundTextured" bezelStyle="texturedRounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="bpD-j9-omo" customClass="GBToolbarPopUpButtonCell">
+                            <rect key="frame" x="0.0" y="14" width="124" height="25"/>
+                            <autoresizingMask key="autoresizingMask"/>
+                            <popUpButtonCell key="cell" type="roundTextured" title="Entire Space" bezelStyle="texturedRounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" selectedItem="Zp5-J9-dd3" id="2kz-IT-zfz">
                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                 <font key="font" metaFont="message"/>
                                 <menu key="menu" id="gTX-6Z-mOH">
                                     <items>
-                                        <menuItem title="Entire Space" id="Zp5-J9-dd3"/>
+                                        <menuItem title="Entire Space" state="on" id="Zp5-J9-dd3"/>
                                         <menuItem title="ROM" tag="1" id="ANn-pq-5SA"/>
                                         <menuItem title="Video RAM" tag="2" id="m35-GY-cKE"/>
                                         <menuItem title="Cartridge RAM" tag="3" id="AOc-Up-PNm"/>
@@ -399,14 +398,13 @@
                             </popUpButtonCell>
                         </popUpButton>
                     </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="D16C64D2-2F0D-4033-A1EC-A1E699522ECE" label="Bank" paletteLabel="Bank" id="bWC-FW-IYP">
-                        <nil key="toolTip"/>
-                        <size key="minSize" width="64" height="22"/>
-                        <size key="maxSize" width="80" height="22"/>
+                    <toolbarItem implicitItemIdentifier="D16C64D2-2F0D-4033-A1EC-A1E699522ECE" label="Bank" paletteLabel="Bank" bordered="YES" id="bWC-FW-IYP">
+                        <size key="minSize" width="80" height="21"/>
+                        <size key="maxSize" width="96" height="26"/>
                         <textField key="view" focusRingType="none" verticalHuggingPriority="750" id="rdV-q6-hc6">
-                            <rect key="frame" x="0.0" y="14" width="64" height="22"/>
-                            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" state="on" borderStyle="bezel" placeholderString="Bank" id="JCn-Y1-eHS" customClass="GBToolbarFieldCell">
+                            <rect key="frame" x="0.0" y="14" width="96" height="21"/>
+                            <autoresizingMask key="autoresizingMask"/>
+                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" borderStyle="bezel" placeholderString="Bank" id="JCn-Y1-eHS">
                                 <font key="font" metaFont="system"/>
                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                             </textFieldCell>
@@ -415,14 +413,13 @@
                             </connections>
                         </textField>
                     </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="F9723DA8-D79F-43AB-876B-783DD0204AA6" label="Go To" paletteLabel="Go To" id="rLO-D7-zRG">
-                        <nil key="toolTip"/>
-                        <size key="minSize" width="160" height="22"/>
-                        <size key="maxSize" width="160" height="22"/>
+                    <toolbarItem implicitItemIdentifier="F9723DA8-D79F-43AB-876B-783DD0204AA6" label="Go To" paletteLabel="Go to" bordered="YES" id="rLO-D7-zRG">
+                        <size key="minSize" width="128" height="21"/>
+                        <size key="maxSize" width="192" height="26"/>
                         <textField key="view" focusRingType="none" verticalHuggingPriority="750" id="EJd-jG-hmH">
                             <rect key="frame" x="0.0" y="14" width="160" height="22"/>
-                            <autoresizingMask key="autoresizingMask" widthSizable="YES"/>
-                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" state="on" borderStyle="bezel" placeholderString="Address" bezelStyle="round" id="vg5-Nn-abb" customClass="GBToolbarFieldCell">
+                            <autoresizingMask key="autoresizingMask"/>
+                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" borderStyle="bezel" placeholderString="Address" bezelStyle="round" id="vg5-Nn-abb">
                                 <font key="font" metaFont="system"/>
                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                             </textFieldCell>

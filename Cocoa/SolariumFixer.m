@@ -122,14 +122,6 @@ static CGSize minSizeHook(id self, SEL _cmd)
             NSLog(@"Handling (Text field)");
             self.bordered = true;
             
-            NSSize maxSize = self.maxSize;
-            maxSize.height = 36;
-            self.maxSize = maxSize;
-            
-            NSSize minSize = self.minSize;
-            minSize.height = 36;
-            self.minSize = minSize;
-            
             ((NSTextField *)self.view).backgroundColor = [NSColor clearColor];
             ((NSTextField *)self.view).bezeled = false;
             ((NSTextField *)self.view).bordered = true;
@@ -141,14 +133,6 @@ static CGSize minSizeHook(id self, SEL _cmd)
         else if ([self.view isKindOfClass:[NSPopUpButton class]]) {
             NSLog(@"Handling (Pop up button)");
             self.bordered = true;
-            
-            NSSize maxSize = self.maxSize;
-            maxSize.height = 28;
-            self.maxSize = maxSize;
-            
-            NSSize minSize = self.minSize;
-            minSize.height = 28;
-            self.minSize = minSize;
         }
     }
     else if (@available(macOS 11.0, *)) { // While at it, make macOS 11-15 a bit more consistent
