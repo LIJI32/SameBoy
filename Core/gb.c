@@ -215,6 +215,9 @@ void GB_free(GB_gameboy_t *gb)
     if (gb->rom) {
         free(gb->rom);
     }
+    if (gb->passthrough_rom) {
+        free(gb->passthrough_rom);
+    }
     if (gb->sgb) {
         free(gb->sgb);
     }
@@ -331,7 +334,7 @@ static size_t rounded_rom_size(size_t size)
 int GB_load_rom(GB_gameboy_t *gb, const char *path)
 {
     GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
-    
+
     FILE *f = fopen(path, "rb");
     if (!f) {
         GB_log(gb, "Could not open ROM: %s.\n", strerror(errno));
@@ -351,6 +354,65 @@ int GB_load_rom(GB_gameboy_t *gb, const char *path)
     gb->tried_loading_sgb_border = false;
     gb->has_sgb_border = false;
     load_default_border(gb);
+    return 0;
+}
+
+void GB_set_cart_menu_button(GB_gameboy_t *gb, bool pressed)
+{
+    bool was_pressed = gb->datel_orbit.menu_button;
+    gb->datel_orbit.menu_button = pressed;
+    /* Releasing the cart button after the menu has run simulates the user
+       lifting their finger off the physical switch. On real hardware the
+       firmware's post-menu init sequence continues and eventually writes
+       $7FE6 = 7 (game-cart handoff). Our emulation of that sequence runs
+       into a memset/VRAM-clear path that never converges -- the firmware is
+       heavily coupled to PPU timing and SRAM overlays that we don't model
+       at cycle-level accuracy. Short-circuit by triggering the handoff
+       directly here, semantically identical to what the firmware would
+       eventually have done. */
+    if (was_pressed && !pressed &&
+        gb->cartridge_type && gb->cartridge_type->mbc_type == GB_DATEL_ORBIT &&
+        gb->passthrough_rom) {
+        GB_datel_orbit_handoff(gb);
+    }
+}
+
+void GB_cart_start_game(GB_gameboy_t *gb)
+{
+    if (gb->cartridge_type && gb->cartridge_type->mbc_type == GB_DATEL_ORBIT) {
+        GB_datel_orbit_handoff(gb);
+        /* Align PC/SP with what the firmware's HRAM handoff leaves behind:
+           the real routine ends with `JP $0101`, which on the game cart is
+           typically `NOP; JP <entry>`. Force PC there so execution picks up
+           at the game cart's entry point without needing the firmware. */
+        gb->pc = 0x0100;
+        gb->registers[GB_REGISTER_SP] = 0xFFFE;
+    }
+}
+
+int GB_load_passthrough_rom(GB_gameboy_t *gb, const char *path)
+{
+    /* Load a second ROM representing the cartridge inserted into the cart's
+       passthrough slot (e.g., a game cart plugged into the top of a GameShark
+       Pro). Only the Datel Orbit mapper consults this; other mappers ignore
+       it. */
+    GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        GB_log(gb, "Could not open passthrough ROM: %s.\n", strerror(errno));
+        return errno;
+    }
+    fseek(f, 0, SEEK_END);
+    gb->passthrough_rom_size = rounded_rom_size(ftell(f));
+    fseek(f, 0, SEEK_SET);
+    if (gb->passthrough_rom) {
+        free(gb->passthrough_rom);
+    }
+    gb->passthrough_rom = malloc(gb->passthrough_rom_size);
+    memset(gb->passthrough_rom, 0xFF, gb->passthrough_rom_size);
+    fread(gb->passthrough_rom, 1, gb->passthrough_rom_size, f);
+    fclose(f);
     return 0;
 }
 

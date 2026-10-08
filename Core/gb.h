@@ -502,6 +502,23 @@ struct GB_gameboy_internal_s {
                uint8_t ram_bank;
                uint8_t mode;
            } tpp1;
+
+           /* Datel "Orbit" mapper -- used in the GameShark Pro / Action
+              Replay V4 line of cheat cartridges for Game Boy (Color). Custom
+              mapper with a $7FE0-$7FE7 register window and an 8KB sub-bank
+              override for the lower half of the $4000-$7FFF window. Writing
+              $10 to $7FE5 engages the hardware passthrough -- reads from the
+              entire $0000-$7FFF window are redirected to the inserted game
+              cart (the cart physically has a slot for a game cartridge on
+              top). See mbc.c:GB_update_mbc_mappings and memory.c:write_mbc. */
+           struct {
+               uint8_t rom_bank;      /* $7FE0: 16KB bank at $4000-$7FFF */
+               uint8_t sub_bank;      /* $7FE1: 8KB sub-bank override for $4000-$5FFF */
+               bool passthrough:1;    /* $7FE5 bit 4 ($10): route ROM reads to game cart */
+               bool menu_button:1;    /* on real hw, the physical cart button. When set, the
+                                         firmware's $7FEE bit 4 reads 0 and the main menu
+                                         is entered instead of the game-handoff path. */
+           } datel_orbit;
         };
         uint8_t rumble_strength;
         bool cart_ir;
@@ -656,6 +673,10 @@ struct GB_gameboy_internal_s {
         /* ROM */
         uint8_t *rom;
         uint32_t rom_size;
+        /* Optional second ROM for cartridges with a passthrough game slot
+           (GameShark Pro / Action Replay). Unused for other mappers. */
+        uint8_t *passthrough_rom;
+        uint32_t passthrough_rom_size;
         const GB_cartridge_t *cartridge_type;
         enum {
             GB_STANDARD_MBC1_WIRING,
@@ -940,6 +961,17 @@ int GB_load_boot_rom(GB_gameboy_t *gb, const char *path);
 void GB_load_boot_rom_from_buffer(GB_gameboy_t *gb, const unsigned char *buffer, size_t size);
 int GB_load_rom(GB_gameboy_t *gb, const char *path);
 void GB_load_rom_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t size);
+/* Load a ROM into the cart's passthrough slot (GameShark Pro / Action Replay).
+   Has no effect for cartridge types that don't support passthrough. */
+int GB_load_passthrough_rom(GB_gameboy_t *gb, const char *path);
+/* Simulate the physical "menu" button on cheat carts (GameShark Pro /
+   Action Replay). When held during the cart's boot sequence, the firmware
+   opens its main menu instead of handing off to the inserted game. */
+void GB_set_cart_menu_button(GB_gameboy_t *gb, bool pressed);
+/* Immediately hand off to the inserted passthrough ROM, as if the user had
+   selected "Start Game" from the GameShark menu. Does nothing if the cart
+   type isn't GB_DATEL_ORBIT or no passthrough ROM is loaded. */
+void GB_cart_start_game(GB_gameboy_t *gb);
 int GB_load_isx(GB_gameboy_t *gb, const char *path);
 int GB_load_gbs_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t size, GB_gbs_info_t *info);
 int GB_load_gbs(GB_gameboy_t *gb, const char *path, GB_gbs_info_t *info);
