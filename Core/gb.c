@@ -817,7 +817,7 @@ static void fill_tpp1_save_data(GB_gameboy_t *gb, tpp1_rtc_save_t *data)
     data->version = BE16(0x100);
     data->mr4 = gb->tpp1_mr4;
     data->reserved = 0;
-    data->last_rtc_second = LE64(time(NULL));
+    data->last_rtc_second = LE64(GB_host_time(gb));
     unrolled for (unsigned i = 4; i--;) {
         data->rtc_data[i] = gb->rtc_real.data[i ^ 3];
     }
@@ -885,7 +885,7 @@ int GB_save_battery_to_buffer(GB_gameboy_t *gb, uint8_t *buffer, size_t size)
         rtc_save.vba64.rtc_latched.hours = gb->rtc_latched.hours;
         rtc_save.vba64.rtc_latched.days = gb->rtc_latched.days;
         rtc_save.vba64.rtc_latched.high = gb->rtc_latched.high;
-        rtc_save.vba64.last_rtc_second = LE64(time(NULL));
+        rtc_save.vba64.last_rtc_second = LE64(GB_host_time(gb));
         memcpy(buffer + gb->mbc_ram_size, &rtc_save.vba64, sizeof(rtc_save.vba64));
     }
 
@@ -945,7 +945,7 @@ int GB_save_battery(GB_gameboy_t *gb, const char *path)
         rtc_save.vba64.rtc_latched.hours = gb->rtc_latched.hours;
         rtc_save.vba64.rtc_latched.days = gb->rtc_latched.days;
         rtc_save.vba64.rtc_latched.high = gb->rtc_latched.high;
-        rtc_save.vba64.last_rtc_second = LE64(time(NULL));
+        rtc_save.vba64.last_rtc_second = LE64(GB_host_time(gb));
         if (fwrite(&rtc_save.vba64, 1, sizeof(rtc_save.vba64), f) != sizeof(rtc_save.vba64)) {
             fclose(f);
             return EIO;
@@ -983,7 +983,7 @@ void GB_load_battery_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t
         
         load_tpp1_save_data(gb, &rtc_save);
         
-        if (gb->last_rtc_second > time(NULL)) {
+        if (gb->last_rtc_second > GB_host_time(gb)) {
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
@@ -1002,7 +1002,7 @@ void GB_load_battery_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t
         gb->huc3.alarm_minutes = LE16(rtc_save.alarm_minutes);
         gb->huc3.alarm_days = LE16(rtc_save.alarm_days);
         gb->huc3.alarm_enabled = rtc_save.alarm_enabled;
-        if (gb->last_rtc_second > time(NULL)) {
+        if (gb->last_rtc_second > GB_host_time(gb)) {
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
@@ -1049,7 +1049,7 @@ void GB_load_battery_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t
         default:
             goto reset_rtc;
     }
-    if (gb->last_rtc_second > time(NULL)) {
+    if (gb->last_rtc_second > GB_host_time(gb)) {
         /* We must reset RTC here, or it will not advance. */
         goto reset_rtc;
     }
@@ -1059,11 +1059,11 @@ void GB_load_battery_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t
                                             really RTC data. */
         goto reset_rtc;
     }
-    GB_rtc_set_time(gb, time(NULL));
+    GB_rtc_set_time(gb, GB_host_time(gb));
     goto exit;
     
 reset_rtc:
-    gb->last_rtc_second = time(NULL);
+    gb->last_rtc_second = GB_host_time(gb);
     gb->rtc_real.high |= 0x80; /* This gives the game a hint that the clock should be reset. */
     if (gb->cartridge_type->mbc_type == GB_HUC3) {
         gb->huc3.days = 0xFFFF;
@@ -1096,7 +1096,7 @@ int GB_load_battery(GB_gameboy_t *gb, const char *path)
         
         load_tpp1_save_data(gb, &rtc_save);
         
-        if (gb->last_rtc_second > time(NULL)) {
+        if (gb->last_rtc_second > GB_host_time(gb)) {
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
@@ -1115,7 +1115,7 @@ int GB_load_battery(GB_gameboy_t *gb, const char *path)
         gb->huc3.alarm_days = LE16(rtc_save.alarm_days);
         gb->huc3.alarm_enabled = rtc_save.alarm_enabled;
 
-        if (gb->last_rtc_second > time(NULL)) {
+        if (gb->last_rtc_second > GB_host_time(gb)) {
             /* We must reset RTC here, or it will not advance. */
             goto reset_rtc;
         }
@@ -1161,7 +1161,7 @@ int GB_load_battery(GB_gameboy_t *gb, const char *path)
         default:
             goto reset_rtc;
     }
-    if (gb->last_rtc_second > time(NULL)) {
+    if (gb->last_rtc_second > GB_host_time(gb)) {
         /* We must reset RTC here, or it will not advance. */
         goto reset_rtc;
     }
@@ -1171,11 +1171,11 @@ int GB_load_battery(GB_gameboy_t *gb, const char *path)
                                             really RTC data. */
         goto reset_rtc;
     }
-    GB_rtc_set_time(gb, time(NULL));
+    GB_rtc_set_time(gb, GB_host_time(gb));
     goto exit;
     
 reset_rtc:
-    gb->last_rtc_second = time(NULL);
+    gb->last_rtc_second = GB_host_time(gb);
     gb->rtc_real.high |= 0x80; /* This gives the game a hint that the clock should be reset. */
     if (gb->cartridge_type->mbc_type == GB_HUC3) {
         gb->huc3.days = 0xFFFF;
@@ -1716,7 +1716,7 @@ static void GB_reset_internal(GB_gameboy_t *gb, bool quick)
     
     GB_reset_mbc(gb);
     
-    gb->last_rtc_second = time(NULL);
+    gb->last_rtc_second = GB_host_time(gb);
     gb->cgb_ram_bank = 1;
     gb->io_registers[GB_IO_JOYP] = 0xCF;
     gb->mbc_ram_size = mbc_ram_size;
@@ -1994,7 +1994,7 @@ unsigned GB_time_to_alarm(GB_gameboy_t *gb)
     if (gb->cartridge_type->mbc_type != GB_HUC3) return 0;
     if (!gb->huc3.alarm_enabled) return 0;
     if (!(gb->huc3.alarm_days & 0x2000)) return 0;
-    unsigned current_time = (gb->huc3.days & 0x1FFF) * 24 * 60 * 60 + gb->huc3.minutes * 60 + (time(NULL) % 60);
+    unsigned current_time = (gb->huc3.days & 0x1FFF) * 24 * 60 * 60 + gb->huc3.minutes * 60 + (GB_host_time(gb) % 60);
     unsigned alarm_time = (gb->huc3.alarm_days & 0x1FFF) * 24 * 60 * 60 + gb->huc3.alarm_minutes * 60;
     if (current_time > alarm_time) return 0;
     return alarm_time - current_time;
