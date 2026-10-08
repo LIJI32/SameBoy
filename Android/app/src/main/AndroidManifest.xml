@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+                     android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <application
+        android:name=".SameBoyApp"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:allowBackup="true"
+        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+        android:supportsRtl="true">
+        <activity android:name=".MainActivity" android:exported="true"
+                  android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- Every config change not listed here recreates the Activity, which frees the Core
+             and reboots the ROM from its last .sav: pairing a Bluetooth pad (navigation|
+             keyboard), the dark-theme schedule (uiMode), split-screen/unfold (smallest
+             ScreenSize|screenLayout). All are handled in onConfigurationChanged instead. -->
+        <activity
+            android:name=".EmulatorActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection" />
+        <activity android:name=".SettingsActivity" android:exported="false"
+                  android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".GamepadRemapActivity" android:exported="false"
+                  android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".PrinterFeedActivity" android:exported="false"
+                  android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".LinkActivity" android:exported="false"
+                  android:configChanges="orientation|screenSize|keyboardHidden" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS"
+                       android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">SameBoy</string>
+    <string name="open_rom">Open ROM</string>
+    <string name="import_folder">Import Folder</string>
+    <string name="library_empty">No games yet. Import a folder or open a ROM.</string>
+    <string name="scanning">Scanning…</string>
+    <string name="added_n">Added %d game(s)</string>
+    <string name="not_a_rom">Not a Game Boy ROM</string>
+    <string name="never">Never played</string>
+    <string name="play">Play</string>
+    <string name="favorite">Favorite</string>
+    <string name="unfavorite">Unfavorite</string>
+    <string name="remove">Remove</string>
+    <string name="settings">Settings</string>
+    <string name="palette">DMG palette</string>
+    <string name="theme">Theme</string>
+    <string name="rumble">Rumble</string>
+    <string name="gamepad_buttons">Gamepad buttons</string>
+    <string name="reset_defaults">Reset to defaults</string>
+    <string name="printer_feed">Printer feed</string>
+    <string name="printer_empty">No printouts yet.</string>
+    <string name="save">Save</string>
+    <string name="share">Share</string>
+    <string name="clear">Clear</string>
+    <string name="saved_to_pictures">Saved to Pictures/SameBoy</string>
+    <string name="connect_accessory">Connect accessory</string>
+    <string name="accessory_none">None</string>
+    <string name="accessory_printer">Game Boy Printer</string>
+    <string name="link_cable">Link cable</string>
+    <string name="link_host">Host</string>
+    <string name="link_join">Join</string>
+    <string name="link_disconnect">Disconnect</string>
+    <string name="link_hint_join">Peer IP (e.g. 192.168.1.5)</string>
+    <string name="accessory_link">Link cable</string>
+</resources>

@@ -1,0 +1,129 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "org.jetbrains.kotlin.plugin.compose"
+}
+
+// Read VERSION from repo-root version.mk (e.g. "1.0.3")
+def sameboyVersion = file("${rootDir}/../version.mk").readLines()
+        .find { it.startsWith("VERSION") }?.split(":=")?.last()?.trim() ?: "0.0.0"
+// Derive a monotonic integer versionCode from the semver (1.0.3 -> 10003).
+def sameboyVersionCode = {
+    def m = (sameboyVersion =~ /(\d+)\.(\d+)\.(\d+)/)
+    m ? m[0][1].toInteger() * 10000 + m[0][2].toInteger() * 100 + m[0][3].toInteger() : 1
+}()
+
+// Release signing from env (CI secrets / local export); never commit a keystore. Falls back
+// to the debug key when unset so assembleRelease always produces an installable APK.
+def ksPath = System.getenv("SAMEBOY_KEYSTORE")
+def hasReleaseKey = ksPath && file(ksPath).exists()
+
+android {
+    namespace "io.sameboy.android"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "io.sameboy.android"
+        minSdk 26
+        targetSdk 34
+        versionCode sameboyVersionCode
+        versionName sameboyVersion
+        ndk { abiFilters "arm64-v8a", "armeabi-v7a", "x86_64", "x86" }
+    }
+
+    externalNativeBuild { ndkBuild { path "../jni/Android.mk" } }
+    ndkVersion "26.3.11579264"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+    buildFeatures { compose true }
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                storeFile file(System.getenv("SAMEBOY_KEYSTORE"))
+                storePassword System.getenv("SAMEBOY_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("SAMEBOY_KEY_ALIAS")
+                keyPassword System.getenv("SAMEBOY_KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        debug { debuggable true }
+        release {
+            // name-based JNI binding => keep NativeBridge + native methods (proguard-rules.pro)
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // real key if provided, else debug key so the APK still installs (not for store upload)
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation platform("androidx.compose:compose-bom:2024.09.03")
+    implementation "androidx.compose.foundation:foundation"
+    implementation "androidx.activity:activity-compose:1.9.2"
+
+    // kotlin-stdlib-jdk7/jdk8 classes were folded into kotlin-stdlib at 1.8.0;
+    // align the stub artifacts to the resolved stdlib (now 2.0.21 via Kotlin plugin).
+    constraints {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.0.21")
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.0.21")
+    }
+}
+
+// Generate SameBoy's open-source boot ROMs (repo-root `make bootroms`, needs rgbds)
+// and bundle them as APK assets. Warns + skips if rgbds is absent (app runs boot-ROM-less).
+def bootRomOut = file("src/main/assets/bootroms")
+
+tasks.register("generateBootRoms") {
+    def repoRoot = file("${rootDir}/..")
+    // Always run: `make bootroms` is a ~1s no-op when unchanged, and this picks up
+    // BootROM .asm edits and a later rgbds install (no up-to-date latch).
+    outputs.upToDateWhen { false }
+    doLast {
+        bootRomOut.mkdirs()
+        // Prefer ~/.local/bin (where rgbds lives) ahead of the inherited PATH.
+        def home = System.getProperty("user.home")
+        def sysPath = System.getenv('PATH') ?: ''
+        def path = "${home}/.local/bin:${sysPath}".toString()
+        def dirs = path.split(':').findAll { it }   // drop empty PATH entries ("" -> new File("",x))
+        // Require the FULL rgbds toolchain, not just rgbasm — a partial install would make
+        // `make bootroms` fail loudly mid-build; skip gracefully (boot-ROM-less) instead.
+        def haveRgbds = ['rgbasm', 'rgblink', 'rgbgfx', 'rgbfix'].every { exe ->
+            dirs.any { new File(it, exe).canExecute() }
+        }
+        if (!haveRgbds) {
+            logger.warn("rgbds toolchain not fully found on PATH; skipping boot ROM generation. App will run boot-ROM-less.")
+            return
+        }
+        def pb = new ProcessBuilder('make', 'bootroms')
+                .directory(repoRoot)
+                .redirectErrorStream(true)
+        pb.environment().put('PATH', path)
+        def proc = pb.start()
+        def out = proc.inputStream.text
+        if (proc.waitFor() != 0) {
+            throw new GradleException("make bootroms failed:\n${out}")
+        }
+        def src = file("${repoRoot}/build/bin/BootROMs")
+        ["dmg_boot.bin", "mgb_boot.bin", "cgb0_boot.bin", "cgb_boot.bin",
+         "agb_boot.bin", "sgb_boot.bin", "sgb2_boot.bin"].each { name ->
+            def f = new File(src, name)
+            if (f.exists()) {
+                new File(bootRomOut, name).bytes = f.bytes
+            } else {
+                logger.warn("boot ROM ${name} not produced; skipping")
+            }
+        }
+    }
+}
+
+// Run before assets are merged for every variant.
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }
+     .configureEach { dependsOn "generateBootRoms" }
