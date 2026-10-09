@@ -292,7 +292,7 @@ static uint32_t color_to_int(NSColor *color)
     NSView *tab = _preferencesTabs[[sender tag]];
     NSRect old = [_preferencesWindow frame];
     NSRect new = [_preferencesWindow frameRectForContentRect:tab.frame];
-    new.origin.x = old.origin.x;
+    new.origin.x = old.origin.x + (old.size.width - new.size.width) / 2;
     new.origin.y = old.origin.y + (old.size.height - new.size.height);
     [_preferencesWindow setFrame:new display:true animate:_preferencesWindow.visible];
     [_preferencesWindow.contentView addSubview:tab];
