@@ -9,6 +9,7 @@
 
 - (instancetype)initWithImage:(UIImage *)image
 {
+    self = [super init];
     _image = image;
     UIViewController *scrollViewController = [[UIViewController alloc] init];
     scrollViewController.title = @"Printer Feed";

@@ -436,7 +436,6 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     }
 
     _cameraPositionButton = [[UIButton alloc] init];
-    [self didRotateFromInterfaceOrientation:CurrentOrientation()];
     if (@available(iOS 13.0, *)) {
         [_cameraPositionButton  setImage:[UIImage systemImageNamed:@"camera.rotate"
                                                  withConfiguration:[UIImageSymbolConfiguration configurationWithScale:UIImageSymbolScaleLarge]]
@@ -1074,6 +1073,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     if (_lastHingeStatus != _hinge.status) {
         [self recreateLayoutsWithThemeNamed:[[NSUserDefaults standardUserDefaults] stringForKey:@"GBInterfaceTheme"]];
         [[NSNotificationCenter defaultCenter] postNotificationName:@"HingeStatusChanged" object:nil];
+        [self didRotateFromInterfaceOrientation:UIInterfaceOrientationUnknown];
     }
     [self start];
 }
@@ -1341,6 +1341,16 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     bool landscape = true;
     if (_orientation == UIInterfaceOrientationPortrait || _orientation == UIInterfaceOrientationPortraitUpsideDown) {
         landscape = false;
+    }
+    
+    if (@available(iOS 27.1, *)) {
+        if (_lastHingeStatus == UIHingeStatusClosed) {
+            insets.left = insets.right = MIN(insets.left, insets.right);
+            landscape = false;
+            if (_orientation == UIInterfaceOrientationLandscapeLeft) {
+                insets.bottom += 24;
+            }
+        }
     }
     
     _cameraPositionButton.frame = CGRectMake(insets.left + 8,
