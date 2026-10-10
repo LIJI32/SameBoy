@@ -384,7 +384,7 @@ static void command_ready(GB_gameboy_t *gb)
             gb->sgb->player_count = (gb->sgb->command[1] & 3) + 1; /* Todo: When breaking save state comaptibility,
                                                                             fix this to be 0 based. */
             if (gb->sgb->player_count == 3) {
-                gb->sgb->player_count++;
+                gb->sgb->current_player++; // Weird glitched increment
             }
             gb->sgb->current_player &= (gb->sgb->player_count - 1);
             break;
