@@ -1419,7 +1419,7 @@ static void write_high_memory(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
             case GB_IO_WX:
                 gb->io_registers[addr & 0xFF] = value;
                 GB_update_wx_glitch(gb);
-                break;
+                return;
                 
             case GB_IO_IF:
             case GB_IO_SCX:
