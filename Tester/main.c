@@ -23,6 +23,7 @@ static char *filename;
 static char *bmp_filename;
 static char *log_filename;
 static char *sav_filename;
+static const char *boot_rom_path;
 static FILE *log_file;
 static void replace_extension(const char *src, size_t length, char *dest, const char *ext);
 static bool push_start_a, start_is_not_first, a_is_bad, b_is_confirm, push_faster, push_slower,
@@ -285,13 +286,74 @@ static void replace_extension(const char *src, size_t length, char *dest, const 
     strcat(dest, ext);
 }
 
+static GB_model_t model_from_name(const char *model_string)
+{
+    static const struct {
+        const char *name;
+        GB_model_t model;
+        const char *description;
+    } name_to_model[] = {
+        {"dmg-b", GB_MODEL_DMG_B, "Game Boy, DMG-CPU B"},
+        {"dmg", GB_MODEL_DMG_B, "Alias of dmg-b"},
+        {"sgb-ntsc", GB_MODEL_SGB_NTSC, "Super Game Boy (NTSC)"},
+        {"sgb-pal", GB_MODEL_SGB_PAL, "Super Game Boy (PAL)"},
+        {"sgb2", GB_MODEL_SGB2, "Super Game Boy 2"},
+        {"sgb", GB_MODEL_SGB, "Alias of sgb-ntsc"},
+        {"mgb", GB_MODEL_MGB, "Game Boy Pocket/Light"},
+        {"cgb-0", GB_MODEL_CGB_0, "Game Boy Color, CPU CGB"},
+        {"cgb-a", GB_MODEL_CGB_A, "Game Boy Color, CPU CGB A"},
+        {"cgb-b", GB_MODEL_CGB_B, "Game Boy Color, CPU CGB B"},
+        {"cgb-c", GB_MODEL_CGB_C, "Game Boy Color, CPU CGB C"},
+        {"cgb-d", GB_MODEL_CGB_D, "Game Boy Color, CPU CGB D"},
+        {"cgb-e", GB_MODEL_CGB_E, "Game Boy Color, CPU CGB E"},
+        {"cgb", GB_MODEL_CGB_E, "Alias of cgb-e"},
+        {"agb-a", GB_MODEL_AGB_A, "Game Boy Advance, CPU AGB A"},
+        {"agb", GB_MODEL_AGB_A, "Alias of agb-a"},
+        {"gbp-a", GB_MODEL_GBP_A, "Game Boy Player, CPU AGB A"},
+        {"gbp", GB_MODEL_GBP_A, "Alias of gbp-a"},
+    };
+
+    for (unsigned i = 0; i < sizeof(name_to_model) / sizeof(name_to_model[0]); i++) {
+        if (strcmp(model_string, name_to_model[i].name) == 0) {
+            return name_to_model[i].model;
+        }
+    }
+
+    fprintf(stderr, "'%s' is not a valid model. Valid options are:\n", model_string);
+    for (unsigned i = 0; i < sizeof(name_to_model) / sizeof(name_to_model[0]); i++) {
+        fprintf(stderr, "%s - %s\n", name_to_model[i].name, name_to_model[i].description);
+    }
+    exit(1);
+}
+
+static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type)
+{
+    static const char *const names[] = {
+        [GB_BOOT_ROM_DMG_0] = "dmg0_boot.bin",
+        [GB_BOOT_ROM_DMG] = "dmg_boot.bin",
+        [GB_BOOT_ROM_MGB] = "mgb_boot.bin",
+        [GB_BOOT_ROM_SGB] = "sgb_boot.bin",
+        [GB_BOOT_ROM_SGB2] = "sgb2_boot.bin",
+        [GB_BOOT_ROM_CGB_0] = "cgb0_boot.bin",
+        [GB_BOOT_ROM_CGB] = "cgb_boot.bin",
+        [GB_BOOT_ROM_CGB_E] = "cgb_boot.bin",
+        [GB_BOOT_ROM_AGB_0] = "agb_boot.bin",
+        [GB_BOOT_ROM_AGB] = "agb_boot.bin",
+    };
+    const char *path = boot_rom_path ?: executable_relative_path(names[type]);
+    if (GB_load_boot_rom(gb, path)) {
+        fprintf(stderr, "Failed to load boot ROM from '%s'\n", path);
+        exit(1);
+    }
+}
+
 
 int main(int argc, char **argv)
 {
     fprintf(stderr, "SameBoy Tester v" GB_VERSION "\n");
 
     if (argc == 1) {
-        fprintf(stderr, "Usage: %s [--dmg] [--sgb] [--cgb] [--start] [--length seconds] [--sav] [--boot path to boot ROM]"
+        fprintf(stderr, "Usage: %s [--model model] [--dmg] [--sgb] [--cgb] [--start] [--length seconds] [--sav] [--boot path to boot ROM]"
 #ifndef _WIN32
                         " [--jobs number of tests to run simultaneously]"
 #endif
@@ -304,32 +366,36 @@ int main(int argc, char **argv)
     unsigned int current_forks = 0;
 #endif
 
-    bool dmg = false;
-    bool sgb = false;
     bool sav = false;
-    const char *boot_rom_path = NULL;
+    GB_model_t model = GB_MODEL_CGB_E;
     
     GB_random_set_enabled(false);
 
     for (unsigned i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--model") == 0) {
+            if (i == argc - 1) {
+                fprintf(stderr, "Missing model name after --model\n");
+                exit(1);
+            }
+            model = model_from_name(argv[++i]);
+            continue;
+        }
+
         if (strcmp(argv[i], "--dmg") == 0) {
             fprintf(stderr, "Using DMG mode\n");
-            dmg = true;
-            sgb = false;
+            model = GB_MODEL_DMG_B;
             continue;
         }
         
         if (strcmp(argv[i], "--sgb") == 0) {
             fprintf(stderr, "Using SGB mode\n");
-            sgb = true;
-            dmg = false;
+            model = GB_MODEL_SGB2;
             continue;
         }
         
         if (strcmp(argv[i], "--cgb") == 0) {
             fprintf(stderr, "Using CGB mode\n");
-            dmg = false;
-            sgb = false;
+            model = GB_MODEL_CGB_E;
             continue;
         }
         
@@ -403,27 +469,8 @@ int main(int argc, char **argv)
         
         fprintf(stderr, "Testing ROM %s\n", filename);
         
-        if (dmg) {
-            GB_init(&gb, GB_MODEL_DMG_B);
-            if (GB_load_boot_rom(&gb, boot_rom_path ?: executable_relative_path("dmg_boot.bin"))) {
-                fprintf(stderr, "Failed to load boot ROM from '%s'\n", boot_rom_path ?: executable_relative_path("dmg_boot.bin"));
-                exit(1);
-            }
-        }
-        else if (sgb) {
-            GB_init(&gb, GB_MODEL_SGB2);
-            if (GB_load_boot_rom(&gb, boot_rom_path ?: executable_relative_path("sgb2_boot.bin"))) {
-                fprintf(stderr, "Failed to load boot ROM from '%s'\n", boot_rom_path ?: executable_relative_path("sgb2_boot.bin"));
-                exit(1);
-            }
-        }
-        else {
-            GB_init(&gb, GB_MODEL_CGB_E);
-            if (GB_load_boot_rom(&gb, boot_rom_path ?: executable_relative_path("cgb_boot.bin"))) {
-                fprintf(stderr, "Failed to load boot ROM from '%s'\n", boot_rom_path ?: executable_relative_path("cgb_boot.bin"));
-                exit(1);
-            }
-        }
+        GB_init(&gb, model);
+        GB_set_boot_rom_load_callback(&gb, load_boot_rom);
         
         GB_set_vblank_callback(&gb, (GB_vblank_callback_t) vblank);
         GB_set_pixels_output(&gb, &bitmap[0]);
@@ -534,4 +581,3 @@ int main(int argc, char **argv)
 #endif
     return 0;
 }
-

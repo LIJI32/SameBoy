@@ -1379,7 +1379,7 @@ static void handle_model_option(const char *model_string)
     
     GB_model_t model = -1;
     for (unsigned i = 0; i < sizeof(name_to_model) / sizeof(name_to_model[0]); i++) {
-        if (strcmp(model_string, name_to_model[i].name) == 00) {
+        if (strcmp(model_string, name_to_model[i].name) == 0) {
             model = name_to_model[i].model;
             break;
         }
