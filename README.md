@@ -52,6 +52,8 @@ On Windows, SameBoy also requires:
    * Git Bash does not include make, you can get it [here](https://sourceforge.net/projects/ezwinports/files/make-4.4.1-without-guile-w32-bin.zip/download).
  * Running `vcvars64.bat` or `vcvarsx86_amd64.bat` before running make. Make sure all required tools, libraries, and headers are in %PATH%, %lib%, and %include%`, respectively. (see [Build FAQ](https://github.com/LIJI32/SameBoy/blob/master/build-faq.md) for more details on Windows compilation)
 
+The Cocoa and SDL frontends embed Lua and LuaSocket for Lua scripting, which are included as Git submodules. Clone SameBoy with `git clone --recursive`, or run `git submodule update --init` in an existing clone.
+
 To compile, simply run `make`. The targets are:
  * `cocoa` (Default for macOS)
  * `sdl` (Default for everything else)

@@ -21,6 +21,26 @@ char *do_open_rom_dialog(void)
     }
 }
 
+char *do_open_lua_dialog(void)
+{
+    @autoreleasepool {
+        int stderr_fd = dup(STDERR_FILENO);
+        close(STDERR_FILENO);
+        NSWindow *key = [NSApp keyWindow];
+        NSOpenPanel *dialog = [NSOpenPanel openPanel];
+        dialog.title = @"Open Lua Script";
+        dialog.allowedFileTypes = @[@"lua"];
+        if ([dialog runModal] != NSModalResponseOK) return nil;
+        [key makeKeyAndOrderFront:nil];
+        NSString *ret = [[[dialog URLs] firstObject] path];
+        dup2(stderr_fd, STDERR_FILENO);
+        if (ret) {
+            return strdup(ret.UTF8String);
+        }
+        return NULL;
+    }
+}
+
 char *do_open_folder_dialog(void)
 {
     @autoreleasepool {

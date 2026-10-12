@@ -34,6 +34,8 @@ enum pending_command {
     GB_SDL_QUIT_COMMAND,
     GB_SDL_LOAD_STATE_FROM_FILE_COMMAND,
     GB_SDL_CART_SWAP_COMMAND,
+    GB_SDL_LUA_START_COMMAND, // Starts pending_lua_script
+    GB_SDL_LUA_STOP_COMMAND,
     GB_SDL_DEBUGGER_INTERRUPT_COMMAND,
 #ifdef _WIN32
     GB_SDL_HIDE_DEBUGGER_COMMAND,
@@ -45,7 +47,10 @@ enum pending_command {
 extern enum pending_command pending_command;
 extern unsigned command_parameter;
 extern char *dropped_state_file;
+extern char *pending_lua_script;
 extern bool screen_manually_resized;
+
+const char *last_lua_script(void);
 
 void update_viewport(void);
 void run_gui(bool is_running);

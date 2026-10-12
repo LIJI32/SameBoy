@@ -42,8 +42,32 @@ static uint32_t color_to_int(NSColor *color)
     AuthorizationRef _auth;
 }
 
+- (void)installLuaMenu
+{
+    NSMenu *mainMenu = [NSApp mainMenu];
+    NSMenu *luaMenu = [[NSMenu alloc] initWithTitle:@"Lua"];
+    [luaMenu addItemWithTitle:@"Open Lua Script…" action:@selector(openLuaScript:) keyEquivalent:@""];
+    [luaMenu addItemWithTitle:@"Run Last Lua Script" action:@selector(reloadLuaScript:) keyEquivalent:@""];
+    [luaMenu addItemWithTitle:@"Stop Lua Script" action:@selector(stopLuaScript:) keyEquivalent:@""];
+    [luaMenu addItem:[NSMenuItem separatorItem]];
+    [luaMenu addItemWithTitle:@"Show Lua Console" action:@selector(showLuaConsole:) keyEquivalent:@""];
+
+    NSMenuItem *luaItem = [[NSMenuItem alloc] initWithTitle:@"Lua" action:nil keyEquivalent:@""];
+    luaItem.submenu = luaMenu;
+    NSInteger index = [mainMenu indexOfItemWithTitle:@"Develop"];
+    if (index < 0) {
+        index = [mainMenu indexOfItemWithTitle:@"Window"];
+    }
+    if (index < 0) {
+        index = mainMenu.numberOfItems;
+    }
+    [mainMenu insertItem:luaItem atIndex:index];
+}
+
 - (void) applicationDidFinishLaunching:(NSNotification *)notification
 {
+    [self installLuaMenu];
+
     // Refresh icon if launched via a software update
     if (@available(macOS 26.0, *)) {
         // Severely broken on macOS 26
