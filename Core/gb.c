@@ -959,6 +959,7 @@ int GB_save_battery(GB_gameboy_t *gb, const char *path)
 
 static void load_tpp1_save_data(GB_gameboy_t *gb, const tpp1_rtc_save_t *data)
 {
+    gb->tpp1_mr4 = data->mr4;
     gb->last_rtc_second = LE64(data->last_rtc_second);
     unrolled for (unsigned i = 4; i--;) {
         gb->rtc_real.data[i ^ 3] = data->rtc_data[i];
