@@ -92,7 +92,8 @@
             
             const struct __attribute__((packed)) {
                 uint32_t magic;
-                uint8_t skip[4];
+                uint8_t skip[2];
+                uint16_t flags;
                 uint16_t compressionMethod;
                 uint8_t skip2[8];
                 uint32_t compressedSize;
@@ -110,21 +111,22 @@
             }
             
             if (localEntry->magic != htonl('PK\03\04')) return nil;
-            if (entry->uncompressedSize != localEntry->uncompressedSize) return nil;
+            /* With a data descriptor, the local header's sizes may be zero. */
+            if (!(localEntry->flags & 8) && entry->uncompressedSize != localEntry->uncompressedSize) return nil;
             
             const void *dataStart = &localEntry->name[localEntry->nameLength + localEntry->extraLength];
             if (localEntry->compressionMethod == 0) {
-                if (localEntry->uncompressedSize != entry->compressedSize) return false;
-                memcpy(output, dataStart, localEntry->uncompressedSize);
+                if (entry->uncompressedSize != entry->compressedSize) return false;
+                memcpy(output, dataStart, entry->uncompressedSize);
                 return true;
             }
             else if (localEntry->compressionMethod != 8) {
                 // Unsupported compression
                 return false;
             }
-            if (compression_decode_buffer(output, localEntry->uncompressedSize,
+            if (compression_decode_buffer(output, entry->uncompressedSize,
                                           dataStart, entry->compressedSize,
-                                          NULL, COMPRESSION_ZLIB) != localEntry->uncompressedSize) {
+                                          NULL, COMPRESSION_ZLIB) != entry->uncompressedSize) {
                 return false;
             }
             return true;

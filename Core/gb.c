@@ -959,6 +959,7 @@ int GB_save_battery(GB_gameboy_t *gb, const char *path)
 
 static void load_tpp1_save_data(GB_gameboy_t *gb, const tpp1_rtc_save_t *data)
 {
+    gb->tpp1_mr4 = data->mr4;
     gb->last_rtc_second = LE64(data->last_rtc_second);
     unrolled for (unsigned i = 4; i--;) {
         gb->rtc_real.data[i ^ 3] = data->rtc_data[i];
@@ -1010,7 +1011,7 @@ void GB_load_battery_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t
     }
 
     rtc_save_t rtc_save;
-    memcpy(&rtc_save, buffer + gb->mbc_ram_size, MIN(sizeof(rtc_save), size));
+    memcpy(&rtc_save, buffer + gb->mbc_ram_size, MIN(sizeof(rtc_save), size - gb->mbc_ram_size));
     switch (size - gb->mbc_ram_size) {
         case sizeof(rtc_save.sameboy_legacy):
             memcpy(&gb->rtc_real, &rtc_save.sameboy_legacy.rtc_real, sizeof(gb->rtc_real));

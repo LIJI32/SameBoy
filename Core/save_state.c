@@ -176,7 +176,10 @@ struct virtual_file_s
 
 static size_t file_read(virtual_file_t *file, void *dest, size_t length)
 {
-    return fread(dest, 1, length, file->file);
+    size_t bytes_read = fread(dest, 1, length, file->file);
+    /* Reaching EOF does not set errno, unlike the buffer reader's short reads. */
+    if (bytes_read != length) errno = errno ?: EIO;
+    return bytes_read;
 }
 
 static void file_seek(virtual_file_t *file, ssize_t ammount, int origin)
@@ -528,6 +531,7 @@ static int save_bess_mbc_block(GB_gameboy_t *gb, virtual_file_t *file)
             pairs[1] = (BESS_MBC_pair_t){LE16(0x2000), gb->huc1.bank_low};
             pairs[2] = (BESS_MBC_pair_t){LE16(0x4000), gb->huc1.bank_high};
             mbc_block.size = 3 * sizeof(pairs[0]);
+            break;
         case GB_HUC3:
             pairs[0] = (BESS_MBC_pair_t){LE16(0x0000), gb->huc3.mode};
             pairs[1] = (BESS_MBC_pair_t){LE16(0x2000), gb->huc3.rom_bank};
@@ -537,7 +541,7 @@ static int save_bess_mbc_block(GB_gameboy_t *gb, virtual_file_t *file)
         case GB_TPP1:
             pairs[0] = (BESS_MBC_pair_t){LE16(0x0000), gb->tpp1.rom_bank};
             pairs[1] = (BESS_MBC_pair_t){LE16(0x0001), gb->tpp1.rom_bank >> 8};
-            pairs[2] = (BESS_MBC_pair_t){LE16(0x0002), gb->tpp1.rom_bank};
+            pairs[2] = (BESS_MBC_pair_t){LE16(0x0002), gb->tpp1.ram_bank};
             pairs[3] = (BESS_MBC_pair_t){LE16(0x0003), gb->tpp1.mode};
             mbc_block.size = 4 * sizeof(pairs[0]);
             break;
@@ -1335,7 +1339,7 @@ static int load_state_internal(GB_gameboy_t *gb, virtual_file_t *file)
         if (attempt_bess) {
             return load_bess_save(gb, file, true);
         }
-        return errno;
+        return EINVAL;
     }
     
     if (GB_is_hle_sgb(gb)) {
