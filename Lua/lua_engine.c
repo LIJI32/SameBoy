@@ -97,7 +97,9 @@ struct GB_lua_engine_s {
 
 static void engine_log(GB_lua_engine_t *engine, const char *text, size_t length)
 {
-    if (engine->callbacks.log) engine->callbacks.log(engine->user_data, text, length);
+    if (engine->callbacks.log) {
+        engine->callbacks.log(engine->user_data, text, length);
+    }
 }
 
 static void engine_logf(GB_lua_engine_t *engine, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
@@ -420,7 +422,7 @@ static int mem_get_domain_list(lua_State *L)
 {
     lua_context_t *ctx = get_context(L);
     lua_newtable(L);
-    int index = 1;
+    unsigned index = 1;
     for (domain_t i = 0; i < DOMAIN_COUNT; i++) {
         if (!domain_size(ctx, i)) continue;
         lua_pushstring(L, domain_names[i]);
@@ -778,7 +780,9 @@ static int console_write(lua_State *L)
 static int console_clear(lua_State *L)
 {
     GB_lua_engine_t *engine = get_context(L)->engine;
-    if (engine->callbacks.clear) engine->callbacks.clear(engine->user_data);
+    if (engine->callbacks.clear) {
+        engine->callbacks.clear(engine->user_data);
+    }
     return 0;
 }
 
@@ -786,7 +790,9 @@ static int gui_addmessage(lua_State *L)
 {
     push_joined_arguments(L, " ");
     GB_lua_engine_t *engine = get_context(L)->engine;
-    if (engine->callbacks.message) engine->callbacks.message(engine->user_data, lua_tostring(L, -1));
+    if (engine->callbacks.message) {
+        engine->callbacks.message(engine->user_data, lua_tostring(L, -1));
+    }
     return 0;
 }
 
@@ -1135,7 +1141,9 @@ static void set_up_libraries(lua_context_t *ctx, const char *script_directory)
 
 static void notify_state_changed(GB_lua_engine_t *engine)
 {
-    if (engine->callbacks.state_changed) engine->callbacks.state_changed(engine->user_data);
+    if (engine->callbacks.state_changed) {
+        engine->callbacks.state_changed(engine->user_data);
+    }
 }
 
 static void resume_main_thread(GB_lua_engine_t *engine)

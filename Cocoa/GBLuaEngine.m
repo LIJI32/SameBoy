@@ -20,19 +20,25 @@ static void log_callback(void *user_data, const char *text, size_t length)
 static void clear_callback(void *user_data)
 {
     GBLuaEngine *self = (__bridge GBLuaEngine *)user_data;
-    if (self.clearHandler) self.clearHandler();
+    if (self.clearHandler) {
+        self.clearHandler();
+    }
 }
 
 static void message_callback(void *user_data, const char *text)
 {
     GBLuaEngine *self = (__bridge GBLuaEngine *)user_data;
-    if (self.messageHandler) self.messageHandler([NSString stringWithUTF8String:text] ?: @"");
+    if (self.messageHandler) {
+        self.messageHandler([NSString stringWithUTF8String:text] ?: @"");
+    }
 }
 
 static void state_changed_callback(void *user_data)
 {
     GBLuaEngine *self = (__bridge GBLuaEngine *)user_data;
-    if (self.stateHandler) self.stateHandler();
+    if (self.stateHandler) {
+        self.stateHandler();
+    }
 }
 
 static void execution_callback(GB_gameboy_t *gb, uint16_t address, uint8_t opcode)
