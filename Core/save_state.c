@@ -528,6 +528,7 @@ static int save_bess_mbc_block(GB_gameboy_t *gb, virtual_file_t *file)
             pairs[1] = (BESS_MBC_pair_t){LE16(0x2000), gb->huc1.bank_low};
             pairs[2] = (BESS_MBC_pair_t){LE16(0x4000), gb->huc1.bank_high};
             mbc_block.size = 3 * sizeof(pairs[0]);
+            break;
         case GB_HUC3:
             pairs[0] = (BESS_MBC_pair_t){LE16(0x0000), gb->huc3.mode};
             pairs[1] = (BESS_MBC_pair_t){LE16(0x2000), gb->huc3.rom_bank};
