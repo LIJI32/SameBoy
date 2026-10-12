@@ -538,7 +538,7 @@ static int save_bess_mbc_block(GB_gameboy_t *gb, virtual_file_t *file)
         case GB_TPP1:
             pairs[0] = (BESS_MBC_pair_t){LE16(0x0000), gb->tpp1.rom_bank};
             pairs[1] = (BESS_MBC_pair_t){LE16(0x0001), gb->tpp1.rom_bank >> 8};
-            pairs[2] = (BESS_MBC_pair_t){LE16(0x0002), gb->tpp1.rom_bank};
+            pairs[2] = (BESS_MBC_pair_t){LE16(0x0002), gb->tpp1.ram_bank};
             pairs[3] = (BESS_MBC_pair_t){LE16(0x0003), gb->tpp1.mode};
             mbc_block.size = 4 * sizeof(pairs[0]);
             break;
