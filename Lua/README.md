@@ -14,9 +14,12 @@ used unmodified:
 - `lua/` – [Lua](https://github.com/lua/lua) 5.4.7 (tag `v5.4.7`), Copyright © 1994–2024 Lua.org, PUC-Rio, MIT license.
 - `luasocket/` – [LuaSocket](https://github.com/lunarmodules/luasocket) 3.1.0 (tag `v3.1.0`), Copyright © 1999–2013 Diego Nehab, MIT license.
 
-Run `git submodule update --init` if these directories are empty. The Makefile
-builds only the library sources it needs, choosing LuaSocket's `usocket.c` or
-`wsocket.c` depending on the platform.
+Lua scripting is optional. It's built automatically when both submodules are
+present (run `git submodule update --init` if these directories are empty), and
+can be turned off with `make DISABLE_LUA=1`. When disabled, `GB_DISABLE_LUA` is
+defined, `lua_engine.h` provides no-op stubs, and the frontends hide their Lua
+menus. The Makefile builds only the library sources it needs, choosing
+LuaSocket's `usocket.c` or `wsocket.c` depending on the platform.
 
 `require("socket")` and `require("socket.core")` resolve to the built-in
 LuaSocket, so scripts that ship BizHawk's Windows/Linux socket binaries (such

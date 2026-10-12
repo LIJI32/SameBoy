@@ -359,6 +359,7 @@ static void cart_swap(unsigned index)
     }
 }
 
+#ifndef GB_DISABLE_LUA
 static void open_lua_script(unsigned index)
 {
 #ifdef _WIN32
@@ -388,6 +389,7 @@ static void stop_lua_script(unsigned index)
 {
     pending_command = GB_SDL_LUA_STOP_COMMAND;
 }
+#endif
 
 static void recalculate_menu_height(void)
 {
@@ -953,6 +955,7 @@ static void enter_cheats_menu(unsigned index)
     recalculate_menu_height();
 }
 
+#ifndef GB_DISABLE_LUA
 static const struct menu_item lua_menu[] = {
     {"Open Lua Script", open_lua_script},
     {"Restart Lua Script", restart_lua_script},
@@ -968,6 +971,7 @@ static void enter_lua_menu(unsigned index)
     scroll = 0;
     recalculate_menu_height();
 }
+#endif
 
 static const struct menu_item paused_menu[] = {
     {"Resume", NULL},
@@ -975,7 +979,9 @@ static const struct menu_item paused_menu[] = {
     {"Hot Swap Cartridge", cart_swap},
     {"Options", enter_options_menu},
     {"Cheats", enter_cheats_menu},
+#ifndef GB_DISABLE_LUA
     {"Lua Scripting", enter_lua_menu},
+#endif
     {audio_recording_menu_item, toggle_audio_recording},
     {"Help & About", enter_help_menu},
     {"Sponsor SameBoy", sponsor},
@@ -983,17 +989,23 @@ static const struct menu_item paused_menu[] = {
     {NULL,}
 };
 
-static struct menu_item nonpaused_menu[sizeof(paused_menu) / sizeof(paused_menu[0]) - 4];
+static struct menu_item nonpaused_menu[sizeof(paused_menu) / sizeof(paused_menu[0]) - 3];
 
 static void __attribute__((constructor)) build_nonpaused_menu(void)
 {
     const struct menu_item *in = paused_menu;
     struct menu_item *out = nonpaused_menu;
     while (in->string) {
-        if (in->handler == NULL || in->handler == cart_swap || in->handler == enter_cheats_menu || in->handler == enter_lua_menu) {
+        if (in->handler == NULL || in->handler == cart_swap || in->handler == enter_cheats_menu) {
             in++;
             continue;
         }
+#ifndef GB_DISABLE_LUA
+        if (in->handler == enter_lua_menu) {
+            in++;
+            continue;
+        }
+#endif
         *out = *in;
         out++;
         in++;

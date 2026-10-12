@@ -1549,6 +1549,12 @@ int main(int argc, char **argv)
     bool nogl = get_arg_flag("--nogl", &argc, argv);
     stop_on_start = get_arg_flag("--stop-debugger", &argc, argv) || get_arg_flag("-s", &argc, argv);
     startup_lua_script = get_arg_option("--lua", &argc, argv);
+#ifdef GB_DISABLE_LUA
+    if (startup_lua_script) {
+        fprintf(stderr, "This build of SameBoy does not support Lua scripting, ignoring --lua.\n");
+        startup_lua_script = NULL;
+    }
+#endif
 
 
     if (argc > 2 || (argc == 2 && argv[1][0] == '-')) {

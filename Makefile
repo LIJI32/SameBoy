@@ -434,7 +434,28 @@ SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG) $(SAVE_PNG) $(patsubst %,SDL/a
 TESTER_SOURCES := $(shell ls Tester/*.c)
 IOS_SOURCES := $(filter-out iOS/installer.m, $(shell ls iOS/*.m)) $(shell ls AppleCommon/*.m)
 COCOA_SOURCES := $(shell ls Cocoa/*.m) $(shell ls HexFiend/*.m) $(shell ls JoyKit/*.m) $(shell ls AppleCommon/*.m)
-# Lua and LuaSocket are Git submodules; lua.c, onelua.c and ltests.c are the standalone interpreter and test code
+# Lua scripting is optional. Lua and LuaSocket are Git submodules, and Lua scripting is built automatically
+# when they're present, unless DISABLE_LUA is set.
+ifeq ($(DISABLE_LUA),)
+ifeq ($(wildcard Lua/lua/lua.h),)
+DISABLE_LUA := 1
+LUA_MISSING := 1
+else ifeq ($(wildcard Lua/luasocket/src/luasocket.h),)
+DISABLE_LUA := 1
+LUA_MISSING := 1
+endif
+endif
+
+ifneq ($(DISABLE_LUA),)
+CFLAGS += -DGB_DISABLE_LUA
+LUA_SOURCES :=
+ifneq ($(LUA_MISSING),)
+ifneq ($(filter sdl cocoa all,$(MAKECMDGOALS)),)
+$(info Lua submodules not found, building without Lua scripting. Run "git submodule update --init" to enable it.)
+endif
+endif
+else
+# lua.c, onelua.c and ltests.c are the standalone interpreter and test code
 LUA_SOURCES := Lua/lua_engine.c \
                $(filter-out Lua/lua/lua.c Lua/lua/onelua.c Lua/lua/ltests.c,$(wildcard Lua/lua/*.c)) \
                $(patsubst %,Lua/luasocket/src/%.c,auxiliar buffer compat except inet io luasocket options select tcp timeout udp)
@@ -442,6 +463,7 @@ ifeq ($(PLATFORM),windows32)
 LUA_SOURCES += Lua/luasocket/src/wsocket.c
 else
 LUA_SOURCES += Lua/luasocket/src/usocket.c
+endif
 endif
 SDL_SOURCES += $(LUA_SOURCES)
 QUICKLOOK_SOURCES := $(shell ls QuickLook/*.m) $(shell ls QuickLook/*.c)
@@ -506,9 +528,6 @@ $(OBJ)/Lua/lua/%.dep: Lua/lua/%
 $(OBJ)/Lua/luasocket/%.dep: Lua/luasocket/%
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(LUA_CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
-
-Lua/lua/%.c Lua/luasocket/src/%.c:
-	$(error $@ is missing. Lua and LuaSocket are Git submodules, run "git submodule update --init" to fetch them)
 
 $(OBJ)/%.dep: %
 	-@$(MKDIR) -p $(dir $@)

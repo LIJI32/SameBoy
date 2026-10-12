@@ -27,6 +27,8 @@ typedef struct {
     GB_execution_callback_t execution_callback;
 } GB_lua_engine_callbacks_t;
 
+#ifndef GB_DISABLE_LUA
+
 GB_lua_engine_t *GB_lua_engine_create(GB_gameboy_t *gb, const GB_lua_engine_callbacks_t *callbacks, void *user_data);
 void GB_lua_engine_free(GB_lua_engine_t *engine);
 
@@ -42,3 +44,50 @@ void GB_lua_engine_stop_script(GB_lua_engine_t *engine);
 /* Must be called by the frontend on every vblank */
 void GB_lua_engine_frame_ended(GB_lua_engine_t *engine);
 void GB_lua_engine_executed_address(GB_lua_engine_t *engine, uint16_t address, uint8_t opcode);
+
+#else
+
+/* Built without Lua scripting (see DISABLE_LUA in the Makefile). These stubs let
+   frontends use the engine unconditionally; they just never run a script. */
+
+static inline GB_lua_engine_t *GB_lua_engine_create(GB_gameboy_t *gb, const GB_lua_engine_callbacks_t *callbacks, void *user_data)
+{
+    return NULL;
+}
+
+static inline void GB_lua_engine_free(GB_lua_engine_t *engine)
+{
+}
+
+static inline void GB_lua_engine_set_rom_name(GB_lua_engine_t *engine, const char *name)
+{
+}
+
+static inline const char *GB_lua_engine_get_script_path(GB_lua_engine_t *engine)
+{
+    return NULL;
+}
+
+static inline bool GB_lua_engine_is_running(GB_lua_engine_t *engine)
+{
+    return false;
+}
+
+static inline bool GB_lua_engine_start_script(GB_lua_engine_t *engine, const char *path)
+{
+    return false;
+}
+
+static inline void GB_lua_engine_stop_script(GB_lua_engine_t *engine)
+{
+}
+
+static inline void GB_lua_engine_frame_ended(GB_lua_engine_t *engine)
+{
+}
+
+static inline void GB_lua_engine_executed_address(GB_lua_engine_t *engine, uint16_t address, uint8_t opcode)
+{
+}
+
+#endif

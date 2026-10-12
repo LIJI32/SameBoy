@@ -66,7 +66,9 @@ static uint32_t color_to_int(NSColor *color)
 
 - (void) applicationDidFinishLaunching:(NSNotification *)notification
 {
+#ifndef GB_DISABLE_LUA
     [self installLuaMenu];
+#endif
 
     // Refresh icon if launched via a software update
     if (@available(macOS 26.0, *)) {
