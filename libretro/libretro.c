@@ -1854,7 +1854,7 @@ size_t retro_get_memory_size(unsigned type)
                 size = gameboy[0].vram_size;
                 break;
             case RETRO_MEMORY_RTC:
-                if (gameboy[0].cartridge_type->has_battery) {
+                if (gameboy[0].cartridge_type->has_rtc) {
                     size = GB_SECTION_SIZE(rtc);
                 }
                 else {
@@ -1884,12 +1884,12 @@ size_t retro_get_memory_size(unsigned type)
                 }
                 break;
             case RETRO_MEMORY_GAMEBOY_1_RTC:
-                if (gameboy[0].cartridge_type->has_battery) {
+                if (gameboy[0].cartridge_type->has_rtc) {
                     size = GB_SECTION_SIZE(rtc);
                 }
                 break;
             case RETRO_MEMORY_GAMEBOY_2_RTC:
-                if (gameboy[1].cartridge_type->has_battery) {
+                if (gameboy[1].cartridge_type->has_rtc) {
                     size = GB_SECTION_SIZE(rtc);
                 }
                 break;
