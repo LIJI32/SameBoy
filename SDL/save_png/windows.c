@@ -53,7 +53,7 @@ bool save_png(const char *filename, uint32_t width, uint32_t height, const void 
     if (IWICBitmapFrameEncode_Initialize(frame, NULL)) goto done;
     if (IWICBitmapFrameEncode_SetSize(frame, width, height)) goto done;
     
-    WICPixelFormatGUID pixel_format_guid = GUID_WICPixelFormat24bppRGB;
+    WICPixelFormatGUID pixel_format_guid = GUID_WICPixelFormat24bppBGR;
     if (IWICBitmapFrameEncode_SetPixelFormat(frame, &pixel_format_guid)) goto done;
     
     for (uint32_t y = 0; y < height; y++) {
