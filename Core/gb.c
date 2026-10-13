@@ -852,7 +852,9 @@ int GB_save_battery_to_buffer(GB_gameboy_t *gb, uint8_t *buffer, size_t size)
 
     if (size < GB_save_battery_size(gb)) return EIO;
 
-    memcpy(buffer, gb->mbc_ram, gb->mbc_ram_size);
+    if (gb->mbc_ram_size) {
+        memcpy(buffer, gb->mbc_ram, gb->mbc_ram_size);
+    }
 
     if (gb->cartridge_type->mbc_type == GB_TPP1) {
         buffer += gb->mbc_ram_size;
@@ -970,7 +972,9 @@ void GB_load_battery_from_buffer(GB_gameboy_t *gb, const uint8_t *buffer, size_t
 {
     GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
     
-    memcpy(gb->mbc_ram, buffer, MIN(gb->mbc_ram_size, size));
+    if (gb->mbc_ram_size && size) {
+        memcpy(gb->mbc_ram, buffer, MIN(gb->mbc_ram_size, size));
+    }
     if (size <= gb->mbc_ram_size) {
         goto reset_rtc;
     }
@@ -1635,7 +1639,7 @@ static void reset_ram(GB_gameboy_t *gb)
         }
     }
     
-    if (!gb->cartridge_type->has_battery) {
+    if (!gb->cartridge_type->has_battery && gb->mbc_ram_size) {
         memset(gb->mbc_ram, 0xFF, gb->mbc_ram_size);
     }
 }
