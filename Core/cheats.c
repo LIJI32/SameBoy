@@ -20,6 +20,14 @@ static uint16_t bank_for_addr(GB_gameboy_t *gb, uint16_t addr)
     if (addr < 0x8000) {
         return gb->mbc_rom_bank;
     }
+
+    if (addr >= 0xA000 && addr < 0xC000) {
+        if (gb->mbc_ram_size && !gb->camera_registers_mapped &&
+            !(gb->cartridge_type->mbc_type == GB_MBC3 && gb->cartridge_type->has_rtc && gb->mbc3.rtc_mapped)) {
+            return ((gb->mbc_ram_bank * 0x2000) & (gb->mbc_ram_size - 1)) / 0x2000;
+        }
+        return gb->mbc_ram_bank;
+    }
     
     if (addr < 0xD000) {
         return 0;
