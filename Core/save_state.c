@@ -345,6 +345,7 @@ static bool verify_and_update_state_compatibility(GB_gameboy_t *gb, GB_gameboy_t
     
     if (gb->accessory != save->accessory) {
         memset(GB_GET_SECTION(save, accessory), 0, GB_SECTION_SIZE(accessory));
+        save->accessory = gb->accessory;
     }
     
     switch (save->model) {
@@ -1238,6 +1239,7 @@ static int load_bess_save(GB_gameboy_t *gb, virtual_file_t *file, bool is_samebo
     }
 done:
     save.mbc_ram_size = gb->mbc_ram_size;
+    save.accessory = gb->accessory;
     memcpy(gb, &save, GB_SECTION_OFFSET(unsaved));
     assert(GB_get_save_state_size(gb) == GB_get_save_state_size(&save));
     GB_free(&save);
