@@ -988,9 +988,15 @@ static void write_mbc(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
                             gb->tpp1_mr4 &= ~0x8;
                             break;
                         case 0x18:
+                            if (gb->rtc_mode == GB_RTC_MODE_SYNC_TO_HOST) {
+                                GB_rtc_set_time(gb, time(NULL));
+                            }
                             gb->tpp1_mr4 &= ~0x4;
                             break;
                         case 0x19:
+                            if (!(gb->tpp1_mr4 & 0x4) && gb->rtc_mode == GB_RTC_MODE_SYNC_TO_HOST) {
+                                gb->last_rtc_second = time(NULL);
+                            }
                             gb->tpp1_mr4 |= 0x4;
                             break;
                             
@@ -1277,6 +1283,11 @@ static void write_mbc_ram(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
 
     if (gb->cartridge_type->has_rtc && gb->mbc3.rtc_mapped) {
         if (gb->mbc_ram_bank <= 4) {
+            if (gb->mbc_ram_bank == 4 && ((gb->rtc_real.high ^ value) & 0x40) && gb->rtc_mode == GB_RTC_MODE_SYNC_TO_HOST) {
+                uint64_t current_time = time(NULL);
+                GB_rtc_set_time(gb, current_time);
+                gb->last_rtc_second = current_time;
+            }
             if (gb->mbc_ram_bank == 0) {
                 gb->rtc_cycles = 0;
             }
