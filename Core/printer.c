@@ -46,12 +46,11 @@ static void handle_command(GB_gameboy_t *gb)
             
         case GB_PRINTER_DATA_COMMAND:
             if (gb->printer.command_length == GB_PRINTER_DATA_SIZE) {
-                gb->printer.image_offset %= sizeof(gb->printer.image);
                 gb->printer.status = 8; /* Received 0x280 bytes */
                 
                 uint8_t *byte = gb->printer.command_data;
                 
-                for (unsigned row = 2; row--; ) {
+                for (unsigned row = 2; row-- && gb->printer.image_offset + 8 * 160 <= sizeof(gb->printer.image); ) {
                     for (unsigned tile_x = 0; tile_x < 160 / 8; tile_x++) {
                         for (unsigned y = 0; y < 8; y++, byte += 2) {
                             for (unsigned x_pixel = 0; x_pixel < 8; x_pixel++) {
