@@ -36,6 +36,7 @@ static bool _audio_is_playing(void)
 
 static void _audio_clear_queue(void)
 {
+    buffer_pos = 0;
     SDL_ClearQueuedAudio(device_id);
 }
 
@@ -98,6 +99,10 @@ static bool _audio_init(void)
 #endif
     
     device_id = SDL_OpenAudioDevice(0, 0, &want_aspec, &have_aspec, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
+    if (!device_id) {
+        printf("Failed to open SDL audio device: %s\n", SDL_GetError());
+        return false;
+    }
     
     return true;
 }

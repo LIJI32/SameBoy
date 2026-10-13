@@ -48,6 +48,7 @@ bool save_png(const char *filename, uint32_t width, uint32_t height, const void 
     png_write_end(png, NULL);
     png_destroy_write_struct(&png, &info);
     fclose(f);
+    free(row);
     
     return true;
 

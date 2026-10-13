@@ -40,6 +40,9 @@ void replace_extension(const char *src, size_t length, char *dest, const char *e
     /* Remove extension */
     for (size_t i = length; i--;) {
         if (dest[i] == '/') break;
+#ifdef _WIN32
+        if (dest[i] == '\\') break;
+#endif
         if (dest[i] == '.') {
             dest[i] = 0;
             break;

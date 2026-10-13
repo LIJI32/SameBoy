@@ -1,7 +1,7 @@
 #include <windows.h>
 
 struct dirent {
-    char d_name[MAX_PATH + 1];
+    char d_name[MAX_PATH * 3 + 1];
 };
 
 typedef struct {
