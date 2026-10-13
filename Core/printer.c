@@ -36,7 +36,7 @@ static void handle_command(GB_gameboy_t *gb)
                 
                 if (gb->printer_callback) {
                     gb->printer_callback(gb, image, gb->printer.image_offset / 160,
-                                         gb->printer.command_data[1] >> 4, gb->printer.command_data[1] & 7,
+                                         gb->printer.command_data[1] >> 4, gb->printer.command_data[1] & 0xF,
                                          gb->printer.command_data[3] & 0x7F);
                 }
                 
