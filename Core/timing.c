@@ -285,12 +285,29 @@ static void timers_run(GB_gameboy_t *gb, uint8_t cycles)
     }
 }
 
+time_t GB_host_time(GB_gameboy_t *gb)
+{
+    return gb->time_callback? gb->time_callback(gb) : time(NULL);
+}
+
+void GB_set_time_callback(GB_gameboy_t *gb, GB_time_callback_t callback)
+{
+    if (!callback) {
+        GB_ASSERT_NOT_RUNNING_OTHER_THREAD(gb)
+    }
+    if (gb->time_callback != callback) {
+        gb->time_callback = callback;
+        gb->rtc_cycles = 0;
+        gb->last_rtc_second = GB_host_time(gb);
+    }
+}
+
 void GB_set_rtc_mode(GB_gameboy_t *gb, GB_rtc_mode_t mode)
 {
     if (gb->rtc_mode != mode) {
         gb->rtc_mode = mode;
         gb->rtc_cycles = 0;
-        gb->last_rtc_second = time(NULL);
+        gb->last_rtc_second = GB_host_time(gb);
     }
 }
 
@@ -392,7 +409,7 @@ static void rtc_run(GB_gameboy_t *gb, uint8_t cycles)
             // Sync in a 1/32s resolution
             if (gb->rtc_cycles < GB_get_unmultiplied_clock_rate(gb) / 16) return;
             gb->rtc_cycles -= GB_get_unmultiplied_clock_rate(gb) / 16;
-            current_time = time(NULL);
+            current_time = GB_host_time(gb);
             break;
         case GB_RTC_MODE_ACCURATE:
             if (gb->cartridge_type->mbc_type != GB_HUC3 && (gb->rtc_real.high & 0x40)) {
