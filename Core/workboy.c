@@ -114,7 +114,7 @@ static void serial_start(GB_gameboy_t *gb, bool bit_received)
                 gb->workboy.buffer[gb->workboy.buffer_index - 2] = gb->workboy.byte_being_received;
                 gb->workboy.buffer_index++;
                 if (gb->workboy.buffer_index - 2 == sizeof(gb->workboy.buffer)) {
-                    struct tm tm = {0,};
+                    struct tm tm = {.tm_isdst = -1};
                     tm.tm_sec = bcd_to_int(gb->workboy.buffer[7]);
                     tm.tm_min = bcd_to_int(gb->workboy.buffer[8]);
                     tm.tm_hour = bcd_to_int(gb->workboy.buffer[9]);
