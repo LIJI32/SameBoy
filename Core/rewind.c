@@ -6,6 +6,10 @@
 #include <assert.h>
 #include <string.h>
 
+typedef struct __attribute__((packed)) {
+    uint16_t value;
+} GB_rewind_counter_t;
+
 static uint8_t *state_compress(const uint8_t *prev, const uint8_t *data, size_t uncompressed_size)
 {
     size_t malloc_size = 0x1000;
@@ -13,8 +17,8 @@ static uint8_t *state_compress(const uint8_t *prev, const uint8_t *data, size_t 
     size_t counter_pos = 0;
     size_t data_pos = sizeof(uint16_t);
     bool prev_mode = true;
-    *(uint16_t *)compressed = 0;
-#define COUNTER (*(uint16_t *)&compressed[counter_pos])
+    ((GB_rewind_counter_t *)compressed)->value = 0;
+#define COUNTER (((GB_rewind_counter_t *)&compressed[counter_pos])->value)
 #define DATA (compressed[data_pos])
     
     while (uncompressed_size) {
@@ -73,7 +77,7 @@ static void state_decompress(const uint8_t *prev, uint8_t *data, uint8_t *dest, 
     size_t counter_pos = 0;
     size_t data_pos = sizeof(uint16_t);
     bool prev_mode = true;
-#define COUNTER (*(uint16_t *)&data[counter_pos])
+#define COUNTER (((GB_rewind_counter_t *)&data[counter_pos])->value)
 #define DATA (data[data_pos])
     
     while (uncompressed_size) {
