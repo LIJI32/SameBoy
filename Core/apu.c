@@ -2238,7 +2238,7 @@ typedef struct __attribute__((packed)) {
     uint16_t compression_name; // = 0
     
     uint32_t ssnd_chunk; // = BE32('SSND')
-    uint32_t ssnd_size; // = BE32(length of samples - 8)
+    uint32_t ssnd_size; // = BE32(length of samples + 8)
     uint32_t ssnd_offset; // = 0
     uint32_t ssnd_block; // = 0
 } aiff_header_t;
@@ -2510,7 +2510,7 @@ int GB_stop_audio_recording(GB_gameboy_t *gb)
 #endif
                 .compression_name = 0,
                 .ssnd_chunk = BE32('SSND'),
-                .ssnd_size = BE32(frames * sizeof(GB_sample_t) - 8),
+                .ssnd_size = BE32(frames * sizeof(GB_sample_t) + 8),
                 .ssnd_offset = 0,
                 .ssnd_block = 0,
             };
