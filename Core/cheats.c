@@ -213,7 +213,7 @@ const GB_cheat_t *GB_import_cheat(GB_gameboy_t *gb, const char *cheat, const cha
             if (address > 0x7FFF) {
                 return false;
             }
-            return GB_add_cheat(gb, description, address, GB_CHEAT_ANY_BANK, value, false, true, enabled);
+            return GB_add_cheat(gb, description, address, GB_CHEAT_ANY_BANK, value, 0, false, enabled);
         }
     }
     return NULL;
