@@ -36,6 +36,7 @@ static bool _audio_is_playing(void)
 
 static void _audio_clear_queue(void)
 {
+    buffer_pos = 0;
     SDL_ClearQueuedAudio(device_id);
 }
 
