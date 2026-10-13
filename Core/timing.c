@@ -181,12 +181,14 @@ static void increase_tima(GB_gameboy_t *gb)
     }
 }
 
-void GB_serial_master_edge(GB_gameboy_t *gb)
+static void printer_run(GB_gameboy_t *gb, uint8_t cycles)
 {
-    if (gb->printer_callback) {
-        unsigned ticks = 1 << gb->serial_mask;
+    if (gb->printer_callback || gb->printer_done_callback || gb->accessory == GB_ACCESSORY_PRINTER) {
+        gb->printer.cycle_counter += cycles;
+        unsigned ticks = gb->printer.cycle_counter / 512;
+        gb->printer.cycle_counter %= 512;
         if (unlikely((gb->printer.command_state || gb->printer.bits_received))) {
-            gb->printer.idle_time +=ticks;
+            gb->printer.idle_time += ticks;
         }
         if (unlikely(gb->printer.time_remaining)) {
             if (gb->printer.time_remaining <= ticks) {
@@ -200,6 +202,10 @@ void GB_serial_master_edge(GB_gameboy_t *gb)
             }
         }
     }
+}
+
+void GB_serial_master_edge(GB_gameboy_t *gb)
+{
     
     gb->serial_master_clock ^= true;
     
@@ -480,6 +486,10 @@ void GB_advance_cycles(GB_gameboy_t *gb, uint8_t cycles)
 
     if (unlikely(!gb->cgb_double_speed)) {
         cycles <<= 1;
+    }
+
+    if (unlikely(gb->printer_callback || gb->printer_done_callback || gb->accessory == GB_ACCESSORY_PRINTER)) {
+        printer_run(gb, cycles);
     }
     
 #ifndef GB_DISABLE_DEBUGGER
