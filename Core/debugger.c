@@ -1162,6 +1162,7 @@ static bool delete(GB_gameboy_t *gb, char *arguments, char *modifiers, const deb
         gb->n_breakpoints--;
         gb->breakpoints = realloc(gb->breakpoints, gb->n_breakpoints * sizeof(gb->breakpoints[0]));
         
+        update_debug_active(gb);
         return true;
     }
 
@@ -1295,6 +1296,7 @@ static bool watch(GB_gameboy_t *gb, char *arguments, char *modifiers, const debu
     else {
         GB_log(gb, ", %s\n", flags_string);
     }
+    update_debug_active(gb);
     return true;
 }
 
@@ -1310,6 +1312,7 @@ static bool unwatch(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
         free(gb->watchpoints);
         gb->watchpoints = NULL;
         gb->n_watchpoints = 0;
+        update_debug_active(gb);
         return true;
     }
     
@@ -1334,6 +1337,7 @@ static bool unwatch(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
         gb->n_watchpoints--;
         gb->watchpoints = realloc(gb->watchpoints, gb->n_watchpoints * sizeof(gb->watchpoints[0]));
         
+        update_debug_active(gb);
         return true;
     }
     
