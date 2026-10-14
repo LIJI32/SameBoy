@@ -17,7 +17,7 @@ static char *wc_to_utf8_alloc(const wchar_t *wide)
     return NULL;
 }
 
-char *do_open_rom_dialog(void)
+static char *open_file_dialog(const wchar_t *filter)
 {
     OPENFILENAMEW dialog;
     wchar_t filename[MAX_PATH];
@@ -27,7 +27,7 @@ char *do_open_rom_dialog(void)
     dialog.lStructSize = sizeof(dialog);
     dialog.lpstrFile = filename;
     dialog.nMaxFile = MAX_PATH;
-    dialog.lpstrFilter = L"Game Boy ROMs\0*.gb;*.gbc;*.sgb;*.isx\0All files\0*.*\0\0";
+    dialog.lpstrFilter = filter;
     dialog.nFilterIndex = 1;
     dialog.lpstrFileTitle = NULL;
     dialog.nMaxFileTitle = 0;
@@ -39,6 +39,16 @@ char *do_open_rom_dialog(void)
     }
 
     return NULL;
+}
+
+char *do_open_rom_dialog(void)
+{
+    return open_file_dialog(L"Game Boy ROMs\0*.gb;*.gbc;*.sgb;*.isx\0All files\0*.*\0\0");
+}
+
+char *do_open_lua_dialog(void)
+{
+    return open_file_dialog(L"Lua Scripts\0*.lua\0All files\0*.*\0\0");
 }
 
 char *do_open_folder_dialog(void)

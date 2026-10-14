@@ -1,0 +1,6 @@
+[submodule "Lua/lua"]
+	path = Lua/lua
+	url = https://github.com/lua/lua.git
+[submodule "Lua/luasocket"]
+	path = Lua/luasocket
+	url = https://github.com/lunarmodules/luasocket.git
