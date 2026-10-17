@@ -2044,11 +2044,12 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     unsigned offset = ((gb->apu.wave_channel.current_sample_index + 1) >> 1) & 0xF;
 
                     /* This glitch varies between models and even specific instances:
-                       DMG-B:     Most of them behave as emulated. A few behave differently.
+                       DMG-B:     Both plain block copy and source-byte corruption have been observed.
                        SGB:       As far as I know, all tested instances behave as emulated.
                        MGB, SGB2: Most instances behave non-deterministically, a few behave as emulated.
                      
-                       For DMG-B emulation I emulate the most common behavior, which blargg's tests expect (not my own DMG-B, which fails it)
+                       DMG-B uses the deterministic majority variant measured on the audio-lab unit.
+                       This is instance-specific; other DMG-B units can use the plain block copy.
                        For MGB emulation, I emulate my Game Boy Light, which happens to be deterministic.
 
                       Additionally, I believe DMGs, including those we behave differently than emulated,
@@ -2057,6 +2058,17 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                         gb->io_registers[GB_IO_WAV_START] = gb->io_registers[GB_IO_WAV_START + offset];
                     }
                     else {
+                        if (gb->model == GB_MODEL_DMG_B) {
+                            /* Retriggering also changes the first source byte, before copying the block.
+                               Physical RAM readbacks cover all eight input combinations and all three
+                               nonzero source blocks. Equal-time NOP and delayed DAC-off controls retain
+                               this behavior. The operands follow the existing read address/timing model;
+                               this does not claim an internal SRAM mechanism or apply to every DMG. */
+                            uint8_t a = gb->io_registers[GB_IO_WAV_START];
+                            uint8_t b = gb->io_registers[GB_IO_WAV_START + (offset & ~3)];
+                            uint8_t c = gb->io_registers[GB_IO_WAV_START + offset];
+                            gb->io_registers[GB_IO_WAV_START + (offset & ~3)] = (a & b) | (a & c) | (b & c);
+                        }
                         memcpy(gb->io_registers + GB_IO_WAV_START,
                                gb->io_registers + GB_IO_WAV_START + (offset & ~3),
                                4);
