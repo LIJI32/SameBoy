@@ -444,8 +444,12 @@ static void update_square_sample(GB_gameboy_t *gb, GB_channel_t index, unsigned 
     }
 
     uint8_t duty = gb->io_registers[index == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
+    /* DUWO/DOME sample duty on the frequency clock, not envelope writes or
+       retriggers. Volume still changes immediately against the retained bit. */
+    bool output = gb->model == GB_MODEL_DMG_B ? gb->apu.square_duty_output[index] :
+                  duties[gb->apu.square_channels[index].current_sample_index + duty * 8];
     update_sample(gb, index,
-                  duties[gb->apu.square_channels[index].current_sample_index + duty * 8]?
+                  output?
                   gb->apu.square_channels[index].current_volume : 0,
                   cycles);
 }
@@ -988,6 +992,8 @@ restart:;
                     gb->apu.square_channels[i].sample_countdown = (gb->apu.square_channels[i].sample_length ^ 0x7FF) * 2 + 1;
                     gb->apu.square_channels[i].current_sample_index++;
                     gb->apu.square_channels[i].current_sample_index &= 0x7;
+                    uint8_t duty = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
+                    gb->apu.square_duty_output[i] = duties[gb->apu.square_channels[i].current_sample_index + duty * 8];
                     gb->apu.square_channels[i].sample_surpressed = false;
                     if (cycles_left == 0 && gb->apu.samples[i] == 0) {
                         gb->apu.pcm_mask[0] &= i == GB_SQUARE_1? 0xF0 : 0x0F;
@@ -997,7 +1003,6 @@ restart:;
                         update_square_sample(gb, i, cycles - cycles_left);
                     }
 
-                    uint8_t duty = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
                     uint8_t edge_sample_index = inline_const(uint8_t[], {7, 7, 5, 1})[duty];
                     if (gb->apu.square_channels[i].current_sample_index == edge_sample_index) {
                         gb->apu_output.edge_triggered[i] = true;

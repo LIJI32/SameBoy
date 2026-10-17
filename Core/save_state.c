@@ -1333,6 +1333,14 @@ static int load_state_internal(GB_gameboy_t *gb, virtual_file_t *file)
     if (!READ_SECTION(&save, file, timing    )) return errno ?: EIO;
     uint32_t saved_apu_size;
     if (!read_section(file, GB_GET_SECTION(&save, apu), GB_SECTION_SIZE(apu), &saved_apu_size)) return errno ?: EIO;
+    if (saved_apu_size < offsetof(GB_apu_t, square_duty_output) + sizeof(save.apu.square_duty_output)) {
+        /* Reconstruct the old combinational output when no duty latch was saved. */
+        for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
+            unsigned duty = save.io_registers[i == GB_SQUARE_1 ? GB_IO_NR11 : GB_IO_NR21] >> 6;
+            save.apu.square_duty_output[i] =
+                (inline_const(uint8_t[], {0x80, 0x81, 0xE1, 0x7E})[duty] >> save.apu.square_channels[i].current_sample_index) & 1;
+        }
+    }
     if (saved_apu_size < offsetof(GB_apu_t, square_clock_active) + sizeof(save.apu.square_clock_active)) {
         /* Older states did not keep inactive pulse clocks running. */
         save.apu.square_clock_active[0] = save.apu.is_active[0];
