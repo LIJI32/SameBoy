@@ -316,6 +316,7 @@ static signed interference(GB_gameboy_t *gb)
 static void render(GB_gameboy_t *gb)
 {
     GB_sample_t output = {0, 0};
+    bool dac_output_connected = gb->model != GB_MODEL_DMG_B;
 
     unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
         double multiplier = CH_STEP;
@@ -342,6 +343,8 @@ static void render(GB_gameboy_t *gb)
             }
         }
         
+        dac_output_connected |= GB_apu_is_DAC_enabled(gb, i) || gb->apu_output.dac_discharge[i] > 0;
+
         GB_sample_t channel_output;
         band_limited_read(&gb->apu_output.band_limited[i], &channel_output, multiplier);
 
@@ -358,44 +361,49 @@ static void render(GB_gameboy_t *gb)
     
     if (gb->sgb && gb->sgb->intro_animation < GB_SGB_INTRO_ANIMATION_LENGTH) return;
 
-    GB_sample_t filtered_output = gb->apu_output.highpass_mode?
-        (GB_sample_t) {output.left  - (int16_t)gb->apu_output.highpass_diff.left,
-                       output.right - (int16_t)gb->apu_output.highpass_diff.right} :
-        output;
+    GB_sample_t filtered_output = {0, 0};
+    /* On DMG, the mixer disconnects when every DAC is off. Finish the existing
+       DAC discharge first, then preserve the coupling capacitor while disconnected. */
+    if (dac_output_connected) {
+        filtered_output = gb->apu_output.highpass_mode?
+            (GB_sample_t) {output.left  - (int16_t)gb->apu_output.highpass_diff.left,
+                           output.right - (int16_t)gb->apu_output.highpass_diff.right} :
+            output;
 
-    switch (gb->apu_output.highpass_mode) {
-        case GB_HIGHPASS_OFF:
-            gb->apu_output.highpass_diff = (GB_double_sample_t) {0, 0};
-            break;
-        case GB_HIGHPASS_ACCURATE:
-            gb->apu_output.highpass_diff = (GB_double_sample_t) {
-                output.left  - (output.left  - gb->apu_output.highpass_diff.left)  * gb->apu_output.highpass_rate,
-                output.right - (output.right - gb->apu_output.highpass_diff.right) * gb->apu_output.highpass_rate
-            };
-            break;
-        case GB_HIGHPASS_REMOVE_DC_OFFSET: {
-            unsigned mask = gb->io_registers[GB_IO_NR51];
-            unsigned left_volume = 0;
-            unsigned right_volume = 0;
-            unrolled for (unsigned i = GB_N_CHANNELS; i--;) {
-                if (GB_apu_is_DAC_enabled(gb, i)) {
-                    if (mask & 1) {
-                        left_volume += ((gb->io_registers[GB_IO_NR50] & 7) + 1) * CH_STEP * 0xF;
+        switch (gb->apu_output.highpass_mode) {
+            case GB_HIGHPASS_OFF:
+                gb->apu_output.highpass_diff = (GB_double_sample_t) {0, 0};
+                break;
+            case GB_HIGHPASS_ACCURATE:
+                gb->apu_output.highpass_diff = (GB_double_sample_t) {
+                    output.left  - (output.left  - gb->apu_output.highpass_diff.left)  * gb->apu_output.highpass_rate,
+                    output.right - (output.right - gb->apu_output.highpass_diff.right) * gb->apu_output.highpass_rate
+                };
+                break;
+            case GB_HIGHPASS_REMOVE_DC_OFFSET: {
+                unsigned mask = gb->io_registers[GB_IO_NR51];
+                unsigned left_volume = 0;
+                unsigned right_volume = 0;
+                unrolled for (unsigned i = GB_N_CHANNELS; i--;) {
+                    if (GB_apu_is_DAC_enabled(gb, i)) {
+                        if (mask & 1) {
+                            left_volume += ((gb->io_registers[GB_IO_NR50] & 7) + 1) * CH_STEP * 0xF;
+                        }
+                        if (mask & 0x10) {
+                            right_volume += (((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1) * CH_STEP * 0xF;
+                        }
                     }
-                    if (mask & 0x10) {
-                        right_volume += (((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1) * CH_STEP * 0xF;
-                    }
+                    mask >>= 1;
                 }
-                mask >>= 1;
+                gb->apu_output.highpass_diff = (GB_double_sample_t) {
+                    left_volume  * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.left * gb->apu_output.highpass_rate,
+                    right_volume * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.right * gb->apu_output.highpass_rate
+                };
+
+            case GB_HIGHPASS_MAX:;
             }
-            gb->apu_output.highpass_diff = (GB_double_sample_t) {
-                left_volume  * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.left * gb->apu_output.highpass_rate,
-                right_volume * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.right * gb->apu_output.highpass_rate
-            };
 
-        case GB_HIGHPASS_MAX:;
         }
-
     }
     
     
