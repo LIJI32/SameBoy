@@ -1333,6 +1333,11 @@ static int load_state_internal(GB_gameboy_t *gb, virtual_file_t *file)
     if (!READ_SECTION(&save, file, timing    )) return errno ?: EIO;
     uint32_t saved_apu_size;
     if (!read_section(file, GB_GET_SECTION(&save, apu), GB_SECTION_SIZE(apu), &saved_apu_size)) return errno ?: EIO;
+    if (saved_apu_size < offsetof(GB_apu_t, square_clock_active) + sizeof(save.apu.square_clock_active)) {
+        /* Older states did not keep inactive pulse clocks running. */
+        save.apu.square_clock_active[0] = save.apu.is_active[0];
+        save.apu.square_clock_active[1] = save.apu.is_active[1];
+    }
     if (saved_apu_size < offsetof(GB_apu_t, noise_feedback_latch) + sizeof(save.apu.noise_feedback_latch)) {
         /* Old states have no feedback latch. Preserve their next instantaneous
            step, then let the next falling edge establish the new latch state. */

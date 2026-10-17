@@ -971,7 +971,9 @@ restart:;
         }
 
         unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
-            if (gb->apu.is_active[i]) {
+            /* On DMG, length/sweep expiry gates output, not the frequency
+               clock. GEXU/BUTA keep the duty sequencer running until DAC off. */
+            if (gb->apu.is_active[i] || (gb->model == GB_MODEL_DMG_B && gb->apu.square_clock_active[i])) {
                 uint16_t cycles_left = cycles;
                 if (unlikely(gb->apu.square_channels[i].delay)) {
                     if (gb->apu.square_channels[i].delay < cycles_left) {
@@ -991,7 +993,9 @@ restart:;
                         gb->apu.pcm_mask[0] &= i == GB_SQUARE_1? 0xF0 : 0x0F;
                     }
                     gb->apu.square_channels[i].did_tick = true;
-                    update_square_sample(gb, i, cycles - cycles_left);
+                    if (gb->apu.is_active[i]) {
+                        update_square_sample(gb, i, cycles - cycles_left);
+                    }
 
                     uint8_t duty = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
                     uint8_t edge_sample_index = inline_const(uint8_t[], {7, 7, 5, 1})[duty];
@@ -1826,6 +1830,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 /* This disables the DAC */
                 gb->io_registers[reg] = value;
                 gb->apu.is_active[index] = false;
+                gb->apu.square_clock_active[index] = false;
                 update_sample(gb, index, 0, 0);
             }
             else if (gb->apu.is_active[index]) {
@@ -1876,6 +1881,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 gb->apu.square_channels[index].sample_countdown = (gb->apu.square_channels[index].sample_length ^ 0x7FF) * 2 + 1;
             }
             if (value & 0x80) {
+                gb->apu.square_clock_active[index] = (gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] & 0xF8) != 0;
                 /* Current sample index remains unchanged when restarting channels 1 or 2. It is only reset by
                    turning the APU off. */
                 gb->apu.square_channels[index].envelope_clock.locked = false;

@@ -163,6 +163,8 @@ typedef struct
     bool noise_started_with_dac_disabled; // TODO: Background counting behaves slightly different this way?
     /* Append beyond the previous save-state section's tail padding. */
     alignas(8) bool noise_feedback_latch; // DMG JOTO, clocked opposite the shift stages
+    /* DMG pulse frequency gates survive length/sweep expiry until DAC or APU off. */
+    alignas(8) bool square_clock_active[2];
 } GB_apu_t;
 
 typedef enum {
