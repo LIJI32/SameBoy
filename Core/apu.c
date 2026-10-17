@@ -617,8 +617,12 @@ static void tick_noise_envelope(GB_gameboy_t *gb)
     }
 }
 
+#include "dmg_sweep.h"
+
 static void sweep_calculation_done(GB_gameboy_t *gb, unsigned cycles)
 {
+    uint16_t old_shadow = gb->apu.shadow_sweep_sample_length;
+    uint16_t old_addend = gb->apu.channel1_completed_addend;
     /* APU bug: sweep frequency is checked after adding the sweep delta twice */
     if (gb->apu.channel_1_restart_hold == 0) {
         gb->apu.shadow_sweep_sample_length = gb->apu.square_channels[GB_SQUARE_1].sample_length;
@@ -626,7 +630,23 @@ static void sweep_calculation_done(GB_gameboy_t *gb, unsigned cycles)
     if (gb->io_registers[GB_IO_NR10] & 8) {
         gb->apu.sweep_length_addend ^= 0x7FF;
     }
-    if (gb->apu.shadow_sweep_sample_length + gb->apu.sweep_length_addend > 0x7FF && !(gb->io_registers[GB_IO_NR10] & 8)) {
+    unsigned shift = gb->io_registers[GB_IO_NR10] & 7;
+    unsigned shadow = gb->apu.shadow_sweep_sample_length;
+    unsigned addend = gb->apu.sweep_length_addend;
+    bool carry_hazard = false;
+    /* A settled positive-sweep reload can briefly carry out of bit 10 even
+       when both arithmetic sums fit. Use the measured DMG-B transition map
+       only when the old and new operands describe that ordinary reload.
+       Negative/zero-shift sweeps, initial trigger calculations, restart
+       holds and nonmatching register-write interactions keep their existing
+       behavior. The map characterizes one unit; it does not model gate delays. */
+    if (gb->model == GB_MODEL_DMG_B && gb->apu.is_active[GB_SQUARE_1] &&
+        !gb->apu.channel_1_restart_hold && !(gb->io_registers[GB_IO_NR10] & 8) && shift &&
+        old_addend == (old_shadow >> shift) && shadow == old_shadow + old_addend &&
+        addend == (shadow >> shift) && shadow + addend <= 0x7FF) {
+        carry_hazard = dmg_sweep_carry_hazards[shift - 1][old_shadow >> 3] & (1u << (old_shadow & 7));
+    }
+    if ((shadow + addend > 0x7FF || carry_hazard) && !(gb->io_registers[GB_IO_NR10] & 8)) {
         gb->apu.is_active[GB_SQUARE_1] = false;
         update_sample(gb, GB_SQUARE_1, 0, gb->apu.square_sweep_calculate_countdown * 2 - cycles);
     }
