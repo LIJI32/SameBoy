@@ -191,7 +191,7 @@ static uint8_t agb_bias_for_channel(GB_gameboy_t *gb, GB_channel_t index)
     }
 }
 
-static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, unsigned cycles_offset)
+static void update_sample_internal(GB_gameboy_t *gb, GB_channel_t index, int8_t value, unsigned cycles_offset, bool force_update)
 {
     if (gb->model > GB_MODEL_CGB_E) {
         /* On the AGB, because no analog mixing is done, the behavior of NR51 is a bit different.
@@ -236,7 +236,7 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
         return;
     }
     
-    if (value == 0 && gb->apu.samples[index] == 0) return;
+    if (!force_update && value == 0 && gb->apu.samples[index] == 0) return;
     
     if (!GB_apu_is_DAC_enabled(gb, index)) {
         value = gb->apu.samples[index];
@@ -267,6 +267,11 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
                                 (((gb->apu_output.sample_fraction + sample_fraction_multiply(gb, cycles_offset)) >> 8) * GB_BAND_LIMITED_PHASES) >> 20);
         }
     }
+}
+
+static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, unsigned cycles_offset)
+{
+    update_sample_internal(gb, index, value, cycles_offset, false);
 }
 
 static double smooth(double x)
@@ -1763,9 +1768,9 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
             /* These registers affect the output of all 4 channels (but not the output of the PCM registers).*/
             /* We call update_samples with the current value so the APU output is updated with the new outputs */
             for (unsigned i = GB_N_CHANNELS; i--;) {
-                int8_t sample = gb->apu.samples[i];
-                gb->apu.samples[i] = 0x10; // Invalidate to force update
-                update_sample(gb, i, sample, 0);
+                /* A disabled DAC retains its sample during discharge. Do not
+                   overwrite that value to invalidate the mixer output. */
+                update_sample_internal(gb, i, gb->apu.samples[i], 0, true);
             }
             break;
         case GB_IO_NR52: {
