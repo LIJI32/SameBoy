@@ -191,7 +191,7 @@ static uint8_t agb_bias_for_channel(GB_gameboy_t *gb, GB_channel_t index)
     }
 }
 
-static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, unsigned cycles_offset)
+static void update_sample_internal(GB_gameboy_t *gb, GB_channel_t index, int8_t value, unsigned cycles_offset, bool force_update)
 {
     if (gb->model > GB_MODEL_CGB_E) {
         /* On the AGB, because no analog mixing is done, the behavior of NR51 is a bit different.
@@ -236,7 +236,7 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
         return;
     }
     
-    if (value == 0 && gb->apu.samples[index] == 0) return;
+    if (!force_update && value == 0 && gb->apu.samples[index] == 0) return;
     
     if (!GB_apu_is_DAC_enabled(gb, index)) {
         value = gb->apu.samples[index];
@@ -267,6 +267,11 @@ static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, un
                                 (((gb->apu_output.sample_fraction + sample_fraction_multiply(gb, cycles_offset)) >> 8) * GB_BAND_LIMITED_PHASES) >> 20);
         }
     }
+}
+
+static void update_sample(GB_gameboy_t *gb, GB_channel_t index, int8_t value, unsigned cycles_offset)
+{
+    update_sample_internal(gb, index, value, cycles_offset, false);
 }
 
 static double smooth(double x)
@@ -316,6 +321,7 @@ static signed interference(GB_gameboy_t *gb)
 static void render(GB_gameboy_t *gb)
 {
     GB_sample_t output = {0, 0};
+    bool dac_output_connected = gb->model != GB_MODEL_DMG_B;
 
     unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
         double multiplier = CH_STEP;
@@ -342,6 +348,8 @@ static void render(GB_gameboy_t *gb)
             }
         }
         
+        dac_output_connected |= GB_apu_is_DAC_enabled(gb, i) || gb->apu_output.dac_discharge[i] > 0;
+
         GB_sample_t channel_output;
         band_limited_read(&gb->apu_output.band_limited[i], &channel_output, multiplier);
 
@@ -358,44 +366,49 @@ static void render(GB_gameboy_t *gb)
     
     if (gb->sgb && gb->sgb->intro_animation < GB_SGB_INTRO_ANIMATION_LENGTH) return;
 
-    GB_sample_t filtered_output = gb->apu_output.highpass_mode?
-        (GB_sample_t) {output.left  - (int16_t)gb->apu_output.highpass_diff.left,
-                       output.right - (int16_t)gb->apu_output.highpass_diff.right} :
-        output;
+    GB_sample_t filtered_output = {0, 0};
+    /* On DMG, the mixer disconnects when every DAC is off. Finish the existing
+       DAC discharge first, then preserve the coupling capacitor while disconnected. */
+    if (dac_output_connected) {
+        filtered_output = gb->apu_output.highpass_mode?
+            (GB_sample_t) {output.left  - (int16_t)gb->apu_output.highpass_diff.left,
+                           output.right - (int16_t)gb->apu_output.highpass_diff.right} :
+            output;
 
-    switch (gb->apu_output.highpass_mode) {
-        case GB_HIGHPASS_OFF:
-            gb->apu_output.highpass_diff = (GB_double_sample_t) {0, 0};
-            break;
-        case GB_HIGHPASS_ACCURATE:
-            gb->apu_output.highpass_diff = (GB_double_sample_t) {
-                output.left  - (output.left  - gb->apu_output.highpass_diff.left)  * gb->apu_output.highpass_rate,
-                output.right - (output.right - gb->apu_output.highpass_diff.right) * gb->apu_output.highpass_rate
-            };
-            break;
-        case GB_HIGHPASS_REMOVE_DC_OFFSET: {
-            unsigned mask = gb->io_registers[GB_IO_NR51];
-            unsigned left_volume = 0;
-            unsigned right_volume = 0;
-            unrolled for (unsigned i = GB_N_CHANNELS; i--;) {
-                if (GB_apu_is_DAC_enabled(gb, i)) {
-                    if (mask & 1) {
-                        left_volume += ((gb->io_registers[GB_IO_NR50] & 7) + 1) * CH_STEP * 0xF;
+        switch (gb->apu_output.highpass_mode) {
+            case GB_HIGHPASS_OFF:
+                gb->apu_output.highpass_diff = (GB_double_sample_t) {0, 0};
+                break;
+            case GB_HIGHPASS_ACCURATE:
+                gb->apu_output.highpass_diff = (GB_double_sample_t) {
+                    output.left  - (output.left  - gb->apu_output.highpass_diff.left)  * gb->apu_output.highpass_rate,
+                    output.right - (output.right - gb->apu_output.highpass_diff.right) * gb->apu_output.highpass_rate
+                };
+                break;
+            case GB_HIGHPASS_REMOVE_DC_OFFSET: {
+                unsigned mask = gb->io_registers[GB_IO_NR51];
+                unsigned left_volume = 0;
+                unsigned right_volume = 0;
+                unrolled for (unsigned i = GB_N_CHANNELS; i--;) {
+                    if (GB_apu_is_DAC_enabled(gb, i)) {
+                        if (mask & 1) {
+                            left_volume += ((gb->io_registers[GB_IO_NR50] & 7) + 1) * CH_STEP * 0xF;
+                        }
+                        if (mask & 0x10) {
+                            right_volume += (((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1) * CH_STEP * 0xF;
+                        }
                     }
-                    if (mask & 0x10) {
-                        right_volume += (((gb->io_registers[GB_IO_NR50] >> 4) & 7) + 1) * CH_STEP * 0xF;
-                    }
+                    mask >>= 1;
                 }
-                mask >>= 1;
+                gb->apu_output.highpass_diff = (GB_double_sample_t) {
+                    left_volume  * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.left * gb->apu_output.highpass_rate,
+                    right_volume * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.right * gb->apu_output.highpass_rate
+                };
+
+            case GB_HIGHPASS_MAX:;
             }
-            gb->apu_output.highpass_diff = (GB_double_sample_t) {
-                left_volume  * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.left * gb->apu_output.highpass_rate,
-                right_volume * (1 - gb->apu_output.highpass_rate) + gb->apu_output.highpass_diff.right * gb->apu_output.highpass_rate
-            };
 
-        case GB_HIGHPASS_MAX:;
         }
-
     }
     
     
@@ -436,8 +449,12 @@ static void update_square_sample(GB_gameboy_t *gb, GB_channel_t index, unsigned 
     }
 
     uint8_t duty = gb->io_registers[index == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
+    /* DUWO/DOME sample duty on the frequency clock, not envelope writes or
+       retriggers. Volume still changes immediately against the retained bit. */
+    bool output = gb->model == GB_MODEL_DMG_B ? gb->apu.square_duty_output[index] :
+                  duties[gb->apu.square_channels[index].current_sample_index + duty * 8];
     update_sample(gb, index,
-                  duties[gb->apu.square_channels[index].current_sample_index + duty * 8]?
+                  output?
                   gb->apu.square_channels[index].current_volume : 0,
                   cycles);
 }
@@ -600,8 +617,12 @@ static void tick_noise_envelope(GB_gameboy_t *gb)
     }
 }
 
+#include "dmg_sweep.h"
+
 static void sweep_calculation_done(GB_gameboy_t *gb, unsigned cycles)
 {
+    uint16_t old_shadow = gb->apu.shadow_sweep_sample_length;
+    uint16_t old_addend = gb->apu.channel1_completed_addend;
     /* APU bug: sweep frequency is checked after adding the sweep delta twice */
     if (gb->apu.channel_1_restart_hold == 0) {
         gb->apu.shadow_sweep_sample_length = gb->apu.square_channels[GB_SQUARE_1].sample_length;
@@ -609,7 +630,23 @@ static void sweep_calculation_done(GB_gameboy_t *gb, unsigned cycles)
     if (gb->io_registers[GB_IO_NR10] & 8) {
         gb->apu.sweep_length_addend ^= 0x7FF;
     }
-    if (gb->apu.shadow_sweep_sample_length + gb->apu.sweep_length_addend > 0x7FF && !(gb->io_registers[GB_IO_NR10] & 8)) {
+    unsigned shift = gb->io_registers[GB_IO_NR10] & 7;
+    unsigned shadow = gb->apu.shadow_sweep_sample_length;
+    unsigned addend = gb->apu.sweep_length_addend;
+    bool carry_hazard = false;
+    /* A settled positive-sweep reload can briefly carry out of bit 10 even
+       when both arithmetic sums fit. Use the measured DMG-B transition map
+       only when the old and new operands describe that ordinary reload.
+       Negative/zero-shift sweeps, initial trigger calculations, restart
+       holds and nonmatching register-write interactions keep their existing
+       behavior. The map characterizes one unit; it does not model gate delays. */
+    if (gb->model == GB_MODEL_DMG_B && gb->apu.is_active[GB_SQUARE_1] &&
+        !gb->apu.channel_1_restart_hold && !(gb->io_registers[GB_IO_NR10] & 8) && shift &&
+        old_addend == (old_shadow >> shift) && shadow == old_shadow + old_addend &&
+        addend == (shadow >> shift) && shadow + addend <= 0x7FF) {
+        carry_hazard = dmg_sweep_carry_hazards[shift - 1][old_shadow >> 3] & (1u << (old_shadow & 7));
+    }
+    if ((shadow + addend > 0x7FF || carry_hazard) && !(gb->io_registers[GB_IO_NR10] & 8)) {
         gb->apu.is_active[GB_SQUARE_1] = false;
         update_sample(gb, GB_SQUARE_1, 0, gb->apu.square_sweep_calculate_countdown * 2 - cycles);
     }
@@ -793,11 +830,15 @@ static void update_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
     }
 }
 
-static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
+static bool lfsr_feedback(GB_gameboy_t *gb)
+{
+    return (gb->apu.noise_channel.lfsr ^ (gb->apu.noise_channel.lfsr >> 1) ^ 1) & 1;
+}
+
+static void shift_lfsr_with_feedback(GB_gameboy_t *gb, unsigned cycles_offset, bool new_high_bit)
 {
     gb->apu.lfsr_bit_7_before_step = gb->apu.noise_channel.lfsr & 0x80;
     unsigned high_bit_mask = gb->apu.noise_channel.narrow ? 0x4040 : 0x4000;
-    bool new_high_bit = (gb->apu.noise_channel.lfsr ^ (gb->apu.noise_channel.lfsr >> 1) ^ 1) & 1;
     gb->apu.noise_channel.lfsr >>= 1;
     
     if (new_high_bit) {
@@ -810,6 +851,19 @@ static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
     
     update_lfsr(gb, cycles_offset);
     gb->apu.lfsr_stepped_in_narrow = gb->apu.noise_channel.narrow;
+}
+
+static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
+{
+    /* Some NR43 corruptions model partial/subcycle shifts, rather than a normal
+       clock edge. Retain their instantaneous-feedback approximation. */
+    shift_lfsr_with_feedback(gb, cycles_offset, lfsr_feedback(gb));
+}
+
+static void clock_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
+{
+    shift_lfsr_with_feedback(gb, cycles_offset,
+                            gb->model == GB_MODEL_DMG_B ? gb->apu.noise_feedback_latch : lfsr_feedback(gb));
 }
 
 void GB_apu_run(GB_gameboy_t *gb, bool force)
@@ -946,7 +1000,9 @@ restart:;
         }
 
         unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
-            if (gb->apu.is_active[i]) {
+            /* On DMG, length/sweep expiry gates output, not the frequency
+               clock. GEXU/BUTA keep the duty sequencer running until DAC off. */
+            if (gb->apu.is_active[i] || (gb->model == GB_MODEL_DMG_B && gb->apu.square_clock_active[i])) {
                 uint16_t cycles_left = cycles;
                 if (unlikely(gb->apu.square_channels[i].delay)) {
                     if (gb->apu.square_channels[i].delay < cycles_left) {
@@ -961,14 +1017,17 @@ restart:;
                     gb->apu.square_channels[i].sample_countdown = (gb->apu.square_channels[i].sample_length ^ 0x7FF) * 2 + 1;
                     gb->apu.square_channels[i].current_sample_index++;
                     gb->apu.square_channels[i].current_sample_index &= 0x7;
+                    uint8_t duty = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
+                    gb->apu.square_duty_output[i] = duties[gb->apu.square_channels[i].current_sample_index + duty * 8];
                     gb->apu.square_channels[i].sample_surpressed = false;
                     if (cycles_left == 0 && gb->apu.samples[i] == 0) {
                         gb->apu.pcm_mask[0] &= i == GB_SQUARE_1? 0xF0 : 0x0F;
                     }
                     gb->apu.square_channels[i].did_tick = true;
-                    update_square_sample(gb, i, cycles - cycles_left);
+                    if (gb->apu.is_active[i]) {
+                        update_square_sample(gb, i, cycles - cycles_left);
+                    }
 
-                    uint8_t duty = gb->io_registers[i == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
                     uint8_t edge_sample_index = inline_const(uint8_t[], {7, 7, 5, 1})[duty];
                     if (gb->apu.square_channels[i].current_sample_index == edge_sample_index) {
                         gb->apu_output.edge_triggered[i] = true;
@@ -1042,12 +1101,19 @@ restart:;
                 gb->apu.noise_channel.did_step_counter = true;
                 bool new_bit = gb->apu.noise_channel.counter & mask;
 
+                /* DMG's JOTO feedback latch clocks on the falling edge; the
+                   shift stages clock on the rising edge. Reset clears both, so
+                   a rising edge before the first falling edge shifts in zero. */
+                if (gb->model == GB_MODEL_DMG_B && old_bit && !new_bit && gb->apu.is_active[GB_NOISE]) {
+                    gb->apu.noise_feedback_latch = lfsr_feedback(gb);
+                }
+
                 /* Step LFSR */
                 if (new_bit && !old_bit && gb->apu.is_active[GB_NOISE]) {
                     if (cycles_left == 0 && gb->apu.samples[GB_NOISE] == 0 && !gb->cgb_double_speed) {
                         gb->apu.pcm_mask[1] &= 0x0F;
                     }
-                    step_lfsr(gb, cycles - cycles_left);
+                    clock_lfsr(gb, cycles - cycles_left);
                 }
             }
             if (cycles_left) {
@@ -1210,6 +1276,9 @@ static noinline void nr10_write_glitch(GB_gameboy_t *gb, uint8_t value)
 
 static void prepare_noise_start(GB_gameboy_t *gb)
 {
+    if (gb->model == GB_MODEL_DMG_B) {
+        gb->apu.noise_feedback_latch = false;
+    }
     /*
      TODO: When restarting a channel right after starting it, before it has the chance to tick the counter, things
      behave differently. Only certain behaviors of this edge case are emulated.
@@ -1391,6 +1460,13 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
     bool glitch_bit = (effective_counter >> (glitch_value >> 4)) & 1;
     bool new_bit = (effective_counter >> (new >> 4)) & 1;
     bool force_glitch = false;
+
+    /* The selector follows old -> glitch -> new (including the pre-CGB-D FF
+       write). Capture feedback in clock order around the existing mutations.
+       Subcycle corruption/extra-step paths below remain approximations. */
+    if (gb->model == GB_MODEL_DMG_B && old_bit && !glitch_bit) {
+        gb->apu.noise_feedback_latch = lfsr_feedback(gb);
+    }
 
     if (gb->model == GB_MODEL_CGB_D) {
         if (new_bit && glitch_bit && old_bit) {
@@ -1649,7 +1725,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
                 }
             }
             else {
-                step_lfsr(gb, 0);
+                clock_lfsr(gb, 0);
             }
         }
     }
@@ -1657,7 +1733,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
         if (gb->model <= GB_MODEL_CGB_C) {
             bool previous_narrow = gb->apu.noise_channel.narrow;
             gb->apu.noise_channel.narrow = true;
-            step_lfsr(gb, 0);
+            clock_lfsr(gb, 0);
             gb->apu.noise_channel.narrow = previous_narrow;
             if ((new & 0xf0) <= 0x20 && glitch_bit && !(effective_counter & 8)) { // No clue why that specific bit is tested
                 // Non-deterministic, not fully tested for revision differences and wide mode
@@ -1676,6 +1752,9 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
             // Step twice?
             step_lfsr(gb, 0);
         }
+    }
+    if (gb->model == GB_MODEL_DMG_B && glitch_bit && !new_bit) {
+        gb->apu.noise_feedback_latch = lfsr_feedback(gb);
     }
 }
 
@@ -1709,9 +1788,9 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
             /* These registers affect the output of all 4 channels (but not the output of the PCM registers).*/
             /* We call update_samples with the current value so the APU output is updated with the new outputs */
             for (unsigned i = GB_N_CHANNELS; i--;) {
-                int8_t sample = gb->apu.samples[i];
-                gb->apu.samples[i] = 0x10; // Invalidate to force update
-                update_sample(gb, i, sample, 0);
+                /* A disabled DAC retains its sample during discharge. Do not
+                   overwrite that value to invalidate the mixer output. */
+                update_sample_internal(gb, i, gb->apu.samples[i], 0, true);
             }
             break;
         case GB_IO_NR52: {
@@ -1781,6 +1860,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 /* This disables the DAC */
                 gb->io_registers[reg] = value;
                 gb->apu.is_active[index] = false;
+                gb->apu.square_clock_active[index] = false;
                 update_sample(gb, index, 0, 0);
             }
             else if (gb->apu.is_active[index]) {
@@ -1831,6 +1911,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                 gb->apu.square_channels[index].sample_countdown = (gb->apu.square_channels[index].sample_length ^ 0x7FF) * 2 + 1;
             }
             if (value & 0x80) {
+                gb->apu.square_clock_active[index] = (gb->io_registers[index == GB_SQUARE_1 ? GB_IO_NR12 : GB_IO_NR22] & 0xF8) != 0;
                 /* Current sample index remains unchanged when restarting channels 1 or 2. It is only reset by
                    turning the APU off. */
                 gb->apu.square_channels[index].envelope_clock.locked = false;
@@ -1983,11 +2064,12 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     unsigned offset = ((gb->apu.wave_channel.current_sample_index + 1) >> 1) & 0xF;
 
                     /* This glitch varies between models and even specific instances:
-                       DMG-B:     Most of them behave as emulated. A few behave differently.
+                       DMG-B:     Both plain block copy and source-byte corruption have been observed.
                        SGB:       As far as I know, all tested instances behave as emulated.
                        MGB, SGB2: Most instances behave non-deterministically, a few behave as emulated.
                      
-                       For DMG-B emulation I emulate the most common behavior, which blargg's tests expect (not my own DMG-B, which fails it)
+                       DMG-B uses the deterministic majority variant measured on the audio-lab unit.
+                       This is instance-specific; other DMG-B units can use the plain block copy.
                        For MGB emulation, I emulate my Game Boy Light, which happens to be deterministic.
 
                       Additionally, I believe DMGs, including those we behave differently than emulated,
@@ -1996,6 +2078,17 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                         gb->io_registers[GB_IO_WAV_START] = gb->io_registers[GB_IO_WAV_START + offset];
                     }
                     else {
+                        if (gb->model == GB_MODEL_DMG_B) {
+                            /* Retriggering also changes the first source byte, before copying the block.
+                               Physical RAM readbacks cover all eight input combinations and all three
+                               nonzero source blocks. Equal-time NOP and delayed DAC-off controls retain
+                               this behavior. The operands follow the existing read address/timing model;
+                               this does not claim an internal SRAM mechanism or apply to every DMG. */
+                            uint8_t a = gb->io_registers[GB_IO_WAV_START];
+                            uint8_t b = gb->io_registers[GB_IO_WAV_START + (offset & ~3)];
+                            uint8_t c = gb->io_registers[GB_IO_WAV_START + offset];
+                            gb->io_registers[GB_IO_WAV_START + (offset & ~3)] = (a & b) | (a & c) | (b & c);
+                        }
                         memcpy(gb->io_registers + GB_IO_WAV_START,
                                gb->io_registers + GB_IO_WAV_START + (offset & ~3),
                                4);
