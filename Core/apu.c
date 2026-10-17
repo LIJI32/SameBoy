@@ -801,11 +801,15 @@ static void update_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
     }
 }
 
-static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
+static bool lfsr_feedback(GB_gameboy_t *gb)
+{
+    return (gb->apu.noise_channel.lfsr ^ (gb->apu.noise_channel.lfsr >> 1) ^ 1) & 1;
+}
+
+static void shift_lfsr_with_feedback(GB_gameboy_t *gb, unsigned cycles_offset, bool new_high_bit)
 {
     gb->apu.lfsr_bit_7_before_step = gb->apu.noise_channel.lfsr & 0x80;
     unsigned high_bit_mask = gb->apu.noise_channel.narrow ? 0x4040 : 0x4000;
-    bool new_high_bit = (gb->apu.noise_channel.lfsr ^ (gb->apu.noise_channel.lfsr >> 1) ^ 1) & 1;
     gb->apu.noise_channel.lfsr >>= 1;
     
     if (new_high_bit) {
@@ -818,6 +822,19 @@ static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
     
     update_lfsr(gb, cycles_offset);
     gb->apu.lfsr_stepped_in_narrow = gb->apu.noise_channel.narrow;
+}
+
+static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
+{
+    /* Some NR43 corruptions model partial/subcycle shifts, rather than a normal
+       clock edge. Retain their instantaneous-feedback approximation. */
+    shift_lfsr_with_feedback(gb, cycles_offset, lfsr_feedback(gb));
+}
+
+static void clock_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
+{
+    shift_lfsr_with_feedback(gb, cycles_offset,
+                            gb->model == GB_MODEL_DMG_B ? gb->apu.noise_feedback_latch : lfsr_feedback(gb));
 }
 
 void GB_apu_run(GB_gameboy_t *gb, bool force)
@@ -1050,12 +1067,19 @@ restart:;
                 gb->apu.noise_channel.did_step_counter = true;
                 bool new_bit = gb->apu.noise_channel.counter & mask;
 
+                /* DMG's JOTO feedback latch clocks on the falling edge; the
+                   shift stages clock on the rising edge. Reset clears both, so
+                   a rising edge before the first falling edge shifts in zero. */
+                if (gb->model == GB_MODEL_DMG_B && old_bit && !new_bit && gb->apu.is_active[GB_NOISE]) {
+                    gb->apu.noise_feedback_latch = lfsr_feedback(gb);
+                }
+
                 /* Step LFSR */
                 if (new_bit && !old_bit && gb->apu.is_active[GB_NOISE]) {
                     if (cycles_left == 0 && gb->apu.samples[GB_NOISE] == 0 && !gb->cgb_double_speed) {
                         gb->apu.pcm_mask[1] &= 0x0F;
                     }
-                    step_lfsr(gb, cycles - cycles_left);
+                    clock_lfsr(gb, cycles - cycles_left);
                 }
             }
             if (cycles_left) {
@@ -1218,6 +1242,9 @@ static noinline void nr10_write_glitch(GB_gameboy_t *gb, uint8_t value)
 
 static void prepare_noise_start(GB_gameboy_t *gb)
 {
+    if (gb->model == GB_MODEL_DMG_B) {
+        gb->apu.noise_feedback_latch = false;
+    }
     /*
      TODO: When restarting a channel right after starting it, before it has the chance to tick the counter, things
      behave differently. Only certain behaviors of this edge case are emulated.
@@ -1399,6 +1426,13 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
     bool glitch_bit = (effective_counter >> (glitch_value >> 4)) & 1;
     bool new_bit = (effective_counter >> (new >> 4)) & 1;
     bool force_glitch = false;
+
+    /* The selector follows old -> glitch -> new (including the pre-CGB-D FF
+       write). Capture feedback in clock order around the existing mutations.
+       Subcycle corruption/extra-step paths below remain approximations. */
+    if (gb->model == GB_MODEL_DMG_B && old_bit && !glitch_bit) {
+        gb->apu.noise_feedback_latch = lfsr_feedback(gb);
+    }
 
     if (gb->model == GB_MODEL_CGB_D) {
         if (new_bit && glitch_bit && old_bit) {
@@ -1657,7 +1691,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
                 }
             }
             else {
-                step_lfsr(gb, 0);
+                clock_lfsr(gb, 0);
             }
         }
     }
@@ -1665,7 +1699,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
         if (gb->model <= GB_MODEL_CGB_C) {
             bool previous_narrow = gb->apu.noise_channel.narrow;
             gb->apu.noise_channel.narrow = true;
-            step_lfsr(gb, 0);
+            clock_lfsr(gb, 0);
             gb->apu.noise_channel.narrow = previous_narrow;
             if ((new & 0xf0) <= 0x20 && glitch_bit && !(effective_counter & 8)) { // No clue why that specific bit is tested
                 // Non-deterministic, not fully tested for revision differences and wide mode
@@ -1684,6 +1718,9 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
             // Step twice?
             step_lfsr(gb, 0);
         }
+    }
+    if (gb->model == GB_MODEL_DMG_B && glitch_bit && !new_bit) {
+        gb->apu.noise_feedback_latch = lfsr_feedback(gb);
     }
 }
 
