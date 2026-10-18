@@ -205,6 +205,11 @@ typedef struct {
     
     GB_band_limited_t band_limited[GB_N_CHANNELS];
     double dac_discharge[GB_N_CHANNELS];
+    struct {
+        uint8_t multiplier[GB_N_CHANNELS];
+        uint8_t enabled;
+    } dac_delay[GB_BAND_LIMITED_WIDTH / 2];
+    uint8_t dac_delay_pos;
     bool channel_muted[GB_N_CHANNELS];
     bool edge_triggered[GB_N_CHANNELS];
 

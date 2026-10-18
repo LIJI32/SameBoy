@@ -321,7 +321,8 @@ static signed interference(GB_gameboy_t *gb)
 static void render(GB_gameboy_t *gb)
 {
     GB_sample_t output = {0, 0};
-    bool dac_output_connected = gb->model != GB_MODEL_DMG_B;
+    uint8_t enabled_dacs = 0;
+    bool delay_dac = gb->model == GB_MODEL_DMG_B && gb->apu_output.max_cycles_per_sample != 1;
 
     unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
         double multiplier = CH_STEP;
@@ -348,13 +349,27 @@ static void render(GB_gameboy_t *gb)
             }
         }
         
-        dac_output_connected |= GB_apu_is_DAC_enabled(gb, i);
+        enabled_dacs |= GB_apu_is_DAC_enabled(gb, i) << i;
 
+        if (delay_dac) {
+            /* DAC gain is applied after synthesis. Match the filter's midpoint
+               delay so enabling a DAC cannot precede its digital waveform. */
+            uint8_t delayed = gb->apu_output.dac_delay[gb->apu_output.dac_delay_pos].multiplier[i];
+            gb->apu_output.dac_delay[gb->apu_output.dac_delay_pos].multiplier[i] = multiplier;
+            multiplier = delayed;
+        }
         GB_sample_t channel_output;
         band_limited_read(&gb->apu_output.band_limited[i], &channel_output, multiplier);
 
         output.left += channel_output.left;
         output.right += channel_output.right;
+    }
+    if (delay_dac) {
+        uint8_t delayed = gb->apu_output.dac_delay[gb->apu_output.dac_delay_pos].enabled;
+        gb->apu_output.dac_delay[gb->apu_output.dac_delay_pos].enabled = enabled_dacs;
+        enabled_dacs = delayed;
+        gb->apu_output.dac_delay_pos =
+            (gb->apu_output.dac_delay_pos + 1) % (GB_BAND_LIMITED_WIDTH / 2);
     }
     gb->apu_output.cycles_since_render = 0;
     if (unlikely(gb->apu_output.sample_fraction < (1 << 28))) {
@@ -367,9 +382,10 @@ static void render(GB_gameboy_t *gb)
     if (gb->sgb && gb->sgb->intro_animation < GB_SGB_INTRO_ANIMATION_LENGTH) return;
 
     GB_sample_t filtered_output = {0, 0};
-    /* On DMG, disabling the last DAC disconnects the mixer immediately. Keep
-       per-channel discharge running, but hold the coupling capacitor while disconnected. */
-    if (dac_output_connected) {
+    /* On DMG, the last DAC disconnects the mixer without waiting for discharge.
+       Apply the same synthesis delay to connection and gain, then hold the
+       coupling capacitor while disconnected. */
+    if (gb->model != GB_MODEL_DMG_B || enabled_dacs) {
         filtered_output = gb->apu_output.highpass_mode?
             (GB_sample_t) {output.left  - (int16_t)gb->apu_output.highpass_diff.left,
                            output.right - (int16_t)gb->apu_output.highpass_diff.right} :
@@ -390,7 +406,7 @@ static void render(GB_gameboy_t *gb)
                 unsigned left_volume = 0;
                 unsigned right_volume = 0;
                 unrolled for (unsigned i = GB_N_CHANNELS; i--;) {
-                    if (GB_apu_is_DAC_enabled(gb, i)) {
+                    if (enabled_dacs & (1 << i)) {
                         if (mask & 1) {
                             left_volume += ((gb->io_registers[GB_IO_NR50] & 7) + 1) * CH_STEP * 0xF;
                         }
