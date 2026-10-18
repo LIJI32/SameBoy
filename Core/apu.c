@@ -348,7 +348,7 @@ static void render(GB_gameboy_t *gb)
             }
         }
         
-        dac_output_connected |= GB_apu_is_DAC_enabled(gb, i) || gb->apu_output.dac_discharge[i] > 0;
+        dac_output_connected |= GB_apu_is_DAC_enabled(gb, i);
 
         GB_sample_t channel_output;
         band_limited_read(&gb->apu_output.band_limited[i], &channel_output, multiplier);
@@ -367,8 +367,8 @@ static void render(GB_gameboy_t *gb)
     if (gb->sgb && gb->sgb->intro_animation < GB_SGB_INTRO_ANIMATION_LENGTH) return;
 
     GB_sample_t filtered_output = {0, 0};
-    /* On DMG, the mixer disconnects when every DAC is off. Finish the existing
-       DAC discharge first, then preserve the coupling capacitor while disconnected. */
+    /* On DMG, disabling the last DAC disconnects the mixer immediately. Keep
+       per-channel discharge running, but hold the coupling capacitor while disconnected. */
     if (dac_output_connected) {
         filtered_output = gb->apu_output.highpass_mode?
             (GB_sample_t) {output.left  - (int16_t)gb->apu_output.highpass_diff.left,
