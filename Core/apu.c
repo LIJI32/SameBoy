@@ -1779,6 +1779,15 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         reg = GB_IO_WAV_START + gb->apu.wave_channel.current_sample_index / 2;
     }
 
+    bool reconnect_dac = false;
+    if (gb->model == GB_MODEL_DMG_B &&
+        (reg == GB_IO_NR12 || reg == GB_IO_NR22 || reg == GB_IO_NR30 || reg == GB_IO_NR42)) {
+        reconnect_dac = true;
+        unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
+            reconnect_dac &= !GB_apu_is_DAC_enabled(gb, i);
+        }
+    }
+
     /* Todo: this can and should be rewritten with a function table. */
     switch (reg) {
         /* Globals */
@@ -2252,6 +2261,15 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
         }
     }
     gb->io_registers[reg] = value;
+    if (reconnect_dac) {
+        /* Reconnect the full DAC level to the held coupling capacitor. Starting
+           an attack ramp against its old charge creates a false negative pulse. */
+        unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
+            if (GB_apu_is_DAC_enabled(gb, i)) {
+                gb->apu_output.dac_discharge[i] = 1;
+            }
+        }
+    }
 }
 
 void GB_set_sample_rate(GB_gameboy_t *gb, unsigned sample_rate)
