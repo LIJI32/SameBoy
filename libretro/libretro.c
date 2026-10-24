@@ -1932,14 +1932,16 @@ bool iretro_persistent_serialize(void *data, size_t len)
 
 bool iretro_persistent_unserialize(const void *data, size_t len)
 {
-    if (len < iretro_persistent_serialize_size()) return false;
-    GB_load_battery_from_buffer(&gameboy[0], data, len);
-    if (emulated_devices == 1) return true;
-    
-    size_t pos = GB_save_battery_size(&gameboy[0]);
-    len -= pos;
-    data = (uint8_t *)data + pos;
-    GB_load_battery_from_buffer(&gameboy[1], data, len);
+    size_t first_size = GB_save_battery_size(&gameboy[0]);
+    size_t second_size = emulated_devices == 2? GB_save_battery_size(&gameboy[1]) : 0;
+    if (len < first_size + second_size) return false;
+    if (!data && (first_size || second_size)) return false;
+    if (first_size) {
+        GB_load_battery_from_buffer(&gameboy[0], data, first_size);
+    }
+    if (second_size) {
+        GB_load_battery_from_buffer(&gameboy[1], (const uint8_t *)data + first_size, second_size);
+    }
     return true;
 }
 
