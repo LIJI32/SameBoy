@@ -209,7 +209,12 @@
     }
 }
 
-- (IBAction)autopair
+- (void)autopair
+{
+    [self autopair:self];
+}
+
+- (IBAction)autopair:(id)sender
 {
     if (_unpairing) return;
     if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBJoyConAutoPair"]) return;
