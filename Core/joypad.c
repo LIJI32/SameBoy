@@ -70,7 +70,7 @@ static inline bool get_input(GB_gameboy_t *gb, uint8_t player, GB_key_t key)
     
     if (likely(gb->key_bounce_timing[key] == 0)) return ret;
     if (likely((gb->key_bounce_timing[key] & 0x3FF) > 0x300)) return ret;
-    uint16_t semi_random = ((((key << 5) + gb->div_counter) * 17) ^ ((gb->apu.apu_cycles + gb->display_cycles) * 13));
+    uint16_t semi_random = ((((key << 5) + gb->div_counter) * 17) ^ ((gb->display_cycles) * 13));
     semi_random >>= 3;
     if (semi_random < gb->key_bounce_timing[key]) {
         ret ^= true;

@@ -392,11 +392,13 @@ struct GB_gameboy_internal_s {
         uint8_t extra_oam[0xFF00 - 0xFEA0];
         uint32_t ram_size; // Different between CGB and DMG
                
-        int32_t ir_sensor;
+        int32_t ir_warmup;
         bool effective_ir_input;
         uint16_t address_bus;
         uint8_t data_bus; // cart data bus (MAIN)
         uint32_t data_bus_decay_countdown;
+               
+        int32_t ir_decay;
     )
 
     /* DMA and HDMA */
