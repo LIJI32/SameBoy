@@ -1707,12 +1707,14 @@ static void GB_reset_internal(GB_gameboy_t *gb, bool quick)
     
     uint32_t mbc_ram_size = gb->mbc_ram_size;
     GB_model_t model = gb->model;
+    GB_accessory_t accessory = gb->accessory;
     GB_update_clock_rate(gb);
     uint8_t rtc_section[GB_SECTION_SIZE(rtc)];
     memcpy(rtc_section, GB_GET_SECTION(gb, rtc), sizeof(rtc_section));
     memset(gb, 0, GB_SECTION_OFFSET(unsaved));
     memcpy(GB_GET_SECTION(gb, rtc), rtc_section, sizeof(rtc_section));
     gb->model = model;
+    gb->accessory = accessory;
     gb->version = STRUCT_VERSION;
     
     GB_reset_mbc(gb);

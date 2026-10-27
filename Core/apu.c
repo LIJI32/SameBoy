@@ -2238,7 +2238,7 @@ typedef struct __attribute__((packed)) {
     uint16_t compression_name; // = 0
     
     uint32_t ssnd_chunk; // = BE32('SSND')
-    uint32_t ssnd_size; // = BE32(length of samples - 8)
+    uint32_t ssnd_size; // = BE32(length of samples + 8)
     uint32_t ssnd_offset; // = 0
     uint32_t ssnd_block; // = 0
 } aiff_header_t;
@@ -2249,12 +2249,12 @@ typedef struct __attribute__((packed)) {
     uint32_t type; // = BE32('WAVE')
     
     uint32_t fmt_chunk; // = BE32('fmt ')
-    uint32_t fmt_size; // = LE16(16)
+    uint32_t fmt_size; // = LE32(16)
     uint16_t format; // = LE16(1)
     uint16_t channels; // = LE16(2)
     uint32_t sample_rate; // = LE32(sample_rate)
     uint32_t byte_rate; // = LE32(sample_rate * 4)
-    uint16_t frame_size;  // = LE32(4)
+    uint16_t frame_size;  // = LE16(4)
     uint16_t bit_depth; // = LE16(16)
     
     uint32_t data_chunk; // = BE32('data')
@@ -2510,7 +2510,7 @@ int GB_stop_audio_recording(GB_gameboy_t *gb)
 #endif
                 .compression_name = 0,
                 .ssnd_chunk = BE32('SSND'),
-                .ssnd_size = BE32(frames * sizeof(GB_sample_t) - 8),
+                .ssnd_size = BE32(frames * sizeof(GB_sample_t) + 8),
                 .ssnd_offset = 0,
                 .ssnd_block = 0,
             };
@@ -2539,12 +2539,12 @@ int GB_stop_audio_recording(GB_gameboy_t *gb)
                 .type = BE32('WAVE'),
                 
                 .fmt_chunk = BE32('fmt '),
-                .fmt_size = LE16(16),
+                .fmt_size = LE32(16),
                 .format = LE16(1),
                 .channels = LE16(2),
                 .sample_rate = LE32(gb->apu_output.sample_rate),
                 .byte_rate = LE32(gb->apu_output.sample_rate * 4),
-                .frame_size = LE32(4),
+                .frame_size = LE16(4),
                 .bit_depth = LE16(16),
                 
                 .data_chunk = BE32('data'),

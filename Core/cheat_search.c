@@ -59,14 +59,7 @@ bool GB_cheat_search_filter(GB_gameboy_t *gb, const char *expression, GB_cheat_s
         else {
             GB_debugger_evaluate_cheat_filter(gb, expression, &result, *old_data, *new_data);
         }
-        if (result) {
-            // Filter passed, update old value
-            *old_data = *new_data;
-            if (data_type & GB_CHEAT_SEARCH_DATA_TYPE_16BIT) {
-                old_data[1] = new_data[1];
-            }
-        }
-        else {
+        if (!result) {
             // Did not pass filter, remove address
             *bitmap |= mask;
             gb->cheat_search_count--;
@@ -89,6 +82,12 @@ bool GB_cheat_search_filter(GB_gameboy_t *gb, const char *expression, GB_cheat_s
         }
     }
     
+    // Keep the previous snapshot intact while evaluating overlapping words.
+    memcpy(gb->cheat_search_data, gb->ram, gb->ram_size);
+    if (gb->mbc_ram_size) {
+        memcpy(gb->cheat_search_data + gb->ram_size, gb->mbc_ram, gb->mbc_ram_size);
+    }
+    memcpy(gb->cheat_search_data + gb->ram_size + gb->mbc_ram_size, gb->hram, sizeof(gb->hram));
     return true;
 }
 

@@ -143,7 +143,9 @@ void GB_camera_write_register(GB_gameboy_t *gb, uint16_t addr, uint8_t value)
         noise_seed = GB_random();
         if ((value & 1) && !(gb->camera_registers[GB_CAMERA_SHOOT_AND_1D_FLAGS] & 1)) {
             if (gb->camera_update_request_callback) {
+                gb->camera_registers[GB_CAMERA_SHOOT_AND_1D_FLAGS] = value;
                 gb->camera_update_request_callback(gb);
+                return;
             }
             else {
                 /* If no callback is set, wait the amount of time the real camera would take before clearing the busy bit */

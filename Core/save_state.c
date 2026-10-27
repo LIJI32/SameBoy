@@ -345,6 +345,7 @@ static bool verify_and_update_state_compatibility(GB_gameboy_t *gb, GB_gameboy_t
     
     if (gb->accessory != save->accessory) {
         memset(GB_GET_SECTION(save, accessory), 0, GB_SECTION_SIZE(accessory));
+        save->accessory = gb->accessory;
     }
     
     switch (save->model) {
@@ -500,13 +501,13 @@ static int save_bess_mbc_block(GB_gameboy_t *gb, virtual_file_t *file)
             pairs[0] = (BESS_MBC_pair_t){LE16(0x0000), gb->mbc_ram_enable? 0xA : 0x0};
             pairs[1] = (BESS_MBC_pair_t){LE16(0x2000), gb->mbc5.rom_bank_low};
             pairs[2] = (BESS_MBC_pair_t){LE16(0x3000), gb->mbc5.rom_bank_high};
-            pairs[3] = (BESS_MBC_pair_t){LE16(0x4000), gb->mbc5.ram_bank};
+            pairs[3] = (BESS_MBC_pair_t){LE16(0x4000), gb->mbc5.ram_bank | ((gb->cartridge_type->has_rumble && gb->rumble_strength)? 8 : 0)};
             mbc_block.size = 4 * sizeof(pairs[0]);
             break;
         case GB_CAMERA:
             pairs[0] = (BESS_MBC_pair_t){LE16(0x0000), gb->mbc_ram_enable? 0xA : 0x0};
             pairs[1] = (BESS_MBC_pair_t){LE16(0x2000), gb->mbc5.rom_bank_low};
-            pairs[2] = (BESS_MBC_pair_t){LE16(0x4000), gb->mbc5.ram_bank};
+            pairs[2] = (BESS_MBC_pair_t){LE16(0x4000), gb->mbc5.ram_bank | (gb->camera_registers_mapped? 0x10 : 0)};
             mbc_block.size = 3 * sizeof(pairs[0]);
             break;
         case GB_MBC7:
@@ -1239,6 +1240,7 @@ static int load_bess_save(GB_gameboy_t *gb, virtual_file_t *file, bool is_samebo
     }
 done:
     save.mbc_ram_size = gb->mbc_ram_size;
+    save.accessory = gb->accessory;
     memcpy(gb, &save, GB_SECTION_OFFSET(unsaved));
     assert(GB_get_save_state_size(gb) == GB_get_save_state_size(&save));
     GB_free(&save);
