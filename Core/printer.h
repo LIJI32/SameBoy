@@ -58,6 +58,7 @@ typedef struct
     uint8_t bits_received;
     uint8_t byte_being_received;
     bool bit_to_send;
+    uint16_t cycle_counter; // In 8 MHz units, modulo 512
 } GB_printer_t;
 
 

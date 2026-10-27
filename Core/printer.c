@@ -21,22 +21,21 @@ static void handle_command(GB_gameboy_t *gb)
         case GB_PRINTER_START_COMMAND:
             if (gb->printer.command_length == 4) {
                 gb->printer.status = 6; /* Printing */
-                uint32_t image[gb->printer.image_offset];
-                uint8_t palette = gb->printer.command_data[2];
-                uint32_t colors[4] = {gb->rgb_encode_callback(gb, 0xFF, 0xFF, 0xFF),
-                                      gb->rgb_encode_callback(gb, 0xAA, 0xAA, 0xAA),
-                                      gb->rgb_encode_callback(gb, 0x55, 0x55, 0x55),
-                                      gb->rgb_encode_callback(gb, 0x00, 0x00, 0x00)};
-                for (unsigned i = 0; i < gb->printer.image_offset; i++) {
-                    image[i] = colors[(palette >> (gb->printer.image[i] * 2)) & 3];
-                }
-                
-                // One second per 8-pixel row
-                gb->printer.time_remaining = gb->printer.image_offset / 160 * GB_get_unmultiplied_clock_rate(gb) / 256 / 8;
+                // One second per 8-pixel row; empty jobs still need a completion tick.
+                gb->printer.time_remaining = MAX(1, gb->printer.image_offset / 160 * GB_get_unmultiplied_clock_rate(gb) / 256 / 8);
                 
                 if (gb->printer_callback) {
+                    uint32_t image[MAX(1, gb->printer.image_offset)];
+                    uint8_t palette = gb->printer.command_data[2];
+                    uint32_t colors[4] = {gb->rgb_encode_callback(gb, 0xFF, 0xFF, 0xFF),
+                                          gb->rgb_encode_callback(gb, 0xAA, 0xAA, 0xAA),
+                                          gb->rgb_encode_callback(gb, 0x55, 0x55, 0x55),
+                                          gb->rgb_encode_callback(gb, 0x00, 0x00, 0x00)};
+                    for (unsigned i = 0; i < gb->printer.image_offset; i++) {
+                        image[i] = colors[(palette >> ((gb->printer.image[i] & 3) * 2)) & 3];
+                    }
                     gb->printer_callback(gb, image, gb->printer.image_offset / 160,
-                                         gb->printer.command_data[1] >> 4, gb->printer.command_data[1] & 7,
+                                         gb->printer.command_data[1] >> 4, gb->printer.command_data[1] & 0xF,
                                          gb->printer.command_data[3] & 0x7F);
                 }
                 
@@ -46,12 +45,11 @@ static void handle_command(GB_gameboy_t *gb)
             
         case GB_PRINTER_DATA_COMMAND:
             if (gb->printer.command_length == GB_PRINTER_DATA_SIZE) {
-                gb->printer.image_offset %= sizeof(gb->printer.image);
                 gb->printer.status = 8; /* Received 0x280 bytes */
                 
                 uint8_t *byte = gb->printer.command_data;
                 
-                for (unsigned row = 2; row--; ) {
+                for (unsigned row = 2; row-- && gb->printer.image_offset + 8 * 160 <= sizeof(gb->printer.image); ) {
                     for (unsigned tile_x = 0; tile_x < 160 / 8; tile_x++) {
                         for (unsigned y = 0; y < 8; y++, byte += 2) {
                             for (unsigned x_pixel = 0; x_pixel < 8; x_pixel++) {

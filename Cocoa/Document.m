@@ -2452,6 +2452,8 @@ enum GBWindowResizeAction
          topMargin:(unsigned) topMargin bottomMargin: (unsigned) bottomMargin
           exposure:(unsigned) exposure
 {
+    if (!height && !topMargin && !bottomMargin) return;
+
     uint32_t paddedImage[160 * (topMargin + height + bottomMargin)];
     memset(paddedImage, 0xFF, sizeof(paddedImage));
     memcpy(paddedImage + (160 * topMargin), imageBytes, 160 * height * sizeof(imageBytes[0]));

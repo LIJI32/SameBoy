@@ -448,7 +448,8 @@ static void sanitize_state(GB_gameboy_t *gb)
     
     sanitize_bool(&gb->cgb_vram_bank);
     if (gb->accessory == GB_ACCESSORY_PRINTER) {
-        gb->printer.image_offset %= sizeof(gb->printer.image);
+        gb->printer.cycle_counter %= 512;
+        gb->printer.image_offset = MIN(gb->printer.image_offset, sizeof(gb->printer.image));
         gb->printer.image_offset /= 160 * 8;
         gb->printer.image_offset *= 160 * 8;
     }
