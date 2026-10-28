@@ -903,7 +903,7 @@ static const char *cheats_global_checkbox(unsigned index)
 
 static void enter_cheats_menu(unsigned index)
 {
-    struct menu_item *cheats_menu = NULL;
+    static struct menu_item *cheats_menu = NULL;
     if (cheats_menu) {
         free(cheats_menu);
     }
