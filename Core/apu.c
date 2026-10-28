@@ -322,7 +322,7 @@ static void render(GB_gameboy_t *gb)
 {
     GB_sample_t output = {0, 0};
     uint8_t enabled_dacs = 0;
-    bool delay_dac = gb->model == GB_MODEL_DMG_B && gb->apu_output.max_cycles_per_sample != 1;
+    bool delay_dac = !GB_is_cgb(gb) && gb->apu_output.max_cycles_per_sample != 1;
 
     unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
         double multiplier = CH_STEP;
@@ -382,10 +382,10 @@ static void render(GB_gameboy_t *gb)
     if (gb->sgb && gb->sgb->intro_animation < GB_SGB_INTRO_ANIMATION_LENGTH) return;
 
     GB_sample_t filtered_output = {0, 0};
-    /* On DMG, the last DAC disconnects the mixer without waiting for discharge.
+    /* On pre-CGB models, the last DAC disconnects the mixer without waiting for discharge.
        Apply the same synthesis delay to connection and gain, then hold the
        coupling capacitor while disconnected. */
-    if (gb->model != GB_MODEL_DMG_B || enabled_dacs) {
+    if (GB_is_cgb(gb) || enabled_dacs) {
         filtered_output = gb->apu_output.highpass_mode?
             (GB_sample_t) {output.left  - (int16_t)gb->apu_output.highpass_diff.left,
                            output.right - (int16_t)gb->apu_output.highpass_diff.right} :
@@ -633,7 +633,7 @@ static void tick_noise_envelope(GB_gameboy_t *gb)
     }
 }
 
-#include "dmg_sweep.h"
+#include "dmg_sweep.inc"
 
 static void sweep_calculation_done(GB_gameboy_t *gb, unsigned cycles)
 {
@@ -879,7 +879,7 @@ static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
 static void clock_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
 {
     shift_lfsr_with_feedback(gb, cycles_offset,
-                            gb->model == GB_MODEL_DMG_B ? gb->apu.noise_feedback_latch : lfsr_feedback(gb));
+                            !GB_is_cgb(gb) ? gb->apu.noise_feedback_latch : lfsr_feedback(gb));
 }
 
 void GB_apu_run(GB_gameboy_t *gb, bool force)
@@ -1120,7 +1120,7 @@ restart:;
                 /* DMG's JOTO feedback latch clocks on the falling edge; the
                    shift stages clock on the rising edge. Reset clears both, so
                    a rising edge before the first falling edge shifts in zero. */
-                if (gb->model == GB_MODEL_DMG_B && old_bit && !new_bit && gb->apu.is_active[GB_NOISE]) {
+                if (!GB_is_cgb(gb) && old_bit && !new_bit && gb->apu.is_active[GB_NOISE]) {
                     gb->apu.noise_feedback_latch = lfsr_feedback(gb);
                 }
 
@@ -1292,7 +1292,7 @@ static noinline void nr10_write_glitch(GB_gameboy_t *gb, uint8_t value)
 
 static void prepare_noise_start(GB_gameboy_t *gb)
 {
-    if (gb->model == GB_MODEL_DMG_B) {
+    if (!GB_is_cgb(gb)) {
         gb->apu.noise_feedback_latch = false;
     }
     /*
@@ -1480,7 +1480,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
     /* The selector follows old -> glitch -> new (including the pre-CGB-D FF
        write). Capture feedback in clock order around the existing mutations.
        Subcycle corruption/extra-step paths below remain approximations. */
-    if (gb->model == GB_MODEL_DMG_B && old_bit && !glitch_bit) {
+    if (!GB_is_cgb(gb) && old_bit && !glitch_bit) {
         gb->apu.noise_feedback_latch = lfsr_feedback(gb);
     }
 
@@ -1769,7 +1769,7 @@ static void nr43_write(GB_gameboy_t *gb, uint8_t new)
             step_lfsr(gb, 0);
         }
     }
-    if (gb->model == GB_MODEL_DMG_B && glitch_bit && !new_bit) {
+    if (!GB_is_cgb(gb) && glitch_bit && !new_bit) {
         gb->apu.noise_feedback_latch = lfsr_feedback(gb);
     }
 }
@@ -1796,7 +1796,7 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
     }
 
     bool reconnect_dac = false;
-    if (gb->model == GB_MODEL_DMG_B &&
+    if (!GB_is_cgb(gb) &&
         (reg == GB_IO_NR12 || reg == GB_IO_NR22 || reg == GB_IO_NR30 || reg == GB_IO_NR42)) {
         reconnect_dac = true;
         unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
@@ -2090,11 +2090,10 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
 
                     /* This glitch varies between models and even specific instances:
                        DMG-B:     Both plain block copy and source-byte corruption have been observed.
-                       SGB:       As far as I know, all tested instances behave as emulated.
                        MGB, SGB2: Most instances behave non-deterministically, a few behave as emulated.
                      
-                       DMG-B uses the deterministic majority variant measured on the audio-lab unit.
-                       This is instance-specific; other DMG-B units can use the plain block copy.
+                       The majority variant was measured on DMG and confirmed on MGB.
+                       Assume the remaining pre-CGB models share it; individual units may differ.
                        For MGB emulation, I emulate my Game Boy Light, which happens to be deterministic.
 
                       Additionally, I believe DMGs, including those we behave differently than emulated,
@@ -2103,17 +2102,15 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                         gb->io_registers[GB_IO_WAV_START] = gb->io_registers[GB_IO_WAV_START + offset];
                     }
                     else {
-                        if (gb->model == GB_MODEL_DMG_B) {
-                            /* Retriggering also changes the first source byte, before copying the block.
-                               Physical RAM readbacks cover all eight input combinations and all three
-                               nonzero source blocks. Equal-time NOP and delayed DAC-off controls retain
-                               this behavior. The operands follow the existing read address/timing model;
-                               this does not claim an internal SRAM mechanism or apply to every DMG. */
-                            uint8_t a = gb->io_registers[GB_IO_WAV_START];
-                            uint8_t b = gb->io_registers[GB_IO_WAV_START + (offset & ~3)];
-                            uint8_t c = gb->io_registers[GB_IO_WAV_START + offset];
-                            gb->io_registers[GB_IO_WAV_START + (offset & ~3)] = (a & b) | (a & c) | (b & c);
-                        }
+                        /* Retriggering also changes the first source byte, before copying the block.
+                           Physical RAM readbacks cover all eight input combinations and all three
+                           nonzero source blocks. Equal-time NOP and delayed DAC-off controls retain
+                           this behavior. The operands follow the existing read address/timing model;
+                           this does not claim an internal SRAM mechanism or apply to every instance. */
+                        uint8_t a = gb->io_registers[GB_IO_WAV_START];
+                        uint8_t b = gb->io_registers[GB_IO_WAV_START + (offset & ~3)];
+                        uint8_t c = gb->io_registers[GB_IO_WAV_START + offset];
+                        gb->io_registers[GB_IO_WAV_START + (offset & ~3)] = (a & b) | (a & c) | (b & c);
                         memcpy(gb->io_registers + GB_IO_WAV_START,
                                gb->io_registers + GB_IO_WAV_START + (offset & ~3),
                                4);

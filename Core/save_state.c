@@ -441,6 +441,13 @@ static void sanitize_state(GB_gameboy_t *gb)
         gb->apu.apu_cycles >>= 2;
         gb->apu.apu_cycles_in_2mhz = true;
     }
+
+    sanitize_bool(&gb->apu.noise_feedback_latch);
+    for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
+        sanitize_bool(&gb->apu.square_clock_active[i]);
+        sanitize_bool(&gb->apu.square_duty_output[i]);
+        gb->apu.square_clock_active[i] |= gb->apu.is_active[i];
+    }
     
     if (gb->n_visible_objs > 10) {
         gb->n_visible_objs = 10;
@@ -912,7 +919,7 @@ void GB_save_state_to_buffer_no_bess(GB_gameboy_t *gb, uint8_t *buffer)
     assert(file.position == GB_get_save_state_size_no_bess(gb));
 }
 
-static bool read_section(virtual_file_t *file, void *dest, uint32_t size, uint32_t *size_read)
+static bool read_section(virtual_file_t *file, void *dest, uint32_t size)
 {
     uint32_t saved_size = 0;
     if (file->read(file, &saved_size, sizeof(size)) != sizeof(size)) {
@@ -931,9 +938,6 @@ static bool read_section(virtual_file_t *file, void *dest, uint32_t size, uint32
         file->seek(file, saved_size - size, SEEK_CUR);
     }
     
-    if (size_read) {
-        *size_read = saved_size;
-    }
     return true;
 }
 
@@ -1325,32 +1329,13 @@ static int load_state_internal(GB_gameboy_t *gb, virtual_file_t *file)
     if (gb->magic != save.magic) {
         return load_bess_save(gb, file, false);
     }
-#define READ_SECTION(gb, file, section) read_section(file, GB_GET_SECTION(gb, section), GB_SECTION_SIZE(section), NULL)
+#define READ_SECTION(gb, file, section) read_section(file, GB_GET_SECTION(gb, section), GB_SECTION_SIZE(section))
     if (!READ_SECTION(&save, file, core_state)) return errno ?: EIO;
     if (!READ_SECTION(&save, file, dma       )) return errno ?: EIO;
     if (!READ_SECTION(&save, file, mbc       )) return errno ?: EIO;
     if (!READ_SECTION(&save, file, hram      )) return errno ?: EIO;
     if (!READ_SECTION(&save, file, timing    )) return errno ?: EIO;
-    uint32_t saved_apu_size;
-    if (!read_section(file, GB_GET_SECTION(&save, apu), GB_SECTION_SIZE(apu), &saved_apu_size)) return errno ?: EIO;
-    if (saved_apu_size < offsetof(GB_apu_t, square_duty_output) + sizeof(save.apu.square_duty_output)) {
-        /* Reconstruct the old combinational output when no duty latch was saved. */
-        for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
-            unsigned duty = save.io_registers[i == GB_SQUARE_1 ? GB_IO_NR11 : GB_IO_NR21] >> 6;
-            save.apu.square_duty_output[i] =
-                (inline_const(uint8_t[], {0x80, 0x81, 0xE1, 0x7E})[duty] >> save.apu.square_channels[i].current_sample_index) & 1;
-        }
-    }
-    if (saved_apu_size < offsetof(GB_apu_t, square_clock_active) + sizeof(save.apu.square_clock_active)) {
-        /* Older states did not keep inactive pulse clocks running. */
-        save.apu.square_clock_active[0] = save.apu.is_active[0];
-        save.apu.square_clock_active[1] = save.apu.is_active[1];
-    }
-    if (saved_apu_size < offsetof(GB_apu_t, noise_feedback_latch) + sizeof(save.apu.noise_feedback_latch)) {
-        /* Old states have no feedback latch. Preserve their next instantaneous
-           step, then let the next falling edge establish the new latch state. */
-        save.apu.noise_feedback_latch = (save.apu.noise_channel.lfsr ^ (save.apu.noise_channel.lfsr >> 1) ^ 1) & 1;
-    }
+    if (!READ_SECTION(&save, file, apu       )) return errno ?: EIO;
     if (!READ_SECTION(&save, file, rtc       )) return errno ?: EIO;
     if (!READ_SECTION(&save, file, video     )) return errno ?: EIO;
     if (!READ_SECTION(&save, file, accessory )) return errno ?: EIO;
@@ -1365,7 +1350,7 @@ static int load_state_internal(GB_gameboy_t *gb, virtual_file_t *file)
     }
     
     if (GB_is_hle_sgb(gb)) {
-        if (!read_section(file, gb->sgb, sizeof(*gb->sgb), NULL)) return errno ?: EIO;
+        if (!read_section(file, gb->sgb, sizeof(*gb->sgb))) return errno ?: EIO;
     }
     
     memset(gb->mbc_ram + save.mbc_ram_size, 0xFF, gb->mbc_ram_size - save.mbc_ram_size);

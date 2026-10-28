@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <stdalign.h>
 #include "defs.h"
 
 #define GB_BAND_LIMITED_WIDTH 64
@@ -161,12 +160,11 @@ typedef struct
     bool lfsr_stepped_in_narrow;
     bool lfsr_bit_7_before_step; // Used by some corruptions?
     bool noise_started_with_dac_disabled; // TODO: Background counting behaves slightly different this way?
-    /* Append beyond the previous save-state section's tail padding. */
-    alignas(8) bool noise_feedback_latch; // DMG JOTO, clocked opposite the shift stages
+    bool noise_feedback_latch; // DMG JOTO, clocked opposite the shift stages
     /* DMG pulse frequency gates survive length/sweep expiry until DAC or APU off. */
-    alignas(8) bool square_clock_active[2];
+    bool square_clock_active[2];
     /* DMG DUWO/DOME hold the duty bit independently of the envelope volume. */
-    alignas(8) bool square_duty_output[2];
+    bool square_duty_output[2];
 } GB_apu_t;
 
 typedef enum {
