@@ -1409,7 +1409,7 @@ static void handle_model_option(const char *model_string)
             configuration.sgb_revision = SGB_2;
             break;
         case GB_MODEL_MGB:
-            configuration.model = MODEL_DMG;
+            configuration.model = MODEL_MGB;
             break;
         case GB_MODEL_CGB_0:
         case GB_MODEL_CGB_A:
