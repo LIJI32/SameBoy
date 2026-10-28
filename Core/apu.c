@@ -882,6 +882,18 @@ static void clock_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
                             !GB_is_cgb(gb) ? gb->apu.noise_feedback_latch : lfsr_feedback(gb));
 }
 
+static uint8_t read_wave_sample_bus(GB_gameboy_t *gb)
+{
+    /* Model the inactive DMG wave bus as pulled high. The held sample changes
+       on a sample clock, not immediately on length expiry or retrigger.
+       Preserve the existing pending-read behavior if its gate has stopped. */
+    if (gb->model == GB_MODEL_DMG_B && !gb->apu.is_active[GB_WAVE] &&
+        gb->apu.wave_channel.enable && gb->apu.wave_channel.pulsed) {
+        return 0xFF;
+    }
+    return gb->io_registers[GB_IO_WAV_START + (gb->address_bus & 0xF)];
+}
+
 void GB_apu_run(GB_gameboy_t *gb, bool force)
 {
     uint32_t clock_rate = GB_get_clock_rate(gb);
@@ -946,8 +958,7 @@ restart:;
         while (cycles_left) {
             cycles_left--;
             if (--gb->apu.wave_channel.bugged_read_countdown == 0) {
-                    gb->apu.wave_channel.current_sample_byte =
-                gb->io_registers[GB_IO_WAV_START + (gb->address_bus & 0xF)];
+                gb->apu.wave_channel.current_sample_byte = read_wave_sample_bus(gb);
                 if (gb->apu.is_active[GB_WAVE]) {
                     update_wave_sample(gb, 0);
                 }
@@ -1083,8 +1094,7 @@ restart:;
                 cycles_left -= gb->apu.wave_channel.sample_countdown + 1;
                 gb->apu.wave_channel.sample_countdown = gb->apu.wave_channel.sample_length ^ 0x7FF;
                 if (cycles_left) {
-                    gb->apu.wave_channel.current_sample_byte =
-                    gb->io_registers[GB_IO_WAV_START + (gb->address_bus & 0xF)];
+                    gb->apu.wave_channel.current_sample_byte = read_wave_sample_bus(gb);
                 }
                 else {
                     gb->apu.wave_channel.bugged_read_countdown = 1;
@@ -2168,6 +2178,11 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
                     if (gb->apu.noise_channel.counter_countdown <= 2) {
                         gb->apu.noise_channel.counter++;
                     }
+                    gb->apu.noise_background_counter_active = false;
+                }
+                /* DMG retains its phase but stops counting even after length
+                   expiry. Only a trigger, not DAC enable, restarts this gate. */
+                if (gb->model == GB_MODEL_DMG_B) {
                     gb->apu.noise_background_counter_active = false;
                 }
 
