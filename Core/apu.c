@@ -322,6 +322,8 @@ static void render(GB_gameboy_t *gb)
 {
     GB_sample_t output = {0, 0};
     uint8_t enabled_dacs = 0;
+    /* TODO: only measured on one DMG (CPU revision unconfirmed);
+       DAC timing is assumed shared by all pre-CGB models. */
     bool delay_dac = !GB_is_cgb(gb) && gb->apu_output.max_cycles_per_sample != 1;
 
     unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
@@ -384,7 +386,9 @@ static void render(GB_gameboy_t *gb)
     GB_sample_t filtered_output = {0, 0};
     /* On pre-CGB models, the last DAC disconnects the mixer without waiting for discharge.
        Apply the same synthesis delay to connection and gain, then hold the
-       coupling capacitor while disconnected. */
+       coupling capacitor while disconnected.
+       TODO: only measured on one DMG (CPU revision unconfirmed);
+       assumed shared by all pre-CGB models. */
     if (GB_is_cgb(gb) || enabled_dacs) {
         filtered_output = gb->apu_output.highpass_mode?
             (GB_sample_t) {output.left  - (int16_t)gb->apu_output.highpass_diff.left,
@@ -466,8 +470,10 @@ static void update_square_sample(GB_gameboy_t *gb, GB_channel_t index, unsigned 
 
     uint8_t duty = gb->io_registers[index == GB_SQUARE_1? GB_IO_NR11 :GB_IO_NR21] >> 6;
     /* DUWO/DOME sample duty on the frequency clock, not envelope writes or
-       retriggers. Volume still changes immediately against the retained bit. */
-    bool output = gb->model == GB_MODEL_DMG_B ? gb->apu.square_duty_output[index] :
+       retriggers. Volume still changes immediately against the retained bit.
+       TODO: only measured on one DMG (CPU revision unconfirmed);
+       assumed shared by all pre-CGB models. */
+    bool output = !GB_is_cgb(gb) ? gb->apu.square_duty_output[index] :
                   duties[gb->apu.square_channels[index].current_sample_index + duty * 8];
     update_sample(gb, index,
                   output?
@@ -878,6 +884,8 @@ static void step_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
 
 static void clock_lfsr(GB_gameboy_t *gb, unsigned cycles_offset)
 {
+    /* TODO: only measured on one DMG (CPU revision unconfirmed); feedback latching,
+       including its reset and NR43 edges, is assumed shared by all pre-CGB models. */
     shift_lfsr_with_feedback(gb, cycles_offset,
                             !GB_is_cgb(gb) ? gb->apu.noise_feedback_latch : lfsr_feedback(gb));
 }
@@ -1027,9 +1035,11 @@ restart:;
         }
 
         unrolled for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
-            /* On DMG, length/sweep expiry gates output, not the frequency
-               clock. GEXU/BUTA keep the duty sequencer running until DAC off. */
-            if (gb->apu.is_active[i] || (gb->model == GB_MODEL_DMG_B && gb->apu.square_clock_active[i])) {
+            /* On pre-CGB models, length/sweep expiry gates output, not the frequency
+               clock. GEXU/BUTA keep the duty sequencer running until DAC off.
+               TODO: only measured on one DMG (CPU revision unconfirmed);
+               assumed shared by all pre-CGB models. */
+            if (gb->apu.is_active[i] || (!GB_is_cgb(gb) && gb->apu.square_clock_active[i])) {
                 uint16_t cycles_left = cycles;
                 if (unlikely(gb->apu.square_channels[i].delay)) {
                     if (gb->apu.square_channels[i].delay < cycles_left) {
@@ -2291,7 +2301,9 @@ void GB_apu_write(GB_gameboy_t *gb, uint8_t reg, uint8_t value)
     gb->io_registers[reg] = value;
     if (reconnect_dac) {
         /* Reconnect the full DAC level to the held coupling capacitor. Starting
-           an attack ramp against its old charge creates a false negative pulse. */
+           an attack ramp against its old charge creates a false negative pulse.
+           TODO: only measured on one DMG (CPU revision unconfirmed);
+           assumed shared by all pre-CGB models. */
         unrolled for (unsigned i = 0; i < GB_N_CHANNELS; i++) {
             if (GB_apu_is_DAC_enabled(gb, i)) {
                 gb->apu_output.dac_discharge[i] = 1;
