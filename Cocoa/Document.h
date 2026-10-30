@@ -6,6 +6,7 @@
 #import "GBCPUView.h"
 #import "GBOSDView.h"
 #import "GBDebuggerButton.h"
+#import "GBLuaEngine.h"
 
 enum model {
     MODEL_NONE,
@@ -23,7 +24,7 @@ enum model {
 @class GBPaletteView;
 @class GBObjectView;
 
-@interface Document : NSDocument <NSWindowDelegate, GBImageViewDelegate, NSSplitViewDelegate>
+@interface Document : NSDocument <NSWindowDelegate, GBImageViewDelegate, NSSplitViewDelegate, GBLuaEngineHost>
 @property (readonly) GB_gameboy_t *gb;
 @property IBOutlet GBView *view;
 @property IBOutlet NSTextView *consoleOutput;
@@ -95,5 +96,9 @@ enum model {
 - (NSString *)captureOutputForBlock: (void (^)())block;
 - (NSFont *)debuggerFontOfSize:(unsigned)size;
 - (void)setROMModified;
+- (IBAction)openLuaScript:(id)sender;
+- (IBAction)reloadLuaScript:(id)sender;
+- (IBAction)stopLuaScript:(id)sender;
+- (IBAction)showLuaConsole:(id)sender;
 @end
 

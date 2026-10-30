@@ -292,7 +292,7 @@ endif
 ifeq ($(PLATFORM),windows32)
 CFLAGS += -IWindows -Drandom=rand --target=x86_64-pc-windows
 LDFLAGS += -lmsvcrt -lkernel32 -Wl,/MANIFESTFILE:NUL --target=x86_64-pc-windows
-SDL_LDFLAGS := -lSDL2 -lcomdlg32 -luser32 -lshell32 -lole32 -ladvapi32 -ldwmapi -lwindowscodecs -lSDL2main
+SDL_LDFLAGS := -lSDL2 -lcomdlg32 -luser32 -lshell32 -lole32 -ladvapi32 -ldwmapi -lwindowscodecs -lws2_32 -lSDL2main
 GL_LDFLAGS := -lopengl32 
 ifneq ($(REDIST_XAUDIO),)
 CFLAGS += -DREDIST_XAUDIO
@@ -434,6 +434,38 @@ SDL_SOURCES := $(shell ls SDL/*.c) $(OPEN_DIALOG) $(SAVE_PNG) $(patsubst %,SDL/a
 TESTER_SOURCES := $(shell ls Tester/*.c)
 IOS_SOURCES := $(filter-out iOS/installer.m, $(shell ls iOS/*.m)) $(shell ls AppleCommon/*.m)
 COCOA_SOURCES := $(shell ls Cocoa/*.m) $(shell ls HexFiend/*.m) $(shell ls JoyKit/*.m) $(shell ls AppleCommon/*.m)
+# Lua scripting is optional. Lua and LuaSocket are Git submodules, and Lua scripting is built automatically
+# when they're present, unless DISABLE_LUA is set.
+ifeq ($(DISABLE_LUA),)
+ifeq ($(wildcard Lua/lua/lua.h),)
+DISABLE_LUA := 1
+LUA_MISSING := 1
+else ifeq ($(wildcard Lua/luasocket/src/luasocket.h),)
+DISABLE_LUA := 1
+LUA_MISSING := 1
+endif
+endif
+
+ifneq ($(DISABLE_LUA),)
+CFLAGS += -DGB_DISABLE_LUA
+LUA_SOURCES :=
+ifneq ($(LUA_MISSING),)
+ifneq ($(filter sdl cocoa all,$(MAKECMDGOALS)),)
+$(info Lua submodules not found, building without Lua scripting. Run "git submodule update --init" to enable it.)
+endif
+endif
+else
+# lua.c, onelua.c and ltests.c are the standalone interpreter and test code
+LUA_SOURCES := Lua/lua_engine.c \
+               $(filter-out Lua/lua/lua.c Lua/lua/onelua.c Lua/lua/ltests.c,$(wildcard Lua/lua/*.c)) \
+               $(patsubst %,Lua/luasocket/src/%.c,auxiliar buffer compat except inet io luasocket options select tcp timeout udp)
+ifeq ($(PLATFORM),windows32)
+LUA_SOURCES += Lua/luasocket/src/wsocket.c
+else
+LUA_SOURCES += Lua/luasocket/src/usocket.c
+endif
+endif
+SDL_SOURCES += $(LUA_SOURCES)
 QUICKLOOK_SOURCES := $(shell ls QuickLook/*.m) $(shell ls QuickLook/*.c)
 XDG_THUMBNAILER_SOURCES := $(shell ls XdgThumbnailer/*.c)
 
@@ -443,7 +475,7 @@ endif
 
 CORE_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(CORE_SOURCES))
 PUBLIC_HEADERS := $(patsubst Core/%,$(INC)/%,$(CORE_HEADERS))
-COCOA_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(COCOA_SOURCES))
+COCOA_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(COCOA_SOURCES) $(LUA_SOURCES))
 IOS_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(IOS_SOURCES))
 QUICKLOOK_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(QUICKLOOK_SOURCES))
 SDL_OBJECTS := $(patsubst %,$(OBJ)/%.o,$(SDL_SOURCES))
@@ -479,6 +511,24 @@ $(OBJ)/SDL/open_dialog/%.dep: SDL/open_dialog/%
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) $(SDL_CFLAGS) $(GL_CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
 
+# Lua and LuaSocket are third party code, built without SameBoy's warning flags or -ffast-math
+LUA_CFLAGS = $(filter-out -Werror -ffast-math,$(CFLAGS)) -w -ILua/lua -DLUASOCKET_API=
+ifeq ($(PLATFORM),Darwin)
+LUA_CFLAGS += -DLUA_USE_MACOSX
+else ifeq ($(PLATFORM),Linux)
+LUA_CFLAGS += -DLUA_USE_LINUX
+else ifneq ($(PLATFORM),windows32)
+LUA_CFLAGS += -DLUA_USE_POSIX
+endif
+
+$(OBJ)/Lua/lua/%.dep: Lua/lua/%
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(LUA_CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
+
+$(OBJ)/Lua/luasocket/%.dep: Lua/luasocket/%
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(LUA_CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
+
 $(OBJ)/%.dep: %
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) -MT $(OBJ)/$^.o -M $^ -o $@
@@ -488,6 +538,14 @@ $(OBJ)/%.dep: %
 $(OBJ)/Core/%.c.o: Core/%.c
 	-@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) $(FAT_FLAGS) -DGB_INTERNAL -c $< -o $@
+
+$(OBJ)/Lua/lua/%.c.o: Lua/lua/%.c
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(LUA_CFLAGS) $(FAT_FLAGS) -c $< -o $@
+
+$(OBJ)/Lua/luasocket/%.c.o: Lua/luasocket/%.c
+	-@$(MKDIR) -p $(dir $@)
+	$(CC) $(LUA_CFLAGS) $(FAT_FLAGS) -c $< -o $@
 
 $(OBJ)/SDL/%.c.o: SDL/%.c
 	-@$(MKDIR) -p $(dir $@)

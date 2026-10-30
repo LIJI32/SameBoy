@@ -16,6 +16,7 @@
 #import "GBPaletteView.h"
 #import "GBHexStatusBarRepresenter.h"
 #import "NSObject+DefaultsObserver.h"
+#import "GBLuaConsoleController.h"
 #import <pthread/sched.h>
 
 #define likely(x)   GB_likely(x)
@@ -53,6 +54,8 @@
 
 @interface Document ()
 @property GBAudioClient *audioClient;
+@property (readonly) GBLuaConsoleController *luaConsole;
+- (void)updateLuaConsoleState;
 @end
 
 @implementation Document
@@ -124,8 +127,12 @@
     __weak NSThread *_emulationThread;
     
     GBCheatSearchController *_cheatSearchController;
-    
+
     bool _romModified;
+
+    GBLuaEngine *_luaEngine;
+    GBLuaConsoleController *_luaConsole;
+    NSString *_luaScriptPath;
 }
 
 static void boot_rom_load(GB_gameboy_t *gb, GB_boot_rom_t type)
@@ -306,9 +313,32 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
     GB_set_rumble_callback(&_gb, rumbleCallback);
     GB_set_infrared_callback(&_gb, infraredStateChanged);
     GB_debugger_set_reload_callback(&_gb, debuggerReloadCallback);
-    
+
     GB_gameboy_t *gb = &_gb;
     __unsafe_unretained Document *weakSelf = self;
+
+    _luaEngine = [[GBLuaEngine alloc] initWithGameBoy:&_gb];
+    __weak Document *luaSelf = self;
+    _luaEngine.logHandler = ^(NSString *text) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [luaSelf.luaConsole appendText:text];
+        });
+    };
+    _luaEngine.clearHandler = ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [luaSelf.luaConsole clear];
+        });
+    };
+    _luaEngine.messageHandler = ^(NSString *text) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [luaSelf.osdView displayText:text];
+        });
+    };
+    _luaEngine.stateHandler = ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [luaSelf updateLuaConsoleState];
+        });
+    };
     
     [self observeStandardDefaultsKey:@"GBColorCorrection" withBlock:^(NSNumber *value) {
         GB_set_color_correction_mode(gb, value.unsignedIntValue);
@@ -372,6 +402,8 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
 
 - (void)vblankWithType:(GB_vblank_type_t)type
 {
+    [_luaEngine frameEnded];
+
     if (type == GB_VBLANK_TYPE_SKIPPED_FRAME) {
         double frameUsage = GB_debugger_get_frame_cpu_usage(&_gb);
         [_cpuView addSample:frameUsage];
@@ -807,6 +839,8 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
 {
     [_cameraSession stopRunning];
     self.view.gb = NULL;
+    [_luaEngine stopScript];
+    _luaEngine = nil;
     GB_free(&_gb);
     if (_cameraImage) {
         CVBufferRelease(_cameraImage);
@@ -1376,6 +1410,9 @@ static bool is_path_writeable(const char *path)
         [[NSUserDefaults standardUserDefaults] setInteger:self.mainWindow.frame.size.height forKey:@"LastWindowHeight"];
     }
     [self stop];
+    [_luaEngine stopScript];
+    [_luaConsole close];
+    _luaConsole = nil;
     [_consoleOutputLock lock];
     [_consoleOutputTimer invalidate];
     [_consoleOutputLock unlock];
@@ -1488,6 +1525,15 @@ static bool is_path_writeable(const char *path)
     }
     else if ([anItem action] == @selector(saveDocument:)) {
         return _romModified;
+    }
+    else if ([anItem action] == @selector(stopLuaScript:)) {
+        return _luaEngine.isRunning;
+    }
+    else if ([anItem action] == @selector(reloadLuaScript:)) {
+        if ([(id)anItem isKindOfClass:[NSMenuItem class]]) {
+            [(NSMenuItem *)anItem setTitle:_luaEngine.isRunning? @"Restart Lua Script" : @"Run Last Lua Script"];
+        }
+        return _luaScriptPath || [[NSUserDefaults standardUserDefaults] stringForKey:@"GBLastLuaScript"];
     }
     else if ([anItem action] == @selector(saveDocumentAs:)) {
         return _romModified && !self.isCartContainer;
@@ -3027,6 +3073,81 @@ enum GBWindowResizeAction
                                                                                            NULL)];
     }
     return [set allObjects];
+}
+
+#pragma mark - Lua scripting
+
+- (GBLuaEngine *)luaEngine
+{
+    return _luaEngine;
+}
+
+- (GBLuaConsoleController *)luaConsole
+{
+    if (!_luaConsole) {
+        _luaConsole = [[GBLuaConsoleController alloc] initWithActionTarget:self];
+        _luaConsole.window.title = [NSString stringWithFormat:@"Lua Console – %@", self.fileURL.lastPathComponent ?: @"SameBoy"];
+        [self updateLuaConsoleState];
+    }
+    return _luaConsole;
+}
+
+- (void)updateLuaConsoleState
+{
+    [_luaConsole setScriptPath:_luaScriptPath running:_luaEngine.isRunning];
+}
+
+- (void)startLuaScript:(NSString *)path
+{
+    _luaScriptPath = path;
+    [self.luaConsole showWindow:nil];
+    _luaEngine.romName = self.fileURL.lastPathComponent.stringByDeletingPathExtension;
+    GBLuaEngine *engine = _luaEngine;
+    [self performAtomicBlock:^{
+        [engine startScript:path];
+    }];
+    [self updateLuaConsoleState];
+}
+
+- (IBAction)openLuaScript:(id)sender
+{
+    NSOpenPanel *panel = [NSOpenPanel openPanel];
+    panel.allowedFileTypes = @[@"lua"];
+    panel.message = @"Choose a Lua script to run";
+    NSString *lastScript = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBLastLuaScript"];
+    if (lastScript) {
+        panel.directoryURL = [NSURL fileURLWithPath:lastScript.stringByDeletingLastPathComponent];
+    }
+    [panel beginSheetModalForWindow:self.mainWindow completionHandler:^(NSModalResponse result) {
+        if (result != NSModalResponseOK) return;
+        NSString *path = panel.URL.path;
+        [[NSUserDefaults standardUserDefaults] setObject:path forKey:@"GBLastLuaScript"];
+        [self startLuaScript:path];
+    }];
+}
+
+- (IBAction)reloadLuaScript:(id)sender
+{
+    NSString *path = _luaScriptPath ?: [[NSUserDefaults standardUserDefaults] stringForKey:@"GBLastLuaScript"];
+    if (!path) {
+        [self openLuaScript:sender];
+        return;
+    }
+    [self startLuaScript:path];
+}
+
+- (IBAction)stopLuaScript:(id)sender
+{
+    GBLuaEngine *engine = _luaEngine;
+    [self performAtomicBlock:^{
+        [engine stopScript];
+    }];
+    [self updateLuaConsoleState];
+}
+
+- (IBAction)showLuaConsole:(id)sender
+{
+    [self.luaConsole showWindow:nil];
 }
 
 @end

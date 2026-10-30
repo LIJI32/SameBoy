@@ -15,6 +15,7 @@
 #include "audio/audio.h"
 #include "console.h"
 #include "save_png/save_png.h"
+#include <Lua/lua_engine.h>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -39,6 +40,14 @@ static SDL_GLContext gl_context = NULL;
 static bool console_supported = false;
 static bool battery_dirty = false;
 static unsigned battery_timer = 0;
+static GB_lua_engine_t *lua_engine = NULL;
+static const char *startup_lua_script = NULL;
+char *pending_lua_script = NULL;
+
+const char *last_lua_script(void)
+{
+    return lua_engine? GB_lua_engine_get_script_path(lua_engine) : NULL;
+}
 
 bool uses_gl(void)
 {
@@ -712,6 +721,10 @@ static uint32_t rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b)
 
 static void vblank(GB_gameboy_t *gb, GB_vblank_type_t type)
 {
+    if (lua_engine) {
+        GB_lua_engine_frame_ended(lua_engine);
+    }
+
     if (underclock_down && clock_mutliplier > 0.5) {
         clock_mutliplier -= 1.0/16;
         GB_set_clock_multiplier(gb, clock_mutliplier);
@@ -919,7 +932,56 @@ static void initialize_windows_console(void)
 }
 
 #endif
-    
+
+static void lua_log(void *user_data, const char *text, size_t length)
+{
+    GB_log(&gb, "%.*s", (int)length, text);
+    if (!console_supported) {
+        fflush(stdout);
+    }
+}
+
+static void lua_error(void *user_data, const char *message)
+{
+    GB_attributed_log(&gb, GB_LOG_BOLD, "\nLua error: %s\n", message);
+    show_osd_text("Lua script error,\nsee console for details");
+}
+
+static void lua_message(void *user_data, const char *text)
+{
+    static char message[256];
+    snprintf(message, sizeof(message), "%s", text);
+    show_osd_text(message);
+}
+
+static void lua_execution_callback(GB_gameboy_t *gb, uint16_t address, uint8_t opcode)
+{
+    GB_lua_engine_executed_address(lua_engine, address, opcode);
+}
+
+static void start_lua_script(const char *path)
+{
+#ifdef _WIN32
+    /* Script output and errors go to the console, which Windows GUI apps don't have by default */
+    initialize_windows_console();
+#endif
+    /* Like BizHawk, report the ROM's file name without its extension */
+    const char *name = filename;
+    for (const char *c = filename; *c; c++) {
+        if (*c == '/' || *c == '\\') {
+            name = c + 1;
+        }
+    }
+    char rom_name[strlen(name) + 1];
+    strcpy(rom_name, name);
+    char *extension = strrchr(rom_name, '.');
+    if (extension && extension != rom_name) {
+        *extension = 0;
+    }
+    GB_lua_engine_set_rom_name(lua_engine, rom_name);
+    GB_lua_engine_start_script(lua_engine, path);
+}
+
 static bool doing_hot_swap = false;
 static bool handle_pending_command(void)
 {
@@ -975,15 +1037,33 @@ static bool handle_pending_command(void)
             
         case GB_SDL_NO_COMMAND:
             return false;
-            
+
+        case GB_SDL_LUA_START_COMMAND:
+            if (pending_lua_script) {
+                start_lua_script(pending_lua_script);
+                free(pending_lua_script);
+                pending_lua_script = NULL;
+            }
+            return false;
+
+        case GB_SDL_LUA_STOP_COMMAND:
+            GB_lua_engine_stop_script(lua_engine);
+            return false;
+
+        case GB_SDL_NEW_FILE_COMMAND:
+            /* Scripts are written for a specific game, so they don't carry over to another ROM */
+            GB_lua_engine_stop_script(lua_engine);
+            GB_save_battery(&gb, battery_save_path_ptr);
+            return true;
+
         case GB_SDL_CART_SWAP_COMMAND:
             doing_hot_swap = true;
         case GB_SDL_RESET_COMMAND:
-        case GB_SDL_NEW_FILE_COMMAND:
             GB_save_battery(&gb, battery_save_path_ptr);
             return true;
-            
+
         case GB_SDL_QUIT_COMMAND:
+            GB_lua_engine_stop_script(lua_engine);
             GB_save_battery(&gb, battery_save_path_ptr);
             exit(0);
         case GB_SDL_DEBUGGER_INTERRUPT_COMMAND:
@@ -1193,6 +1273,14 @@ restart:;
         }
         
         GB_debugger_set_reload_callback(&gb, debugger_reload_callback);
+
+        static const GB_lua_engine_callbacks_t lua_callbacks = {
+            .log = lua_log,
+            .error = lua_error,
+            .message = lua_message,
+            .execution_callback = lua_execution_callback,
+        };
+        lua_engine = GB_lua_engine_create(&gb, &lua_callbacks, NULL);
     }
     if (stop_on_start) {
         stop_on_start = false;
@@ -1270,6 +1358,11 @@ restart:;
     GB_debugger_load_symbol_file(&gb, symbols_path);
         
     screen_size_changed(false);
+
+    if (startup_lua_script) {
+        start_lua_script(startup_lua_script);
+        startup_lua_script = NULL;
+    }
 
     /* Run emulation */
     while (true) {
@@ -1455,11 +1548,18 @@ int main(int argc, char **argv)
     bool fullscreen = get_arg_flag("--fullscreen", &argc, argv) || get_arg_flag("-f", &argc, argv);
     bool nogl = get_arg_flag("--nogl", &argc, argv);
     stop_on_start = get_arg_flag("--stop-debugger", &argc, argv) || get_arg_flag("-s", &argc, argv);
-    
+    startup_lua_script = get_arg_option("--lua", &argc, argv);
+#ifdef GB_DISABLE_LUA
+    if (startup_lua_script) {
+        fprintf(stderr, "This build of SameBoy does not support Lua scripting, ignoring --lua.\n");
+        startup_lua_script = NULL;
+    }
+#endif
+
 
     if (argc > 2 || (argc == 2 && argv[1][0] == '-')) {
         fprintf(stderr, "SameBoy v" GB_VERSION "\n");
-        fprintf(stderr, "Usage: %s [--fullscreen|-f] [--nogl] [--stop-debugger|-s] [--model <model>] <rom>\n", argv[0]);
+        fprintf(stderr, "Usage: %s [--fullscreen|-f] [--nogl] [--stop-debugger|-s] [--model <model>] [--lua <script>] <rom>\n", argv[0]);
         exit(1);
     }
     

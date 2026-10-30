@@ -61,7 +61,7 @@ static void wait_mouse_up(void)
     }
 }
 
-char *do_open_rom_dialog(void)
+static char *open_file_dialog(const char *title, const char *filter_name, const char *const *patterns)
 {
     wait_mouse_up();
     static void *handle = NULL;
@@ -96,20 +96,19 @@ char *do_open_rom_dialog(void)
     gtk_init_check(0, 0);
     
     
-    void *dialog = gtk_file_chooser_dialog_new("Open ROM",
+    void *dialog = gtk_file_chooser_dialog_new(title,
                                                0,
                                                GTK_FILE_CHOOSER_ACTION_OPEN,
                                                "_Cancel", GTK_RESPONSE_CANCEL,
                                                "_Open", GTK_RESPONSE_ACCEPT,
                                                NULL );
-    
-    
+
+
     void *filter = gtk_file_filter_new();
-    gtk_file_filter_add_pattern(filter, "*.gb");
-    gtk_file_filter_add_pattern(filter, "*.gbc");
-    gtk_file_filter_add_pattern(filter, "*.sgb");
-    gtk_file_filter_add_pattern(filter, "*.isx");
-    gtk_file_filter_set_name(filter, "Game Boy ROMs");
+    for (const char *const *pattern = patterns; *pattern; pattern++) {
+        gtk_file_filter_add_pattern(filter, *pattern);
+    }
+    gtk_file_filter_set_name(filter, filter_name);
     gtk_file_chooser_add_filter(dialog, filter);
     
     int res = gtk_dialog_run(dialog);
@@ -136,6 +135,16 @@ char *do_open_rom_dialog(void)
 lazy_error:
     fprintf(stderr, "Failed to display GTK dialog\n");
     return NULL;
+}
+
+char *do_open_rom_dialog(void)
+{
+    return open_file_dialog("Open ROM", "Game Boy ROMs", (const char *const []){"*.gb", "*.gbc", "*.sgb", "*.isx", NULL});
+}
+
+char *do_open_lua_dialog(void)
+{
+    return open_file_dialog("Open Lua Script", "Lua Scripts", (const char *const []){"*.lua", NULL});
 }
 
 char *do_open_folder_dialog(void)
