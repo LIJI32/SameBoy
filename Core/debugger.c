@@ -305,7 +305,7 @@ static void write_lvalue(GB_gameboy_t *gb, lvalue_t lvalue, uint16_t value)
 
 static value_t add(value_t a, value_t b) {return FIX_BANK(a.value + b.value);}
 static value_t sub(value_t a, value_t b) {return FIX_BANK(a.value - b.value);}
-static value_t mul(value_t a, value_t b) {return FIX_BANK(a.value * b.value);}
+static value_t mul(value_t a, value_t b) {return FIX_BANK((uint32_t)a.value * b.value);}
 static value_t _div(value_t a, value_t b) 
 {
     if (b.value == 0) {
@@ -323,8 +323,8 @@ static value_t mod(value_t a, value_t b)
 static value_t and(value_t a, value_t b) {return FIX_BANK(a.value & b.value);}
 static value_t or(value_t a, value_t b) {return FIX_BANK(a.value | b.value);}
 static value_t xor(value_t a, value_t b) {return FIX_BANK(a.value ^ b.value);}
-static value_t shleft(value_t a, value_t b) {return FIX_BANK(a.value << b.value);}
-static value_t shright(value_t a, value_t b) {return FIX_BANK(a.value >> b.value);}
+static value_t shleft(value_t a, value_t b) {return FIX_BANK(b.value >= 16 ? 0 : a.value << b.value);}
+static value_t shright(value_t a, value_t b) {return FIX_BANK(b.value >= 16 ? 0 : a.value >> b.value);}
 static value_t assign(GB_gameboy_t *gb, lvalue_t a, uint16_t b)
 {
     write_lvalue(gb, a, b);
