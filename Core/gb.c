@@ -577,6 +577,7 @@ int GB_load_isx(GB_gameboy_t *gb, const char *path)
 
                 READ(length);
                 length = LE16(length);
+                if (!length) goto error;
 
                 size_t needed_size = bank * 0x4000 + address + length;
                 if (needed_size > 1024 * 1024 * 32) goto error;
@@ -601,8 +602,8 @@ int GB_load_isx(GB_gameboy_t *gb, const char *path)
                 
                 READ(length);
                 length = LE32(length);
+                if (!length || address > 1024 * 1024 * 32 || length > 1024 * 1024 * 32 - address) goto error;
                 size_t needed_size = address + length;
-                if (needed_size > 1024 * 1024 * 32) goto error;
 
                 if (gb->rom_size < needed_size) {
                     gb->rom = realloc(gb->rom, needed_size);
@@ -745,9 +746,9 @@ error:
     GB_log(gb, "Invalid or unsupported ISX file.\n");
     if (gb->rom) {
         free(gb->rom);
-        gb->rom = old_rom;
-        gb->rom_size = old_size;
     }
+    gb->rom = old_rom;
+    gb->rom_size = old_size;
     fclose(f);
     gb->tried_loading_sgb_border = false;
     gb->has_sgb_border = false;
