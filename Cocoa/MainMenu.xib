@@ -569,14 +569,14 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="afI-BR-65k"/>
-                            <menuItem title="Show Memory" id="UIa-n7-LSa">
-                                <modifierMask key="keyEquivalentModifierMask"/>
+                            <menuItem title="Show Memory" keyEquivalent="M" id="UIa-n7-LSa">
+                                <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                                 <connections>
                                     <action selector="showMemory:" target="-1" id="Ngn-2u-n12"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Show VRAM Viewer" id="EYc-et-cG0">
-                                <modifierMask key="keyEquivalentModifierMask"/>
+                            <menuItem title="Show VRAM Viewer" keyEquivalent="V" id="EYc-et-cG0">
+                                <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                                 <connections>
                                     <action selector="showVRAMViewer:" target="-1" id="nhw-4h-Sl4"/>
                                 </connections>

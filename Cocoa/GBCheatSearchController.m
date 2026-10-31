@@ -69,6 +69,7 @@
                 return;
             }
             _resultCount = GB_cheat_search_result_count(_document.gb);
+            free(_results);
             _results = malloc(sizeof(*_results) * _resultCount);
             GB_cheat_search_get_results(_document.gb, _results);
         }];
