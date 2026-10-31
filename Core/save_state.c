@@ -442,6 +442,13 @@ static void sanitize_state(GB_gameboy_t *gb)
         gb->apu.apu_cycles >>= 2;
         gb->apu.apu_cycles_in_2mhz = true;
     }
+
+    sanitize_bool(&gb->apu.noise_feedback_latch);
+    for (unsigned i = GB_SQUARE_1; i <= GB_SQUARE_2; i++) {
+        sanitize_bool(&gb->apu.square_clock_active[i]);
+        sanitize_bool(&gb->apu.square_duty_output[i]);
+        gb->apu.square_clock_active[i] |= gb->apu.is_active[i];
+    }
     
     if (gb->n_visible_objs > 10) {
         gb->n_visible_objs = 10;

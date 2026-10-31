@@ -160,6 +160,11 @@ typedef struct
     bool lfsr_stepped_in_narrow;
     bool lfsr_bit_7_before_step; // Used by some corruptions?
     bool noise_started_with_dac_disabled; // TODO: Background counting behaves slightly different this way?
+    bool noise_feedback_latch; // DMG JOTO, clocked opposite the shift stages
+    /* DMG pulse frequency gates survive length/sweep expiry until DAC or APU off. */
+    bool square_clock_active[2];
+    /* DMG DUWO/DOME hold the duty bit independently of the envelope volume. */
+    bool square_duty_output[2];
 } GB_apu_t;
 
 typedef enum {
@@ -198,6 +203,11 @@ typedef struct {
     
     GB_band_limited_t band_limited[GB_N_CHANNELS];
     double dac_discharge[GB_N_CHANNELS];
+    struct {
+        uint8_t multiplier[GB_N_CHANNELS];
+        uint8_t enabled;
+    } dac_delay[GB_BAND_LIMITED_WIDTH / 2];
+    uint8_t dac_delay_pos;
     bool channel_muted[GB_N_CHANNELS];
     bool edge_triggered[GB_N_CHANNELS];
 
