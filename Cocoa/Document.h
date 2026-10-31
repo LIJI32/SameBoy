@@ -87,6 +87,7 @@ enum model {
 
 @property IBOutlet GBCPUView *cpuView;
 @property IBOutlet NSTextField *cpuCounter;
+@property IBOutlet NSSegmentedControl *vramTabs;
 
 + (NSImage *) imageFromData:(NSData *)data width:(NSUInteger) width height:(NSUInteger) height scale:(double) scale;
 - (void) performAtomicBlock: (void (^)())block;

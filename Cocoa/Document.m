@@ -1492,6 +1492,9 @@ static bool is_path_writeable(const char *path)
     else if ([anItem action] == @selector(saveDocumentAs:)) {
         return _romModified && !self.isCartContainer;
     }
+    else if ([anItem action] == @selector(switchVRAMTab:)) {
+        return _vramWindow.isKeyWindow;
+    }
     
     return [super validateUserInterfaceItem:anItem];
 }
@@ -3027,6 +3030,13 @@ enum GBWindowResizeAction
                                                                                            NULL)];
     }
     return [set allObjects];
+}
+
+- (IBAction)switchVRAMTab:(id)sender
+{
+    [_vramTabs setSelectedSegment:[sender tag]];
+    [_vramTabs sendAction:_vramTabs.action
+                       to:_vramTabs.target];
 }
 
 @end

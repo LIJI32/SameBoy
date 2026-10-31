@@ -50,6 +50,7 @@
                 <outlet property="view" destination="uqf-pe-VAF" id="HMP-rf-Yqk"/>
                 <outlet property="vramStatusLabel" destination="6vK-IP-PmP" id="A2d-dI-R3J"/>
                 <outlet property="vramTabView" destination="AZz-Mh-rPA" id="ZCG-SP-Lfw"/>
+                <outlet property="vramTabs" destination="Aul-vO-dCK" id="27m-ws-Ovy"/>
                 <outlet property="vramWindow" destination="mbr-db-iZh" id="VZj-IV-t6O"/>
                 <outlet property="window" destination="xOd-HO-29H" id="JIz-fz-R2o"/>
             </connections>

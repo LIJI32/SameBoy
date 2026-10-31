@@ -692,6 +692,11 @@ static value_t debugger_evaluate(GB_gameboy_t *gb, const char *string,
         base = 16;
         length--;
     }
+    else if (string[0] == '0' && (string[1] == 'x' || string[1] == 'X')) {
+        string += 2;
+        base = 16;
+        length -= 2;
+    }
     uint16_t literal = (uint16_t) (strtol(string, &end, base));
     if (end != string + length) {
         GB_log(gb, "Failed to parse: %.*s\n", (unsigned) length, string);
@@ -1544,6 +1549,9 @@ static bool examine(GB_gameboy_t *gb, char *arguments, char *modifiers, const de
             char *end;
             if (modifiers[0] == '$' && modifiers_length > 1) {
                 count = (uint16_t) (strtol(modifiers + 1, &end, 16));
+            }
+            else if (modifiers[0] == '0' && (modifiers[1] == 'x' || modifiers[1] == 'X') && modifiers_length > 2) {
+                count = (uint16_t) (strtol(modifiers + 2, &end, 16));
             }
             else {
                 count = (uint16_t) (strtol(modifiers, &end, 10));
