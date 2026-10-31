@@ -146,14 +146,12 @@ static void byte_receive_completed(GB_gameboy_t *gb, uint8_t byte_received)
             gb->printer.checksum ^= byte_received << 8;
             if (gb->printer.checksum) {
                 gb->printer.status |= 1; /* Checksum error*/
-                gb->printer.command_state = GB_PRINTER_COMMAND_MAGIC1;
-                return;
             }
             gb->printer.byte_to_send = 0x81;
 
             break;
         case GB_PRINTER_COMMAND_ACTIVE:
-            if ((gb->printer.command_id & 0xF) == GB_PRINTER_INIT_COMMAND) {
+            if ((gb->printer.command_id & 0xF) == GB_PRINTER_INIT_COMMAND && !gb->printer.checksum) {
                 /* Games expect INIT commands to return 0? */
                 gb->printer.byte_to_send = 0;
             }
@@ -166,7 +164,9 @@ static void byte_receive_completed(GB_gameboy_t *gb, uint8_t byte_received)
             break;
         case GB_PRINTER_COMMAND_STATUS:
             gb->printer.command_state = GB_PRINTER_COMMAND_MAGIC1;
-            handle_command(gb);
+            if (!gb->printer.checksum) {
+                handle_command(gb);
+            }
             return;
     }
 
