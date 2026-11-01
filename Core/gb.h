@@ -40,6 +40,7 @@ extern "C" {
 #include "cheat_search.h"
 #include "rumble.h"
 #include "workboy.h"
+#include "barcode_boy.h"
 #include "random.h"
 
 #ifdef GB_INTERNAL
@@ -333,6 +334,7 @@ typedef GB_ENUM(uint8_t, {
     GB_ACCESSORY_NONE,
     GB_ACCESSORY_PRINTER,
     GB_ACCESSORY_WORKBOY,
+    GB_ACCESSORY_BARCODE_BOY,
 }) GB_accessory_t;
 
 /* When state saving, each section is dumped independently of other sections.
@@ -651,6 +653,7 @@ struct GB_gameboy_internal_s {
         union {
             GB_printer_t printer;
             GB_workboy_t workboy;
+            GB_barcode_boy_t barcode_boy;
         };
     )
 

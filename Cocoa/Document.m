@@ -1458,6 +1458,12 @@ static bool is_path_writeable(const char *path)
     else if ([anItem action] == @selector(connectWorkboy:)) {
         [(NSMenuItem *)anItem setState:GB_get_built_in_accessory(&_gb) == GB_ACCESSORY_WORKBOY];
     }
+    else if ([anItem action] == @selector(connectBarcodeBoy:)) {
+        [(NSMenuItem *)anItem setState:GB_get_built_in_accessory(&_gb) == GB_ACCESSORY_BARCODE_BOY];
+    }
+    else if ([anItem action] == @selector(scanBarcode:)) {
+        return GB_get_built_in_accessory(&_gb) == GB_ACCESSORY_BARCODE_BOY;
+    }
     else if ([anItem action] == @selector(connectLinkCable:)) {
         [(NSMenuItem *)anItem setState:[(NSMenuItem *)anItem representedObject] == _master ||
                                        [(NSMenuItem *)anItem representedObject] == _slave];
@@ -2545,6 +2551,71 @@ enum GBWindowResizeAction
     [self disconnectLinkCable];
     [self performAtomicBlock:^{
         GB_connect_workboy(&_gb, setWorkboyTime, getWorkboyTime);
+    }];
+}
+
+- (IBAction)connectBarcodeBoy:(id)sender
+{
+    [self disconnectLinkCable];
+    [self performAtomicBlock:^{
+        GB_connect_barcode_boy(&_gb);
+    }];
+    [self.osdView displayText:@"Barcode Boy connected\nUse Scan Barcode… (⌘B) to swipe a card"];
+}
+
+- (IBAction)scanBarcode:(id)sender
+{
+    if (GB_get_built_in_accessory(&_gb) != GB_ACCESSORY_BARCODE_BOY) return;
+    
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.messageText = @"Scan Barcode";
+    alert.informativeText = @"Enter the 13-digit EAN/JAN number printed under the card's barcode.";
+    [alert addButtonWithTitle:@"Scan"];
+    [alert addButtonWithTitle:@"Cancel"];
+    
+    NSTextField *field = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 220, 24)];
+    [(NSTextFieldCell *)field.cell setPlaceholderString:@"4907981000301"]; // NSTextField.placeholderString needs 10.10
+    field.font = [NSFont userFixedPitchFontOfSize:15];
+    NSString *last = [[NSUserDefaults standardUserDefaults] stringForKey:@"GBBarcodeBoyLastCode"];
+    if (last) {
+        field.stringValue = last;
+    }
+    alert.accessoryView = field;
+    alert.window.initialFirstResponder = field;
+    
+    [alert beginSheetModalForWindow:self.mainWindow completionHandler:^(NSModalResponse response) {
+        if (response != NSAlertFirstButtonReturn) return;
+        
+        /* Accept spaces and hyphens, keep digits only */
+        NSMutableString *digits = [NSMutableString string];
+        NSString *input = field.stringValue;
+        for (NSUInteger i = 0; i < input.length; i++) {
+            unichar c = [input characterAtIndex:i];
+            if (c >= '0' && c <= '9') {
+                [digits appendFormat:@"%C", c];
+            }
+            else if (c >= 0xFF10 && c <= 0xFF19) { // Full-width digits
+                [digits appendFormat:@"%C", (unichar)(c - 0xFF10 + '0')];
+            }
+        }
+        
+        if (digits.length != GB_BARCODE_BOY_DIGITS) {
+            NSAlert *error = [[NSAlert alloc] init];
+            error.messageText = @"Invalid barcode";
+            error.informativeText = [NSString stringWithFormat:@"A Barcode Boy card number must have exactly 13 digits (got %lu).",
+                                     (unsigned long)digits.length];
+            [error beginSheetModalForWindow:self.mainWindow completionHandler:nil];
+            return;
+        }
+        
+        [[NSUserDefaults standardUserDefaults] setObject:digits forKey:@"GBBarcodeBoyLastCode"];
+        __block bool accepted = false;
+        [self performAtomicBlock:^{
+            accepted = GB_barcode_boy_scan(&_gb, digits.UTF8String);
+        }];
+        if (accepted) {
+            [self.osdView displayText:[NSString stringWithFormat:@"Barcode scanned\n%@", digits]];
+        }
     }];
 }
 

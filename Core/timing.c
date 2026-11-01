@@ -523,6 +523,10 @@ void GB_advance_cycles(GB_gameboy_t *gb, uint8_t cycles)
         printer_run(gb, cycles);
     }
     
+    if (unlikely(gb->accessory == GB_ACCESSORY_BARCODE_BOY)) {
+        GB_barcode_boy_run(gb, cycles);
+    }
+    
 #ifndef GB_DISABLE_DEBUGGER
     gb->absolute_debugger_ticks += cycles;
     *((gb->halted || gb->stopped)? &gb->current_frame_idle_cycles : &gb->current_frame_busy_cycles) += cycles;
