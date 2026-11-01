@@ -45,7 +45,7 @@
 - (void)copyBytes:(unsigned char *)dst range:(HFRange)range
 {
     // Do everything in 0x1000 chunks, never cross a 0x1000 boundary
-    if ((range.location & 0xF000) != ((range.location + range.length) & 0xF000)) {
+    if (range.length > 0x1000 - (range.location & 0xFFF)) {
         size_t partial = 0x1000 - (range.location & 0xFFF);
         [self copyBytes:dst + partial range:HFRangeMake(range.location + partial, range.length - partial)];
         range.length = partial;
@@ -157,7 +157,7 @@
 {
     if (slice.length != range.length) return; /* Insertion is not allowed, only overwriting. */
     // Do everything in 0x1000 chunks, never cross a 0x1000 boundary
-    if ((range.location & 0xF000) != ((range.location + range.length) & 0xF000)) {
+    if (range.length > 0x1000 - (range.location & 0xFFF)) {
         size_t partial = 0x1000 - (range.location & 0xFFF);
         if (slice.length - partial) {
             [self insertByteSlice:[slice subsliceWithRange:HFRangeMake(partial, slice.length - partial)]

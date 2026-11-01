@@ -156,7 +156,7 @@ static double blend(double from, double to, double position)
         newName = @"Untitled Palette";
     }
     while (themes[newName]) {
-        newName = [NSString stringWithFormat:@"%@ %d", object, i];
+        newName = [NSString stringWithFormat:@"%@ %d", object, i++];
     }
     themes[newName] = themes[oldName];
     [themes removeObjectForKey:oldName];

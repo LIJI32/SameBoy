@@ -1470,7 +1470,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
             
             if (_audioBufferPosition < nFrames) {
                 // Not enough audio
-                memset(buffer, 0, (nFrames - _audioBufferPosition) * sizeof(*buffer));
+                memset(buffer + _audioBufferPosition, 0, (nFrames - _audioBufferPosition) * sizeof(*buffer));
                 memcpy(buffer, _audioBuffer, _audioBufferPosition * sizeof(*buffer));
                 // Do not reset the audio position to avoid more underflows
             }
@@ -2536,6 +2536,8 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
          topMargin:(unsigned) topMargin bottomMargin: (unsigned) bottomMargin
           exposure:(unsigned) exposure
 {
+    if (!height && !topMargin && !bottomMargin) return;
+
     uint32_t paddedImage[160 * (topMargin + height + bottomMargin)];
     memset(paddedImage, 0xFF, sizeof(paddedImage));
     memcpy(paddedImage + (160 * topMargin), imageBytes, 160 * height * sizeof(imageBytes[0]));
