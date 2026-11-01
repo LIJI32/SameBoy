@@ -11,6 +11,7 @@
 #include "gui.h"
 #include "font.h"
 #include "audio/audio.h"
+#include <unistd.h>
 
 #ifdef _WIN32
 #include <dwmapi.h>
@@ -465,6 +466,7 @@ static void save_cheats(void)
     size_t path_length = strlen(filename);
     char cheat_path[path_length + 5];
     replace_extension(filename, path_length, cheat_path, ".cht");
+    unlink(cheat_path);
     GB_save_cheats(&gb, cheat_path);
 }
 
