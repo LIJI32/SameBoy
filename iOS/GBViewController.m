@@ -328,6 +328,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     [_backgroundView reloadThemeImages];
     
     [self setNeedsStatusBarAppearanceUpdate];
+    [self positionAuxiliaryButtons];
 }
 
 - (bool)setupWindow
@@ -502,7 +503,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     _printerSpinner = [[UIActivityIndicatorView alloc] init];
     _printerSpinner.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhite;
     _printerSpinner.color = _backgroundView.layout.theme.buttonColor;
-    [self didRotateFromInterfaceOrientation:CurrentOrientation()];
+    [self positionAuxiliaryButtons];
     
     if (@available(iOS 13.0, *)) {
         [_printerButton  setImage:[UIImage systemImageNamed:@"printer"
@@ -1073,7 +1074,7 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
     if (_lastHingeStatus != _hinge.status) {
         [self recreateLayoutsWithThemeNamed:[[NSUserDefaults standardUserDefaults] stringForKey:@"GBInterfaceTheme"]];
         [[NSNotificationCenter defaultCenter] postNotificationName:@"HingeStatusChanged" object:nil];
-        [self didRotateFromInterfaceOrientation:UIInterfaceOrientationUnknown];
+        [self positionAuxiliaryButtons];
     }
     [self start];
 }
@@ -1333,9 +1334,10 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
         _window.backgroundColor = _backgroundView.fullScreenMode? [UIColor blackColor] :
                                                                   layout.theme.backgroundGradientBottom;
     }
+    [self positionAuxiliaryButtons];
 }
 
-- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
+- (void)positionAuxiliaryButtons
 {
     UIEdgeInsets insets = self.window.safeAreaInsets;
     bool landscape = true;
@@ -1372,8 +1374,6 @@ static void rumbleCallback(GB_gameboy_t *gb, double amp)
                                        _backgroundView.bounds.size.height - 8 - insets.bottom - 32 - (landscape? 0 : (32 + 4)),
                                        32,
                                        32);
-
-    [super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations
