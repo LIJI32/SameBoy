@@ -227,13 +227,14 @@
 - (NSString *)renameROM:(NSString *)rom toName:(NSString *)newName
 {
     newName = [self makeNameUnique:newName];
+    NSString *root = self.localRoot;
+    if (![[NSFileManager defaultManager] moveItemAtPath:[root stringByAppendingPathComponent:rom]
+                                              toPath:[root stringByAppendingPathComponent:newName] error:nil]) {
+        return nil;
+    }
     if ([rom isEqualToString:_currentROM]) {
         self.currentROM = newName;
     }
-    NSString *root = self.localRoot;
-
-    [[NSFileManager defaultManager] moveItemAtPath:[root stringByAppendingPathComponent:rom]
-                                            toPath:[root stringByAppendingPathComponent:newName] error:nil];
     return newName;
 }
 

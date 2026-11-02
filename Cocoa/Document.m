@@ -486,7 +486,7 @@ static void debuggerReloadCallback(GB_gameboy_t *gb)
         
         if (_audioBufferPosition < nFrames) {
             // Not enough audio
-            memset(buffer, 0, (nFrames - _audioBufferPosition) * sizeof(*buffer));
+            memset(buffer + _audioBufferPosition, 0, (nFrames - _audioBufferPosition) * sizeof(*buffer));
             memcpy(buffer, _audioBuffer, _audioBufferPosition * sizeof(*buffer));
             // Do not reset the audio position to avoid more underflows
         }
@@ -596,7 +596,14 @@ static unsigned *multiplication_table_for_frequency(unsigned frequency)
     _audioClient = nil;
     self.view.mouseHidingEnabled = false;
     GB_save_battery(&_gb, self.savPath.UTF8String);
-    GB_save_cheats(&_gb, self.chtPath.UTF8String);
+    size_t cheatCount;
+    GB_get_cheats(&_gb, &cheatCount);
+    if (cheatCount) {
+        GB_save_cheats(&_gb, self.chtPath.UTF8String);
+    }
+    else if (self.chtPath) {
+        [[NSFileManager defaultManager] removeItemAtPath:self.chtPath error:nil];
+    }
     unsigned time_to_alarm = GB_time_to_alarm(&_gb);
     
     if (time_to_alarm) {
@@ -2155,7 +2162,7 @@ enum GBWindowResizeAction
         case GBMemoryExternalRAM: {
             size_t ram_size;
             GB_get_direct_access(&_gb, GB_DIRECT_ACCESS_CART_RAM, &ram_size, NULL);
-            n_banks = (ram_size + 0x1FFF) / 0x2000;
+            n_banks = MAX(1, (ram_size + 0x1FFF) / 0x2000);
             break;
         }
         case GBMemoryRAM:
