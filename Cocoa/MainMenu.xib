@@ -491,6 +491,18 @@
                                     <action selector="connectWorkboy:" target="-1" id="6vS-bq-wAX"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Barcode Boy" secondaryImage="barcode" catalog="system" id="Bcb-Bo-Y01">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="connectBarcodeBoy:" target="-1" id="Bcb-Bo-Y02"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="Bcb-Bo-Y03"/>
+                            <menuItem title="Scan Barcode…" secondaryImage="barcode.viewfinder" catalog="system" keyEquivalent="b" id="Bcb-Bo-Y04">
+                                <connections>
+                                    <action selector="scanBarcode:" target="-1" id="Bcb-Bo-Y05"/>
+                                </connections>
+                            </menuItem>
                         </items>
                     </menu>
                 </menuItem>

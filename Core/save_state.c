@@ -461,6 +461,18 @@ static void sanitize_state(GB_gameboy_t *gb)
         gb->printer.image_offset /= 160 * 8;
         gb->printer.image_offset *= 160 * 8;
     }
+    if (gb->accessory == GB_ACCESSORY_BARCODE_BOY) {
+        sanitize_bool(&gb->barcode_boy.bit_to_send);
+        sanitize_bool(&gb->barcode_boy.handshake_done);
+        sanitize_bool(&gb->barcode_boy.scan_pending);
+        gb->barcode_boy.bits_received &= 7;
+        gb->barcode_boy.handshake_position &= 3;
+        gb->barcode_boy.bit_position &= 7;
+        if (gb->barcode_boy.packet_position >= GB_BARCODE_BOY_PACKET_SIZE) {
+            gb->barcode_boy.packet_position = 0;
+            gb->barcode_boy.scan_pending = false;
+        }
+    }
 }
 
 static bool dump_section(virtual_file_t *file, const void *src, uint32_t size)
