@@ -42,6 +42,25 @@ static uint32_t color_to_int(NSColor *color)
     AuthorizationRef _auth;
 }
 
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender
+{
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"GBConfirmClose"]) return NSTerminateNow;
+    bool hasOpenGame = false;
+    for (NSDocument *document in [NSDocumentController sharedDocumentController].documents) {
+        if ([document isKindOfClass:[Document class]]) {
+            hasOpenGame = true;
+            break;
+        }
+    }
+    if (!hasOpenGame) return NSTerminateNow;
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.messageText = @"Quit SameBoy?";
+    alert.informativeText = @"Progress since your last in-game save will be lost.";
+    [alert addButtonWithTitle:@"Quit"];
+    [alert addButtonWithTitle:@"Cancel"];
+    return [alert runModal] == NSAlertFirstButtonReturn? NSTerminateNow : NSTerminateCancel;
+}
+
 - (void) applicationDidFinishLaunching:(NSNotification *)notification
 {
     // Refresh icon if launched via a software update

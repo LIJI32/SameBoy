@@ -1375,6 +1375,17 @@ static bool is_path_writeable(const char *path)
     [super showWindows];
 }
 
+- (BOOL)windowShouldClose:(NSWindow *)sender
+{
+    if (sender != self.mainWindow || ![[NSUserDefaults standardUserDefaults] boolForKey:@"GBConfirmClose"]) return true;
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.messageText = @"Close this game?";
+    alert.informativeText = @"Progress since your last in-game save will be lost.";
+    [alert addButtonWithTitle:@"Close"];
+    [alert addButtonWithTitle:@"Cancel"];
+    return [alert runModal] == NSAlertFirstButtonReturn;
+}
+
 - (void)close
 {
     [self disconnectLinkCable];
