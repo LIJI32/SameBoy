@@ -127,7 +127,7 @@ static const NSTimeInterval HFCaretBlinkFrequency = 0.56;
         CGFloat advancePerColumn = [self advancePerColumn];
         HFASSERT(advancePerColumn > 0);
         CGFloat floatColumn = insetX / advancePerColumn;
-        HFASSERT(floatColumn >= 0 && floatColumn <= NSUIntegerMax);
+        HFASSERT(floatColumn >= 0 && floatColumn <= (CGFloat)NSUIntegerMax);
         CGFloat startOfColumn = advancePerColumn * HFFloor(floatColumn);
         HFASSERT(startOfColumn <= insetX);
         CGFloat xOffsetWithinColumn = insetX - startOfColumn;
@@ -137,7 +137,7 @@ static const NSTimeInterval HFCaretBlinkFrequency = 0.56;
         byteIndexWithinRow = bytesPerColumn * (NSUInteger)floatColumn + byteIndexWithinColumn; //this may trigger overflow to the next column, but that's OK
         byteIndexWithinRow = MIN(byteIndexWithinRow, bytesPerLine); //don't let clicking to the right of the line overflow to the next line
     }
-    HFASSERT(floatRow >= 0 && floatRow <= NSUIntegerMax);
+    HFASSERT(floatRow >= 0 && floatRow <= (CGFloat)NSUIntegerMax);
     NSUInteger row = (NSUInteger)floatRow;
     return (row * bytesPerLine + byteIndexWithinRow) / bytesPerCharacter;
 }
@@ -1434,7 +1434,7 @@ static size_t unionAndCleanLists(NSRect *rectList, id *valueList, size_t count) 
 - (NSUInteger)availableLineCount {
     CGFloat result = (CGFloat)ceil(NSHeight([self bounds]) / [self lineHeight]);
     HFASSERT(result >= 0.);
-    HFASSERT(result <= NSUIntegerMax);
+    HFASSERT(result <= (CGFloat)NSUIntegerMax);
     return (NSUInteger)result;
 }
 
