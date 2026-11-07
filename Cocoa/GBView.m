@@ -378,6 +378,18 @@ static const uint8_t workboy_vk_to_key[] = {
     [super flip];
 }
 
+- (void)setTurbo:(bool)enabled
+{
+    if (self.document.isSlave) {
+        GB_set_turbo_mode(self.document.partner.gb, enabled, false);
+    }
+    else {
+        GB_set_turbo_mode(_gb, enabled, enabled && self.isRewinding);
+    }
+    _turbo = enabled;
+    analogClockMultiplierValid = false;
+}
+
 -(void)keyDown:(NSEvent *)theEvent
 {
     if ([theEvent type] != NSEventTypeFlagsChanged && theEvent.isARepeat) return;
@@ -410,14 +422,7 @@ static const uint8_t workboy_vk_to_key[] = {
                 handled = true;
                 switch (button) {
                     case GBTurbo:
-                        if (self.document.isSlave) {
-                            GB_set_turbo_mode(self.document.partner.gb, true, false);
-                        }
-                        else {
-                            GB_set_turbo_mode(_gb, true, self.isRewinding);
-                        }
-                        _turbo = true;
-                        analogClockMultiplierValid = false;
+                        [self setTurbo:[defaults boolForKey:@"GBTurboToggle"]? !_turbo : true];
                         break;
                         
                     case GBRewind:
@@ -505,14 +510,9 @@ static const uint8_t workboy_vk_to_key[] = {
                 handled = true;
                 switch (button) {
                     case GBTurbo:
-                        if (self.document.isSlave) {
-                            GB_set_turbo_mode(self.document.partner.gb, false, false);
+                        if (![defaults boolForKey:@"GBTurboToggle"]) {
+                            [self setTurbo:false];
                         }
-                        else {
-                            GB_set_turbo_mode(_gb, false, false);
-                        }
-                        _turbo = false;
-                        analogClockMultiplierValid = false;
                         break;
                         
                     case GBRewind:
